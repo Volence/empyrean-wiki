@@ -161,6 +161,22 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   details.explain .x-body{animation:fade .18s ease;}
   @keyframes fade{from{opacity:0}to{opacity:1}}
 }
+
+/* ============================================================
+   Page-specific styles: the hub
+   ============================================================ */
+/* wiki search (the hub for now; page headers once the search index ships) */
+.wikisearch{margin:1.3rem 0 0;}
+.wikisearch label{display:block; font-family:var(--mono); font-size:.68rem;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--dim); margin:0 0 .35rem;}
+.wikisearch input{font-family:var(--mono); font-size:.85rem; background:var(--panel);
+  color:var(--ink); border:1px solid var(--line); border-radius:4px; padding:.45rem .75rem;
+  width:100%; max-width:26rem;}
+.wikisearch input::placeholder{color:var(--dim);}
+.wikisearch input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;
+  border-color:var(--accent);}
+.wikisearch .s-count{font-family:var(--mono); font-size:.7rem; color:var(--dim); margin:.4rem 0 0;}
+.s-hide{display:none !important;}
 </style>
 </head>
 <body>
@@ -174,6 +190,11 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   This wiki records what was built and why each decision went the way it did, and teaches the
   hardware from zero along the way.</p>
 </header>
+<div class="wikisearch">
+  <label for="wikiq">Search the wiki</label>
+  <input type="search" id="wikiq" placeholder="Try a topic: planes, DMA, compression, SMPS" autocomplete="off" aria-describedby="wikicount">
+  <p class="s-count" id="wikicount" aria-live="polite"></p>
+</div>
 <div class="doors">
   <a class="door" href="#onramp">
     <span class="dr-t">Getting started</span>
@@ -490,6 +511,42 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
 
 <footer class="page">The Empyrean wiki · last updated 2026-07-17</footer>
 
+
+<script>
+(function(){
+  var q=document.getElementById('wikiq'), count=document.getElementById('wikicount');
+  var grids=[].slice.call(document.querySelectorAll('.hub-grid'));
+  var doorwrap=document.querySelector('.doors');
+  function run(){
+    var t=q.value.trim().toLowerCase(), shown=0;
+    grids.forEach(function(grid){
+      var any=false;
+      grid.querySelectorAll('.card').forEach(function(c){
+        var m=!t||c.textContent.toLowerCase().indexOf(t)>=0;
+        c.classList.toggle('s-hide',!m); if(m){any=true;shown++;}
+      });
+      grid.classList.toggle('s-hide',!any);
+      var h=grid.previousElementSibling;
+      if(h&&h.classList.contains('hub-h')) h.classList.toggle('s-hide',!any);
+    });
+    document.querySelectorAll('.hub-h').forEach(function(h){
+      if(!(h.nextElementSibling&&h.nextElementSibling.classList.contains('hub-grid')))
+        h.classList.toggle('s-hide',!!t);
+    });
+    if(doorwrap){
+      var anyDoor=false;
+      doorwrap.querySelectorAll('.door').forEach(function(d){
+        var m=!t||d.textContent.toLowerCase().indexOf(t)>=0;
+        d.classList.toggle('s-hide',!m); if(m)anyDoor=true;
+      });
+      doorwrap.classList.toggle('s-hide',!!t&&!anyDoor);
+    }
+    count.textContent=t?(shown+' result'+(shown===1?'':'s')):'';
+  }
+  q.addEventListener('input',run);
+  q.addEventListener('keydown',function(e){if(e.key==='Escape'){q.value='';run();}});
+})();
+</script>
 </div>
 
 </body>
