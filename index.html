@@ -175,22 +175,22 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   hardware from zero along the way.</p>
 </header>
 <div class="doors">
+  <a class="door" href="#onramp">
+    <span class="dr-t">Getting started</span>
+    <span class="dr-d">New to this? The map of Genesis development: the paths, the tools, how a ROM is built and run, and the scene it all came from</span>
+  </a>
   <div class="door soon">
     <span class="dr-t">Learn from zero</span>
-    <span class="dr-d">A sequenced path from "what is a CPU" to reading a real engine, with things to play with along the way</span>
+    <span class="dr-d">A sequenced course from "what is a CPU" up to reading a real engine, with things to play with along the way</span>
     <span class="soon-tag">page coming</span>
   </div>
-  <a class="door" href="#genesis">
-    <span class="dr-t">How the Genesis works</span>
-    <span class="dr-d">The machine itself: planes, VRAM, color, sprites, DMA, the two CPUs and the sound chips. True for any Genesis game.</span>
-  </a>
-  <a class="door" href="#m68k">
-    <span class="dr-t">68000 Assembly</span>
-    <span class="dr-d">The language the main CPU speaks: registers, addressing modes, and every instruction, with real examples from Sonic-era code</span>
+  <a class="door" href="#foundations">
+    <span class="dr-t">The reference</span>
+    <span class="dr-d">Everything true for any Genesis game: the machine, the two CPU languages, the data formats, and the sound ecosystem</span>
   </a>
   <a class="door" href="#manual">
     <span class="dr-t">The Aeon engine</span>
-    <span class="dr-d">What this engine chose and why, system by system, with the code that implements each decision</span>
+    <span class="dr-d">What this engine chose and why, system by system, with the code behind each decision</span>
   </a>
   <div class="door soon">
     <span class="dr-t">See it run</span>
@@ -199,7 +199,33 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   </div>
 </div>
 </div>
+</div>
 
+<p class="hub-h" id="onramp">Getting started</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="nm">So you want to make a Genesis game</span>
+    <span class="ds">The honest paths: assembly from scratch, SGDK and C, or romhacking a disassembly, and what each one asks of you</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">The toolchain</span>
+    <span class="ds">How source becomes a cartridge: assemblers, linking, the ROM header and checksum, and where our own tools fit</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Running &amp; debugging</span>
+    <span class="ds">The emulator accuracy tiers, what a debugger shows you, and testing on real hardware with a flash cart</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">The scene &amp; its history</span>
+    <span class="ds">How this knowledge exists at all: the disassembly effort, the communities, and the editors and utilities</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h" id="foundations">The reference: true for any Genesis game</p>
 <p class="hub-h" id="genesis">The Genesis: how the machine works</p>
 <div class="hub-grid">
   <div class="card soon">
@@ -269,6 +295,68 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   <div class="card soon">
     <span class="nm">The Instruction Set</span>
     <span class="ds">Every instruction grouped by job (move, math, logic, shifts, bits, branches, system), each with a real Sonic-game example</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h" id="z80">Z80 Assembly: the sound CPU</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="nm">The Z80 on the Genesis</span>
+    <span class="ds">Why the second CPU is there, its 8KB of sound RAM, how it reaches ROM, and the handshake with the 68000</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Programming Model &amp; Instructions</span>
+    <span class="ds">The registers, the flags, and the instruction set, with real examples from a Z80 sound driver</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h" id="data">Data Formats: how content is encoded</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="nm">Compression on the Genesis</span>
+    <span class="ds">Nemesis, Kosinski, Enigma and Saxman: why games compressed, what each is good at, with a live decompressor to play with</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Graphics data</span>
+    <span class="ds">From bytes in ROM to art on screen: tiles, the block and chunk hierarchy, sprite mappings, and animation DPLC</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Level &amp; collision data</span>
+    <span class="ds">How a level is stored: the layout arrays, the collision system, and the object placement lists</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Palettes &amp; color data</span>
+    <span class="ds">Palette storage, color cycling for animated water and effects, and fade tables</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h" id="sound">The Sound Ecosystem: formats &amp; drivers</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="nm">How Genesis sound works</span>
+    <span class="ds">The driver model: why sound needs a driver, the 68000 and Z80 split, and how sound survives a frame of DMA</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">SMPS: the Sega format</span>
+    <span class="ds">The Sample Music Playback System behind nearly every Sonic and Sega score: how a song is laid out in ROM</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">The driver landscape</span>
+    <span class="ds">SMPS, GEMS, Flamedriver, Echo, and the studios that rolled their own, like Zyrinx's streaming engine</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">FM &amp; PSG sound design</span>
+    <span class="ds">Using the chips as a composer: the FM operator model, PSG envelopes, and the DAC for drums and samples</span>
     <span class="soon-tag">page coming</span>
   </div>
 </div>
