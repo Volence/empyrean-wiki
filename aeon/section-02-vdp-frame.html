@@ -245,14 +245,17 @@ details.explain summary::-webkit-details-marker{display:none;}
 .ntc-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
 select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel);
   color:var(--ink); border:1px solid var(--line); border-radius:3px; padding:.22rem .4rem;}
-.ntc-canvaswrap{display:flex; flex-direction:column; gap:.5rem; align-items:flex-start;}
 #ntcGrid{display:grid; grid-template-columns:repeat(4,2.4rem); grid-template-rows:repeat(4,2.4rem);
   gap:2px; background:var(--line); border:1px solid var(--line);}
 .ntc-cell{background:#000; cursor:pointer; padding:0; border:0;}
 .ntc-cell canvas{width:100%; height:100%; display:block; image-rendering:pixelated;}
 .ntc-cell:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
 .ntc-cell.cursel{outline:2px solid var(--gold); outline-offset:-2px;}
-.ntc-preview canvas{image-rendering:pixelated; border:1px solid var(--line);}
+.ntc-preview canvas{width:4rem; height:4rem; image-rendering:pixelated; border:1px solid var(--line);}
+.ntc-canvaswrap{display:flex; flex-direction:row; gap:1.2rem; align-items:flex-start; flex-wrap:wrap;}
+.ntc-labeled{display:flex; flex-direction:column; gap:.35rem;}
+.ntc-caplabel{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim);}
 .ntc-word{font-family:var(--mono); font-size:.75rem; color:var(--ink);}
 
 /* DMA budget packer manipulable */
@@ -381,13 +384,15 @@ these words by hand and watch both the bits and the picture update together.</p>
       <div class="bitword" id="ntcBits" aria-hidden="true"></div>
     </div>
     <div class="ntc-canvaswrap">
-      <div id="ntcGrid" role="group" aria-label="4 by 4 nametable grid, click a cell to place the current tile"></div>
-      <div class="ntc-preview"><canvas id="ntcPreview" width="64" height="64"></canvas></div>
+      <div class="ntc-labeled"><span class="ntc-caplabel">4x4 plane</span>
+        <div id="ntcGrid" role="group" aria-label="4 by 4 nametable grid, click a cell to place the current tile"></div></div>
+      <div class="ntc-labeled ntc-preview"><span class="ntc-caplabel">current tile</span>
+        <canvas id="ntcPreview" width="8" height="8"></canvas></div>
     </div>
   </div>
-  <p class="dmap-cap" id="ntcCap" aria-live="polite">Pick a tile and its flags, then click a grid
-  cell to write that nametable word there. The preview canvas shows exactly what the VDP would
-  draw for the selected cell.</p>
+  <p class="dmap-cap" id="ntcCap" aria-live="polite">Pick a tile and its flags, then click a cell in
+  the 4x4 plane to write that nametable word there. The "current tile" box shows what the tile you
+  are about to place looks like with its flags applied.</p>
   <figcaption>Nametable composer: a plane is a grid of words like this one, not a grid of pixels
   (static fallback: the bit-field diagram above shows the fixed layout of every nametable word).</figcaption>
 </figure>
