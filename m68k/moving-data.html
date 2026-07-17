@@ -376,6 +376,28 @@ into registers, working on them there, and writing results back out.</p>
   </div>
 </details>
 
+<details class="explain" id="negatives">
+  <summary>New here? &middot; How can a register hold a negative number?</summary>
+  <div class="x-body">
+    <p>There is no minus sign in hardware; a register only holds bits. Negative numbers work by
+    wrap-around, like a car odometer rolling backwards. A byte counts 0, 1, 2, up to $FF (255),
+    and then wraps back to 0; run it the other way and 0 minus 1 wraps to $FF. So the bit pattern
+    <code>$FF</code> means 255 <em>or</em> -1 depending entirely on how the code chooses to read
+    it: the bits themselves do not know. This scheme is called two's complement, and every number
+    on the 68000 uses it. The tell is the top bit: read as signed, $00-$7F are 0 to 127, and
+    $80-$FF run from -128 up to -1. That top bit is exactly what the N flag copies.</p>
+    <p>And here is the part that trips everyone once: the same negative number needs different
+    digits at different sizes. Think of the odometer again: roll 5 below zero on a three-digit
+    odometer and it reads 995; roll the same 5 below zero on a four-digit odometer and it reads
+    9995. Those leading 9s are what the leading F digits are in hex. So -128 written as a byte is
+    <code>$80</code>, the same -128 written as a word is <code>$FF80</code>, and as a long it is
+    <code>$FFFFFF80</code>. The FF digits are not decoration and they do not change the value;
+    they are simply what that value looks like with more room. Keeping them correct when a small
+    value moves into a bigger slot is called sign extension, and the EXT instruction at the end
+    of this page exists to do exactly that.</p>
+  </div>
+</details>
+
 <details class="explain">
   <summary>New here? &middot; What is an "effective address"?</summary>
   <div class="x-body">
@@ -844,13 +866,23 @@ as it was.</p>
   stack instead of loading it into a register. Always pushes 4 bytes.</p>
   <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
   <p>PEA's everyday job is passing a pointer: push the <em>address</em> of a thing so a
-  subroutine can find the thing itself, without either side caring which register anything
-  lives in.</p>
+  subroutine can find the thing itself. Here are both halves, the caller and the callee:</p>
   <pre>	pea	(Score_Digits).w	<span class="c">; push the ADDRESS of the score buffer</span>
-	bsr.w	DrawNumber	<span class="c">; DrawNumber reads the digits through that pointer</span>
-	addq.l	<span class="n">#4</span>,sp	<span class="c">; discard the argument afterward</span></pre>
-  <p>That calling style is everywhere in compiled C code. Sonic-era game code passes pointers in
-  address registers instead, which is faster, so PEA barely appears in it at all.</p>
+	bsr.w	DrawNumber	<span class="c">; call the routine</span>
+	addq.l	<span class="n">#4</span>,sp	<span class="c">; done with the argument, discard it</span>
+
+DrawNumber:
+	movea.l	4(sp),a0	<span class="c">; fetch the argument off the stack (it sits 4 bytes</span>
+			<span class="c">; up, because bsr pushed the return address on top)</span>
+	move.b	(a0)+,d0	<span class="c">; NOW the address gets used: read a digit through it</span>
+	...
+	rts</pre>
+  <p>Follow what the PEA actually changed: the score buffer itself is untouched, no register
+  moved, and nothing was copied anywhere except the address, which now sits on the stack as a
+  plain 4-byte number. It waits there, inert, until DrawNumber picks it up with MOVEA and
+  dereferences it. That calling style is everywhere in compiled C code. Sonic-era game code
+  passes pointers in address registers instead, which is faster, so PEA barely appears in it at
+  all.</p>
   </div>
   <p>Which is why the one real use in the Sonic 2 disassembly is not parameter passing: it is a
   deliberate, commented "fake call" trick. The routine pushes the address right after itself,
@@ -868,8 +900,10 @@ as it was.</p>
   This is an unusual, advanced idiom, not PEA's typical job of parameter passing, and it is worth
   reading twice: the PEA supplies the return address a plain <code>bsr</code>/<code>jsr</code>
   would have pushed automatically, so a <code>bra</code> can be used instead, picking between two
-  destinations with a branch rather than duplicating the call. A second, structurally identical
-  use of the same trick exists later in the same file, at line 29666.</div>
+  destinations with a branch rather than duplicating the call. The consumer of the pushed address
+  is the <code>rts</code> at the end of the shared code: an rts pops whatever 4 bytes sit on top
+  of the stack and jumps there, with no idea whether a jsr or a PEA put them there. A second,
+  structurally identical use of the same trick exists later in the same file, at line 29666.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   If the address will be used more than once, <a href="#lea">LEA</a> it into a spare register and
   push that with <code>move.l An,-(sp)</code>; PEA only wins when the address is needed exactly
@@ -1163,15 +1197,31 @@ carry meaning, without touching memory at all.</p>
   <p>EXG is genuinely uncommon in hand-written 68000 game code. Most register swaps go through a
   spare register and a couple of MOVEs instead, since EXG doesn't obviously save time or registers
   in most contexts; across the entire 91,000-line Sonic 2 disassembly it appears only a handful of
-  times, always as a plain two-register swap inside physics code. Here, swapping two
-  floor-distance candidates so the smaller ends up where the following code expects it:</p>
+  times, always as a plain two-register swap inside physics code. Here is the end of a
+  floor-sensor routine whose contract with its callers is "the winning distance comes back in d1,
+  its angle in d3." The excerpt runs all the way to the <code>rts</code> so you can see who the
+  swap is for:</p>
   <pre>loc_1ECC6:
 	move.b	(Secondary_Angle).w,d3
 	cmp.w	d0,d1
 	ble.s	loc_1ECD4
 	move.b	(Primary_Angle).w,d3
-	exg	d0,d1</pre>
-  <span class="src">s2disasm/s2.asm:43601-43606 (Sonic_CheckFloor)</span>
+	exg	d0,d1
+
+loc_1ECD4:
+	btst	#0,d3
+	beq.s	+
+	move.b	d2,d3
++
+	rts</pre>
+  <span class="src">s2disasm/s2.asm:43601-43613 (Sonic_CheckFloor)</span>
+  <p>Why swap at all, instead of just using the values where they sit? Because register names are
+  baked into the instructions. This routine ran two floor sensors and ended up with two distances,
+  one in d0 and one in d1. If d1 already holds the smaller one, fine: fall through to the rts. If
+  d0 won instead, the routine has a problem: every caller is already written to read the answer
+  out of d1, and code cannot relabel registers at runtime, only move values between them. So it
+  swaps, the winner lands in d1, and every caller stays oblivious. That is EXG's whole niche: two
+  code paths converging on one register contract.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   Three more near-identical <code>exg d1,d2</code> call sites exist elsewhere in the same
   disassembly, at lines 47667, 47692, 54498, and 54548, all the same register-swap idiom in
@@ -1215,6 +1265,8 @@ carry meaning, without touching memory at all.</p>
   <details class="explain">
   <summary>New here? &middot; What is sign extension, and why does it matter?</summary>
   <div class="x-body">
+    <p>If "$FF means -1" is itself the confusing part, read the negative-number explainer back in
+    section 1 first (the odometer story); this one builds on it.</p>
     <p>A signed byte like -1 is stored as <code>$FF</code>, and a signed word holding -1 is stored
     as <code>$FFFF</code>. If you simply copied that byte <code>$FF</code> into the low 8 bits of a
     16-bit value and left the top 8 bits zero, you would get <code>$00FF</code>, which is 255, not
@@ -1393,25 +1445,28 @@ function expandAll(btn){
     return parseInt(v||'0',16)&0xFF;
   }
   load.addEventListener('click',function(){
-    d0=(0xDDDDDD00|byteVal())>>>0;
+    var b=byteVal();
+    d0=(0xDDDDDD00|b)>>>0;
     show(null);
-    note.textContent='d0 loaded: your byte in the low 8 bits, $DD junk above it. Now extend it.';
+    note.textContent='d0 loaded: your byte $'+b.toString(16).toUpperCase().padStart(2,'0')
+      +' ('+((b&0x80)?b-256:b)+' as a signed byte) in the low 8 bits, $DD junk above it. Now extend it.';
   });
   bw.addEventListener('click',function(){
-    var b=d0&0xFF, w=(b&0x80)?(0xFF00|b):b;
+    var b=d0&0xFF, w=(b&0x80)?(0xFF00|b):b, sv=(b&0x80)?b-256:b;
     d0=(((d0&0xFFFF0000)>>>0)|w)>>>0;
     show('w');
     note.textContent='ext.w read only the low byte, saw its top bit was '
       +((b&0x80)?'1, and painted $FF':'0, and painted $00')
-      +' over bits 8-15. Bits 16-31 are untouched: ext.w stops at the word boundary.';
+      +' over bits 8-15. The low word is now $'+w.toString(16).toUpperCase().padStart(4,'0')
+      +', which as a signed word still reads '+sv+': the same value, written with more digits. Bits 16-31 are untouched: ext.w stops at the word boundary.';
   });
   bl.addEventListener('click',function(){
     var w=d0&0xFFFF, junk=((w>>8)&0xFF)===0xDD;
     d0=((w&0x8000)?(0xFFFF0000|w):w)>>>0;
     show('l');
     note.textContent='ext.l read the low word $'+w.toString(16).toUpperCase().padStart(4,'0')
-      +' and painted its top bit over bits 16-31.'
-      +(junk?' But that word still contained the junk, so the junk just got signed into your result. This is exactly why byte-to-long is ext.w first, then ext.l.':'');
+      +' and painted its top bit over bits 16-31. d0 now reads '+(d0|0)+' as a signed long.'
+      +(junk?' But that word still contained the junk, so the junk just got signed into your result: a garbage value, faithfully extended. This is exactly why byte-to-long is ext.w first, then ext.l.':' Same value again, just with room to spare.');
   });
   show(null);
 })();
