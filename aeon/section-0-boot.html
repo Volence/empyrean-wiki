@@ -308,6 +308,36 @@ Second, the ROM header at $100-$1FF is not a hardcoded block: it is emitted by a
 <code>gameHeader</code> macro from game-declared strings, and every field width is asserted at
 build time (more on that in section 9).</p>
 
+<p>What those per-vector labels buy is a real crash screen. Every exception stub feeds a named
+message ("BUS ERROR", "ADDRESS ERROR", "ILLEGAL INSTRUCTION", ...) into Vladikcomper's
+<strong>MD Debugger and Error Handler v2.6</strong>, a third-party debugging module the engine
+embeds at the very end of the ROM. When any of those vectors fires, the handler takes over the
+machine: it sets up its own video state from an internal register table (so it can draw even if
+the crash happened before boot configured the VDP), then prints the exception name, the program
+counter, the registers, the caller, and resolves addresses to symbol names using a table the
+build appends to every ROM. On the error screen, button B shows an exception backtrace and
+button A decodes the address registers. This is not a debug-build luxury: the handler ships in
+<em>release</em> builds too (only assertions and the KDebug logging interface are gated to
+DEBUG), so a crash on real hardware is a readable screen, never a silent freeze.</p>
+<span class="src">engine/debug/error_handler.asm:31 · engine/engine.inc:450</span>
+
+<details class="explain">
+  <summary>New here? · What happens when a Genesis game crashes?</summary>
+  <div class="x-body">
+    <p>On a modern computer a crashing program gets caught: the operating system shows a dialog,
+    writes a crash log, and the machine carries on. A Genesis has no operating system. When the
+    CPU hits a fault (a read from a nonsense address, an opcode that is not an instruction), it
+    jumps through the vector table, and whatever sits at the other end of that vector <em>is</em>
+    the crash handling. Games that left those slots pointing at garbage simply froze, or worse,
+    leapt into random memory and kept "running" while corrupting everything they touched.</p>
+    <p>That is why filling in all 64 vectors matters, and why pointing them at a real error
+    screen is one of the highest-value things a Genesis engine can do. The crash still happens,
+    but instead of a black screen you get the exception's name, where it fired, and the trail of
+    calls that led there: a 1990s console showing you something very close to a modern stack
+    trace.</p>
+  </div>
+</details>
+
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>Initial stack pointer = $FFFFFF00, not $00000000.</strong> The stack grows downward
   from near the top of Work RAM, far from game data at low RAM addresses, and the top 256 bytes
@@ -380,6 +410,14 @@ have no TMSS and no such register, so the write is gated on the revision check.<
     screen.</p>
   </div>
 </details>
+
+<p>Two footnotes to the handshake. The magic register is only half of TMSS: the console also
+checks that the ROM header's first field, the console-name string at $100 (which
+<code>gameHeader</code> emits from the game's <code>GAME_CONSOLE</code> symbol), begins with
+<code>"SEGA"</code>. And on TMSS machines the cartridge is not actually the first thing to run:
+the console's internal boot ROM executes before <code>EntryPoint</code>, performs those checks,
+and draws the license splash. By the time Aeon's first instruction runs, the player has already
+been looking at that screen.</p>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>Soft-reset checks run before TMSS.</strong> Pressing RESET only resets the 68000; the
@@ -523,6 +561,17 @@ and press Enter) to pin a highlight while you cross-reference.</p>
   </div>
 </div>
 
+<p>The shadow comes with a written rule about bypassing it. <code>setVDPReg</code> is the only
+sanctioned path for <em>settled</em> state on registers $00-$12 (display enable, scroll mode,
+plane bases); a direct control-port write to those registers is legal in exactly two cases.
+Transient pre-DMA setup, like the auto-increment tweak the level streamer makes immediately
+before a transfer, may write directly, because nothing reads the value back as authoritative.
+And raster-effect handlers may write registers freely mid-frame (that is the entire point of a
+raster effect) but must not touch the shadow or the dirty mask: the shadow represents settled
+frame state, and the next VBlank flush re-asserts it. Everything else goes through the macro,
+because a hardware-only write to settled state risks being silently overwritten by the next
+dirty flush.</p>
+
 <!-- ================================================================ -->
 <h2 id="s4">4 · Waking the sound hardware</h2>
 
@@ -555,6 +604,13 @@ again and held for ~264 cycles of the 68K clock before the Z80 is released to ru
 which shares that reset line, needs its reset held for at least 192 cycles of its own clock;
 on the Genesis the YM2612 is clocked at the same rate as the 68K, so the two figures compare
 directly.</p>
+
+<p>Where does the driver come from? It is not a separate file the CPU has to locate at runtime:
+the assembled Z80 blob is physically embedded <em>inside</em> the boot data table, between the
+DMA fill command and the PSG silence bytes. Boot reads that table strictly sequentially through
+<code>(a5)+</code>, so when the copy loop starts, <code>a5</code> is already pointing at the
+first driver byte. No address to load, nothing to look up.</p>
+<span class="src">engine/system/boot.asm:268</span>
 
 <p>The idle program is a curiosity worth two lines: after clearing Z80 RAM and its registers,
 it plants the byte <code>$E9</code>, the opcode for <code>jp&nbsp;(hl)</code>, at address 0
@@ -624,6 +680,17 @@ the FM chip and two writers on one chip is a race.</p>
   </div>
 </div>
 
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>Sound_Init waits forever, on purpose.</strong> The last sound step of boot (phase I in
+  section 8) is a handshake: the 68000 polls a byte in Z80 RAM until the driver finishes its own
+  init and writes an "alive" marker there. Each probe grabs the Z80 bus (the only reliable way
+  for the 68000 to read Z80 RAM), compares, and then <em>releases</em> the bus before probing
+  again; a continuous hold would deadlock the handshake, since a stopped Z80 can never finish
+  booting and post the marker. There is deliberately no timeout: a driver that never comes up
+  means the ROM itself is broken, and hanging at one well-defined address beats limping onward
+  without sound (<code>Sound_Init</code>, engine/sound/sound_api.asm:39).
+</div>
+
 <!-- ================================================================ -->
 <h2 id="s5">5 · Clearing 64KB the clever way</h2>
 
@@ -690,6 +757,12 @@ CPU  [###### chores, 9 ######][wait 1]                   total = 10</pre>
   <p style="margin:.4rem 0 .2rem;">The chores hide entirely inside the fill's shadow. The real
   boot follows exactly this timeline, just with real durations.</p>
 </div>
+
+<p>For the record, those real durations: the 64KB work-RAM clear alone is roughly 180,000 CPU
+cycles, about 23 milliseconds, and it is the biggest single CPU chore in the sequence. The
+entire boot, from the reset vector to the handoff into the game loop, finishes in a small
+handful of frames. There is no loading bar because there is nothing to wait for; the first
+thing slow enough to notice is whatever the game's first state chooses to load.</p>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>DMA-parallel boot clear (novel).</strong> Every reference disassembly clears memory
@@ -843,12 +916,38 @@ loop telling the interrupt "my frame's work is done", while <code>VBlank_Flag</c
 interrupt telling the main loop "VBlank has run: go".</p>
 
 <p><code>VInt_Lag</code> is not a do-nothing stub. It runs the shadow flush, the dirty-buffer
-enqueue, Critical DMA, the VSRAM write, controllers, and the frame counter: nearly the whole
-pipeline. The <em>one</em> thing it deliberately skips is the plane-buffer drain: on a lag frame
+enqueue, Critical DMA, the VSRAM write, controllers, and the frame counter, and it still sets
+<code>VBlank_Flag</code> at the end: nearly the whole pipeline. The <em>one</em> thing it deliberately skips is the plane-buffer drain: on a lag frame
 the main loop is mid-write into that buffer, and draining a half-written entry would send tiles
 to a garbage VDP address. The dirty-flag-gated buffers are safe to drain (their flags are set
 only after a complete write); the pointer-gated plane buffer is not, so it waits for the next
 complete frame.</p>
+
+<p>That lag-frame <code>VBlank_Flag</code> is a loaded gun, and the main loop's wait routine is
+built around not getting shot by it. On a lag frame nobody is waiting; the flag the main loop
+eventually checks would be stale, left over from an interrupt that already came and went. So
+<code>VSync_Wait</code> clears the flag before it starts waiting. And there is a second, sharper
+hazard: the clear-flag and raise-<code>VBlank_Ready</code> writes must land as one atomic act.
+If a VBlank fires between them (Ready still 0), it runs <code>VInt_Lag</code>, which sets the
+flag, so the "wait" falls straight through with no real vsync, while Ready is left up for the
+<em>next</em> VBlank to fully drain a plane buffer the main loop is still writing. The fix costs
+a few dozen cycles on a once-per-frame path: mask interrupts across the pair, then wait with
+them live.</p>
+
+<pre>        move.w  sr, -(sp)
+        move.w  <span class="n">#$2700</span>, sr             <span class="c">; mask: the pair below must be atomic</span>
+        move.b  d0, (VBlank_Flag).w     <span class="c">; clear any stale lag-frame flag</span>
+        move.b  <span class="n">#1</span>, (VBlank_Ready).w    <span class="c">; this frame's work is done</span>
+        move.w  (sp)+, sr               <span class="c">; unmask BEFORE waiting; IRQ6 sets the flag</span>
+.wait:
+        tst.b   (VBlank_Flag).w
+        beq.s   .wait</pre>
+<span class="src">engine/system/vblank.asm:182</span>
+
+<p>One loose end the excerpts above leave out: the interrupt side lowers
+<code>VBlank_Ready</code> itself on the way out of every VBlank, normal or lag, so the ready
+signal is consumed exactly once per interrupt and can never carry over into a frame that did
+not earn it.</p>
 
 <!-- ================================================================ -->
 <h2 id="s8">8 · The whole sequence</h2>
@@ -946,6 +1045,46 @@ manifest declared. And the handoff is live: VBlank is enabled in the VDP and unm
 CPU before the branch (phase H), so the game's first state runs with interrupts already
 firing. There is no masked handoff to unwind.</p>
 
+<p>And what is on screen through all of this? Nothing. The display bit in VDP register $01 is
+never set during boot: phase H turns $14 into $34, which enables the VBlank interrupt but
+leaves the display off, and no later boot step touches it. Turning the picture on is the
+game's job, in its first state, once it has loaded something worth showing. So the player's
+experience of this entire page is: the console's own TMSS license screen (drawn by the internal
+boot ROM before <code>EntryPoint</code> even runs), then a black screen for a few frames, then
+whatever the game puts up. Boot itself is invisible.</p>
+
+<p><code>GameLoop</code>, the destination of that final branch, is four steps repeated forever:
+wait for VBlank (<code>VSync_Wait</code>, section 7), drain one pending sound effect into the
+Z80 mailbox (sound builds), run the game's per-frame debug hook (<code>gameDebugTick</code>),
+and jump through <code>Game_State</code>. Everything the engine does after boot happens inside
+one of those four steps.</p>
+<span class="src">engine/system/game_loop.asm:10</span>
+
+<h3>The boot-time contract</h3>
+
+<p>Boot is also where the engine/game wall is easiest to see, because boot consumes the whole
+game-facing contract in one pass. A game is a <em>manifest</em>: its <code>main.asm</code>
+declares seven include-macros (config, RAM, engine-block code, object-bank code, data, sound
+data, game states) and then includes <code>engine/engine.inc</code>, which owns the entire ROM
+layout from the vector table to the end-of-ROM marker. What boot itself asks of the game is
+small and precise:</p>
+
+<ul>
+  <li><code>GAME_*</code> header strings, consumed by <code>gameHeader</code> at build time
+  (section 9)</li>
+  <li><code>gameBootHook</code>, invoked once, after <code>Sound_Init</code>: defined in the
+  game's contract file (<code>games/&lt;game&gt;/config/game.asm</code>), and may be empty</li>
+  <li><code>Game_Entry</code> and <code>GAME_ENTRY_ID</code>, the first state routine and its
+  id, installed as the final act before <code>GameLoop</code></li>
+</ul>
+
+<p>Two consequences of the wall are worth spelling out. First, a game must boot with sound
+compiled out: the game-states macro sits outside the engine's sound conditional, so
+<code>Game_Entry</code> has to resolve even in a sound-off build. Second, the 64KB RAM wipe in
+phase C covers game RAM too; game variables live in a region that continues from the engine's
+<code>Engine_RAM_End</code> seam, inside the same 64KB, so every game starts from zeroed memory
+without writing its own clear loop.</p>
+
 <!-- ================================================================ -->
 <h2 id="s9">9 · The assembler does the work</h2>
 
@@ -979,6 +1118,21 @@ serial becomes a build failure, not a corrupt header field discovered on hardwar
         <span class="k">endif</span></pre>
 <span class="src">engine/system/header.inc:25</span>
 
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>No boot-time checksum check.</strong> The header's checksum word at $18E is emitted as
+  zero and patched into the finished ROM by <code>tools/fixheader</code> after assembly. Nothing
+  ever verifies it: boot does not walk the ROM summing words, and a wrong checksum changes
+  nothing at runtime. Classic Sonic games spend their first moments on exactly that walk and
+  halt on a red screen if it fails; it was a defense against corrupted dumps and flaky cartridge
+  hardware, and it costs boot time on every clean start. Aeon treats ROM integrity as the build
+  pipeline's job and keeps the field honest for tools that read it.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="no">Sonic 1 / Sonic 2: checksum loop, red screen on fail</span>
+    <span class="yes">Aeon ✓ field patched by fixheader, never verified</span>
+  </div>
+</div>
+
 <p>The same idea guards the whole ROM image and the RAM structures boot depends on:</p>
 
 <pre>    <span class="k">if</span> (EndOfRom &amp; <span class="n">1</span>) &lt;&gt; <span class="n">0</span>
@@ -998,6 +1152,17 @@ serial becomes a build failure, not a corrupt header field discovered on hardwar
 <p>The shadow-struct assert is the quiet hero: the flush loop, the dirty mask width, and the
 "registers $00-$12 only" rule all assume that struct is exactly 19 bytes, and anyone who adds a
 field learns about all three dependents at build time.</p>
+
+<p>DEBUG builds extend the principle past build time, into the first moments of runtime. Right
+after interrupts go live (phase I in section 8), boot runs <code>CompressionSelfTest</code>: the
+build emits one fixed payload compressed three ways (S4LZ v3 plain, S4LZ v3 with a dictionary,
+ZX0) along with its expected checksum, and the test decompresses each vector into the art
+staging buffer, then asserts both the checksum and a full byte-for-byte compare. Between
+vectors the buffer is poisoned with $A5A5: all three vectors share one payload, so without the
+poison a decoder that did nothing at all would pass on the previous vector's output. Any
+mismatch between a 68000 decompressor and its build-side encoder halts on the assert screen
+before any game state has touched the buffer.</p>
+<span class="src">engine/debug/compression_selftest.asm:23</span>
 
 <p>Two smaller pieces of §0 machinery round out the picture. The <strong>sine table</strong> is
 320 word entries at amplitude $100, binary-included from <code>engine/data/sine.bin</code>, with
