@@ -229,6 +229,30 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .swapreg .hi{background:rgba(68,102,238,.16); color:#88AAEE;}
 .swapreg .lo{background:rgba(238,170,0,.16); color:var(--gold);}
 .swapviz .sw-arrow{color:var(--dim); font-size:.9rem;}
+
+/* MOVE before/after visualizer */
+.movesim{display:flex; flex-direction:column; gap:.8rem;}
+.msim-ctrl{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.75rem;}
+.msim-ctrl label{color:var(--dim);}
+.msim-ctrl input{font-family:var(--mono); font-size:.85rem; width:4.5rem; background:var(--panel);
+  color:var(--gold); border:1px solid var(--line); border-radius:3px; padding:.25rem .4rem; text-transform:uppercase;}
+.msim-ctrl input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-ctrl button{font-family:var(--mono); font-size:.72rem; padding:.3rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.msim-ctrl button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-regs{display:flex; flex-wrap:wrap; align-items:center; gap:1rem;}
+.mreg{display:inline-flex; flex-direction:column; gap:.2rem; align-items:center; border:1px solid var(--line);
+  border-radius:4px; padding:.5rem .8rem; background:var(--panel2); min-width:5.5rem;}
+.mr-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
+.mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
+.msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
+.mr-flash{background:transparent;}
+@media (prefers-reduced-motion: no-preference){
+  .mr-flash{animation:mrflash .5s ease;}
+  @keyframes mrflash{from{background:rgba(68,102,238,.4);}to{background:transparent;}}
+}
 </style>
 </head>
 <body>
@@ -316,7 +340,7 @@ into registers, working on them there, and writing results back out.</p>
   <summary>New here? &middot; What's an immediate value?</summary>
   <div class="x-body">
     <p>An <strong>immediate</strong> is a constant baked directly into the instruction's own bytes
-    in ROM, written with a leading <code>#</code>, like <code>#0</code> or <code>#'SEGA'</code>.
+    in ROM, written with a leading <code>#</code>, like <code>#0</code>, <code>#60</code>, or <code>#$100</code>.
     It is the opposite of an address: <code>move.l #4,d0</code> puts the number 4 into d0, while
     <code>move.l 4,d0</code> (no <code>#</code>) would instead read whatever four-byte value sits
     at memory address 4. Mixing these up is one of the most common typos in 68000 code, and one
@@ -327,9 +351,10 @@ into registers, working on them there, and writing results back out.</p>
 
 <div class="instr" id="move">
   <h3><span class="mn">MOVE</span> <span class="syn">MOVE.b/.w/.l &lt;ea&gt;,&lt;ea&gt;</span></h3>
-  <p>Copies data from a source effective address to a destination effective address, in any of the
-  three sizes. It is the single most common instruction in any 68000 program: the general-purpose
-  "get this value from here to there."</p>
+  <p>MOVE takes a value from one place and copies it into another. The place it copies FROM keeps its
+  value; the place it copies INTO is overwritten with the copy. That is the whole idea. It works in
+  any of the three sizes and is the single most common instruction in any 68000 program: the
+  general-purpose "get this value from here to there."</p>
   <div class="flags" role="group" aria-label="Condition codes affected by MOVE">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -347,25 +372,48 @@ into registers, working on them there, and writing results back out.</p>
   copy of carry that multi-precision math uses). On their own they do nothing; their whole point is
   that the branch instructions read them a moment later to decide where to go. So "MOVE sets N and
   Z" means that right after a MOVE you can branch on whether the value was negative or zero without
-  a separate compare, which is exactly what the second example below does. The Flags row on each
+  a separate compare, which is exactly what the read-and-branch example below does. The Flags row on each
   instruction shows which bits it touches: <b>set</b> means updated from the result, <b>clear</b>
   means forced to zero, <b>unaff.</b> means left exactly as it was. The Programming Model page (coming)
   will cover the status register in full.</div>
   </details>
-  <p>Real example, satisfying the <span class="term" data-def="The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.">TMSS</span> check right at boot, an immediate longword written straight to a hardware register:</p>
-  <pre>	beq.s	SkipSecurity				<span class="c">; If the console has no TMSS, skip the security stuff.</span>
-	move.l	<span class="n">#'SEGA'</span>,Security_Addr-Z80_Bus_Request(a1) <span class="c">; Satisfy the TMSS</span></pre>
-  <span class="src">s2disasm/s2.asm:211-212</span>
-  <p>A second, equally idiomatic use is reading a value purely to react to it, using MOVE's own
-  flag side effects instead of a separate comparison:</p>
-  <pre>SkipSecurity:
-	move.w	(a4),d0	<span class="c">; check if VDP works</span></pre>
-  <span class="src">s2disasm/s2.asm:214-215</span>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-ctrl">
+      <label for="msrc">Source value in d0 (hex)</label>
+      <input id="msrc" type="text" value="1234" maxlength="4" autocomplete="off" aria-describedby="mnote">
+      <button type="button" id="mrun">Run move.w d0,d1</button>
+      <button type="button" id="mreset">Reset d1</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="md0">$1234</span><span class="mr-tag">source</span></span>
+      <span class="mr-arrow" aria-hidden="true">copies into</span>
+      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="md1">$0000</span><span class="mr-tag">destination</span></span>
+    </div>
+    <p class="msim-note" id="mnote" aria-live="polite">Set a value in d0, then run the move. Watch d1 take a copy while d0 keeps its own.</p>
+  </div>
+  <figcaption>MOVE copies, it does not move: after move.w d0,d1 the source d0 still holds its value and d1 holds a copy (static fallback: d0 stays $1234, d1 becomes $1234).</figcaption>
+  </figure>
+
+  <p>In real object code a MOVE usually deposits a value that some other routine acts on later. Here two of them set an object in motion by loading its speed fields:</p>
+  <pre>	move.w	<span class="n">#$100</span>,x_vel(a0)
+	move.w	<span class="n">#-$80</span>,y_vel(a0)</pre>
+  <span class="src">s2disasm/s2.asm:13543-13544</span>
+  <p><code>a0</code> points at the object's data block, and <code>x_vel</code> / <code>y_vel</code> are its horizontal and vertical speed fields. Nothing moves this instant: the MOVEs just drop in the constants ($100 rightward, and -$80, which is negative, so upward). Every frame afterward the engine adds those speeds to the object's position, and that is what actually slides it up and to the right.</p>
+
+  <p>A MOVE is also how you arm a countdown. A spikes trap holds still, then snaps shut on a timer:</p>
+  <pre>	move.w	<span class="n">#60</span>,spikes_retract_timer(a0)	<span class="c">; reset timer</span></pre>
+  <span class="src">s2disasm/s2.asm:29357</span>
+  <p>This copies 60 into the object's retract timer, which is 60 frames, one second at the Genesis frame rate. The move itself changes nothing you can see; each following frame the object counts that timer down, and when it hits zero the spikes pull in. One MOVE sets the fuse; the countdown elsewhere in the object burns it.</p>
+
+  <p>And because a MOVE sets the N and Z flags from the value it copied, you can react to that value on the spot, with no separate compare. This loop reads the next entry of a command list and stops at the zero end-marker:</p>
+  <pre>	move.w	(a1)+,d0
+	beq.s	.done	<span class="c">; branch if we reached a stop token</span></pre>
+  <span class="src">s2disasm/s2.asm:1775-1776</span>
+  <p>The MOVE copies a word from the list into <code>d0</code> and, as a side effect, sets Z if that word was zero. The <code>beq</code> on the very next line reads that flag: a zero entry marks the end of the list, so it branches away and stops. Reading and testing happen in one step.</p>
+
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  Because MOVE sets N and Z from the value it just moved, it doubles as a free "test and branch":
-  <code>move.w (a4),d0</code> followed by a branch on Z or N needs no separate <code>tst</code>.
-  The privileged forms (<code>MOVE &lt;ea&gt;,SR</code>, <code>MOVE USP,An</code>) are supervisor-only;
-  attempting one from user mode traps instead of executing.</div>
+  MOVE copies; it does not move. After <code>move.w d0,d1</code> the source <code>d0</code> is unchanged, the point the visualizer above makes on purpose. Separately, the privileged forms (<code>MOVE &lt;ea&gt;,SR</code> and <code>MOVE USP,An</code>) are supervisor-only; running one in user mode traps instead of executing.</div>
 </div>
 
 <div class="instr" id="moveq">
@@ -808,6 +856,32 @@ function expandAll(btn){
     t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
   });
   addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+
+/* MOVE visualizer */
+(function(){
+  var src=document.getElementById('msrc'), d0=document.getElementById('md0'), d1=document.getElementById('md1');
+  var run=document.getElementById('mrun'), reset=document.getElementById('mreset'), note=document.getElementById('mnote');
+  if(!src) return;
+  function norm(){
+    var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase();
+    src.value=v;
+    var shown=(v||'0').padStart(4,'0');
+    d0.textContent='$'+shown;
+    return shown;
+  }
+  src.addEventListener('input',norm);
+  run.addEventListener('click',function(){
+    var v=norm();
+    d1.textContent='$'+v;
+    d1.classList.remove('mr-flash'); void d1.offsetWidth; d1.classList.add('mr-flash');
+    note.textContent='Copied $'+v+' into d1. d0 still holds $'+v+', since MOVE copies rather than moves.';
+  });
+  reset.addEventListener('click',function(){
+    d1.textContent='$0000';
+    note.textContent='d1 cleared. Set a value in d0 and run the move again.';
+  });
+  norm();
 })();
 </script>
 
