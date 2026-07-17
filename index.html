@@ -184,70 +184,98 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   </div>
 </div>
 
-<p class="hub-h">Aeon, the engine, section by section</p>
+<p class="hub-h">Aeon: Hardware Foundations</p>
 <div class="hub-grid">
   <a class="card" href="aeon/section-0-boot.html">
-    <span class="no">§0</span>
+    <span class="no">01</span>
     <span class="nm">Boot &amp; Hardware Init</span>
     <span class="ds">TMSS, vectors, VDP shadow table, DMA-parallel init: the first thing the console runs</span>
   </a>
   <div class="card soon">
-    <span class="no">§1</span>
-    <span class="nm">Core VDP Pipeline</span>
-    <span class="ds">Three priority DMA sub-queues with a region-aware per-frame byte budget; every VRAM write funnels through here</span>
+    <span class="no">02</span>
+    <span class="nm">The VDP &amp; the Frame</span>
+    <span class="ds">Tiles, sprites and palettes; the VBlank pipeline, the 3-priority DMA queue, and the per-frame byte budget</span>
     <span class="soon-tag">page coming</span>
   </div>
   <div class="card soon">
-    <span class="no">§2</span>
-    <span class="nm">Art &amp; Compression Pipeline</span>
-    <span class="ds">Two-tier compression: ZX0 for the load-time art pool, S4LZ for the runtime block stream; sprites ship uncompressed</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="no">§3</span>
-    <span class="nm">Object System</span>
-    <span class="ds">$50-byte slots, O(1) free-slot stack allocation, animation events driving object behavior</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="no">§4</span>
-    <span class="nm">Level / World</span>
-    <span class="ds">Section streaming over a wrapping 64&#215;64 plane: one continuous world-space camera, no slot teleports</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="no">§5</span>
-    <span class="nm">Player / Character</span>
-    <span class="ds">Classic S3K-floor physics under an explicit state machine, with exactly two modern concessions, both documented</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="no">§6</span>
-    <span class="nm">Audio</span>
-    <span class="ds">From-scratch Z80-autonomous driver: FM/PSG sequencer plus DAC drums that survive DMA</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="no">§7</span>
-    <span class="nm">Visual Effects</span>
-    <span class="ds">Design-stage per-scanline VDP tricks (raster command table, shadow/highlight lighting); only the HBlank dispatch seam is in code today</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="no">§8</span>
-    <span class="nm">Tooling &amp; Build</span>
-    <span class="ds">Editor stamps flattened, deduped, spatially ordered and paged at build time; error handler and debug-build frame profiler</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="no">§9</span>
-    <span class="nm">Cross-Cutting Systems</span>
-    <span class="ds">The glue between systems: game-state function-pointer dispatch, parent-child object links, error handler, level descriptor database</span>
+    <span class="no">03</span>
+    <span class="nm">Reading Aeon Code</span>
+    <span class="ds">A reading course for the asm and .emp excerpts on these pages: registers, addressing, the conventions</span>
     <span class="soon-tag">page coming</span>
   </div>
 </div>
 
-<footer class="page">The Empyrean wiki · last updated 2026-07-16</footer>
+<p class="hub-h">Aeon: World &amp; Rendering</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="no">04</span>
+    <span class="nm">Section Streaming &amp; the Camera</span>
+    <span class="ds">How a level bigger than video memory scrolls seamlessly forever over a wrapping 64&#215;64 plane</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">05</span>
+    <span class="nm">Art, Tiles &amp; Compression</span>
+    <span class="ds">From editor stamps to VRAM: the deduped act art pool, ZX0 + S4LZ two-tier compression, palettes and CRAM</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">06</span>
+    <span class="nm">Parallax, Raster &amp; Effects</span>
+    <span class="ds">Per-line parallax today; raster command tables and shadow/highlight as designs on deck</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h">Aeon: Objects &amp; the Player</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="no">07</span>
+    <span class="nm">The Object System</span>
+    <span class="ds">$50-byte slots, O(1) spawn from free-slot stacks, parent-child links, animation events</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">08</span>
+    <span class="nm">The Player</span>
+    <span class="ds">S3K-baseline physics under an explicit state machine, with exactly two modern concessions</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h">Aeon: Audio</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="no">09</span>
+    <span class="nm">The Sound Driver</span>
+    <span class="ds">A Z80-autonomous driver built from scratch: FM/PSG sequencer, SFX priorities, DAC drums that survive DMA</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h">Aeon: Build &amp; Tooling</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="no">10</span>
+    <span class="nm">The Build Pipeline</span>
+    <span class="ds">Native toolchain, data generators, and the philosophy of computing everything at build time</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">11</span>
+    <span class="nm">Debugging &amp; Verification</span>
+    <span class="ds">Crash screens, assertions, the profiler, and Oracle as the instrument you point at any claim</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">12</span>
+    <span class="nm">The Engine/Game Contract</span>
+    <span class="ds">A game is a manifest: seven macros and one include; the demo game proves the engine is game-agnostic</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<footer class="page">The Empyrean wiki · last updated 2026-07-17</footer>
 
 </div>
 
