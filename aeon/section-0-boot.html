@@ -124,6 +124,16 @@ a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
 .hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
   text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
 
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
 footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
 
@@ -203,9 +213,21 @@ details.explain summary::-webkit-details-marker{display:none;}
   <em>as built</em>, verified line-by-line against <code>engine/system/</code>.</p>
   <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
 </header>
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>The first 256 bytes</a>
+  <a href="#s2"><span class="n">2</span>Proving we're a licensed game</a>
+  <a href="#s3"><span class="n">3</span>Programming the video chip</a>
+  <a href="#s4"><span class="n">4</span>Waking the sound hardware</a>
+  <a href="#s5"><span class="n">5</span>Clearing 64KB the clever way</a>
+  <a href="#s6"><span class="n">6</span>Where in the world is this console?</a>
+  <a href="#s7"><span class="n">7</span>The interrupt switchboard</a>
+  <a href="#s8"><span class="n">8</span>The whole sequence</a>
+  <a href="#s9"><span class="n">9</span>The assembler does the work</a>
+</nav>
+
 
 <!-- ================================================================ -->
-<h2>1 · The first 256 bytes</h2>
+<h2 id="s1">1 · The first 256 bytes</h2>
 
 <p>A Sega Genesis ROM does not begin with code. It begins with a table: 64 longword addresses,
 occupying exactly the first 256 bytes of the cartridge. When power is applied, the 68000 reads
@@ -332,7 +354,7 @@ build time (more on that in section 9).</p>
 </div>
 
 <!-- ================================================================ -->
-<h2>2 · Proving we're a licensed game</h2>
+<h2 id="s2">2 · Proving we're a licensed game</h2>
 
 <p>Before Aeon touches the video chip, it has to satisfy the console's lock. Later Genesis
 revisions ship with the Trademark Security System (TMSS): if the hardware revision nibble is
@@ -408,7 +430,7 @@ including the reserved marker address at $FFFFFF00, and then unconditionally rew
 reset. The address reservation is real, and the preservation mechanism will build on it.</p>
 
 <!-- ================================================================ -->
-<h2>3 · Programming the video chip</h2>
+<h2 id="s3">3 · Programming the video chip</h2>
 
 <p>The VDP has 24 configuration registers, $00 through $17, and after a reset their contents are
 undefined. Aeon writes all 24 from a compile-time table in one tight loop: 24 bytes of data,
@@ -502,7 +524,7 @@ and press Enter) to pin a highlight while you cross-reference.</p>
 </div>
 
 <!-- ================================================================ -->
-<h2>4 · Waking the sound hardware</h2>
+<h2 id="s4">4 · Waking the sound hardware</h2>
 
 <p>Sound on the Genesis is a second computer. A Zilog Z80, the CPU of the Master System,
 lives on its own 8KB of RAM and drives the YM2612 FM synthesizer and the SN76489 PSG. At
@@ -603,7 +625,7 @@ the FM chip and two writers on one chip is a race.</p>
 </div>
 
 <!-- ================================================================ -->
-<h2>5 · Clearing 64KB the clever way</h2>
+<h2 id="s5">5 · Clearing 64KB the clever way</h2>
 
 <p>Boot must zero three memories: 64KB of video RAM, 64KB of work RAM, plus the VDP's two small
 internal memories (CRAM, the color palette, 128 bytes; VSRAM, the vertical-scroll table, 80
@@ -685,7 +707,7 @@ CPU  [###### chores, 9 ######][wait 1]                   total = 10</pre>
 </div>
 
 <!-- ================================================================ -->
-<h2>6 · Where in the world is this console?</h2>
+<h2 id="s6">6 · Where in the world is this console?</h2>
 
 <p>The same cartridge must run on a Japanese Genesis at 60Hz and a European Mega Drive at 50Hz.
 One byte tells the software which world it woke up in: the version register at $A10001. Bit 7 is
@@ -753,7 +775,7 @@ initial state. The data-port writes matter, since the first controller read assu
 level. Actual button polling happens every VBlank, not at boot.</p>
 
 <!-- ================================================================ -->
-<h2>7 · The interrupt switchboard</h2>
+<h2 id="s7">7 · The interrupt switchboard</h2>
 
 <p>Two interrupts drive everything periodic in the engine. IRQ4 fires at horizontal blanking,
 between scanlines, and is the hook for raster effects. IRQ6 fires at vertical blanking, between
@@ -829,7 +851,7 @@ only after a complete write); the pointer-gated plane buffer is not, so it waits
 complete frame.</p>
 
 <!-- ================================================================ -->
-<h2>8 · The whole sequence</h2>
+<h2 id="s8">8 · The whole sequence</h2>
 
 <p>Here is the boot order: all thirty-four steps of <code>boot.asm</code>, grouped into
 phases. Phase C is the parallel window from section 5: everything
@@ -925,7 +947,7 @@ CPU before the branch (phase H), so the game's first state runs with interrupts 
 firing. There is no masked handoff to unwind.</p>
 
 <!-- ================================================================ -->
-<h2>9 · The assembler does the work</h2>
+<h2 id="s9">9 · The assembler does the work</h2>
 
 <p>A recurring Aeon principle: never compute at runtime what the assembler can compute at build
 time, and never let a mistake survive to hardware that a build error could have caught. §0 is
