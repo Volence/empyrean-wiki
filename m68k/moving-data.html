@@ -232,6 +232,10 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 
 /* MOVE before/after visualizer */
 .movesim{display:flex; flex-direction:column; gap:.8rem;}
+.msim-instr{font-family:var(--mono); display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;}
+.msim-instr code{font-size:1rem; color:var(--gold); background:var(--code-bg);
+  border:1px solid var(--line); border-radius:3px; padding:.2rem .55rem;}
+.msim-instr span{font-size:.72rem; color:var(--dim); max-width:32rem;}
 .msim-ctrl{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.75rem;}
 .msim-ctrl label{color:var(--dim);}
 .msim-ctrl input{font-family:var(--mono); font-size:.85rem; width:4.5rem; background:var(--panel);
@@ -379,6 +383,7 @@ into registers, working on them there, and writing results back out.</p>
   </details>
   <figure class="diagram">
   <div class="movesim">
+    <div class="msim-instr"><code>move.w d0,d1</code> <span>copy the value in d0 into d1. The same instruction works in .b, .w, or .l.</span></div>
     <div class="msim-ctrl">
       <label for="msrc">Source value in d0 (hex)</label>
       <input id="msrc" type="text" value="1234" maxlength="4" autocomplete="off" aria-describedby="mnote">
