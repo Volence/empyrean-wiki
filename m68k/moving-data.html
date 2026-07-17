@@ -338,6 +338,20 @@ into registers, working on them there, and writing results back out.</p>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
+  <details class="explain">
+  <summary>New here? &middot; What are these X N Z V C flags?</summary>
+  <div class="x-body">The CPU keeps five status bits called the condition codes, or flags. Most
+  instructions update them as a side effect of whatever they just computed: <b>N</b> (the result
+  was negative, its top bit set), <b>Z</b> (the result was zero), <b>V</b> (a signed overflow
+  happened), <b>C</b> (an unsigned carry or borrow happened), and <b>X</b> (the extend bit, a saved
+  copy of carry that multi-precision math uses). On their own they do nothing; their whole point is
+  that the branch instructions read them a moment later to decide where to go. So "MOVE sets N and
+  Z" means that right after a MOVE you can branch on whether the value was negative or zero without
+  a separate compare, which is exactly what the second example below does. The Flags row on each
+  instruction shows which bits it touches: <b>set</b> means updated from the result, <b>clear</b>
+  means forced to zero, <b>unaff.</b> means left exactly as it was. The Programming Model page (coming)
+  will cover the status register in full.</div>
+  </details>
   <p>Real example, satisfying the <span class="term" data-def="The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.">TMSS</span> check right at boot, an immediate longword written straight to a hardware register:</p>
   <pre>	beq.s	SkipSecurity				<span class="c">; If the console has no TMSS, skip the security stuff.</span>
 	move.l	<span class="n">#'SEGA'</span>,Security_Addr-Z80_Bus_Request(a1) <span class="c">; Satisfy the TMSS</span></pre>
