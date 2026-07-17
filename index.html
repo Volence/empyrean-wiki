@@ -177,12 +177,16 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
 <div class="doors">
   <div class="door soon">
     <span class="dr-t">Learn from zero</span>
-    <span class="dr-d">A sequenced path from "what is a CPU" to reading the engine, with things to play with along the way</span>
+    <span class="dr-d">A sequenced path from "what is a CPU" to reading a real engine, with things to play with along the way</span>
     <span class="soon-tag">page coming</span>
   </div>
+  <a class="door" href="#genesis">
+    <span class="dr-t">How the Genesis works</span>
+    <span class="dr-d">The machine itself: planes, VRAM, color, sprites, DMA, the two CPUs and the sound chips. True for any Genesis game.</span>
+  </a>
   <a class="door" href="#manual">
-    <span class="dr-t">The manual</span>
-    <span class="dr-d">The engine, system by system: every decision, the code that implements it, and what it costs</span>
+    <span class="dr-t">The Aeon engine</span>
+    <span class="dr-d">What this engine chose and why, system by system, with the code that implements each decision</span>
   </a>
   <div class="door soon">
     <span class="dr-t">See it run</span>
@@ -190,33 +194,58 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
     <span class="soon-tag">page coming</span>
   </div>
 </div>
+</div>
 
-
-<p class="hub-h">The Suite</p>
+<p class="hub-h" id="genesis">The Genesis: how the machine works</p>
 <div class="hub-grid">
-  <div class="card tool soon">
-    <span class="nm">AEON</span>
-    <span class="ds">The engine: section streaming, unified art pool, custom Z80-autonomous sound driver</span>
+  <div class="card soon">
+    <span class="nm">The Machine</span>
+    <span class="ds">The 68000, the Z80, the VDP and two sound chips, the buses, and the memory map: what talks to what</span>
     <span class="soon-tag">page coming</span>
   </div>
-  <div class="card tool soon">
-    <span class="nm">SIGIL</span>
-    <span class="ds">From-scratch Rust assembler; full-ROM output byte-identical to the AS toolchain</span>
+  <div class="card soon">
+    <span class="nm">The VDP &amp; Planes</span>
+    <span class="ds">The video chip and its planes: sizes, scrolling, priority, and how a plane is a grid of words</span>
     <span class="soon-tag">page coming</span>
   </div>
-  <div class="card tool soon">
-    <span class="nm">ORACLE</span>
-    <span class="ds">Emulator/debugger for deep inspection of VDP, RAM, and both CPUs while the game runs</span>
+  <div class="card soon">
+    <span class="nm">Tiles &amp; VRAM</span>
+    <span class="ds">The 8x8 tile, 4 bits per pixel, and the 64KB of video memory everything is drawn from</span>
     <span class="soon-tag">page coming</span>
   </div>
-  <div class="card tool soon">
-    <span class="nm">SERAPH</span>
-    <span class="ds">The DAW: composing for FM and PSG; export to the engine's own driver in progress</span>
+  <div class="card soon">
+    <span class="nm">Color &amp; CRAM</span>
+    <span class="ds">Nine-bit color, four palettes of sixteen, and why Genesis color looks the way it does</span>
     <span class="soon-tag">page coming</span>
   </div>
-  <div class="card tool soon">
-    <span class="nm">AURORA</span>
-    <span class="ds">The editor: levels, art, and data tooling for Aeon games</span>
+  <div class="card soon">
+    <span class="nm">Sprites</span>
+    <span class="ds">The sprite table: sizes, the link field, and the per-line and per-frame limits</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">DMA</span>
+    <span class="ds">The three ways the VDP moves data by itself, and why most of it happens during the blank</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">The Frame &amp; Interrupts</span>
+    <span class="ds">Scanlines, the blanking intervals, VBlank and HBlank, and NTSC versus PAL timing</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">The Two CPUs</span>
+    <span class="ds">The 68000 and the Z80, the bus they share, and why the little one runs the sound</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">The Sound Chips</span>
+    <span class="ds">The YM2612 FM synthesiser and the PSG: what each channel is and what it is good at</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Controllers</span>
+    <span class="ds">The pad, the select-line protocol, and how a game tells a 3-button pad from a 6-button one</span>
     <span class="soon-tag">page coming</span>
   </div>
 </div>
@@ -307,6 +336,35 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
     <span class="no">12</span>
     <span class="nm">The Engine/Game Contract</span>
     <span class="ds">A game is a manifest: seven macros and one include; the demo game proves the engine is game-agnostic</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h">The Suite</p>
+<div class="hub-grid">
+  <div class="card tool soon">
+    <span class="nm">AEON</span>
+    <span class="ds">The engine: section streaming, unified art pool, custom Z80-autonomous sound driver</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">SIGIL</span>
+    <span class="ds">From-scratch Rust assembler; full-ROM output byte-identical to the AS toolchain</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">ORACLE</span>
+    <span class="ds">Emulator/debugger for deep inspection of VDP, RAM, and both CPUs while the game runs</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">SERAPH</span>
+    <span class="ds">The DAW: composing for FM and PSG; export to the engine's own driver in progress</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">AURORA</span>
+    <span class="ds">The editor: levels, art, and data tooling for Aeon games</span>
     <span class="soon-tag">page coming</span>
   </div>
 </div>
