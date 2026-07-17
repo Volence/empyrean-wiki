@@ -215,9 +215,14 @@ details.explain summary::-webkit-details-marker{display:none;}
 .mmr.m-tmss{border-color:#CC66AA; color:#CC66AA;}
 .mmr.m-vdp{border-color:#4466EE; color:#88AAEE;}
 .mmr.m-ram{border-color:#44CCEE; color:#44CCEE; padding-top:.8rem; padding-bottom:.8rem;}
-.mmgap{font-family:var(--mono); font-size:.58rem; color:#666688; text-align:center;
-  border:1px dashed #444466; border-radius:2px; padding:.12rem 0; letter-spacing:.15em;
-  text-transform:uppercase;}
+.mmgap{font-family:var(--mono); font-size:.58rem; color:#666688; display:flex;
+  justify-content:center; align-items:baseline; gap:.7rem; background:transparent;
+  border:1px dashed #444466; border-radius:2px; padding:.18rem .6rem; letter-spacing:.15em;
+  text-transform:uppercase; cursor:pointer;}
+.mmgap:hover{background:var(--panel); color:#AAAACC;}
+.mmgap:focus-visible{outline:2px solid var(--ink); outline-offset:1px;}
+.mmgap.sel{background:#222244; outline:2px solid var(--ink); outline-offset:1px;
+  color:#AAAACC;}
 
 /* lane timelines (sections 5 and 7) */
 .lanes{min-width:44rem; display:flex; flex-direction:column; gap:.5rem;}
@@ -235,17 +240,20 @@ details.explain summary::-webkit-details-marker{display:none;}
 .tseg.t-sp{border:0; background:transparent;}
 
 /* frame timing strip (section 7) */
-.fstrip{min-width:46rem; padding-top:1.35rem;}
+.fstrip{min-width:46rem; padding-top:1.5rem;}
 .ftrack{position:relative;}
 .tseg.t-act{background:rgba(68,102,238,.12); border-color:#4466EE; color:#88AAEE;}
 .tseg.t-blank{background:rgba(238,170,0,.18); border-color:#EEAA00; color:#EEAA00;}
-.fmark{position:absolute; left:85.5%; top:-1.35rem; bottom:0; border-left:2px solid #EEAA00;
+.fmark{position:absolute; left:85.5%; top:-1.5rem; bottom:0; border-left:2px solid #EEAA00;
   pointer-events:none;}
-.fmark span{position:absolute; right:.4rem; top:-.1rem; white-space:nowrap;
-  font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;}
+.fmark span{position:absolute; right:.35rem; top:0; white-space:nowrap;
+  font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;
+  border-bottom:1px solid #EEAA00; padding-bottom:.08rem;}
+.fsub{font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;
+  text-align:right; margin-top:.2rem;}
 
 /* VRAM layout bar (section 3) */
-.vrwrap{position:relative; min-width:52rem; padding-top:1.3rem;}
+.vrwrap{position:relative; padding-top:1.3rem;}
 .vrbar{display:flex; height:3.2rem;}
 .vseg{font-family:var(--mono); font-size:.6rem; display:flex; align-items:center;
   justify-content:center; text-align:center; overflow:hidden; border:1px solid var(--line);}
@@ -254,10 +262,11 @@ details.explain summary::-webkit-details-marker{display:none;}
 .vseg.v-hs{background:rgba(238,170,0,.12); border-color:#EEAA00;}
 .vseg.v-pa{background:rgba(68,102,238,.12); border-color:#4466EE; color:#88AAEE;}
 .vseg.v-pb{background:rgba(68,102,238,.25); border-color:#4466EE; color:#88AAEE;}
-.vmark{position:absolute; left:93.75%; top:0; bottom:0; border-left:2px solid #EEAA00;
+.vmark{position:absolute; left:93.75%; top:0; height:1.9rem; border-left:2px solid #EEAA00;
   pointer-events:none;}
-.vmark span{position:absolute; right:.4rem; top:-.1rem; white-space:nowrap;
-  font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;}
+.vmark span{position:absolute; right:.35rem; top:0; white-space:nowrap;
+  font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;
+  border-bottom:1px solid #EEAA00; padding-bottom:.08rem;}
 .mkey{display:flex; flex-wrap:wrap; gap:.35rem .95rem; margin-top:.7rem;
   font-family:var(--mono); font-size:.62rem; color:var(--dim);}
 .mkey span::before{content:"■ ";}
@@ -413,17 +422,17 @@ addresses. Click a region to see what lives there and where this page uses it.</
 <figure class="diagram">
   <div class="mmap" id="mmap">
     <button type="button" class="mmr m-rom"><span class="a">$000000-$3FFFFF</span><span class="nm">cartridge ROM</span></button>
-    <div class="mmgap" aria-hidden="true">unmapped / expansion</div>
+    <button type="button" class="mmgap"><span class="a">$400000-$7FFFFF</span><span class="nm">unmapped / expansion</span></button>
     <button type="button" class="mmr m-z80"><span class="a">$A00000-$A0FFFF</span><span class="nm">Z80 address space</span></button>
     <button type="button" class="mmr m-io"><span class="a">$A10000-$A1001F</span><span class="nm">I/O area</span></button>
     <button type="button" class="mmr m-z80"><span class="a">$A11100 / $A11200</span><span class="nm">Z80 bus request / reset</span></button>
     <button type="button" class="mmr m-tmss"><span class="a">$A14000</span><span class="nm">TMSS register</span></button>
-    <div class="mmgap" aria-hidden="true">unmapped</div>
+    <button type="button" class="mmgap"><span class="nm">unmapped</span></button>
     <button type="button" class="mmr m-vdp"><span class="a">$C00000-$C0001F</span><span class="nm">VDP ports</span></button>
-    <div class="mmgap" aria-hidden="true">unmapped / mirrors</div>
+    <button type="button" class="mmgap"><span class="a">$C00020-$FEFFFF</span><span class="nm">unmapped / mirrors</span></button>
     <button type="button" class="mmr m-ram"><span class="a">$FF0000-$FFFFFF</span><span class="nm">work RAM (64KB)</span></button>
   </div>
-  <div class="vcap" id="mmcap" aria-live="polite">Click a region to see what it is and where this page uses it.</div>
+  <div class="vcap" id="mmcap" aria-live="polite">Click a region to see what it is and where this page uses it. The dashed gaps are clickable too, and answer a fair question: what happens when you read a hole?</div>
   <figcaption>The 68000 address map, low addresses at the top (not to scale)</figcaption>
 </figure>
 
@@ -628,8 +637,8 @@ each table live? Here is the map those four values draw, to proportion:</p>
       <div class="vseg v-art" style="width:71.875%;">$0000-$B7FF · art pool (tiles $000-$5BF)</div>
       <div class="vseg v-sat" style="width:1.5625%;"></div>
       <div class="vseg v-hs" style="width:1.5625%;"></div>
-      <div class="vseg v-pa" style="width:12.5%;">$C000-$DFFF · Plane A</div>
-      <div class="vseg v-pb" style="width:12.5%;">$E000-$FFFF · Plane B</div>
+      <div class="vseg v-pa" style="width:12.5%;">Plane A</div>
+      <div class="vseg v-pb" style="width:12.5%;">Plane B</div>
     </div>
   </div>
   <div class="mkey">
@@ -1023,10 +1032,13 @@ before the next frame begins:</p>
   <div class="lanes fstrip">
     <div class="lane">
       <span class="ln">NTSC</span>
-      <div class="track ftrack">
-        <div class="tseg t-act" style="width:85.5%;">active display · lines 0-223</div>
-        <div class="tseg t-blank" style="width:14.5%;">the sliver · 224-261</div>
-        <div class="fmark" aria-hidden="true"><span>VInt fires · start of line 224</span></div>
+      <div>
+        <div class="track ftrack">
+          <div class="tseg t-act" style="width:85.5%;">active display · lines 0-223</div>
+          <div class="tseg t-blank" style="width:14.5%;"></div>
+          <div class="fmark" aria-hidden="true"><span>VInt fires · start of line 224</span></div>
+        </div>
+        <div class="fsub">the sliver · lines 224-261 (38 of 262)</div>
       </div>
     </div>
     <div class="lane">
@@ -1422,6 +1434,8 @@ function expandAll(btn){
   const D = [
     ["Up to 4MB of cartridge: the 64-slot vector table and the ROM header occupy the first $200 bytes, and everything else on this page is code and data behind them.",
      "On this page: section 1 (the vector table) and section 9 (the generated header)."],
+    ["Reserved for expansion hardware: the Sega CD maps itself into this range when attached; on a bare console it is a hole.",
+     "On this page: never touched. Boot assumes a bare cartridge console."],
     ["The Z80's world as the 68000 sees it: the sound CPU's 8KB of RAM sits behind this window at $A00000, writable one byte at a time once the bus is granted.",
      "On this page: section 4 (the byte-by-byte driver copy)."],
     ["The I/O area: the version register at $A10001 (region, revision nibble) plus the data and control registers for the three controller ports.",
@@ -1430,25 +1444,30 @@ function expandAll(btn){
      "On this page: section 4 (the bus dance, and every stopZ80/startZ80 bracket)."],
     ["The Trademark Security System register: newer consoles demand the longword \"SEGA\" here before the VDP will respond.",
      "On this page: section 2 (the handshake)."],
+    ["Nothing is wired here at all. Touching a hole does not crash: reads return open-bus garbage (often the last word the CPU fetched), writes vanish, and nothing traps it, which is why stray-pointer bugs corrupt silently.",
+     "On this page: nothing, and that silence is the point."],
     ["The video chip's mail slots: data port $C00000, control port $C00004, H/V counter $C00008, and the PSG's write port at $C00011.",
      "On this page: section 3 (the register writes) and section 5 (the DMA fill, the CRAM/VSRAM clears, the PSG silence)."],
+    ["Partial address decoding: the VDP ports and work RAM answer at many addresses beyond their canonical ones (work RAM repeats through the top of the map), and a few malformed VDP-mirror accesses can freeze the console.",
+     "On this page: nothing. Every access on this page uses the canonical addresses."],
     ["The 68000's own 64KB of work RAM: every engine and game variable lives here, and the stack grows down from $FFFFFF00, the initial SSP.",
      "On this page: section 1 (the SSP decision) and section 5 (the 64KB clear)."]
   ];
   const cap = document.getElementById('mmcap');
-  const btns = document.querySelectorAll('#mmap .mmr');
+  const btns = document.querySelectorAll('#mmap button');
   let sel = null;
   btns.forEach((b, i) => {
     b.setAttribute('aria-pressed', 'false');
-    const range = b.querySelector('.a').textContent;
-    const name  = b.querySelector('.nm').textContent;
-    b.setAttribute('aria-label', range + ' ' + name);
+    const a = b.querySelector('.a');
+    const name = b.querySelector('.nm').textContent;
+    const label = a ? a.textContent + ' · ' + name : name;
+    b.setAttribute('aria-label', label);
     b.addEventListener('click', () => {
       if (sel) { sel.classList.remove('sel'); sel.setAttribute('aria-pressed', 'false'); }
       sel = b;
       b.classList.add('sel');
       b.setAttribute('aria-pressed', 'true');
-      cap.innerHTML = '<b>' + range + ' · ' + name + '</b><br>' + D[i][0] + ' ' + D[i][1];
+      cap.innerHTML = '<b>' + label + '</b><br>' + D[i][0] + ' ' + D[i][1];
     });
   });
 })();
