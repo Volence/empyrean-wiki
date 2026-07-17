@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMPYREAN: Engine &amp; Toolset Wiki</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🕹️%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+</style>
+</head>
+<body>
+<div class="wrap-wide">
+
+<header class="page">
+  <p class="eyebrow">The Empyrean Suite</p>
+  <h1>EMPYREAN</h1>
+  <p class="sub">A ground-up Sega Genesis engine, Aeon, and the toolchain built around it
+  in 2026: an assembler, an emulator/debugger, a DAW, and an editor.
+  This wiki records what was built and why each decision went the way it did, and teaches the
+  hardware from zero along the way.</p>
+</header>
+
+<p class="hub-h">The Suite</p>
+<div class="hub-grid">
+  <div class="card tool soon">
+    <span class="nm">AEON</span>
+    <span class="ds">The engine: section streaming, unified art pool, custom Z80-autonomous sound driver</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">SIGIL</span>
+    <span class="ds">From-scratch Rust assembler; full-ROM output byte-identical to the AS toolchain</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">ORACLE</span>
+    <span class="ds">Emulator/debugger for deep inspection of VDP, RAM, and both CPUs while the game runs</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">SERAPH</span>
+    <span class="ds">The DAW: composing for FM and PSG; export to the engine's own driver in progress</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card tool soon">
+    <span class="nm">AURORA</span>
+    <span class="ds">The editor: levels, art, and data tooling for Aeon games</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<p class="hub-h">Aeon, the engine, section by section</p>
+<div class="hub-grid">
+  <a class="card" href="aeon/section-0-boot.html">
+    <span class="no">§0</span>
+    <span class="nm">Boot &amp; Hardware Init</span>
+    <span class="ds">TMSS, vectors, VDP shadow table, DMA-parallel init: the first thing the console runs</span>
+  </a>
+  <div class="card soon">
+    <span class="no">§1</span>
+    <span class="nm">Core VDP Pipeline</span>
+    <span class="ds">Three priority DMA sub-queues with a region-aware per-frame byte budget; every VRAM write funnels through here</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§2</span>
+    <span class="nm">Art &amp; Compression Pipeline</span>
+    <span class="ds">Two-tier compression: ZX0 for the load-time art pool, S4LZ for the runtime block stream; sprites ship uncompressed</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§3</span>
+    <span class="nm">Object System</span>
+    <span class="ds">$50-byte slots, O(1) free-slot stack allocation, animation events driving object behavior</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§4</span>
+    <span class="nm">Level / World</span>
+    <span class="ds">Section streaming over a wrapping 64&#215;64 plane: one continuous world-space camera, no slot teleports</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§5</span>
+    <span class="nm">Player / Character</span>
+    <span class="ds">Classic S3K-floor physics under an explicit state machine, with exactly two modern concessions, both documented</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§6</span>
+    <span class="nm">Audio</span>
+    <span class="ds">From-scratch Z80-autonomous driver: FM/PSG sequencer plus DAC drums that survive DMA</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§7</span>
+    <span class="nm">Visual Effects</span>
+    <span class="ds">Design-stage per-scanline VDP tricks (raster command table, shadow/highlight lighting); only the HBlank dispatch seam is in code today</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§8</span>
+    <span class="nm">Tooling &amp; Build</span>
+    <span class="ds">Editor stamps flattened, deduped, spatially ordered and paged at build time; error handler and debug-build frame profiler</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="no">§9</span>
+    <span class="nm">Cross-Cutting Systems</span>
+    <span class="ds">The glue between systems: game-state function-pointer dispatch, parent-child object links, error handler, level descriptor database</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
+<footer class="page">AI-authored · maintained on request · sources in empyrean/wiki/ · last updated 2026-07-16</footer>
+
+</div>
+
+</body>
+</html>

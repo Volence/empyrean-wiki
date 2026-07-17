@@ -1,0 +1,1075 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aeon §0: Boot &amp; Hardware Init</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E⚡%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* ============================================================
+   Page-specific styles: §0 Boot & Hardware Init
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* interactive vector-table grid */
+.vgrid{display:grid; grid-template-columns:repeat(8,3.2rem); gap:3px; width:max-content;}
+.vcell{font-family:var(--mono); font-size:.62rem; padding:.4rem 0; text-align:center;
+  border:1px solid var(--line); background:var(--panel2); color:var(--dim);
+  cursor:pointer; border-radius:2px;}
+.vcell:hover{background:var(--panel);}
+.vcell:focus-visible{outline:2px solid var(--ink); outline-offset:1px;}
+.vcell.boot{border-color:#EEAA00; color:#EEAA00;}
+.vcell.exc{border-color:#EE4444; color:#EE8888;}
+.vcell.resv{border-color:#444466; color:#666688;}
+.vcell.irqn{border-color:#666688; color:#AAAACC;}
+.vcell.irqh{border-color:#44CC88; color:#44CC88;}
+.vcell.irqv{border-color:#4466EE; color:#88AAEE;}
+.vcell.trap{border-color:#CC66AA; color:#CC66AA;}
+.vcell.sel{background:#222244; outline:2px solid var(--ink); outline-offset:1px;}
+.vcap{font-family:var(--mono); font-size:.78rem; margin-top:.9rem; min-height:3.4rem;
+  color:var(--ink); border-top:1px dashed var(--line); padding-top:.6rem; max-width:40rem;}
+.vcap b{color:var(--gold); font-weight:normal;}
+.vleg{display:flex; flex-wrap:wrap; gap:.35rem .95rem; margin-top:.7rem;
+  font-family:var(--mono); font-size:.62rem; color:var(--dim);}
+.vleg span::before{content:"■ "; }
+.vleg .l-boot::before{color:#EEAA00;} .vleg .l-exc::before{color:#EE4444;}
+.vleg .l-resv::before{color:#444466;} .vleg .l-irqn::before{color:#666688;}
+.vleg .l-irqh::before{color:#44CC88;} .vleg .l-irqv::before{color:#4466EE;}
+.vleg .l-trap::before{color:#CC66AA;}
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+
+/* VDP register table interactivity */
+#vdpregs tbody tr{cursor:pointer;}
+#vdpregs tbody tr:hover td{background:rgba(68,102,238,.08);}
+#vdpregs tbody tr:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+#vdpregs tbody tr:focus-visible td{background:rgba(68,102,238,.08);}
+#vdpregs tbody tr.hi td{background:rgba(68,102,238,.12);}  /* after :hover so pinned wins */
+
+/* boot-order stepper */
+.bootline{list-style:none; margin:1.2rem 0 0; padding:0 0 0 1rem;}
+.bootline>li{position:relative; margin:0; padding:.1rem 0 1.3rem 1.9rem;
+  border-left:2px solid var(--line);}
+.bootline>li:last-child{padding-bottom:.2rem;}
+.bootline>li::before{content:attr(data-ph); position:absolute; left:-1.05rem; top:-.1rem;
+  width:1.9rem; height:1.9rem; line-height:1.9rem; text-align:center; border-radius:50%;
+  background:var(--panel2); border:1px solid var(--gold); color:var(--gold);
+  font-family:var(--mono); font-size:.78rem;}
+.ph-t{font-family:var(--mono); font-size:.88rem; color:var(--ink); margin:0 0 .25rem;}
+.ph-t small{color:var(--dim); font-size:.68rem; letter-spacing:.06em;}
+.ph-steps{margin:0; padding-left:1.1rem; font-size:.84rem; color:var(--dim);}
+.ph-steps li{margin:.18rem 0; max-width:38rem;}
+.ph-steps code{font-size:.78em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / AEON / §0 BOOT</p>
+  <p class="eyebrow">Aeon Engine · Section 0</p>
+  <h1>Boot &amp; Hardware Init</h1>
+  <p class="sub">What happens between power-on and the first frame of gameplay: the 68000 reads
+  two longwords from address zero, proves the cartridge is legitimate, programs the video chip,
+  wakes the sound hardware, and wipes every byte of memory. The biggest wipe runs in parallel,
+  on a second clock, while the CPU keeps working. This page documents the boot sequence
+  <em>as built</em>, verified line-by-line against <code>engine/system/</code>.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<!-- ================================================================ -->
+<h2>1 · The first 256 bytes</h2>
+
+<p>A Sega Genesis ROM does not begin with code. It begins with a table: 64 longword addresses,
+occupying exactly the first 256 bytes of the cartridge. When power is applied, the 68000 reads
+the first entry into its stack pointer and the second into its program counter, and those two
+reads <em>are</em> the boot process, as far as the CPU is concerned. Everything else on this
+page is just what the code at that second address chooses to do.</p>
+
+<details class="explain">
+  <summary>New here? · What is a vector table?</summary>
+  <div class="x-body">
+    <p>A CPU sometimes needs to drop everything and run a special routine: the machine was just
+    reset, a piece of hardware raised its hand, or the program did something illegal (like
+    dividing by zero). The 68000's designers gave each of these events a number, and reserved
+    the first 256 bytes of memory as a lookup table. Event number 3 happened? Jump to the
+    address stored in slot 3. Each slot is called a <em>vector</em> because it points somewhere.</p>
+    <p>On the Genesis, "the first 256 bytes of memory" means the first 256 bytes of the
+    <em>cartridge</em>, so every game ships its own table. Filling in all 64 slots, even the
+    ones "that should never fire", is the difference between a crash you can diagnose and a
+    machine that silently leaps into garbage.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? · What is the stack, and why does a console need one?</summary>
+  <div class="x-body">
+    <p>When code calls a subroutine, the CPU has to remember where to come back to. It stores
+    that return address in a region of RAM called the <em>stack</em>, which grows downward:
+    each call pushes an address on, each return pops one off. Interrupts use it too. When the
+    video chip interrupts the CPU mid-frame, the CPU pushes its current position onto the stack
+    so it can resume exactly where it left off.</p>
+    <p>The stack has to live <em>somewhere</em> in the 64KB of Work RAM, and the very first
+    longword of the ROM decides where. Put it in a bad place and a deep call chain silently
+    overwrites your game's variables. That is one of the nastiest classes of bug on this
+    hardware, because the corruption appears far away from its cause.</p>
+  </div>
+</details>
+
+<figure class="diagram">
+  <div class="vgrid" id="vgrid"></div>
+  <div class="vcap" id="vcap" aria-live="polite">Click a vector to see what it is and where Aeon points it.</div>
+  <div class="vleg">
+    <span class="l-boot">reset (SSP / PC)</span>
+    <span class="l-exc">CPU exception</span>
+    <span class="l-resv">reserved → ErrorExcept</span>
+    <span class="l-irqn">unused IRQ → NullInterrupt</span>
+    <span class="l-irqh">IRQ4 HBlank</span>
+    <span class="l-irqv">IRQ6 VBlank</span>
+    <span class="l-trap">TRAP / tail reserved → ErrorTrap</span>
+  </div>
+  <figcaption>The 64 vectors at $000000-$0000FF (one cell per longword slot)</figcaption>
+</figure>
+
+<p>The table itself is plain data, and deliberately so. The org-0 image (the ROM bytes
+assembled at address zero) is pure data until
+address $200 (vectors, then the ROM header), so even the trivial <code>rte</code> instruction
+behind <code>NullInterrupt</code> is emitted later in the ROM, not squeezed between the tables.
+Here is the real top of the file:</p>
+
+<pre><span class="k">Vectors</span>:
+    dc.l    SYSTEM_STACK                    <span class="c">; $00: Initial SSP</span>
+    dc.l    EntryPoint                      <span class="c">; $04: Reset PC</span>
+    dc.l    BusError                        <span class="c">; $08: Bus error</span>
+    dc.l    AddressError                    <span class="c">; $0C: Address error</span>
+    dc.l    IllegalInstr                    <span class="c">; $10: Illegal instruction</span>
+    <span class="c">; … one label per exception …</span>
+    dc.l    HBlank_Dispatch                 <span class="c">; $70: IRQ4 (HBlank)</span>
+    dc.l    NullInterrupt                   <span class="c">; $74: IRQ5</span>
+    dc.l    VBlank_Handler                  <span class="c">; $78: IRQ6 (VBlank)</span></pre>
+<span class="src">engine/system/vectors.asm:7</span>
+
+<p>Two details worth making explicit.
+First, exceptions do not all funnel into one monolithic <code>ExceptionHandler</code>: each CPU
+exception gets its own label (<code>BusError</code>, <code>AddressError</code>,
+<code>ZeroDivide</code>, …), the reserved vectors up through the spurious-interrupt slot go to
+<code>ErrorExcept</code>, and all sixteen TRAPs plus the tail reserved block go to
+<code>ErrorTrap</code>. Per-vector labels let the debug error handler name exactly what fired.
+Second, the ROM header at $100-$1FF is not a hardcoded block: it is emitted by a
+<code>gameHeader</code> macro from game-declared strings, and every field width is asserted at
+build time (more on that in section 9).</p>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>Initial stack pointer = $FFFFFF00, not $00000000.</strong> The stack grows downward
+  from near the top of Work RAM, far from game data at low RAM addresses, and the top 256 bytes
+  ($FFFFFF00-$FFFFFFFF) stay out of the stack's path (Aeon parks its cold-boot marker at
+  $FFFFFF00). The alternative (SSP&nbsp;=&nbsp;$0) makes the stack wrap around the bottom of
+  the address space, where an overflow is silent and catastrophic.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Vectorman ✓ high RAM</span>
+    <span class="yes">Gunstar Heroes ✓ high RAM</span>
+    <span class="yes">Alien Soldier ✓ high RAM</span>
+    <span class="no">S.C.E.: $0</span>
+    <span class="no">Batman &amp; Robin: $0</span>
+    <span class="no">Thunder Force IV: $0</span>
+  </div>
+</div>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>HBlank is RAM-patched; the vector never changes.</strong> Vector $70 points at a tiny
+  ROM stub that jumps through a pointer in RAM (<code>HBlank_Handler_Ptr</code>). Swapping raster
+  effects per level section means swapping one RAM longword; the ROM stays immutable. The stub
+  also binds installed handlers to a strict register-clobber contract, detailed in "The
+  interrupt switchboard" below.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Vectorman ✓ $FFFF9D2E</span>
+    <span class="yes">Batman &amp; Robin ✓ $FFFFE560</span>
+    <span class="yes">Gunstar / Alien Soldier ✓ $FFFFEE00</span>
+    <span class="no">Thunder Force IV: ROM-fixed</span>
+  </div>
+</div>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>VBlank stays in ROM.</strong> Unlike HBlank, VBlank always does the same core work
+  every frame: flush VDP state, drain the DMA queues, read controllers, count the frame. One
+  ROM handler with an internal RAM pointer (<code>VInt_Ptr</code>) selects the per-mode body,
+  and the ROM dispatcher itself handles lag detection. Full detail below, in
+  "The interrupt switchboard".
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Every reference game ✓ ROM VBlank</span>
+    <span class="yes">Aeon ✓ ROM entry + RAM-selected body</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<h2>2 · Proving we're a licensed game</h2>
+
+<p>Before Aeon touches the video chip, it has to satisfy the console's lock. Later Genesis
+revisions ship with the Trademark Security System (TMSS): if the hardware revision nibble is
+non-zero, the boot code must write the ASCII longword <code>"SEGA"</code> to $A14000, or the
+next access to the VDP data port hangs the CPU permanently. Revision 0 machines (early Model 1s)
+have no TMSS and no such register, so the write is gated on the revision check.</p>
+
+<details class="explain">
+  <summary>New here? · Why did Sega put a lock on its own console?</summary>
+  <div class="x-body">
+    <p>In 1989 Sega lost control of who could make Genesis games. A publisher called Accolade
+    reverse-engineered the console and started shipping unlicensed cartridges: perfectly
+    playable, zero royalties to Sega. So newer console revisions shipped with a lock: on boot,
+    the hardware demands that the cartridge write the word <code>"SEGA"</code> into a magic
+    register, and in exchange the console displays <em>"PRODUCED BY OR UNDER LICENSE FROM SEGA
+    ENTERPRISES LTD."</em> on a splash screen. The legal theory was that an unlicensed publisher
+    now had to either fail the lock (game won't boot) or falsely display Sega's trademark.</p>
+    <p>It backfired. Accolade satisfied the lock anyway, Sega sued, and in 1992 the Ninth
+    Circuit ruled (<em>Sega v. Accolade</em>) that reverse engineering for compatibility is fair
+    use, a landmark decision that still protects emulator and interoperability work today. The
+    lock stayed in the hardware, though, which is why every game since, including Aeon, must
+    perform this little handshake, and why so many 90s games greet you with that license
+    screen.</p>
+  </div>
+</details>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>Soft-reset checks run before TMSS.</strong> Pressing RESET only resets the 68000; the
+  VDP may still be mid-DMA, and reprogramming it blind would corrupt the transfer in flight. So
+  the very first instructions test the port A and expansion control registers (non-zero means
+  the machine was already running), and the warm path waits out any in-flight DMA before
+  anything else touches the hardware.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">S.C.E. ✓ same check, same order</span>
+  </div>
+</div>
+
+<p>Here is the real entry point, exactly as it ships:</p>
+
+<pre><span class="k">EntryPoint</span>:
+        tst.l   (HW_PORT_A_CTRL_FULL).l
+        bne.s   Warm_Boot
+        tst.w   (HW_EXPANSION_CTRL_FULL).l
+        beq.s   Cold_Boot
+
+<span class="k">Warm_Boot</span>:
+        <span class="c">; Wait for any in-progress DMA</span>
+.wait_dma:
+        move.w  (VDP_CTRL).l, d0
+        btst    <span class="n">#1</span>, d0
+        bne.s   .wait_dma
+        <span class="c">; Fall through to cold boot.</span>
+
+<span class="k">Cold_Boot</span>:
+        <span class="c">; TMSS handshake (§0.2)</span>
+        move.b  (HW_VERSION).l, d0
+        andi.b  <span class="n">#$F</span>, d0
+        beq.s   .no_tmss
+        move.l  <span class="n">#$53454741</span>, (TMSS_REGISTER).l   <span class="c">; "SEGA"</span>
+.no_tmss:</pre>
+<span class="src">engine/system/boot.asm:6</span>
+
+<p>Note the fall-through at the end of <code>Warm_Boot</code>: it waits for any in-flight DMA
+to finish, then continues straight into <code>Cold_Boot</code>. A soft reset runs the same full
+hardware initialization as power-on, including the 64KB RAM wipe; the only thing "warm" about
+it is the DMA wait.</p>
+
+<p>A warm-reset persistence scheme, preserving a small RAM region (lives, score) across RESET
+presses, is designed but not yet built. Today every boot, warm or cold, clears all 64KB of RAM,
+including the reserved marker address at $FFFFFF00, and then unconditionally rewrites the
+<code>CROSS_RESET_MAGIC</code> longword (<code>'INIT'</code>) there; nothing survives a soft
+reset. The address reservation is real, and the preservation mechanism will build on it.</p>
+
+<!-- ================================================================ -->
+<h2>3 · Programming the video chip</h2>
+
+<p>The VDP has 24 configuration registers, $00 through $17, and after a reset their contents are
+undefined. Aeon writes all 24 from a compile-time table in one tight loop: 24 bytes of data,
+five instructions of code. Two properties of the chosen values matter for everything that
+follows: the display is OFF (nothing ugly is visible while we work) and DMA is ON (so the VRAM
+fill in section 5 can start immediately).</p>
+
+<details class="explain">
+  <summary>New here? · What is the VDP?</summary>
+  <div class="x-body">
+    <p>The Genesis has a dedicated graphics processor: the Video Display Processor, or VDP. It
+    owns its own 64KB of video memory that the main CPU cannot address directly; everything
+    goes through two narrow mail slots (a data port and a control port). Every frame, entirely
+    on its own, the VDP walks its memory and composites the picture: two scrolling tile planes,
+    up to 80 sprites, and a window layer.</p>
+    <p>Its 24 registers are the chip's settings panel: where in video memory each plane's map
+    lives, how big the planes are, what the backdrop color is, whether the display is even on.
+    You set them by writing magic words to the control port. There is no "register 5" address,
+    just a convention where <code>$85xx</code> means "put <code>xx</code> in register 5". Get
+    one value wrong and the symptom appears somewhere else entirely, which is why engines
+    treat this table as precious, reviewed data.</p>
+  </div>
+</details>
+
+<p>The table below shows the values the code ships. Click a row (or Tab to it
+and press Enter) to pin a highlight while you cross-reference.</p>
+
+<div class="tbl">
+<table id="vdpregs">
+  <thead><tr><th>Reg</th><th>Value</th><th>Setting</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><code>$00</code></td><td><code>$04</code></td><td>Mode 5, HInt OFF, HV counter readable</td><td>Raster interrupts stay off until a level section installs a program</td></tr>
+    <tr><td><code>$01</code></td><td><code>$14</code></td><td>Display OFF, VInt OFF, DMA ON, V28</td><td>Dark screen during init; DMA on so the boot VRAM fill can run</td></tr>
+    <tr><td><code>$02</code></td><td><code>$30</code></td><td>Plane A nametable at $C000</td><td>Tile $600 × 32 bytes = $C000, the top of the unified-pool VRAM map</td></tr>
+    <tr><td><code>$03</code></td><td><code>$3C</code></td><td>Window nametable at $F000</td><td>HUD overlay and letterboxing layer ($F000 sits inside Plane B's $E000-$FFFF map; harmless while the window stays disabled and unused, as it is everywhere in the code today. A shipped HUD window must repoint or accept eating into B)</td></tr>
+    <tr><td><code>$04</code></td><td><code>$07</code></td><td>Plane B nametable at $E000</td><td>Tile $700 × 32 bytes = $E000</td></tr>
+    <tr><td><code>$05</code></td><td><code>$5C</code></td><td>Sprite attribute table at $B800</td><td>80 sprites × 8 bytes, parked <em>below</em> Plane A's nametable</td></tr>
+    <tr><td><code>$06</code></td><td><code>$00</code></td><td>Sprite generator base</td><td>Only meaningful in 128KB-VRAM mode; zero on stock hardware</td></tr>
+    <tr><td><code>$07</code></td><td><code>$00</code></td><td>Backdrop = palette 0, entry 0</td><td>Black background until a level loads palettes</td></tr>
+    <tr><td><code>$08</code></td><td><code>$00</code></td><td>Unused (Master System compat)</td><td>Must be zero</td></tr>
+    <tr><td><code>$09</code></td><td><code>$00</code></td><td>Unused (Master System compat)</td><td>Must be zero</td></tr>
+    <tr><td><code>$0A</code></td><td><code>$FF</code></td><td>HInt counter = every 256 lines</td><td>Effectively disables raster interrupts until gameplay wants them</td></tr>
+    <tr><td><code>$0B</code></td><td><code>$00</code></td><td>Full-screen V/H scroll</td><td>Per-line scroll modes are enabled per-section for parallax</td></tr>
+    <tr><td><code>$0C</code></td><td><code>$81</code></td><td>H40 (320px), no interlace, no S/H</td><td>Shadow/highlight is a per-section effect, not a boot default</td></tr>
+    <tr><td><code>$0D</code></td><td><code>$2F</code></td><td>HScroll table at $BC00</td><td>Relocated below Plane A; the old $DC00 sat <em>inside</em> Plane A's nametable</td></tr>
+    <tr><td><code>$0E</code></td><td><code>$00</code></td><td>Nametable generator base</td><td>128KB-VRAM mode only; zero</td></tr>
+    <tr><td><code>$0F</code></td><td><code>$02</code></td><td>Auto-increment = 2</td><td>Normal word access; boot sets 1 separately, just for the byte-wise fill</td></tr>
+    <tr><td><code>$10</code></td><td><code>$11</code></td><td><strong>64×64-cell scroll planes</strong></td><td>The vertical-streaming foundation; see the decision below</td></tr>
+    <tr><td><code>$11</code></td><td><code>$00</code></td><td>Window H position = disabled</td><td>Enabled dynamically for the HUD</td></tr>
+    <tr><td><code>$12</code></td><td><code>$00</code></td><td>Window V position = disabled</td><td>Enabled dynamically for letterboxing</td></tr>
+    <tr><td><code>$13</code></td><td><code>$FF</code></td><td>DMA length low</td><td>Together with $14: length $FFFF, primed for the boot fill</td></tr>
+    <tr><td><code>$14</code></td><td><code>$FF</code></td><td>DMA length high</td><td>Overwritten per-transfer by the DMA queue afterwards</td></tr>
+    <tr><td><code>$15</code></td><td><code>$00</code></td><td>DMA source low</td><td>Set per-transfer</td></tr>
+    <tr><td><code>$16</code></td><td><code>$00</code></td><td>DMA source mid</td><td>Set per-transfer</td></tr>
+    <tr><td><code>$17</code></td><td><code>$80</code></td><td>DMA source high = fill mode</td><td>Primes the VRAM fill that section 5 triggers</td></tr>
+  </tbody>
+</table>
+</div>
+<span class="src">engine/system/boot.asm:239 (BootData_VDPRegs)</span>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>64×64-cell scroll planes.</strong> Most Genesis games (and every classic Sonic) use
+  64×32. Aeon pays double the nametable RAM (each plane's map is a full 8KB, and A+B together
+  occupy $C000-$FFFF exactly) to get 64 rows of vertical headroom, which is what makes seamless
+  vertical section streaming and VSRAM transition effects possible. The sprite table and HScroll
+  table were relocated to $B800/$BC00, below Plane A, so all 64 rows are genuinely usable.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Vectorman ✓ 64×64</span>
+    <span class="no">Sonic 2 / S3K: 64×32</span>
+    <span class="no">S.C.E.: 64×32</span>
+  </div>
+</div>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>A RAM-resident shadow copy of the VDP registers.</strong> The VDP's registers are
+  write-only: you can never ask the chip what a register currently holds. So Aeon keeps the
+  authoritative copy in RAM: a 19-byte <code>VDP_Shadow</code> struct mirroring registers
+  $00-$12 (the five DMA registers $13-$17 are per-transfer state owned by the DMA queue, and
+  deliberately not shadowed). Game code writes registers through a <code>setVDPReg</code> macro
+  that updates the shadow and sets a dirty bit; each VBlank, <code>Flush_VDP_Shadow</code>
+  writes only the dirty registers to hardware. The dirty mask is a single longword
+  (<code>VDP_Dirty_Mask: ds.l 1</code>, bits 0-18), so one <code>beq</code> skips the whole
+  flush on the many frames where nothing changed.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Batman &amp; Robin ✓ RAM table, bulk-writes all 19 every frame</span>
+    <span class="yes">Alien Soldier ✓ same</span>
+    <span class="yes">Aeon ✓ + dirty tracking (novel)</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<h2>4 · Waking the sound hardware</h2>
+
+<p>Sound on the Genesis is a second computer. A Zilog Z80, the CPU of the Master System,
+lives on its own 8KB of RAM and drives the YM2612 FM synthesizer and the SN76489 PSG. At
+power-on the Z80 is executing garbage, the PSG may be shrieking, and the FM chip's state is
+undefined. Boot has to bring all three to a known, silent state.</p>
+
+<details class="explain">
+  <summary>New here? · Why does a Genesis have two CPUs?</summary>
+  <div class="x-body">
+    <p>Music is relentless. A synthesizer chip doesn't hold a note the way a piano does; the
+    driver has to feed it register writes constantly, on a strict schedule, or the music
+    stutters. If the main CPU did that job, every game would have to interleave "update the
+    bassline" with "run the physics," and a slow frame would warp the music.</p>
+    <p>Sega's answer was to put a whole second CPU in the console: a Z80, cheap and
+    well-understood, which also doubled as the brain for Master System backward compatibility.
+    It runs the sound driver as an independent program on its own little 8KB of RAM. The main
+    CPU just drops short messages ("play song 3", "ring chime") into a shared mailbox and gets
+    on with the game. Aeon leans on this hard: its sound driver is fully Z80-autonomous.</p>
+  </div>
+</details>
+
+<p>The bus dance is precise. The 68000 asserts the Z80's reset line, requests the shared bus,
+releases reset, and polls until the bus is granted. Only then can it copy a program into Z80
+RAM, byte by byte, because Z80 RAM tolerates only byte writes. What gets copied is the
+<strong>full sound driver</strong> in the default build (<code>SOUND_DRIVER_ENABLED</code> is
+on by default); only sound-off builds load the tiny idle program instead. Then reset is asserted
+again and held for ~264 cycles of the 68K clock before the Z80 is released to run. The YM2612,
+which shares that reset line, needs its reset held for at least 192 cycles of its own clock;
+on the Genesis the YM2612 is clocked at the same rate as the 68K, so the two figures compare
+directly.</p>
+
+<p>The idle program is a curiosity worth two lines: after clearing Z80 RAM and its registers,
+it plants the byte <code>$E9</code>, the opcode for <code>jp&nbsp;(hl)</code>, at address 0
+with <code>hl</code>&nbsp;=&nbsp;0, then jumps there. The idle loop is a single one-byte
+instruction that jumps to itself.</p>
+
+<pre>        di
+        im      <span class="n">1</span>
+        ld      (hl), <span class="n">0E9h</span>          <span class="c">; patch: jp (hl) opcode at address 0</span>
+        jp      (hl)                <span class="c">; idle loop</span></pre>
+<span class="src">engine/system/z80_init.asm:28</span>
+
+<p>Silencing the PSG takes four bytes: one "maximum attenuation" command per channel
+(<code>$9F $BF $DF $FF</code>) written to the PSG port at $C00011. The YM2612 gets an explicit
+key-off pass: register $28 is the key-on/off switchboard, and boot writes channel numbers 0-2
+and then $04-$06 (the FM chip splits its six channels across two banks) with all operator bits
+clear. This step runs late, after the video-memory clears, and the whole pass is bracketed by
+<code>stopZ80</code>/<code>startZ80</code>, because the newly-started Z80 driver also talks to
+the FM chip and two writers on one chip is a race.</p>
+
+<pre>        <span class="k">stopZ80</span>
+        lea.l   (YM2612_A0).l, a6
+        move.b  <span class="n">#$28</span>, (a6)                  <span class="c">; select Key On/Off register</span>
+        moveq   <span class="n">#2</span>, d2
+.keyoff_part1:
+        move.b  d2, <span class="n">1</span>(a6)                   <span class="c">; key off channels 0-2</span>
+        dbf     d2, .keyoff_part1
+        moveq   <span class="n">#6</span>, d2
+        moveq   <span class="n">#2</span>, d1
+.keyoff_part2:
+        move.b  d2, <span class="n">1</span>(a6)                   <span class="c">; key off channels 4-6 ($04,$05,$06)</span>
+        subq.w  <span class="n">#1</span>, d2
+        dbf     d1, .keyoff_part2
+        <span class="k">startZ80</span></pre>
+<span class="src">engine/system/boot.asm:124</span>
+
+<details class="explain">
+  <summary>New here? · Why must the Z80 be stopped before touching video memory?</summary>
+  <div class="x-body">
+    <p>The two CPUs share one road. When the Z80 wants music data from the cartridge, its
+    request is relayed onto the 68000's bus, the same bus the VDP uses when it DMA-copies art
+    into video memory. On real hardware (especially early board revisions), a Z80 fetch landing
+    in the middle of a DMA transfer corrupts the transferred data: garbage tiles, shredded
+    sprites. The classic rule, repeated in every Genesis reference, is therefore: halt the Z80
+    (<code>stopZ80</code>) before starting any DMA, resume it after.</p>
+    <p>Aeon narrows this rule to what the hardware actually requires; see the decision block
+    just below.</p>
+  </div>
+</details>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>The Z80 keeps running during DMA (sound builds).</strong> Halting the Z80 for every
+  transfer starves the sound driver: sampled drums skip. So instead of the classic full-DMA
+  <code>stopZ80</code> fence, VBlank brackets its whole VDP/DMA window with a
+  <code>SND_CTRL_DMA_ACTIVE</code> flag in Z80 RAM. While the flag is up, the Z80 keeps running
+  but feeds the DAC (the chip's raw-sample channel, the part that plays drum recordings) only
+  from a ring buffer in its own RAM, never fetching ROM across the shared bus; only the two
+  one-byte flag writes themselves briefly hold the bus. Uninterrupted drums, zero DMA corruption
+  risk, and the hardware rule is honored in its precise form (no Z80 <em>bus access</em> during
+  DMA) rather than its blunt form (no Z80 at all). The full fence survives only in sound-off
+  builds.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Aeon ✓ flag bracket (MegaPCM-2 drain model)</span>
+    <span class="no">Classic Sonic drivers: stopZ80 around every DMA</span>
+    <span class="no">Aeon sound-off build: classic fence retained</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<h2>5 · Clearing 64KB the clever way</h2>
+
+<p>Boot must zero three memories: 64KB of video RAM, 64KB of work RAM, plus the VDP's two small
+internal memories (CRAM, the color palette, 128 bytes; VSRAM, the vertical-scroll table, 80
+bytes). The naive order is serial: clear one, then the next. Aeon overlaps them.</p>
+
+<details class="explain">
+  <summary>New here? · What is DMA?</summary>
+  <div class="x-body">
+    <p>Direct Memory Access: hardware that copies (or fills) memory by itself, without the CPU
+    executing a copy loop. On the Genesis, the DMA engine lives inside the video chip and runs
+    on the video chip's clock. You tell it "fill video RAM with zeros, all 64KB", kick it off
+    with one write, and then the VDP grinds through the job on its own while your CPU is free
+    to do something else entirely.</p>
+    <p>That last clause is the whole trick of this section. Two processors, two clocks, one
+    goal: get everything to zero. Modern engines call this async I/O; on a 1988 console it just
+    takes knowing that the fill's "busy" bit is something you can come back and check
+    later.</p>
+  </div>
+</details>
+
+<p>The VDP register table already primed a fill (register $17's fill mode, length $FFFF), so
+starting it takes four instructions: set auto-increment to 1 for the byte-wise fill, aim the
+command at VRAM address 0, and write the fill byte:</p>
+
+<pre>        <span class="c">; Start VRAM DMA fill (§0.7) - runs in background on VDP clock</span>
+        move.w  <span class="n">#vdpReg($0F, $01)</span>, (a4)    <span class="c">; auto-increment = 1 for byte-by-byte DMA fill</span>
+        move.l  (a5)+, (a4)                <span class="c">; vdpComm(0, VRAM, DMA)</span>
+        moveq   <span class="n">#0</span>, d0
+        move.w  d0, (a3)                    <span class="c">; trigger fill (fill byte = 0)</span></pre>
+<span class="src">engine/system/boot.asm:51</span>
+
+<p>While the VDP fills, the CPU does the entire previous section's work (the Z80 bus dance,
+the driver copy, the YM-safe reset), then clears its own 64KB of work RAM, then silences the
+PSG. The RAM clear itself is a lovely idiom: start the address register at $00000000 and write
+longwords with pre-decrement, letting 32-bit address arithmetic wrap around to $FFFFFFFC and
+walk down through all of RAM:</p>
+
+<pre>        <span class="c">; Clear Work RAM - 64KB (§0.7)</span>
+        movea.l d0, a6                      <span class="c">; a6 = 0</span>
+        move.w  d6, d2                      <span class="c">; d2 = $3FFF (longword count)</span>
+.clear_ram:
+        move.l  d0, -(a6)                   <span class="c">; wraps: $00000000 → $FFFFFFFC → ... → $FFFF0000</span>
+        dbf     d2, .clear_ram</pre>
+<span class="src">engine/system/boot.asm:86</span>
+
+<p>Only after all that does boot poll the VDP status register's DMA-busy bit, and by then the
+fill is typically already done, so the "wait" costs almost nothing. Auto-increment goes back to
+2 (restored from a trailing word in the boot data table), and the CPU hand-clears CRAM and
+VSRAM with short loops (DMA fill only works on VRAM; for
+208 bytes total, a CPU loop is the right tool anyway).</p>
+
+<div class="teach"><span class="t-tag">Teaching example · not engine code</span>
+  <p style="margin:.2rem 0 .4rem;">Toy numbers, just to show the shape of the win. Suppose the
+  VRAM fill takes 10 units of time, and the CPU's own chores (Z80 setup + RAM clear + PSG) take
+  9 units. Done serially:</p>
+<pre style="margin:.3rem 0;">VDP  [######## fill VRAM, 10 ########]
+CPU  [........ waiting, 10 .........][# chores, 9 #]     total = 19</pre>
+  <p style="margin:.4rem 0;">Done Aeon's way, starting the fill and doing the chores while it
+  runs:</p>
+<pre style="margin:.3rem 0;">VDP  [######## fill VRAM, 10 ########]
+CPU  [###### chores, 9 ######][wait 1]                   total = 10</pre>
+  <p style="margin:.4rem 0 .2rem;">The chores hide entirely inside the fill's shadow. The real
+  boot follows exactly this timeline, just with real durations.</p>
+</div>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>DMA-parallel boot clear (novel).</strong> Every reference disassembly clears memory
+  serially: fill VRAM, wait, then do everything else. Aeon starts the VRAM fill first and hides
+  the Z80 init, the 64KB RAM clear, and the PSG silence inside it, polling for completion only
+  when there is nothing left to overlap. This is a modern async-I/O pattern applied to 1988
+  silicon; the insight is simply that the fill runs on the VDP's clock, not the CPU's.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Aeon ✓ overlapped</span>
+    <span class="no">S.C.E.: serial</span>
+    <span class="no">Sonic 2 / S3K: serial</span>
+    <span class="no">Treasure titles: serial</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<h2>6 · Where in the world is this console?</h2>
+
+<p>The same cartridge must run on a Japanese Genesis at 60Hz and a European Mega Drive at 50Hz.
+One byte tells the software which world it woke up in: the version register at $A10001. Bit 7 is
+domestic/overseas, bit 6 is NTSC/PAL, and the low nibble is the hardware revision (the same
+nibble the TMSS check read earlier). Boot stores the full byte to <code>Hardware_Region</code>,
+masks the top two bits into <code>Region_Flags</code>, and then makes the one decision that
+matters: NTSC or PAL.</p>
+
+<details class="explain">
+  <summary>New here? · 50Hz vs 60Hz, and why PAL games ran slower</summary>
+  <div class="x-body">
+    <p>Old consoles didn't render "when ready"; they rendered in lockstep with the television.
+    American and Japanese TVs (NTSC) redraw 60 times a second; European TVs (PAL) redraw 50
+    times. Since nearly every 90s game ran its physics once per TV frame, a game tuned for NTSC
+    and shipped to Europe unchanged simply ran at 5/6 speed: Sonic jogged, music dragged, and
+    European players genuinely got a 17% slower game. Some studios compensated; many didn't.</p>
+    <p>PAL has a consolation prize, though: with 312 scanlines per frame instead of 262 but the
+    same 224 visible, the invisible gap between frames (the window where it's safe to blast
+    data into video memory) is nearly <em>twice</em> as long. A PAL console can move almost
+    double the graphics data per frame. That's why Aeon stores a per-region DMA budget, not
+    just a speed factor.</p>
+  </div>
+</details>
+
+<p>Exactly four region constants exist in the engine, and boot bakes the chosen pair into RAM
+once; there is no runtime re-checking of the region bit on hot paths:</p>
+
+<div class="tbl">
+<table>
+  <thead><tr><th>Constant</th><th>NTSC</th><th>PAL</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>NTSC/PAL_TIMING_STEP</code></td><td><code>$0100</code></td><td><code>$0133</code></td><td>8.8 fixed-point tick step (exactly 1.0 vs ≈1.199, the nominal 6/5 ratio) → <code>Timing_Step</code></td></tr>
+    <tr><td><code>DMA_BUDGET_NTSC/PAL</code></td><td><code>7200</code></td><td><code>15000</code></td><td>Usable DMA bytes per VBlank → <code>DMA_Budget_Default</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>(Frame-timing figures like "262 vs 312 scanlines" and "~18,500 vs ~35,100 VBlank cycles" are
+hardware background you'll find in any Genesis reference; the engine deliberately does not
+carry them as named constants.)</p>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>PAL compensation via a fixed-timestep accumulator.</strong> Each frame adds
+  <code>Timing_Step</code> to an 8.8 fixed-point <code>Frame_Accumulator</code>, and whole
+  1/60s ticks are consumed from it. On NTSC the step is exactly 1.0. On PAL it's
+  $0133&nbsp;≈&nbsp;1.199, so roughly every fifth frame the accumulator yields a second tick
+  (≈60 physics ticks per 50 PAL frames), and every tick that runs is bit-exact NTSC physics.
+  Boot's share is picking the step and zeroing the accumulator, and as of this writing that is
+  the only part wired up: nothing consumes the accumulator yet, and <code>GameLoop</code> still
+  runs one state dispatch per VSync on both regions.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Aeon ✓ accumulator (boot side shipped; consume side pending)</span>
+    <span class="no">Sonic 3: velocity multiplier (rounding drift)</span>
+    <span class="no">Treasure: hardcoded frame skip</span>
+    <span class="no">Most 90s ports: nothing (17% slower)</span>
+  </div>
+</div>
+
+<p>Last piece of world-facing setup: the controller ports. Boot writes <code>$40</code> to all
+three port <em>control</em> registers, configuring the TH pin as an output (the pin the
+joypad-reading protocol toggles to select which button bank the pad reports), and then also
+writes <code>$40</code> to all three port <em>data</em> registers, driving TH high as its
+initial state. The data-port writes matter, since the first controller read assumes a known TH
+level. Actual button polling happens every VBlank, not at boot.</p>
+
+<!-- ================================================================ -->
+<h2>7 · The interrupt switchboard</h2>
+
+<p>Two interrupts drive everything periodic in the engine. IRQ4 fires at horizontal blanking,
+between scanlines, and is the hook for raster effects. IRQ6 fires at vertical blanking, between
+frames, and is where all VDP-touching work happens. Aeon wires them asymmetrically, and the
+asymmetry is the design.</p>
+
+<details class="explain">
+  <summary>New here? · What is an interrupt, and what is "blanking"?</summary>
+  <div class="x-body">
+    <p>An interrupt is hardware tapping the CPU on the shoulder: stop what you're doing, run
+    this routine, then resume. The video chip taps twice on a schedule. Once per scanline it can
+    raise <em>HBlank</em>: the beam (real or emulated) has finished a line and is flying back
+    to start the next, a microscopic gap you can use to change video settings mid-picture
+    (that's how one background can scroll at three speeds at once). And once per frame it raises
+    <em>VBlank</em>: the whole picture is done and the beam is returning to the top.</p>
+    <p>VBlank is sacred in console programming: it's the only comfortable window where video
+    memory can be rewritten without the change tearing across a half-drawn frame. Everything a
+    Genesis game shows you was smuggled into video memory during VBlanks.</p>
+  </div>
+</details>
+
+<p><strong>HBlank: RAM-dispatched, contract-bound.</strong> The vector points at this ROM stub,
+which never changes; per-section raster programs are installed by writing
+<code>HBlank_Handler_Ptr</code>. Handlers may clobber only <code>d0-d1/a0</code>; the stub
+saves nothing else, because this code can run up to 224 times per frame and every saved
+register is paid for on every line:</p>
+
+<pre><span class="k">HBlank_Dispatch</span>:
+        movem.l d0-d1/a0, -(sp)
+        movea.l (HBlank_Handler_Ptr).w, a0
+        jsr     (a0)
+        movem.l (sp)+, d0-d1/a0
+        rte</pre>
+<span class="src">engine/system/hblank.asm:12</span>
+
+<p>Boot installs <code>HBlank_Null</code>, a bare <code>rts</code>, so the dispatch costs a
+handful of cycles until a level section wants more.</p>
+
+<p><strong>VBlank: ROM entry, RAM-selected body, built-in lag detection.</strong> The handler
+saves everything, then checks <code>VBlank_Ready</code>, a flag the main loop sets when it
+finishes a frame's work. If the main loop finished, the handler dispatches through
+<code>VInt_Ptr</code> (boot installs <code>VInt_Level</code>); if the main loop is still
+running (a lag frame), it takes a reduced path instead:</p>
+
+<pre><span class="k">VBlank_Handler</span>:
+        movem.l d0-a6, -(sp)
+        tst.b   (VBlank_Ready).w
+        beq.s   .lag
+        movea.l (VInt_Ptr).w, a0
+        jsr     (a0)
+        bra.s   .done
+.lag:
+        bsr.w   VInt_Lag</pre>
+<span class="src">engine/system/vblank.asm:8</span>
+
+<p><code>VInt_Level</code>, the normal-frame body, runs in this exact order: raise the sound
+DMA flag → <code>Flush_VDP_Shadow</code> → <code>Enqueue_Dirty_Buffers</code> (palette, sprites,
+HScroll) → <code>VInt_DrawLevel</code> (drain the plane buffer to the nametables) →
+<code>Process_DMA_Critical</code> → <code>Vscroll_Write</code> (the VSRAM write deliberately
+comes <em>after</em> the critical DMA drain, because it must follow the HScroll DMA), then the
+budgeted Important and Deferrable DMA tiers, lower the sound flag, read controllers, latch
+accumulated press edges, bump the frame counter, and set <code>VBlank_Flag</code> for the
+waiting main loop. Similar names, opposite directions: <code>VBlank_Ready</code> is the main
+loop telling the interrupt "my frame's work is done", while <code>VBlank_Flag</code> is the
+interrupt telling the main loop "VBlank has run: go".</p>
+
+<p><code>VInt_Lag</code> is not a do-nothing stub. It runs the shadow flush, the dirty-buffer
+enqueue, Critical DMA, the VSRAM write, controllers, and the frame counter: nearly the whole
+pipeline. The <em>one</em> thing it deliberately skips is the plane-buffer drain: on a lag frame
+the main loop is mid-write into that buffer, and draining a half-written entry would send tiles
+to a garbage VDP address. The dirty-flag-gated buffers are safe to drain (their flags are set
+only after a complete write); the pointer-gated plane buffer is not, so it waits for the next
+complete frame.</p>
+
+<!-- ================================================================ -->
+<h2>8 · The whole sequence</h2>
+
+<p>Here is the boot order: all thirty-four steps of <code>boot.asm</code>, grouped into
+phases. Phase C is the parallel window from section 5: everything
+in it executes while the VDP is filling VRAM.</p>
+
+<ol class="bootline">
+  <li data-ph="A">
+    <p class="ph-t">Reset &amp; TMSS <small>· boot.asm:6-36</small></p>
+    <ul class="ph-steps">
+      <li>Soft-reset checks: <code>tst.l</code> port A control, <code>tst.w</code> expansion control</li>
+      <li>Warm path only: poll VDP status until any in-flight DMA finishes, then fall through</li>
+      <li>TMSS: read the $A10001 revision nibble; write <code>"SEGA"</code> to $A14000 if non-zero</li>
+      <li>Read the VDP control port once, resetting its command-word state machine</li>
+    </ul>
+  </li>
+  <li data-ph="B">
+    <p class="ph-t">VDP registers, fill armed <small>· boot.asm:39-55</small></p>
+    <ul class="ph-steps">
+      <li>Preload hardware addresses into <code>d5-d7/a0-a4</code> with one <code>movem</code></li>
+      <li>Write all 24 VDP registers from <code>BootData_VDPRegs</code> (display OFF, DMA ON)</li>
+      <li>Set auto-increment = 1, then trigger the 64KB VRAM DMA fill (fill byte 0)</li>
+    </ul>
+  </li>
+  <li data-ph="C">
+    <p class="ph-t">Parallel window: CPU works while the VDP fills <small>· boot.asm:60-97</small></p>
+    <ul class="ph-steps">
+      <li>Z80 init: reset/bus-request dance, copy in the sound driver (or idle blob), reset again with the ~264-cycle YM2612-safe delay, release</li>
+      <li>Clear all 64KB of Work RAM via the wrapping pre-decrement loop</li>
+      <li>Silence the PSG: 4 attenuation bytes to $C00011</li>
+    </ul>
+  </li>
+  <li data-ph="D">
+    <p class="ph-t">Fill completes, small memories cleared <small>· boot.asm:101-121</small></p>
+    <ul class="ph-steps">
+      <li>Poll VDP status bit 1 until the DMA fill is done</li>
+      <li>Restore auto-increment = 2</li>
+      <li>Clear CRAM (128 bytes) with a CPU loop</li>
+      <li>Clear VSRAM (80 bytes) with a CPU loop</li>
+    </ul>
+  </li>
+  <li data-ph="E">
+    <p class="ph-t">Silence FM, zero the CPU <small>· boot.asm:124-143</small></p>
+    <ul class="ph-steps">
+      <li>YM2612 key-off on all six FM channels, bracketed by stopZ80/startZ80</li>
+      <li>Clear all 68K registers with one <code>movem.l</code> from freshly-zeroed RAM</li>
+      <li><code>disableInts</code>: masked while the engine assembles itself</li>
+    </ul>
+  </li>
+  <li data-ph="F">
+    <p class="ph-t">Engine subsystems <small>· boot.asm:146-158</small></p>
+    <ul class="ph-steps">
+      <li><code>VDP_Shadow_Init</code>: copy the boot register table into the RAM shadow</li>
+      <li><code>Init_DMA_Queue</code></li>
+      <li><code>Init_SpriteTable</code>: sprite link chain</li>
+      <li><code>BuildStaticDMA</code>: precomputed DMA command words</li>
+      <li>Install <code>VInt_Ptr = VInt_Level</code></li>
+    </ul>
+  </li>
+  <li data-ph="G">
+    <p class="ph-t">World facts <small>· boot.asm:161-185</small></p>
+    <ul class="ph-steps">
+      <li>Region detection → <code>Hardware_Region</code>, <code>Region_Flags</code>, <code>Timing_Step</code>, <code>DMA_Budget_Default</code>; zero <code>Frame_Accumulator</code></li>
+      <li>Controller init: $40 to three control registers <em>and</em> three data ports (TH output, driven high)</li>
+      <li>Install <code>HBlank_Handler_Ptr = HBlank_Null</code></li>
+    </ul>
+  </li>
+  <li data-ph="H">
+    <p class="ph-t">Interrupts live <small>· boot.asm:188-194</small></p>
+    <ul class="ph-steps">
+      <li><code>setVDPReg</code> mode 2 = $34: VBlank interrupt enabled in the VDP, display still OFF</li>
+      <li><code>Flush_VDP_Shadow</code>: the VDP must have VInt enabled before the CPU unmasks</li>
+      <li><code>enableInts</code>: the engine goes live</li>
+    </ul>
+  </li>
+  <li data-ph="I">
+    <p class="ph-t">Handoff to the game <small>· boot.asm:197-220</small></p>
+    <ul class="ph-steps">
+      <li>Write <code>CROSS_RESET_MAGIC</code> (<code>'INIT'</code>) to $FFFFFF00, the cold-boot-complete marker</li>
+      <li>DEBUG builds: <code>CompressionSelfTest</code>, the golden decompressor self-test</li>
+      <li>Sound builds: <code>Sound_Init</code>, a mailbox idle handshake with the running Z80 driver</li>
+      <li><code>gameBootHook</code>: game-supplied, may be empty</li>
+      <li>Set <code>Game_State = Game_Entry</code>, <code>Game_State_ID = GAME_ENTRY_ID</code>, clear <code>Game_State_Init</code></li>
+      <li><code>bra.w GameLoop</code>: never returns</li>
+    </ul>
+  </li>
+</ol>
+
+<p>Note what the last phase says about the engine/game split: boot ends at <code>GameLoop</code>
+with a <em>game-supplied</em> entry state. The engine has no idea whether the game is Sonic 4 or
+the demo's white box on a blue field; it just runs whatever <code>Game_Entry</code> the game's
+manifest declared. And the handoff is live: VBlank is enabled in the VDP and unmasked in the
+CPU before the branch (phase H), so the game's first state runs with interrupts already
+firing. There is no masked handoff to unwind.</p>
+
+<!-- ================================================================ -->
+<h2>9 · The assembler does the work</h2>
+
+<p>A recurring Aeon principle: never compute at runtime what the assembler can compute at build
+time, and never let a mistake survive to hardware that a build error could have caught. §0 is
+full of small examples: the VDP register commands are built by a <code>vdpReg</code> function,
+the boot data block is read sequentially with all offsets resolved at assembly, and the ROM
+header is generated, not typed.</p>
+
+<details class="explain">
+  <summary>New here? · What does an assembler actually do, and what is "build time"?</summary>
+  <div class="x-body">
+    <p>An assembler translates human-readable mnemonics (<code>move.w #$8F02, (a4)</code>) into
+    the raw bytes the CPU executes. But a good macro assembler is also a small programming
+    language that runs <em>while translating</em>: it can compute values, expand templates
+    (macros), and, crucially, refuse to produce a ROM at all if an assertion fails.</p>
+    <p>"Build time" is that moment, on the developer's machine, before any console is involved.
+    A check that runs at build time costs the finished game nothing (zero bytes, zero cycles),
+    and a failure is a readable error message instead of a black screen. Aeon treats the
+    assembler the way modern engines treat their build pipeline: as the first and cheapest
+    place to catch bugs.</p>
+  </div>
+</details>
+
+<p>The ROM header shows the pattern best. The <code>gameHeader</code> macro takes nine
+game-declared strings and refuses to assemble if any has the wrong width; a wrong-length
+serial becomes a build failure, not a corrupt header field discovered on hardware:</p>
+
+<pre>        <span class="k">if</span> strlen(GAME_SERIAL) &lt;&gt; <span class="n">14</span>
+          <span class="k">fatal</span> <span class="c">"GAME_SERIAL must be exactly 14 chars"</span>
+        <span class="k">endif</span></pre>
+<span class="src">engine/system/header.inc:25</span>
+
+<p>The same idea guards the whole ROM image and the RAM structures boot depends on:</p>
+
+<pre>    <span class="k">if</span> (EndOfRom &amp; <span class="n">1</span>) &lt;&gt; <span class="n">0</span>
+      <span class="k">error</span> <span class="c">"ROM size is odd"</span>
+    <span class="k">endif</span>
+
+    <span class="k">if</span> EndOfRom &gt; <span class="n">$3FFFFF</span>
+      <span class="k">error</span> <span class="c">"ROM exceeds 4MB without banking"</span>
+    <span class="k">endif</span></pre>
+<span class="src">engine/engine.inc:458</span>
+
+<pre>        <span class="k">if</span> VDP_Shadow_len &lt;&gt; <span class="n">19</span>
+          <span class="k">error</span> <span class="c">"VDP_Shadow struct is \{VDP_Shadow_len} bytes, expected 19"</span>
+        <span class="k">endif</span></pre>
+<span class="src">engine/structs.asm:31</span>
+
+<p>The shadow-struct assert is the quiet hero: the flush loop, the dirty mask width, and the
+"registers $00-$12 only" rule all assume that struct is exactly 19 bytes, and anyone who adds a
+field learns about all three dependents at build time.</p>
+
+<p>Two smaller pieces of §0 machinery round out the picture. The <strong>sine table</strong> is
+320 word entries at amplitude $100, binary-included from <code>engine/data/sine.bin</code>, with
+a quarter-cycle overlap so cos(a)&nbsp;=&nbsp;table[a&nbsp;+&nbsp;$40]: one table serves both
+functions with zero wraparound math. And the engine's <strong>random-number generator</strong>
+is designed but not yet built; only the <code>RNG_Seed</code> RAM slot exists today, waiting
+for a routine behind it.</p>
+
+<footer class="page">Part of the Empyrean wiki · AI-authored, maintained on request · last updated 2026-07-16 · <a href="../index.html">Back to hub</a></footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- interactive vector table ---- */
+(function(){
+  const V = [];
+  const add = (purpose, handler, note, cat) => V.push({purpose, handler, note, cat});
+
+  add("Initial SSP", "SYSTEM_STACK ($FFFFFF00)",
+      "The very first longword the CPU reads: the stack pointer, set to high Work RAM.", "boot");
+  add("Reset PC", "EntryPoint",
+      "The second longword: address of the first instruction executed after power-on or reset.", "boot");
+
+  [["Bus error","BusError"],["Address error","AddressError"],
+   ["Illegal instruction","IllegalInstr"],["Division by zero","ZeroDivide"],
+   ["CHK out of bounds","ChkInstr"],["TRAPV overflow","TrapvInstr"],
+   ["Privilege violation","PrivilegeViol"],["Trace","Trace"],
+   ["Line 1010 (A-line)","Line1010Emu"],["Line 1111 (F-line)","Line1111Emu"]
+  ].forEach(e => add(e[0], e[1],
+      "Per-exception label: the debug error handler can name exactly which exception fired.", "exc"));
+
+  for (let i = 0; i < 12; i++)
+    add("Reserved", "ErrorExcept",
+        "Reserved by Motorola; should never fire. Routed to the error handler anyway.", "resv");
+  add("Spurious interrupt", "ErrorExcept",
+      "An interrupt whose source vanished before the CPU could ask who raised it. Error handler.", "resv");
+
+  add("IRQ1 (external)", "NullInterrupt", "Unused on the Genesis: immediate rte.", "irqn");
+  add("IRQ2 (EXT port)", "NullInterrupt", "External-port interrupt, unused: immediate rte.", "irqn");
+  add("IRQ3", "NullInterrupt", "Unused on the Genesis: immediate rte.", "irqn");
+  add("IRQ4 (HBlank)", "HBlank_Dispatch",
+      "RAM-patched: a ROM stub jumps through HBlank_Handler_Ptr. Handlers may clobber only d0-d1/a0.", "irqh");
+  add("IRQ5", "NullInterrupt", "Unused on the Genesis: immediate rte.", "irqn");
+  add("IRQ6 (VBlank)", "VBlank_Handler",
+      "ROM handler with internal VInt_Ptr dispatch and VBlank_Ready lag detection.", "irqv");
+  add("IRQ7 (NMI)", "NullInterrupt", "Non-maskable and unused on standard hardware: immediate rte.", "irqn");
+
+  for (let i = 0; i < 16; i++)
+    add("TRAP #" + i, "ErrorTrap",
+        "Software trap instruction. All sixteen route to ErrorTrap; none are assigned yet.", "trap");
+  for (let i = 0; i < 16; i++)
+    add("Reserved", "ErrorTrap",
+        "Tail reserved block; should never fire. Routed to ErrorTrap.", "trap");
+
+  const grid = document.getElementById('vgrid');
+  const cap  = document.getElementById('vcap');
+  let selected = null;
+  V.forEach((e, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'vcell ' + e.cat;
+    const off = '$' + (i * 4).toString(16).toUpperCase().padStart(2, '0');
+    b.textContent = off;
+    b.setAttribute('aria-label', off + ' ' + e.purpose);
+    b.addEventListener('click', () => {
+      if (selected) selected.classList.remove('sel');
+      selected = b;
+      b.classList.add('sel');
+      cap.innerHTML = '<b>' + off + ' · ' + e.purpose + '</b> → ' + e.handler + '<br>' + e.note;
+    });
+    grid.appendChild(b);
+  });
+})();
+
+/* ---- VDP register table: click or Enter/Space to pin highlight ---- */
+document.querySelectorAll('#vdpregs tbody tr').forEach(tr => {
+  tr.tabIndex = 0;
+  tr.setAttribute('aria-pressed', 'false');
+  const toggle = () => {
+    tr.setAttribute('aria-pressed', tr.classList.toggle('hi') ? 'true' : 'false');
+  };
+  tr.addEventListener('click', toggle);
+  tr.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+  });
+});
+</script>
+
+</body>
+</html>
