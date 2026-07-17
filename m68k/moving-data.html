@@ -274,6 +274,49 @@ details.refbox[open] summary::before{content:"\25BE ";}
 details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
 details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
 .enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* operand legality grid: which addressing modes each side accepts */
+.opgrid{margin:.6rem 0 .2rem; max-width:42rem;}
+.og-row{display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; margin:.3rem 0;}
+.og-side{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); min-width:6.4rem;}
+.og{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent); border-radius:3px;
+  padding:.12rem .45rem; background:rgba(68,102,238,.14); color:var(--ink);}
+.og.no{border-color:var(--line); background:transparent; color:var(--dim); opacity:.55;
+  text-decoration:line-through;}
+.og-note{font-size:.78rem; color:var(--dim); max-width:40rem; margin:.35rem 0 .6rem;}
+
+/* cheaper cousins: the see-also that names the better tool */
+.kin{border-left:3px solid var(--accent); background:rgba(68,102,238,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.kin .k-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.2rem;}
+
+/* live flag readout, cost line, and size toggle inside the MOVE visualizer */
+.msim-fl{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem;
+  font-family:var(--mono); font-size:.72rem;}
+.sfchip{border:1px solid var(--line); border-radius:3px; padding:.15rem .5rem; color:var(--dim);}
+.sfchip.on{border-color:var(--gold); color:var(--gold); background:rgba(238,170,0,.14);}
+.sfchip.forced{border-color:#CC66AA; color:#CC66AA;}
+.msim-cost{font-family:var(--mono); font-size:.72rem; color:var(--dim); margin:0; max-width:38rem;}
+.szgrp{display:inline-flex; gap:.25rem;}
+.msim-ctrl .szbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+
+/* sign-extension toy */
+.extviz{display:flex; flex-direction:column; gap:.8rem;}
+.ext-row{display:flex; flex-wrap:wrap; align-items:center; gap:.6rem;
+  font-family:var(--mono); font-size:.8rem;}
+.ext-cell{border:1px solid var(--line); border-radius:4px; background:var(--panel);
+  padding:.45rem .7rem; text-align:center;}
+.ext-cell .xc-l{display:block; font-size:.6rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dim);}
+.ext-cell .xc-v{font-size:1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.ext-cell .xc-v b{color:#CC66AA; font-weight:normal;}
+.ext-arrow{color:var(--dim); font-size:.72rem;}
+
+/* this page's fallback captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 </style>
 </head>
 <body>
@@ -386,10 +429,10 @@ into registers, working on them there, and writing results back out.</p>
     <span class="fl-label">Cost</span>
     <span class="cchip">4 cycles</span>
     <span class="cchip">2 bytes</span>
-    <span class="cctx">register to register, any size. More for memory operands and the long size:</span>
+    <span class="cctx">best case: any register into a data register, every size. Trips to memory and extension words cost extra:</span>
   </div>
   <details class="refbox">
-    <summary>Full timing and size</summary>
+    <summary>Full timing and size (4 to 36 cycles, 2 to 10 bytes)</summary>
     <div class="enc-body">
     <div class="tbl"><table>
       <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
@@ -397,15 +440,32 @@ into registers, working on them there, and writing results back out.</p>
       <tr><td><code>move #n,Dn</code></td><td>8c, 4b</td><td>12c, 6b</td></tr>
       <tr><td><code>move (An),Dn</code></td><td>8c, 2b</td><td>12c, 2b</td></tr>
       <tr><td><code>move Dn,(An)</code></td><td>8c, 2b</td><td>12c, 2b</td></tr>
+      <tr><td><code>move d(An),Dn</code></td><td>12c, 4b</td><td>16c, 4b</td></tr>
+      <tr><td><code>move Dn,d(An)</code></td><td>12c, 4b</td><td>16c, 4b</td></tr>
       <tr><td><code>move (An),(An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
+      <tr><td><code>move (xx).l,(xx).l</code></td><td>28c, 10b</td><td>36c, 10b</td></tr>
     </table></div>
-    <p class="enc-note">c = CPU cycles, b = instruction bytes. Cycles are core-CPU figures; real Genesis memory accesses (ROM, VDP) add wait states on top. Bytes grow only when an operand needs an extension word, meaning an immediate or a displacement.</p>
+    <p class="enc-note">Reading the forms: <code>Dn</code> is a data register itself; <code>(An)</code> is the memory an address register points at, not the register; <code>#n</code> is a constant baked into the instruction; <code>d(An)</code> is memory at a fixed offset from An, the struct-field form the examples below use; <code>(xx).l</code> is a fixed absolute address.</p>
+    <p class="enc-note">These are representative forms, not the full menu. Every combination follows one rule: 4 cycles base, plus the price of fetching the source, plus the price of writing the destination, where each addressing mode has a fixed price. Registers are free; every trip to memory costs about 4 cycles per 16 bits touched. The Addressing Modes page (coming) carries the per-mode price list that generates the whole matrix.</p>
+    <p class="enc-note">c = CPU cycles, b = instruction bytes. Cycles are core-CPU figures; real Genesis memory accesses (ROM, VDP) add wait states on top. Bytes grow only when an operand needs an extension word, meaning an immediate, a displacement, or an absolute address.</p>
     </div>
   </details>
 
   <div class="operands">
     <span class="fl-label">Operands</span>
-    <span class="onote">Source: almost any addressing mode (byte size cannot use an address register). Destination: a data register or a writable memory location, but not an address register (that is <a href="#movea">MOVEA</a>), an immediate, or a PC-relative address.</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for MOVE">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">Dn</span><span class="og">An&#8224;</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">&#8224; legal except in <code>.b</code>: a byte cannot come from an address register.
+    The crossed-out chips are the "why will this not assemble" answers. An address-register
+    destination is really <a href="#movea">MOVEA</a>, and the assembler quietly swaps it in for you.
+    A constant or a PC-relative location is not writable, so <code>move.w d0,#5</code> and
+    <code>move.w d0,4(pc)</code> are refused outright.</p>
   </div>
 
   <p>MOVE takes a value from one place and copies it into another. The place it copies FROM keeps its
@@ -429,42 +489,65 @@ into registers, working on them there, and writing results back out.</p>
   </details>
   <figure class="diagram">
   <div class="movesim">
-    <div class="msim-instr"><code>move.w d0,d1</code> <span>copy the value in d0 into d1. The same instruction works in .b, .w, or .l.</span></div>
+    <div class="msim-instr"><code id="minstrc">move.w d0,d1</code> <span>copy the value in d0 into d1, then report on the copy through the flags. Pick a size and watch how much of d1 each one touches.</span></div>
     <div class="msim-ctrl">
       <label for="msrc">Source value in d0 (hex)</label>
-      <input id="msrc" type="text" value="1234" maxlength="4" autocomplete="off" aria-describedby="mnote">
+      <input id="msrc" type="text" value="1234" maxlength="8" autocomplete="off" aria-describedby="mnote">
+      <span class="szgrp" role="group" aria-label="Operation size">
+        <button type="button" class="szbtn" data-sz="b" aria-pressed="false">.b</button>
+        <button type="button" class="szbtn" data-sz="w" aria-pressed="true">.w</button>
+        <button type="button" class="szbtn" data-sz="l" aria-pressed="false">.l</button>
+      </span>
       <button type="button" id="mrun">Run move.w d0,d1</button>
       <button type="button" id="mreset">Reset d1</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="md0">$1234</span><span class="mr-tag">source</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="md0">$00001234</span><span class="mr-tag">source</span></span>
       <span class="mr-arrow" aria-hidden="true">copies into</span>
-      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="md1">$0000</span><span class="mr-tag">destination</span></span>
+      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="md1">$FFFFFFFF</span><span class="mr-tag">destination</span></span>
     </div>
-    <p class="msim-note" id="mnote" aria-live="polite">Set a value in d0, then run the move. Watch d1 take a copy while d0 keeps its own.</p>
+    <div class="msim-fl" aria-label="Condition codes after the move">
+      <span class="fl-label">Flags after</span>
+      <span class="sfchip" id="sfx">X unaff.</span>
+      <span class="sfchip" id="sfn">N -</span>
+      <span class="sfchip" id="sfz">Z -</span>
+      <span class="sfchip forced" id="sfv">V 0</span>
+      <span class="sfchip forced" id="sfc">C 0</span>
+    </div>
+    <p class="msim-cost" id="mcost">move.w d0,d1 &middot; 4 cycles &middot; 2 bytes &middot; register to register is the cheap case in every size</p>
+    <p class="msim-note" id="mnote" aria-live="polite">d1 starts stuffed with $FF bytes on purpose: run a .b or .w move and see exactly which of its bits survive. Try $8000 and watch N light; try 0 and watch Z light.</p>
   </div>
-  <figcaption>MOVE copies, it does not move: after move.w d0,d1 the source d0 still holds its value and d1 holds a copy (static fallback: d0 stays $1234, d1 becomes $1234).</figcaption>
+  <figcaption>MOVE copies, it does not move, and it reports on what it copied: N and Z are set from the value, V and C are forced to zero, X is untouched (static fallback: move.w d0,d1 with d0 = $00001234 leaves d0 unchanged and d1 = $FFFF1234, with N=0 and Z=0; the upper half of d1 survives because a .w move only touches the low word).</figcaption>
   </figure>
 
-  <p>In real object code a MOVE usually deposits a value that some other routine acts on later. Here two of them set an object in motion by loading its speed fields:</p>
+  <p>In real object code a MOVE usually deposits a value that some other routine acts on later.
+  These two are from Sonic 2's ending cutscene: the object is the Tornado, Tails' biplane, and this
+  is the exact moment it starts drifting across the ending sky:</p>
   <pre>	move.w	<span class="n">#$100</span>,x_vel(a0)
 	move.w	<span class="n">#-$80</span>,y_vel(a0)</pre>
-  <span class="src">s2disasm/s2.asm:13543-13544</span>
-  <p><code>a0</code> points at the object's data block, and <code>x_vel</code> / <code>y_vel</code> are its horizontal and vertical speed fields. Nothing moves this instant: the MOVEs just drop in the constants ($100 rightward, and -$80, which is negative, so upward). Every frame afterward the engine adds those speeds to the object's position, and that is what actually slides it up and to the right.</p>
+  <span class="src">s2disasm/s2.asm:13543-13544 (ObjCC, the ending-sequence Tornado)</span>
+  <p><code>a0</code> points at the plane's object data block, and <code>x_vel</code> / <code>y_vel</code> are its horizontal and vertical speed fields. Nothing moves this instant: the MOVEs just drop in the constants ($100 rightward, and -$80, which is negative, so upward). Every frame afterward the engine adds those speeds to the plane's position, and that is what actually carries it up and to the right, out over the clouds.</p>
 
-  <p>A MOVE is also how you arm a countdown. A spikes trap holds still, then snaps shut on a timer:</p>
+  <p>A MOVE is also how you arm a countdown. The retracting spikes hold still, then snap out on a timer:</p>
   <pre>	move.w	<span class="n">#60</span>,spikes_retract_timer(a0)	<span class="c">; reset timer</span></pre>
-  <span class="src">s2disasm/s2.asm:29357</span>
-  <p>This copies 60 into the object's retract timer, which is 60 frames, one second at the Genesis frame rate. The move itself changes nothing you can see; each following frame the object counts that timer down, and when it hits zero the spikes pull in. One MOVE sets the fuse; the countdown elsewhere in the object burns it.</p>
+  <span class="src">s2disasm/s2.asm:29357 (MoveSpikes, the retracting spikes object)</span>
+  <p>This copies 60 into the object's retract timer, which is 60 frames, one second at the Genesis frame rate. The move itself changes nothing you can see; each following frame the object counts that timer down, and when it hits zero the spikes move. One MOVE sets the fuse; the countdown elsewhere in the object burns it.</p>
 
-  <p>And because a MOVE sets the N and Z flags from the value it copied, you can react to that value on the spot, with no separate compare. This loop reads the next entry of a command list and stops at the zero end-marker:</p>
+  <p>And because a MOVE sets the N and Z flags from the value it copied, you can react to that value on the spot, with no separate compare. This is ProcessDMAQueue, the routine that flushes the frame's queued video transfers to the VDP; it reads the next entry of the command buffer and stops at the zero end-marker:</p>
   <pre>	move.w	(a1)+,d0
 	beq.s	.done	<span class="c">; branch if we reached a stop token</span></pre>
-  <span class="src">s2disasm/s2.asm:1775-1776</span>
-  <p>The MOVE copies a word from the list into <code>d0</code> and, as a side effect, sets Z if that word was zero. The <code>beq</code> on the very next line reads that flag: a zero entry marks the end of the list, so it branches away and stops. Reading and testing happen in one step.</p>
+  <span class="src">s2disasm/s2.asm:1775-1776 (ProcessDMAQueue)</span>
+  <p>The MOVE copies a word from the buffer into <code>d0</code> and, as a side effect, sets Z if that word was zero. The <code>beq</code> on the very next line reads that flag: a zero entry marks the end of the queue, so it branches away and stops. Reading and testing happen in one step.</p>
 
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  MOVE copies; it does not move. After <code>move.w d0,d1</code> the source <code>d0</code> is unchanged, the point the visualizer above makes on purpose. Separately, the privileged forms (<code>MOVE &lt;ea&gt;,SR</code> and <code>MOVE USP,An</code>) are supervisor-only; running one in user mode traps instead of executing.</div>
+  MOVE copies; it does not move. After <code>move.w d0,d1</code> the source <code>d0</code> is unchanged, the point the visualizer above makes on purpose. Next, a <code>.w</code> or <code>.l</code> MOVE whose address is odd does not just misbehave, it crashes: the 68000 takes an address-error exception for any word or long access to an odd address. Only byte moves are exempt. And the privileged forms (<code>MOVE &lt;ea&gt;,SR</code> and <code>MOVE USP,An</code>) are supervisor-only; running one in user mode traps instead of executing.</div>
+
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Loading a small constant (-128 to 127) into a data register? <a href="#moveq">MOVEQ</a> does it
+  in half the size. Writing zero? <a href="#clr">CLR</a>, or <code>moveq #0</code> for a whole
+  register. Loading an address register? That is <a href="#movea">MOVEA</a>; loading a label's
+  <em>address</em> rather than its contents, <a href="#lea">LEA</a>. Saving or restoring a pile of
+  registers? One <a href="#movem">MOVEM</a> beats a run of MOVEs.</div>
   <details class="refbox">
     <summary>Encoding</summary>
     <div class="enc-body">
@@ -476,9 +559,6 @@ into registers, working on them there, and writing results back out.</p>
 
 <div class="instr" id="moveq">
   <h3><span class="mn">MOVEQ</span> <span class="syn">MOVEQ #&lt;data&gt;,Dn</span></h3>
-  <p>Loads an 8-bit immediate into a data register, sign-extended to fill the entire 32 bits, and
-  does it in a single word of opcode instead of MOVE's longer encoding. There is no size suffix:
-  MOVEQ always writes a full long.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by MOVEQ">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -487,7 +567,29 @@ into registers, working on them there, and writing results back out.</p>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
-  <p>The classic full-register zero idiom, right in the same boot sequence:</p>
+  <div class="cost" role="group" aria-label="Timing and size of MOVEQ">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">always. One opcode word, no extras, every time; that is the entire point.</span>
+  </div>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for MOVEQ">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">#n (-128 to 127)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span>
+    </div>
+    <p class="og-note">That is the entire menu: an 8-bit signed constant into a data register.
+    Anything else is a plain <a href="#move">MOVE</a>.</p>
+  </div>
+  <p>Loads an 8-bit immediate into a data register, sign-extended to fill the entire 32 bits, and
+  does it in a single word of opcode instead of MOVE's longer encoding. There is no size suffix:
+  MOVEQ always writes a full long.</p>
+  <p>The classic full-register zero idiom, from the console's boot-time VDP check:</p>
   <pre>	move.w	(a4),d0	<span class="c">; check if VDP works</span>
 	moveq	<span class="n">#0</span>,d0	<span class="c">; clear d0</span></pre>
   <span class="src">s2disasm/s2.asm:215-216</span>
@@ -497,23 +599,63 @@ into registers, working on them there, and writing results back out.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   The immediate is an 8-bit signed field, range -128 to 127. MOVEQ cannot express <code>#200</code>
   or <code>#$8000</code> at all; those need a plain MOVE instead. And despite encoding only a byte,
-  MOVEQ always clears the entire 32-bit destination through sign extension, which is exactly why
-  <code>moveq #0,d0</code> is the standard way to zero a whole data register.</div>
+  MOVEQ always clears the entire 32-bit destination through sign extension (the
+  <a href="#signext">sign-extension toy</a> in section 3 shows the exact bit behavior), which is
+  exactly why <code>moveq #0,d0</code> is the standard way to zero a whole data register.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  There is nothing cheaper; MOVEQ is the floor. Go the other way instead: a constant outside
+  -128 to 127, or a destination that is not a data register, needs plain <a href="#move">MOVE</a>,
+  and zeroing memory rather than a register is <a href="#clr">CLR</a>.</div>
 </div>
 
 <div class="instr" id="movea">
   <h3><span class="mn">MOVEA</span> <span class="syn">MOVEA.w/.l &lt;ea&gt;,An</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVEA">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags; you cannot branch on a MOVEA</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of MOVEA">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">best case: any register into An, both sizes. The usual add-ons for immediates and memory:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (4 to 20 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.w</th><th>.l</th></tr>
+      <tr><td><code>movea Dn/An,An</code></td><td>4c, 2b</td><td>4c, 2b</td></tr>
+      <tr><td><code>movea #n,An</code></td><td>8c, 4b</td><td>12c, 6b</td></tr>
+      <tr><td><code>movea (An),An</code></td><td>8c, 2b</td><td>12c, 2b</td></tr>
+      <tr><td><code>movea (xx).l,An</code></td><td>16c, 6b</td><td>20c, 6b</td></tr>
+    </table></div>
+    <p class="enc-note">Same price list as MOVE: 4 cycles base plus the cost of fetching the
+    source. The destination is always a register, so only the source side ever varies.</p>
+    </div>
+  </details>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for MOVEA">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">Dn</span><span class="og">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og no">Dn</span><span class="og">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The source menu is wide open, even An itself. The destination is always
+    exactly one address register, and there is no <code>.b</code> size at all: a byte cannot
+    meaningfully hold an address.</p>
+  </div>
   <p>The address-register form of MOVE: copies a value into one of A0-A7. Plain MOVE cannot target
   an address register directly, so whenever the destination is An, this is the instruction that
   actually gets assembled, whether or not the source code spells out "movea" explicitly.</p>
-  <div class="flags" role="group" aria-label="Condition codes affected by MOVEA">
-    <span class="fl-label">Flags</span>
-    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
-  </div>
   <p>Two absolute addresses loaded ahead of a checksum scan:</p>
   <pre>	movea.l	<span class="n">#EndOfHeader</span>,a0	<span class="c">; start checking bytes after the header ($200)</span>
 	movea.l	<span class="n">#ROMEndLoc</span>,a1	<span class="c">; stop at end of ROM</span></pre>
@@ -523,13 +665,17 @@ into registers, working on them there, and writing results back out.</p>
 	movea.l	d0,a6	<span class="c">; clear a6</span></pre>
   <span class="src">s2disasm/s2.asm:216-217</span>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  MOVEA has no byte form at all, only <code>.w</code> and <code>.l</code>, since a byte cannot
-  meaningfully hold an address. A <code>.w</code> source is sign-extended to 32 bits on the way in,
-  so <code>movea.w #$8000,a0</code> leaves <code>a0 = $FFFF8000</code>, not <code>$00008000</code>,
-  which surprises anyone thinking in 16-bit address spaces. And because MOVEA touches no flags at
-  all, you cannot branch on its result the way MOVE's example above does; a MOVEA immediately
-  followed by <code>bne</code> is testing whatever flags were already set beforehand, not this
-  instruction's outcome.</div>
+  A <code>.w</code> source is sign-extended to 32 bits on the way in, so
+  <code>movea.w #$8000,a0</code> leaves <code>a0 = $FFFF8000</code>, not <code>$00008000</code>,
+  which surprises anyone thinking in 16-bit address spaces (the
+  <a href="#signext">sign-extension toy</a> in section 3 shows the mechanism). And because MOVEA
+  touches no flags at all, you cannot branch on its result the way MOVE's example above does; a
+  MOVEA immediately followed by <code>bne</code> is testing whatever flags were already set
+  beforehand, not this instruction's outcome.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Loading a nearby label's address? <code>lea Table(pc),a0</code> (see <a href="#lea">LEA</a>) is
+  4 cycles and 2 bytes cheaper than <code>movea.l #Table,a0</code> whenever the label is in reach
+  of PC-relative addressing, and it keeps working if the code is moved in ROM.</div>
 </div>
 
 <!-- ================================================================ -->
@@ -575,16 +721,55 @@ as it was.</p>
 
 <div class="instr" id="lea">
   <h3><span class="mn">LEA</span> <span class="syn">LEA &lt;ea&gt;,An</span></h3>
-  <p>Computes an effective address and loads that address itself, not the data living there, into
-  an address register. Always a longword operation; there is no size suffix.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by LEA">
     <span class="fl-label">Flags</span>
-    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags</span>
   </div>
+  <div class="cost" role="group" aria-label="Timing and size of LEA">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4-12 cycles</span>
+    <span class="cchip">2-6 bytes</span>
+    <span class="cctx">the complete spread. LEA is cheap because it only computes the address, never touches the data:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (complete, all seven forms)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>Cost</th></tr>
+      <tr><td><code>lea (An),An</code></td><td>4c, 2b</td></tr>
+      <tr><td><code>lea d(An),An</code></td><td>8c, 4b</td></tr>
+      <tr><td><code>lea d(An,Xn),An</code></td><td>12c, 4b</td></tr>
+      <tr><td><code>lea (xx).w,An</code></td><td>8c, 4b</td></tr>
+      <tr><td><code>lea (xx).l,An</code></td><td>12c, 6b</td></tr>
+      <tr><td><code>lea d(PC),An</code></td><td>8c, 4b</td></tr>
+      <tr><td><code>lea d(PC,Xn),An</code></td><td>12c, 4b</td></tr>
+    </table></div>
+    <p class="enc-note">This one is the whole menu, not a sample: LEA has exactly these seven legal
+    forms and no sizes, so the table is complete. Note there is no data access anywhere in it,
+    which is why even the priciest form beats a memory MOVE.</p>
+    </div>
+  </details>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for LEA">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">An</span>
+    </div>
+    <p class="og-note">Only modes that name a memory location are legal sources: a register or a
+    constant has no address to load, and the auto-stepping forms are excluded because LEA never
+    actually touches the data. The destination is always an address register.</p>
+  </div>
+  <p>Computes an effective address and loads that address itself, not the data living there, into
+  an address register. Always a longword operation; there is no size suffix.</p>
   <p>A PC-relative table load, right at reset, the standard position-independent way to address a
   local table:</p>
   <pre>	lea	SetupValues(pc),a5	<span class="c">; Load setup values array address.</span></pre>
@@ -593,25 +778,65 @@ as it was.</p>
   <pre>	lea	(VDP_control_port).l,a5</pre>
   <span class="src">s2disasm/s2.asm:704</span>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  Only "control" addressing modes are legal LEA sources: no <code>Dn</code>, <code>An</code>,
-  <code>#immediate</code>, or the auto-increment/decrement forms, since none of those name a
-  memory address in the first place. Beginners commonly confuse <code>lea (foo).w,a0</code> (load
+  Beginners commonly confuse <code>lea (foo).w,a0</code> (load
   the address of foo) with <code>move.w (foo).w,d0</code> (load the value stored at foo); the
-  two-instruction difference between "where" and "what" is the entire point of this instruction.</div>
+  difference between the two, "where" versus "what," is the entire point of this instruction.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  <a href="#pea">PEA</a> computes the same address but pushes it to the stack instead of loading a
+  register. And LEA moonlights as flag-preserving pointer math: <code>lea 4(a0),a0</code> adds 4
+  to a0 without disturbing a single condition code, a classic idiom when a compare result must
+  survive the adjustment.</div>
 </div>
 
 <div class="instr" id="pea">
   <h3><span class="mn">PEA</span> <span class="syn">PEA &lt;ea&gt;</span></h3>
-  <p>Computes an effective address exactly like LEA, then pushes that 32-bit address onto the
-  stack instead of loading it into a register. Always pushes 4 bytes.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by PEA">
     <span class="fl-label">Flags</span>
-    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags</span>
   </div>
+  <div class="cost" role="group" aria-label="Timing and size of PEA">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">12-20 cycles</span>
+    <span class="cchip">2-6 bytes</span>
+    <span class="cctx">the complete spread. It always writes 4 bytes to the stack, so it never gets as cheap as LEA:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (complete, all seven forms)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>Cost</th></tr>
+      <tr><td><code>pea (An)</code></td><td>12c, 2b</td></tr>
+      <tr><td><code>pea d(An)</code></td><td>16c, 4b</td></tr>
+      <tr><td><code>pea d(An,Xn)</code></td><td>20c, 4b</td></tr>
+      <tr><td><code>pea (xx).w</code></td><td>16c, 4b</td></tr>
+      <tr><td><code>pea (xx).l</code></td><td>20c, 6b</td></tr>
+      <tr><td><code>pea d(PC)</code></td><td>16c, 4b</td></tr>
+      <tr><td><code>pea d(PC,Xn)</code></td><td>20c, 4b</td></tr>
+    </table></div>
+    <p class="enc-note">Each form is its LEA twin plus 8 cycles: the price of the long write to
+    the stack.</p>
+    </div>
+  </details>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for PEA">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">-(sp)</span>
+    </div>
+    <p class="og-note">Same source menu as LEA, for the same reason. The destination is not a
+    choice at all: PEA always pushes onto the stack.</p>
+  </div>
+  <p>Computes an effective address exactly like LEA, then pushes that 32-bit address onto the
+  stack instead of loading it into a register. Always pushes 4 bytes.</p>
   <p>PEA is genuinely rare in hand-written 68000 game code; it shows up far more often as
   compiler-generated "push this argument's address" glue than as something a person types. The one
   real use found in the Sonic 2 disassembly is not that at all: it is a deliberate, commented
@@ -631,21 +856,62 @@ as it was.</p>
   would have pushed automatically, so a <code>bra</code> can be used instead, picking between two
   destinations with a branch rather than duplicating the call. A second, structurally identical
   use of the same trick exists later in the same file, at line 29666.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  If the address will be used more than once, <a href="#lea">LEA</a> it into a spare register and
+  push that with <code>move.l An,-(sp)</code>; PEA only wins when the address is needed exactly
+  once, on the stack, right now.</div>
 </div>
 
 <div class="instr" id="movem">
   <h3><span class="mn">MOVEM</span> <span class="syn">MOVEM.w/.l &lt;register list&gt;,&lt;ea&gt; &nbsp;|&nbsp; MOVEM.w/.l &lt;ea&gt;,&lt;register list&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVEM">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of MOVEM">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 + 8n cycles</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">saving n registers in .l; the price scales with the list, not the opcode:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (scales with the register count)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Direction</th><th>.w</th><th>.l</th></tr>
+      <tr><td>save, registers to <code>(An)</code> / <code>-(An)</code></td><td>8 + 4n cycles</td><td>8 + 8n cycles</td></tr>
+      <tr><td>restore, <code>(An)</code> / <code>(An)+</code> to registers</td><td>12 + 4n cycles</td><td>12 + 8n cycles</td></tr>
+    </table></div>
+    <p class="enc-note">n = how many registers the mask names; fancier addressing modes add their
+    usual price on top. The size is always 4 bytes (opcode word plus register-mask word) before
+    extension words. Do the math on the interrupt handler below: <code>movem.l d0-a6,-(sp)</code>
+    moves 15 registers, 8 + 8 &times; 15 = 128 cycles, one of the most expensive single
+    instructions in the whole game. That is not a flaw; 15 separate MOVEs would cost more and read
+    worse. But it is why hot loops avoid saving registers they do not use.</p>
+    </div>
+  </details>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for MOVEM">
+    <div class="og-row"><span class="og-side">Save into</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og no">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Restore from</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og no">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note"><code>-(An)</code> exists only when saving and <code>(An)+</code> only when
+    restoring, matching the push and pop directions. A restore may even come straight from a
+    PC-relative table in ROM, since loading registers never needs to write anywhere.</p>
+  </div>
   <p>Transfers a bitmask-selected list of registers to or from consecutive memory in a single
   instruction. This is the standard way to save every register a routine will clobber on entry,
   and restore them all on exit, without a separate MOVE per register.</p>
-  <div class="flags" role="group" aria-label="Condition codes affected by MOVEM">
-    <span class="fl-label">Flags</span>
-    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
-  </div>
   <p>Saving every register at the very top of the vertical interrupt handler, predecrementing onto
   the stack:</p>
   <pre>V_Int:
@@ -676,6 +942,10 @@ as it was.</p>
   raw opcode bytes expecting one consistent bit order. Separately, a <code>.w</code> load into a
   register sign-extends each 16-bit value to fill the full 32 bits, not zero-extends, a classic
   bug source when the intent was an unsigned word.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Saving just one register? <code>move.l d0,-(sp)</code> is 12 cycles against MOVEM's 16, and two
+  plain MOVEs still tie a two-register MOVEM. The crossover is three registers; below that, reach
+  for <a href="#move">MOVE</a>.</div>
 
   <figure class="diagram">
     <div class="stackdiag">
@@ -686,8 +956,8 @@ as it was.</p>
         <div class="sd-cell"><span>a5</span><span class="sd-ord">2nd</span></div>
         <div class="sd-cell"><span>a4</span><span class="sd-ord">3rd</span></div>
         <div class="sd-cell"><span>&hellip;</span><span class="sd-ord">&hellip;</span></div>
-        <div class="sd-cell"><span>d1</span><span class="sd-ord">13th</span></div>
-        <div class="sd-cell sd-last"><span>d0</span><span class="sd-ord">pushed 14th</span></div>
+        <div class="sd-cell"><span>d1</span><span class="sd-ord">14th</span></div>
+        <div class="sd-cell sd-last"><span>d0</span><span class="sd-ord">pushed 15th</span></div>
         <span class="sd-sp">high address &middot; sp ends up here, pointing at d0</span>
       </div>
       <div class="sd-arrow">restore reverses it &rarr;</div>
@@ -697,9 +967,9 @@ as it was.</p>
         <div class="sd-cell sd-last"><span>d0</span><span class="sd-ord">popped 1st</span></div>
         <div class="sd-cell"><span>d1</span><span class="sd-ord">2nd</span></div>
         <div class="sd-cell"><span>&hellip;</span><span class="sd-ord">&hellip;</span></div>
-        <div class="sd-cell"><span>a4</span><span class="sd-ord">12th</span></div>
-        <div class="sd-cell"><span>a5</span><span class="sd-ord">13th</span></div>
-        <div class="sd-cell sd-first"><span>a6</span><span class="sd-ord">popped 14th</span></div>
+        <div class="sd-cell"><span>a4</span><span class="sd-ord">13th</span></div>
+        <div class="sd-cell"><span>a5</span><span class="sd-ord">14th</span></div>
+        <div class="sd-cell sd-first"><span>a6</span><span class="sd-ord">popped 15th</span></div>
         <span class="sd-sp">every register lands back where it started</span>
       </div>
     </div>
@@ -734,10 +1004,27 @@ carry meaning, without touching memory at all.</p>
   </div>
 </details>
 
+<figure class="diagram" id="signext">
+  <div class="extviz">
+    <div class="msim-instr"><code>ext.w</code> / <code>ext.l</code> <span>type a byte value and watch the sign bit paint every new bit above it. The same mechanism runs inside MOVEQ and MOVEA.w.</span></div>
+    <div class="msim-ctrl">
+      <label for="xsrc">Byte value (hex, 2 digits)</label>
+      <input id="xsrc" type="text" value="80" maxlength="2" autocomplete="off" aria-describedby="xnote">
+    </div>
+    <div class="ext-row">
+      <span class="ext-cell"><span class="xc-l">byte</span><span class="xc-v" id="xb">$80</span></span>
+      <span class="ext-arrow" aria-hidden="true">ext.w &rarr;</span>
+      <span class="ext-cell"><span class="xc-l">word</span><span class="xc-v" id="xw">$<b>FF</b>80</span></span>
+      <span class="ext-arrow" aria-hidden="true">ext.l &rarr;</span>
+      <span class="ext-cell"><span class="xc-l">long</span><span class="xc-v" id="xl">$<b>FFFFFF</b>80</span></span>
+    </div>
+    <p class="msim-note" id="xnote" aria-live="polite">$80 reads as -128 as a signed byte. Its top bit is 1, so sign extension paints ones into every new bit, and the value stays -128 at every size. Try $7F next and watch the paint turn to zeros.</p>
+  </div>
+  <figcaption>Sign extension copies the top bit upward so the number keeps its value (static fallback: $80, which is -128, extends to $FF80 and then $FFFFFF80, still -128; $7F, which is 127, extends to $007F and $0000007F, still 127; the painted-in bits are highlighted).</figcaption>
+</figure>
+
 <div class="instr" id="clr">
   <h3><span class="mn">CLR</span> <span class="syn">CLR.b/.w/.l &lt;ea&gt;</span></h3>
-  <p>Sets the destination operand to zero, in any of the three sizes. It reads as "clear," and
-  does exactly that: whatever was there before is gone, replaced with 0.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by CLR">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -745,7 +1032,40 @@ carry meaning, without touching memory at all.</p>
     <span class="fchip f-set" aria-label="Z set to 1"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+    <span class="fl-caption">the result is always zero, so Z is always 1</span>
   </div>
+  <div class="cost" role="group" aria-label="Timing and size of CLR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">best case: clearing a register in .b or .w. The .l form and memory pay more:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (4 to 24 cycles, 2 to 4 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
+      <tr><td><code>clr Dn</code></td><td>4c, 2b</td><td>6c, 2b</td></tr>
+      <tr><td><code>clr (An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
+      <tr><td><code>clr (xx).w</code></td><td>16c, 4b</td><td>24c, 4b</td></tr>
+    </table></div>
+    <p class="enc-note">Memory forms cost more than the equivalent MOVE of a zero would suggest,
+    because of the extra read described in the gotcha below.</p>
+    </div>
+  </details>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for CLR">
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">One operand only, and no An: clearing an address register is spelled
+    <code>suba.l a0,a0</code> or a <code>moveq</code>/<code>movea</code> pair. No constants or
+    PC-relative destinations, since nothing in ROM is writable.</p>
+  </div>
+  <p>Sets the destination operand to zero, in any of the three sizes. It reads as "clear," and
+  does exactly that: whatever was there before is gone, replaced with 0.</p>
   <p>Zeroing a flag byte before a batch of work runs:</p>
   <pre>loc_1072:
 	clr.b	(Do_Updates_in_H_int).w
@@ -765,13 +1085,14 @@ carry meaning, without touching memory at all.</p>
   <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span>, but it matters if the destination is a hardware register with a
   read side effect, since clearing it can silently trigger that side effect as an unwanted extra
   read. Later 680x0 family members fixed CLR to be write-only.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Zeroing a whole data register? <code>moveq #0,d0</code> (see <a href="#moveq">MOVEQ</a>) clears
+  all 32 bits in 4 cycles; <code>clr.l d0</code> takes 6 and <code>clr.w</code> leaves the top
+  half dirty. CLR earns its keep on memory and on deliberately partial clears.</div>
 </div>
 
 <div class="instr" id="swap">
   <h3><span class="mn">SWAP</span> <span class="syn">SWAP Dn</span></h3>
-  <p>Exchanges the high 16 bits and the low 16 bits of a data register, in place. There is no size
-  suffix; it always operates on the full 32-bit register, and it only ever targets a register,
-  never memory.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by SWAP">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -780,6 +1101,25 @@ carry meaning, without touching memory at all.</p>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
+  <div class="cost" role="group" aria-label="Timing and size of SWAP">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">always.</span>
+  </div>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for SWAP">
+    <div class="og-row"><span class="og-side">Operand</span>
+      <span class="og">Dn</span>
+    </div>
+    <p class="og-note">A data register and nothing else; SWAP never touches memory or an address
+    register.</p>
+  </div>
+  <p>Exchanges the high 16 bits and the low 16 bits of a data register, in place. There is no size
+  suffix; it always operates on the full 32-bit register, and it only ever targets a register,
+  never memory.</p>
   <div class="swapviz" aria-hidden="true">
     <span class="swapreg"><span class="half hi">high 16</span><span class="half lo">low 16</span></span>
     <span class="sw-arrow">SWAP&nbsp;&rarr;</span>
@@ -805,20 +1145,40 @@ carry meaning, without touching memory at all.</p>
   of two independently-computed 16-bit halves (compute the low half, swap it into the top, OR or
   add in the real low half) instead of reaching for shifted 32-bit arithmetic, which is exactly
   the pattern both examples above share: building a VDP command word half by half.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  SWAP rearranges one register's halves; exchanging two whole registers is
+  <a href="#exg">EXG</a>. There is no cheaper way to reach a register's top half on the 68000;
+  shifting right by 16 costs far more.</div>
 </div>
 
 <div class="instr" id="exg">
   <h3><span class="mn">EXG</span> <span class="syn">EXG Dn,Dn &nbsp;|&nbsp; EXG An,An &nbsp;|&nbsp; EXG Dn,An</span></h3>
-  <p>Exchanges the full 32-bit contents of two registers, in any mix of data and address registers.
-  Always a full-long swap, regardless of the "logical" size of the values held.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by EXG">
     <span class="fl-label">Flags</span>
-    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
-    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags</span>
   </div>
+  <div class="cost" role="group" aria-label="Timing and size of EXG">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">always.</span>
+  </div>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for EXG">
+    <div class="og-row"><span class="og-side">Operands</span>
+      <span class="og">Dn,Dn</span><span class="og">An,An</span><span class="og">Dn,An</span>
+    </div>
+    <p class="og-note">Two registers in any mix, never memory.</p>
+  </div>
+  <p>Exchanges the full 32-bit contents of two registers, in any mix of data and address registers.
+  Always a full-long swap, regardless of the "logical" size of the values held.</p>
   <p>EXG is genuinely uncommon in hand-written 68000 game code. Most register swaps go through a
   spare register and a couple of MOVEs instead, since EXG doesn't obviously save time or registers
   in most contexts; across the entire 91,000-line Sonic 2 disassembly it appears only a handful of
@@ -841,9 +1201,6 @@ carry meaning, without touching memory at all.</p>
 
 <div class="instr" id="ext">
   <h3><span class="mn">EXT</span> <span class="syn">EXT.w Dn &nbsp;(byte&rarr;word)&nbsp; &nbsp;|&nbsp; EXT.l Dn &nbsp;(word&rarr;long)</span></h3>
-  <p>Sign-extends the low portion of a data register to fill the rest of the register, in place.
-  <code>EXT.w</code> takes the low byte and extends it to a full word; <code>EXT.l</code> takes the
-  low word and extends it to a full long.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by EXT">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -852,6 +1209,26 @@ carry meaning, without touching memory at all.</p>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
+  <div class="cost" role="group" aria-label="Timing and size of EXT">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">always.</span>
+  </div>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+  </div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for EXT">
+    <div class="og-row"><span class="og-side">Operand</span>
+      <span class="og">Dn</span>
+    </div>
+    <p class="og-note">A data register only. A signed byte in memory gets MOVE.b'd into a register
+    first, then extended there; both examples below have exactly that shape.</p>
+  </div>
+  <p>Sign-extends the low portion of a data register to fill the rest of the register, in place.
+  <code>EXT.w</code> takes the low byte and extends it to a full word; <code>EXT.l</code> takes the
+  low word and extends it to a full long. The <a href="#signext">sign-extension toy</a> at the top
+  of this section shows the exact bit behavior.</p>
   <p>A byte radius field read off an object, extended to a word before it takes part in word-sized
   arithmetic:</p>
   <pre>	moveq	<span class="n">#0</span>,d0
@@ -866,13 +1243,14 @@ carry meaning, without touching memory at all.</p>
 	sub.w	d0,d6	<span class="c">; subtracted from the shift value, such that the next time around the next code is read</span></pre>
   <span class="src">s2disasm/s2.asm:1865-1867</span>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  EXT only ever operates on a register, never a memory operand; sign-extending a byte value that
-  lives in memory means MOVE.b-ing it into a register first, then EXT.w-ing it there, exactly the
-  shape of both examples above. There is also no single-step byte-to-long form on the plain 68000:
+  There is no single-step byte-to-long form on the plain 68000:
   going all the way from a byte to a long takes two instructions, <code>ext.w</code> then
   <code>ext.l</code>. Reference material for later 680x0 chips sometimes mentions
   <code>EXTB.L</code>, a direct byte-to-long extension, but that instruction is 68020-and-up only
   and does not exist on the plain 68000 this page covers.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  If the byte is a constant rather than data, skip the extension entirely:
+  <a href="#moveq">MOVEQ</a> arrives already sign-extended to 32 bits.</div>
 </div>
 
 <footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-17 &middot; <a href="../index.html">Back to hub</a><br>
@@ -916,30 +1294,88 @@ function expandAll(btn){
   addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
 })();
 
-/* MOVE visualizer */
+/* MOVE visualizer: pick a size, run the copy, watch the flags and the surviving bits */
 (function(){
-  var src=document.getElementById('msrc'), d0=document.getElementById('md0'), d1=document.getElementById('md1');
+  var src=document.getElementById('msrc'), d0e=document.getElementById('md0'), d1e=document.getElementById('md1');
   var run=document.getElementById('mrun'), reset=document.getElementById('mreset'), note=document.getElementById('mnote');
+  var cost=document.getElementById('mcost'), instr=document.getElementById('minstrc');
+  var fN=document.getElementById('sfn'), fZ=document.getElementById('sfz');
   if(!src) return;
+  var d1=0xFFFFFFFF, sz='w';
+  var MASK={b:0xFF,w:0xFFFF,l:0xFFFFFFFF};
+  var TOP={b:0x80,w:0x8000,l:0x80000000};
+  var PART={b:'low byte',w:'low word',l:'all 32 bits'};
+  var DIG={b:2,w:4,l:8};
+  function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
   function norm(){
-    var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase();
+    var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,8).toUpperCase();
     src.value=v;
-    var shown=(v||'0').padStart(4,'0');
-    d0.textContent='$'+shown;
-    return shown;
+    var n=parseInt(v||'0',16)>>>0;
+    d0e.textContent=hex8(n);
+    return n;
   }
+  function setFlag(el,letter,val){
+    if(val===null){ el.textContent=letter+' -'; el.className='sfchip'; }
+    else{ el.textContent=letter+' '+(val?'1':'0'); el.className='sfchip'+(val?' on':''); }
+  }
+  function sync(){
+    var t='move.'+sz+' d0,d1';
+    instr.textContent=t;
+    run.textContent='Run '+t;
+    cost.textContent=t+' · 4 cycles · 2 bytes · register to register is the cheap case in every size';
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.szbtn'),function(b){
+    b.addEventListener('click',function(){
+      sz=b.dataset.sz;
+      Array.prototype.forEach.call(document.querySelectorAll('.szbtn'),function(o){
+        o.setAttribute('aria-pressed', o===b ? 'true' : 'false');
+      });
+      sync();
+    });
+  });
   src.addEventListener('input',norm);
   run.addEventListener('click',function(){
-    var v=norm();
-    d1.textContent='$'+v;
-    d1.classList.remove('mr-flash'); void d1.offsetWidth; d1.classList.add('mr-flash');
-    note.textContent='Copied $'+v+' into d1. d0 still holds $'+v+', since MOVE copies rather than moves.';
+    var s=norm();
+    var m=MASK[sz], moved=(s&m)>>>0;
+    d1=(((d1&~m)>>>0)|moved)>>>0;
+    d1e.textContent=hex8(d1);
+    d1e.classList.remove('mr-flash'); void d1e.offsetWidth; d1e.classList.add('mr-flash');
+    var N=(moved&TOP[sz])!==0, Z=moved===0;
+    setFlag(fN,'N',N); setFlag(fZ,'Z',Z);
+    note.textContent='Copied $'+moved.toString(16).toUpperCase().padStart(DIG[sz],'0')+' into d1’s '+PART[sz]
+      +(sz==='l'?'':'; the rest of d1 kept its old bits')
+      +'. d0 is unchanged. N='+(N?'1 (top bit set, reads as negative)':'0')
+      +', Z='+(Z?'1 (the value was zero)':'0')+', V and C forced to 0.';
   });
   reset.addEventListener('click',function(){
-    d1.textContent='$0000';
-    note.textContent='d1 cleared. Set a value in d0 and run the move again.';
+    d1=0xFFFFFFFF;
+    d1e.textContent=hex8(d1);
+    setFlag(fN,'N',null); setFlag(fZ,'Z',null);
+    note.textContent='d1 reset to $FFFFFFFF. Run a move and watch exactly which bits it overwrites.';
   });
-  norm();
+  sync(); norm();
+})();
+
+/* sign-extension toy: the sign bit paints every new bit above it */
+(function(){
+  var i=document.getElementById('xsrc'); if(!i) return;
+  var xb=document.getElementById('xb'), xw=document.getElementById('xw'), xl=document.getElementById('xl'), note=document.getElementById('xnote');
+  function upd(){
+    var v=(i.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase();
+    i.value=v;
+    var n=parseInt(v||'0',16)&0xFF;
+    var neg=(n&0x80)!==0;
+    var h=n.toString(16).toUpperCase().padStart(2,'0');
+    xb.textContent='$'+h;
+    xw.innerHTML='$<b>'+(neg?'FF':'00')+'</b>'+h;
+    xl.innerHTML='$<b>'+(neg?'FFFFFF':'000000')+'</b>'+h;
+    var signed=neg?n-256:n;
+    note.textContent='$'+h+' reads as '+signed+' as a signed byte. Its top bit is '
+      +(neg?'1, so sign extension paints ones':'0, so sign extension paints zeros')
+      +' into every new bit, and the value stays '+signed+' at every size. MOVEQ and MOVEA.w run this same mechanism on their results automatically; EXT is how you ask for it on demand.';
+  }
+  i.addEventListener('input',upd);
+  upd();
 })();
 
 /* flag chip tooltips (hover / focus / tap shows what each condition code means) */
