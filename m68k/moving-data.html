@@ -735,7 +735,12 @@ as it was.</p>
     <p>That discipline is exactly what a subroutine call needs. <code>jsr</code> pushes a return
     address before it jumps, and <code>rts</code> pops that same address to come back, so nested
     calls just nest their return addresses on the stack automatically, no bookkeeping required by
-    the programmer. MOVEM's predecrement and postincrement forms, covered below, lean on the same
+    the programmer. One thing worth getting straight early: rts is not actually paired with jsr
+    by any hidden record of who called. It simply pops whatever 4 bytes sit on top of the stack
+    and jumps there. When pushes and pops are balanced, that is the caller's address; when they
+    are not, rts jumps into your leftover data and the game crashes; and when you place an
+    address there on purpose, you steer rts yourself, which is exactly the trick PEA's entry
+    below pulls. MOVEM's predecrement and postincrement forms, covered below, lean on the same
     mechanism to save and restore whole banks of registers around a call.</p>
   </div>
 </details>
