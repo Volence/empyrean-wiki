@@ -579,13 +579,13 @@ into registers, working on them there, and writing results back out.</p>
   </div>
   <div class="opgrid" role="group" aria-label="Legal addressing modes for MOVEQ">
     <div class="og-row"><span class="og-side">Source</span>
-      <span class="og">#n (-128 to 127)</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og">#n</span><span class="og no">d(PC)</span>
     </div>
     <div class="og-row"><span class="og-side">Destination</span>
-      <span class="og">Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
-    <p class="og-note">That is the entire menu: an 8-bit signed constant into a data register.
-    Anything else is a plain <a href="#move">MOVE</a>.</p>
+    <p class="og-note">The narrowest menu on this page: one signed 8-bit constant (-128 to 127)
+    into a data register. Anything else is a plain <a href="#move">MOVE</a>.</p>
   </div>
   <p>Loads an 8-bit immediate into a data register, sign-extended to fill the entire 32 bits, and
   does it in a single word of opcode instead of MOVE's longer encoding. There is no size suffix:
@@ -763,7 +763,7 @@ as it was.</p>
       <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
     </div>
     <div class="og-row"><span class="og-side">Destination</span>
-      <span class="og">An</span>
+      <span class="og no">Dn</span><span class="og">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">Only modes that name a memory location are legal sources: a register or a
     constant has no address to load, and the auto-stepping forms are excluded because LEA never
@@ -831,11 +831,8 @@ as it was.</p>
     <div class="og-row"><span class="og-side">Source</span>
       <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
     </div>
-    <div class="og-row"><span class="og-side">Destination</span>
-      <span class="og">-(sp)</span>
-    </div>
-    <p class="og-note">Same source menu as LEA, for the same reason. The destination is not a
-    choice at all: PEA always pushes onto the stack.</p>
+    <p class="og-note">Same source menu as LEA, for the same reason. There is no destination
+    slot to pick at all: PEA always pushes its result onto the stack.</p>
   </div>
   <p>Computes an effective address exactly like LEA, then pushes that 32-bit address onto the
   stack instead of loading it into a register. Always pushes 4 bytes.</p>
@@ -1114,7 +1111,7 @@ carry meaning, without touching memory at all.</p>
   </div>
   <div class="opgrid" role="group" aria-label="Legal addressing modes for SWAP">
     <div class="og-row"><span class="og-side">Operand</span>
-      <span class="og">Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">A data register and nothing else; SWAP never touches memory or an address
     register.</p>
@@ -1174,10 +1171,10 @@ carry meaning, without touching memory at all.</p>
     <span class="fl-label">Operands</span>
   </div>
   <div class="opgrid" role="group" aria-label="Legal addressing modes for EXG">
-    <div class="og-row"><span class="og-side">Operands</span>
-      <span class="og">Dn,Dn</span><span class="og">An,An</span><span class="og">Dn,An</span>
+    <div class="og-row"><span class="og-side">Both operands</span>
+      <span class="og">Dn</span><span class="og">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
-    <p class="og-note">Two registers in any mix, never memory.</p>
+    <p class="og-note">Two registers in any mix (Dn,Dn / An,An / Dn,An), never memory.</p>
   </div>
   <p>Exchanges the full 32-bit contents of two registers, in any mix of data and address registers.
   Always a full-long swap, regardless of the "logical" size of the values held.</p>
@@ -1222,7 +1219,7 @@ carry meaning, without touching memory at all.</p>
   </div>
   <div class="opgrid" role="group" aria-label="Legal addressing modes for EXT">
     <div class="og-row"><span class="og-side">Operand</span>
-      <span class="og">Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">A data register only. A signed byte in memory gets MOVE.b'd into a register
     first, then extended there; both examples below have exactly that shape.</p>
