@@ -544,8 +544,9 @@ into registers, working on them there, and writing results back out.</p>
 
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Loading a small constant (-128 to 127) into a data register? <a href="#moveq">MOVEQ</a> does it
-  in half the size. Writing zero? <a href="#clr">CLR</a>, or <code>moveq #0</code> for a whole
-  register. Loading an address register? That is <a href="#movea">MOVEA</a>; loading a label's
+  in half the size. Zeroing a whole data register? <code>moveq #0</code>, always: 4 cycles against
+  <code>clr.l</code>'s 6. Zeroing memory is <a href="#clr">CLR</a>'s job.
+  Loading an address register? That is <a href="#movea">MOVEA</a>; loading a label's
   <em>address</em> rather than its contents, <a href="#lea">LEA</a>. Saving or restoring a pile of
   registers? One <a href="#movem">MOVEM</a> beats a run of MOVEs.</div>
   <details class="refbox">
@@ -783,9 +784,10 @@ as it was.</p>
   difference between the two, "where" versus "what," is the entire point of this instruction.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   <a href="#pea">PEA</a> computes the same address but pushes it to the stack instead of loading a
-  register. And LEA moonlights as flag-preserving pointer math: <code>lea 4(a0),a0</code> adds 4
-  to a0 without disturbing a single condition code, a classic idiom when a compare result must
-  survive the adjustment.</div>
+  register. And LEA moonlights as pointer math: <code>lea 64(a0),a0</code> adds 64 to a0 in
+  8 cycles, 4 cheaper than <code>adda.w #64,a0</code> at the same size. For tiny bumps of 1 to 8,
+  <code>addq</code> still wins on size; none of the An-destination adds touch the flags either
+  way.</div>
 </div>
 
 <div class="instr" id="pea">
