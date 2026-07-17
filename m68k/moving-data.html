@@ -188,7 +188,8 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
   text-transform:uppercase; color:var(--dim); margin-right:.3rem;}
 .flags .fchip{display:flex; flex-direction:column; align-items:center; gap:.15rem;
   width:2.1rem; padding:.25rem 0; border-radius:3px; border:1px solid var(--line);
-  font-family:var(--mono); font-size:.7rem;}
+  font-family:var(--mono); font-size:.7rem; cursor:help;}
+.flags .fchip:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
 .flags .fchip .fl-name{font-weight:bold;}
 .flags .fchip .fl-state{font-size:.55rem; letter-spacing:.05em; color:var(--dim);
   text-transform:uppercase;}
@@ -887,6 +888,42 @@ function expandAll(btn){
     note.textContent='d1 cleared. Set a value in d0 and run the move again.';
   });
   norm();
+})();
+
+/* flag chip tooltips (hover / focus / tap shows what each condition code means) */
+(function(){
+  var DEF={
+    X:'Extend: a saved copy of the carry bit, used by multi-word (multi-precision) arithmetic.',
+    N:'Negative: set when the result, read as a signed number, is negative (its top bit is set).',
+    Z:'Zero: set when the result is zero.',
+    V:'Overflow: set when a signed operation overflowed the signed range.',
+    C:'Carry: set when an unsigned operation carried or borrowed out of the top bit.'
+  };
+  var pop=document.getElementById('termpop');
+  if(!pop){ pop=document.createElement('div'); pop.id='termpop'; pop.setAttribute('role','tooltip'); document.body.appendChild(pop); }
+  var cur=null;
+  function show(chip){
+    var el=chip.querySelector('.fl-name'); var letter=el?el.textContent:'';
+    var def=DEF[letter]; if(!def) return;
+    cur=chip;
+    pop.innerHTML='<span class="tp-name">'+letter+' flag</span>'+def;
+    pop.style.display='block';
+    var r=chip.getBoundingClientRect();
+    var maxL=window.scrollX+document.documentElement.clientWidth-pop.offsetWidth-12;
+    pop.style.left=Math.max(Math.min(r.left+window.scrollX,maxL),8)+'px';
+    pop.style.top=(r.bottom+window.scrollY+6)+'px';
+    chip.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby');cur=null;} pop.style.display='none'; }
+  document.querySelectorAll('.fchip').forEach(function(chip){
+    chip.tabIndex=0;
+    chip.addEventListener('mouseenter',function(){show(chip);});
+    chip.addEventListener('mouseleave',hide);
+    chip.addEventListener('focus',function(){show(chip);});
+    chip.addEventListener('blur',hide);
+    chip.addEventListener('click',function(){ (cur===chip&&pop.style.display==='block')?hide():show(chip); });
+  });
+  addEventListener('keydown',function(e){ if(e.key==='Escape') hide(); });
 })();
 </script>
 
