@@ -265,13 +265,14 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
   color:var(--ink); background:rgba(68,102,238,.14); border-radius:3px; padding:.1rem .45rem;
   font-variant-numeric:tabular-nums;}
 .cost .cnote,.operands .onote{font-size:.8rem; color:var(--dim); max-width:38rem;}
-details.encoding{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
-details.encoding summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+.cost .cctx{font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.03em;}
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
   letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
-details.encoding summary::before{content:"\25B8 ";}
-details.encoding[open] summary::before{content:"\25BE ";}
-details.encoding summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
-details.encoding .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
 </style>
 </head>
 <body>
@@ -370,10 +371,7 @@ into registers, working on them there, and writing results back out.</p>
 
 <div class="instr" id="move">
   <h3><span class="mn">MOVE</span> <span class="syn">MOVE.b/.w/.l &lt;ea&gt;,&lt;ea&gt;</span></h3>
-  <p>MOVE takes a value from one place and copies it into another. The place it copies FROM keeps its
-  value; the place it copies INTO is overwritten with the copy. That is the whole idea. It works in
-  any of the three sizes and is the single most common instruction in any 68000 program: the
-  general-purpose "get this value from here to there."</p>
+
   <div class="flags" role="group" aria-label="Condition codes affected by MOVE">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -382,6 +380,40 @@ into registers, working on them there, and writing results back out.</p>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
+
+  <div class="cost" role="group" aria-label="Timing and size of MOVE">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">register to register, same for .b / .w / .l</span>
+    <span class="cnote">Register to register is the cheap case, and all three sizes cost the same there. Memory and immediate operands change it, and the long size costs more again: <code>move.w #n,d0</code> is 8 cycles / 4 bytes, <code>move.l #n,d0</code> is 12 / 6. Full breakdown below. These are core CPU cycles; real Genesis memory accesses (ROM, VDP) add hardware wait states on top.</span>
+  </div>
+
+  <details class="refbox">
+    <summary>Timing by operand</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
+      <tr><td><code>move Dn,Dn</code></td><td>4</td><td>4</td></tr>
+      <tr><td><code>move #n,Dn</code></td><td>8</td><td>12</td></tr>
+      <tr><td><code>move (An),Dn</code></td><td>8</td><td>12</td></tr>
+      <tr><td><code>move Dn,(An)</code></td><td>8</td><td>12</td></tr>
+      <tr><td><code>move (An),(An)</code></td><td>12</td><td>20</td></tr>
+    </table></div>
+    <p>Cycles for the common forms. Register to register is 4 for any size; each memory operand adds bus cycles, and the long size doubles the memory traffic. Instruction size in bytes follows the same shape: 2 bytes for register operands, plus 2 more for each 16-bit extension word an immediate or displacement needs (so <code>move.l #n,d0</code> is 6 bytes, the opcode plus a 4-byte immediate).</p>
+    </div>
+  </details>
+
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+    <span class="onote">Source: almost any addressing mode (byte size cannot use an address register). Destination: a data register or a writable memory location, but not an address register (that is <a href="#movea">MOVEA</a>), an immediate, or a PC-relative address.</span>
+  </div>
+
+  <p>MOVE takes a value from one place and copies it into another. The place it copies FROM keeps its
+  value; the place it copies INTO is overwritten with the copy. That is the whole idea. It works in
+  any of the three sizes and is the single most common instruction in any 68000 program: the
+  general-purpose "get this value from here to there."</p>
+
   <details class="explain">
   <summary>New here? &middot; What are these X N Z V C flags?</summary>
   <div class="x-body">The CPU keeps five status bits called the condition codes, or flags. Most
@@ -396,16 +428,6 @@ into registers, working on them there, and writing results back out.</p>
   means forced to zero, <b>unaff.</b> means left exactly as it was. The Programming Model page (coming)
   will cover the status register in full.</div>
   </details>
-  <div class="cost" role="group" aria-label="Timing and size of MOVE">
-    <span class="fl-label">Cost</span>
-    <span class="cchip">4 cycles</span>
-    <span class="cchip">2 bytes</span>
-    <span class="cnote">for the common register-to-register case. It climbs with memory operands and the long size: <code>move.l #n,d0</code> is 12 cycles and 6 bytes. These are the CPU's core cycles; real Genesis memory accesses (ROM, VDP) add hardware wait states on top.</span>
-  </div>
-  <div class="operands">
-    <span class="fl-label">Operands</span>
-    <span class="onote">Source: almost any addressing mode (byte size cannot use an address register). Destination: a data register or a writable memory location, but not an address register (that is <a href="#movea">MOVEA</a>), an immediate, or a PC-relative address.</span>
-  </div>
   <figure class="diagram">
   <div class="movesim">
     <div class="msim-instr"><code>move.w d0,d1</code> <span>copy the value in d0 into d1. The same instruction works in .b, .w, or .l.</span></div>
@@ -444,7 +466,7 @@ into registers, working on them there, and writing results back out.</p>
 
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   MOVE copies; it does not move. After <code>move.w d0,d1</code> the source <code>d0</code> is unchanged, the point the visualizer above makes on purpose. Separately, the privileged forms (<code>MOVE &lt;ea&gt;,SR</code> and <code>MOVE USP,An</code>) are supervisor-only; running one in user mode traps instead of executing.</div>
-  <details class="encoding">
+  <details class="refbox">
     <summary>Encoding</summary>
     <div class="enc-body">
     <p>MOVE packs into a single 16-bit word: bits 15-14 are <code>00</code>, bits 13-12 are the size (byte <code>01</code>, word <code>11</code>, long <code>10</code>), then the DESTINATION as register-then-mode, then the SOURCE as mode-then-register. Storing the destination fields in the opposite order from every other instruction is MOVE's famous encoding quirk.</p>
