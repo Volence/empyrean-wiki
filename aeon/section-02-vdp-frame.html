@@ -1188,8 +1188,11 @@ can corrupt the data in flight. Every reference engine follows this rule literal
 <p>Aeon's sound-on build does not. Holding the Z80 for the whole VBlank pipeline starves the
 sound driver of the steady feed its <span class="term" data-def="The raw-sample channel on the FM chip: it plays recorded audio (like drums) one byte at a time, in place of FM channel six.">DAC</span> drum channel depends on, audibly: sampled drums skip. So instead of
 a held fence, <code>VInt_Level</code> and <code>VInt_Lag</code> both bracket the whole VDP/DMA
-window with a single flag in Z80 RAM, <code>SND_CTRL_DMA_ACTIVE</code>, and the Z80 itself keeps
-running free through the entire pipeline in between:</p>
+window with a single flag in Z80 RAM, <code>SND_CTRL_DMA_ACTIVE</code>. Raising that flag at the
+start and clearing it at the end each need a momentary <code>stopZ80</code>, just long enough to
+write one byte (you have to own the bus to touch Z80 RAM at all). That pair of one-byte writes is
+the only bus-hold in the sound build. The DMA burst itself, everything between the brackets, runs
+with the Z80 free:</p>
 
 <pre>    ifdef SOUND_DRIVER_ENABLED
         stopZ80
