@@ -258,6 +258,20 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
   .mr-flash{animation:mrflash .5s ease;}
   @keyframes mrflash{from{background:rgba(68,102,238,.4);}to{background:transparent;}}
 }
+
+/* instruction cost, operands, encoding */
+.cost,.operands{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:.6rem 0; max-width:42rem;}
+.cost .cchip{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent);
+  color:var(--ink); background:rgba(68,102,238,.14); border-radius:3px; padding:.1rem .45rem;
+  font-variant-numeric:tabular-nums;}
+.cost .cnote,.operands .onote{font-size:.8rem; color:var(--dim); max-width:38rem;}
+details.encoding{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.encoding summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.encoding summary::before{content:"\25B8 ";}
+details.encoding[open] summary::before{content:"\25BE ";}
+details.encoding summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.encoding .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
 </style>
 </head>
 <body>
@@ -382,6 +396,16 @@ into registers, working on them there, and writing results back out.</p>
   means forced to zero, <b>unaff.</b> means left exactly as it was. The Programming Model page (coming)
   will cover the status register in full.</div>
   </details>
+  <div class="cost" role="group" aria-label="Timing and size of MOVE">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cnote">for the common register-to-register case. It climbs with memory operands and the long size: <code>move.l #n,d0</code> is 12 cycles and 6 bytes. These are the CPU's core cycles; real Genesis memory accesses (ROM, VDP) add hardware wait states on top.</span>
+  </div>
+  <div class="operands">
+    <span class="fl-label">Operands</span>
+    <span class="onote">Source: almost any addressing mode (byte size cannot use an address register). Destination: a data register or a writable memory location, but not an address register (that is <a href="#movea">MOVEA</a>), an immediate, or a PC-relative address.</span>
+  </div>
   <figure class="diagram">
   <div class="movesim">
     <div class="msim-instr"><code>move.w d0,d1</code> <span>copy the value in d0 into d1. The same instruction works in .b, .w, or .l.</span></div>
@@ -420,6 +444,13 @@ into registers, working on them there, and writing results back out.</p>
 
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   MOVE copies; it does not move. After <code>move.w d0,d1</code> the source <code>d0</code> is unchanged, the point the visualizer above makes on purpose. Separately, the privileged forms (<code>MOVE &lt;ea&gt;,SR</code> and <code>MOVE USP,An</code>) are supervisor-only; running one in user mode traps instead of executing.</div>
+  <details class="encoding">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>MOVE packs into a single 16-bit word: bits 15-14 are <code>00</code>, bits 13-12 are the size (byte <code>01</code>, word <code>11</code>, long <code>10</code>), then the DESTINATION as register-then-mode, then the SOURCE as mode-then-register. Storing the destination fields in the opposite order from every other instruction is MOVE's famous encoding quirk.</p>
+    <p><code>move.w d0,d1</code> assembles to <code>$3200</code>: the size is word (<code>11</code>), the destination is d1 (register <code>001</code>, mode <code>000</code>), and the source is d0 (mode <code>000</code>, register <code>000</code>).</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="moveq">
