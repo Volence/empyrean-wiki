@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>68000: Moving Data</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E⚙️%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+/* ============================================================
+   Page-specific styles: Instructions - Moving Data
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+
+/* mini-index: chip row of the 10 mnemonics */
+nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
+nav.mini a{font-family:var(--mono); font-size:.78rem; letter-spacing:.03em;
+  color:var(--ink); text-decoration:none; border:1px solid var(--accent);
+  border-radius:3px; padding:.25rem .65rem; background:rgba(68,102,238,.1);}
+nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outline:none;}
+
+/* instruction entry header: mnemonic + syntax */
+.instr{margin:2.2rem 0 0; padding-top:.2rem;}
+.instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
+.mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
+.syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+
+/* flags indicator */
+.flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
+.flags .fl-label{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin-right:.3rem;}
+.flags .fchip{display:flex; flex-direction:column; align-items:center; gap:.15rem;
+  width:2.1rem; padding:.25rem 0; border-radius:3px; border:1px solid var(--line);
+  font-family:var(--mono); font-size:.7rem;}
+.flags .fchip .fl-name{font-weight:bold;}
+.flags .fchip .fl-state{font-size:.55rem; letter-spacing:.05em; color:var(--dim);
+  text-transform:uppercase;}
+.flags .fchip.f-set{border-color:var(--gold); background:rgba(238,170,0,.14); color:var(--gold);}
+.flags .fchip.f-set .fl-state{color:var(--gold);}
+.flags .fchip.f-clear{border-color:#CC66AA; background:rgba(204,102,170,.12); color:#CC66AA;}
+.flags .fchip.f-clear .fl-state{color:#CC66AA;}
+.flags .fchip.f-none{border-color:var(--line); color:var(--dim); opacity:.6;}
+.flags .fl-caption{font-family:var(--mono); font-size:.68rem; color:var(--dim);
+  margin-left:.3rem;}
+
+/* gotcha note */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* MOVEM stack-push diagram */
+.stackdiag{display:flex; gap:2rem; align-items:flex-start; min-width:34rem; flex-wrap:wrap;}
+.sd-col{display:flex; flex-direction:column; gap:.3rem;}
+.sd-title{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); margin-bottom:.2rem;}
+.sd-cell{font-family:var(--mono); font-size:.75rem; padding:.3rem .7rem;
+  border:1px solid var(--line); border-radius:3px; background:var(--panel);
+  display:flex; justify-content:space-between; gap:1rem; min-width:9rem;}
+.sd-cell .sd-ord{color:var(--gold); font-size:.65rem;}
+.sd-cell.sd-first{border-color:var(--accent); background:rgba(68,102,238,.14);}
+.sd-cell.sd-last{border-color:var(--learn); background:rgba(68,204,136,.14);}
+.sd-arrow{font-family:var(--mono); font-size:.7rem; color:var(--dim); text-align:center;
+  padding:.2rem 0;}
+.sd-sp{font-family:var(--mono); font-size:.62rem; color:var(--dim); text-align:right;}
+
+/* SWAP before/after mini-visual */
+.swapviz{display:flex; align-items:center; gap:.8rem; font-family:var(--mono);
+  font-size:.78rem; margin:.7rem 0; flex-wrap:wrap;}
+.swapreg{display:flex; border:1px solid var(--line); border-radius:3px; overflow:hidden;}
+.swapreg .half{padding:.4rem .7rem; text-align:center;}
+.swapreg .hi{background:rgba(68,102,238,.16); color:#88AAEE;}
+.swapreg .lo{background:rgba(238,170,0,.16); color:var(--gold);}
+.swapviz .sw-arrow{color:var(--dim); font-size:.9rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / 68000 ASSEMBLY / MOVING DATA</p>
+  <p class="eyebrow">68000 Assembly</p>
+  <h1>Instructions: Moving Data</h1>
+  <p class="sub">Before a CPU can add, compare, or branch on anything, it has to get a value into a
+  place it can work with. This page covers the ten 68000 instructions that do exactly that: they
+  copy, load, clear, and rearrange values between registers, memory, and the stack, but never
+  change what the values mean. Every example on this page is real, pulled from the Sonic 2
+  disassembly and re-verified line by line.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>The MOVE family</a>
+  <a href="#s2"><span class="n">2</span>Moving addresses and whole register sets</a>
+  <a href="#s3"><span class="n">3</span>Clearing and rearranging</a>
+</nav>
+
+<nav class="mini" aria-label="Mini-index of this page's instructions">
+  <a href="#move">MOVE</a>
+  <a href="#moveq">MOVEQ</a>
+  <a href="#movea">MOVEA</a>
+  <a href="#lea">LEA</a>
+  <a href="#pea">PEA</a>
+  <a href="#movem">MOVEM</a>
+  <a href="#clr">CLR</a>
+  <a href="#swap">SWAP</a>
+  <a href="#exg">EXG</a>
+  <a href="#ext">EXT</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
+instruction and you don't know which page it lives on? The full instruction index (Programming
+Model page) lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; The MOVE family</h2>
+
+<p>Every one of these three instructions copies a value from somewhere to somewhere else. What
+separates them is <em>where</em> that somewhere is allowed to be, and what the CPU does to its
+status flags along the way. A <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span> is the 68000's fastest working storage:
+eight general-purpose data registers (D0-D7) for values, and eight address registers (A0-A7,
+with A7 doubling as the stack pointer) for pointers. Reading or writing a register costs nothing
+extra in bus time, unlike memory, which is why so much 68000 code is a dance of getting values
+into registers, working on them there, and writing results back out.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What do .b, .w, and .l mean?</summary>
+  <div class="x-body">
+    <p>Almost every 68000 instruction can be told how much data to move: a <code>.b</code> byte
+    (8 bits), a <code>.w</code> word (16 bits), or a <code>.l</code> longword (32 bits). The suffix
+    goes right after the mnemonic, so <code>move.b</code> copies one byte, <code>move.w</code>
+    copies two, and <code>move.l</code> copies four. Registers are always 32 bits wide internally,
+    but an instruction sized <code>.b</code> or <code>.w</code> only touches the low part of that
+    32 bits and leaves the rest of the register alone, which is a common source of stale-data bugs
+    for anyone assuming a byte operation clears the whole register the way it might on other
+    chips.</p>
+    <p>Picking the smallest size that fits the job matters on real hardware: a <code>.b</code>
+    move is both smaller in ROM and faster to execute than the equivalent <code>.l</code> move to
+    the same address, because the 68000's bus does less work for a byte transfer.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; What is an "effective address"?</summary>
+  <div class="x-body">
+    <p>Almost every instruction on this page names its source or destination as an
+    <strong>effective address</strong> (often abbreviated <code>&lt;ea&gt;</code> in syntax), which
+    is really a small grammar for "where the value lives," not just a single number. It might be a
+    register itself (<code>d0</code>), a plain memory address (<code>(Some_Label).w</code>), an
+    address held in a register with a symbol added to it (<code>x_pos(a0)</code>, the classic
+    "struct field" pattern), or an immediate constant baked right into the instruction
+    (<code>#4</code>). The 68000 supports fourteen distinct effective-address forms in total; this
+    page uses several of them in its examples without dwelling on the mechanics of each, since a
+    dedicated Addressing Modes page covers exactly how every form resolves to a real address.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; What's an immediate value?</summary>
+  <div class="x-body">
+    <p>An <strong>immediate</strong> is a constant baked directly into the instruction's own bytes
+    in ROM, written with a leading <code>#</code>, like <code>#0</code> or <code>#'SEGA'</code>.
+    It is the opposite of an address: <code>move.l #4,d0</code> puts the number 4 into d0, while
+    <code>move.l 4,d0</code> (no <code>#</code>) would instead read whatever four-byte value sits
+    at memory address 4. Mixing these up is one of the most common typos in 68000 code, and one
+    the assembler cannot catch for you, since both are syntactically legal instructions that just
+    do very different things.</p>
+  </div>
+</details>
+
+<div class="instr" id="move">
+  <h3><span class="mn">MOVE</span> <span class="syn">MOVE.b/.w/.l &lt;ea&gt;,&lt;ea&gt;</span></h3>
+  <p>Copies data from a source effective address to a destination effective address, in any of the
+  three sizes. It is the single most common instruction in any 68000 program: the general-purpose
+  "get this value from here to there."</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVE">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <p>Real example, satisfying the <span class="term" data-def="The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.">TMSS</span> check right at boot, an immediate longword written straight to a hardware register:</p>
+  <pre>	beq.s	SkipSecurity				<span class="c">; If the console has no TMSS, skip the security stuff.</span>
+	move.l	<span class="n">#'SEGA'</span>,Security_Addr-Z80_Bus_Request(a1) <span class="c">; Satisfy the TMSS</span></pre>
+  <span class="src">s2disasm/s2.asm:211-212</span>
+  <p>A second, equally idiomatic use is reading a value purely to react to it, using MOVE's own
+  flag side effects instead of a separate comparison:</p>
+  <pre>SkipSecurity:
+	move.w	(a4),d0	<span class="c">; check if VDP works</span></pre>
+  <span class="src">s2disasm/s2.asm:214-215</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Because MOVE sets N and Z from the value it just moved, it doubles as a free "test and branch":
+  <code>move.w (a4),d0</code> followed by a branch on Z or N needs no separate <code>tst</code>.
+  The privileged forms (<code>MOVE &lt;ea&gt;,SR</code>, <code>MOVE USP,An</code>) are supervisor-only;
+  attempting one from user mode traps instead of executing.</div>
+</div>
+
+<div class="instr" id="moveq">
+  <h3><span class="mn">MOVEQ</span> <span class="syn">MOVEQ #&lt;data&gt;,Dn</span></h3>
+  <p>Loads an 8-bit immediate into a data register, sign-extended to fill the entire 32 bits, and
+  does it in a single word of opcode instead of MOVE's longer encoding. There is no size suffix:
+  MOVEQ always writes a full long.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVEQ">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <p>The classic full-register zero idiom, right in the same boot sequence:</p>
+  <pre>	move.w	(a4),d0	<span class="c">; check if VDP works</span>
+	moveq	<span class="n">#0</span>,d0	<span class="c">; clear d0</span></pre>
+  <span class="src">s2disasm/s2.asm:215-216</span>
+  <p>And a small constant loaded as a countdown for a following loop:</p>
+  <pre>	moveq	<span class="n">#VDPInitValues_End-VDPInitValues-1</span>,d1 <span class="c">; run the following loop $18 times</span></pre>
+  <span class="src">s2disasm/s2.asm:220</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  The immediate is an 8-bit signed field, range -128 to 127. MOVEQ cannot express <code>#200</code>
+  or <code>#$8000</code> at all; those need a plain MOVE instead. And despite encoding only a byte,
+  MOVEQ always clears the entire 32-bit destination through sign extension, which is exactly why
+  <code>moveq #0,d0</code> is the standard way to zero a whole data register.</div>
+</div>
+
+<div class="instr" id="movea">
+  <h3><span class="mn">MOVEA</span> <span class="syn">MOVEA.w/.l &lt;ea&gt;,An</span></h3>
+  <p>The address-register form of MOVE: copies a value into one of A0-A7. Plain MOVE cannot target
+  an address register directly, so whenever the destination is An, this is the instruction that
+  actually gets assembled, whether or not the source code spells out "movea" explicitly.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVEA">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+  </div>
+  <p>Two absolute addresses loaded ahead of a checksum scan:</p>
+  <pre>	movea.l	<span class="n">#EndOfHeader</span>,a0	<span class="c">; start checking bytes after the header ($200)</span>
+	movea.l	<span class="n">#ROMEndLoc</span>,a1	<span class="c">; stop at end of ROM</span></pre>
+  <span class="src">s2disasm/s2.asm:382-383</span>
+  <p>And MOVEA used purely to zero an address register, chained right after the MOVEQ example above:</p>
+  <pre>	moveq	<span class="n">#0</span>,d0	<span class="c">; clear d0</span>
+	movea.l	d0,a6	<span class="c">; clear a6</span></pre>
+  <span class="src">s2disasm/s2.asm:216-217</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  MOVEA has no byte form at all, only <code>.w</code> and <code>.l</code>, since a byte cannot
+  meaningfully hold an address. A <code>.w</code> source is sign-extended to 32 bits on the way in,
+  so <code>movea.w #$8000,a0</code> leaves <code>a0 = $FFFF8000</code>, not <code>$00008000</code>,
+  which surprises anyone thinking in 16-bit address spaces. And because MOVEA touches no flags at
+  all, you cannot branch on its result the way MOVE's example above does; a MOVEA immediately
+  followed by <code>bne</code> is testing whatever flags were already set beforehand, not this
+  instruction's outcome.</div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; Moving addresses and whole register sets</h2>
+
+<p>The three instructions below step outside the plain "copy a value" pattern. LEA and PEA move an
+<em>address</em> itself rather than the data sitting at that address, and MOVEM moves an entire
+list of registers in one shot, which matters most at the boundary of a subroutine or an
+<span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupt</span> handler, where every register in use has to be saved and later put back exactly
+as it was.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What's the difference between an address and the data at that address?</summary>
+  <div class="x-body">
+    <p>Think of an address as a house number and the data as what's inside the house. If a
+    variable named <code>Score</code> lives at memory location <code>$FF1000</code>, then
+    "<code>Score</code>'s address" is the number <code>$FF1000</code> itself, while
+    "<code>Score</code>'s value" might be some completely different number, say 4200, sitting at
+    that location. <code>move.w Score,d0</code> walks into the house and brings back what's inside
+    (4200 lands in d0); <code>lea Score,a0</code> just writes down the house number
+    (<code>$FF1000</code> lands in a0). Confusing the two is one of the most common early mistakes
+    in 68000 code, because both instructions are one word long and look almost identical on the
+    page.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; What is the stack, and why does the CPU need one?</summary>
+  <div class="x-body">
+    <p>The stack is a region of <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span> that grows downward and is always
+    addressed through A7, the stack pointer. "Push" means write a value at the address A7 currently
+    points to and then decrease A7 by the value's size; "pop" (more properly, "pull") means
+    increase A7 first and then read from there. Because it always operates on whatever A7 points
+    to right now, the stack is naturally last-in-first-out: the most recent thing pushed is the
+    first thing that comes back off.</p>
+    <p>That discipline is exactly what a subroutine call needs. <code>jsr</code> pushes a return
+    address before it jumps, and <code>rts</code> pops that same address to come back, so nested
+    calls just nest their return addresses on the stack automatically, no bookkeeping required by
+    the programmer. MOVEM's predecrement and postincrement forms, covered below, lean on the same
+    mechanism to save and restore whole banks of registers around a call.</p>
+  </div>
+</details>
+
+<div class="instr" id="lea">
+  <h3><span class="mn">LEA</span> <span class="syn">LEA &lt;ea&gt;,An</span></h3>
+  <p>Computes an effective address and loads that address itself, not the data living there, into
+  an address register. Always a longword operation; there is no size suffix.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by LEA">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+  </div>
+  <p>A PC-relative table load, right at reset, the standard position-independent way to address a
+  local table:</p>
+  <pre>	lea	SetupValues(pc),a5	<span class="c">; Load setup values array address.</span></pre>
+  <span class="src">s2disasm/s2.asm:206</span>
+  <p>And loading a hardware port address once, for repeated reuse through the register afterward:</p>
+  <pre>	lea	(VDP_control_port).l,a5</pre>
+  <span class="src">s2disasm/s2.asm:704</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Only "control" addressing modes are legal LEA sources: no <code>Dn</code>, <code>An</code>,
+  <code>#immediate</code>, or the auto-increment/decrement forms, since none of those name a
+  memory address in the first place. Beginners commonly confuse <code>lea (foo).w,a0</code> (load
+  the address of foo) with <code>move.w (foo).w,d0</code> (load the value stored at foo); the
+  two-instruction difference between "where" and "what" is the entire point of this instruction.</div>
+</div>
+
+<div class="instr" id="pea">
+  <h3><span class="mn">PEA</span> <span class="syn">PEA &lt;ea&gt;</span></h3>
+  <p>Computes an effective address exactly like LEA, then pushes that 32-bit address onto the
+  stack instead of loading it into a register. Always pushes 4 bytes.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by PEA">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+  </div>
+  <p>PEA is genuinely rare in hand-written 68000 game code; it shows up far more often as
+  compiler-generated "push this argument's address" glue than as something a person types. The one
+  real use found in the Sonic 2 disassembly is not that at all: it is a deliberate, commented
+  "fake call" trick. The routine pushes the address right after itself, then branches (not calls)
+  into shared code, so that shared code's own <code>rts</code> returns to the label following the
+  PEA, exactly as if the PEA'd branch had been a subroutine call all along:</p>
+  <pre>	<span class="c">; This is just a fancy efficient way of doing 'if true then call this, else call that'.</span>
+	pea	+(pc)
+	tst.w	(Two_player_mode).w
+	beq.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY
+	bra.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY_DoubleResolution
++</pre>
+  <span class="src">s2disasm/s2.asm:20004-20009 (DrawInitialBG_LoadWholeBackground_512x256)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  This is an unusual, advanced idiom, not PEA's typical job of parameter passing, and it is worth
+  reading twice: the PEA supplies the return address a plain <code>bsr</code>/<code>jsr</code>
+  would have pushed automatically, so a <code>bra</code> can be used instead, picking between two
+  destinations with a branch rather than duplicating the call. A second, structurally identical
+  use of the same trick exists later in the same file, at line 29666.</div>
+</div>
+
+<div class="instr" id="movem">
+  <h3><span class="mn">MOVEM</span> <span class="syn">MOVEM.w/.l &lt;register list&gt;,&lt;ea&gt; &nbsp;|&nbsp; MOVEM.w/.l &lt;ea&gt;,&lt;register list&gt;</span></h3>
+  <p>Transfers a bitmask-selected list of registers to or from consecutive memory in a single
+  instruction. This is the standard way to save every register a routine will clobber on entry,
+  and restore them all on exit, without a separate MOVE per register.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVEM">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+  </div>
+  <p>Saving every register at the very top of the vertical interrupt handler, predecrementing onto
+  the stack:</p>
+  <pre>V_Int:
+	movem.l	d0-a6,-(sp)
+	tst.b	(Vint_routine).w
+	beq.w	Vint_Lag</pre>
+  <span class="src">s2disasm/s2.asm:481-484</span>
+  <p>And the matching restore, postincrementing back off the stack right before returning from the
+  interrupt:</p>
+  <pre>VintRet:
+	addq.l	<span class="n">#1</span>,(Vint_runcount).w
+	movem.l	(sp)+,d0-a6
+	rte</pre>
+  <span class="src">s2disasm/s2.asm:507-510</span>
+  <p>MOVEM is not limited to whole-stack saves; it also loads a fixed setup table in two passes,
+  a word-sized group followed by a long-sized group, both postincrementing through the same
+  pointer:</p>
+  <pre>	lea	SetupValues(pc),a5	<span class="c">; Load setup values array address.</span>
+	movem.w	(a5)+,d5-d7
+	movem.l	(a5)+,a0-a4</pre>
+  <span class="src">s2disasm/s2.asm:206-208</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  With a predecrement destination (register-to-memory), the registers are stored in
+  <strong>descending order</strong>, A7 down through D0, specifically so that a matching
+  postincrement reload restores them in their original order. This is a real encoding quirk, not
+  just a documentation note: the register-list bits mean something different for
+  <code>-(An)</code> than they do for every other addressing mode, which surprises anyone reading
+  raw opcode bytes expecting one consistent bit order. Separately, a <code>.w</code> load into a
+  register sign-extends each 16-bit value to fill the full 32 bits, not zero-extends, a classic
+  bug source when the intent was an unsigned word.</div>
+
+  <figure class="diagram">
+    <div class="stackdiag">
+      <div class="sd-col">
+        <span class="sd-title">movem.l d0-a6,-(sp) pushes</span>
+        <span class="sd-sp">low address</span>
+        <div class="sd-cell sd-first"><span>a6</span><span class="sd-ord">pushed 1st</span></div>
+        <div class="sd-cell"><span>a5</span><span class="sd-ord">2nd</span></div>
+        <div class="sd-cell"><span>a4</span><span class="sd-ord">3rd</span></div>
+        <div class="sd-cell"><span>&hellip;</span><span class="sd-ord">&hellip;</span></div>
+        <div class="sd-cell"><span>d1</span><span class="sd-ord">13th</span></div>
+        <div class="sd-cell sd-last"><span>d0</span><span class="sd-ord">pushed 14th</span></div>
+        <span class="sd-sp">high address &middot; sp ends up here, pointing at d0</span>
+      </div>
+      <div class="sd-arrow">restore reverses it &rarr;</div>
+      <div class="sd-col">
+        <span class="sd-title">movem.l (sp)+,d0-a6 pops</span>
+        <span class="sd-sp">sp starts here</span>
+        <div class="sd-cell sd-last"><span>d0</span><span class="sd-ord">popped 1st</span></div>
+        <div class="sd-cell"><span>d1</span><span class="sd-ord">2nd</span></div>
+        <div class="sd-cell"><span>&hellip;</span><span class="sd-ord">&hellip;</span></div>
+        <div class="sd-cell"><span>a4</span><span class="sd-ord">12th</span></div>
+        <div class="sd-cell"><span>a5</span><span class="sd-ord">13th</span></div>
+        <div class="sd-cell sd-first"><span>a6</span><span class="sd-ord">popped 14th</span></div>
+        <span class="sd-sp">every register lands back where it started</span>
+      </div>
+    </div>
+    <figcaption>movem.l d0-a6,-(sp) pushes a6 first and d0 last, so the matching movem.l
+    (sp)+,d0-a6 pops d0 first and a6 last, each register landing back in itself (static fallback:
+    the two columns above list the exact push and pop order top to bottom).</figcaption>
+  </figure>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; Clearing and rearranging</h2>
+
+<p>The last four instructions don't move data between two different places at all; they reshape a
+value that is already sitting where it needs to be. CLR wipes a location to zero, SWAP and EXG
+rearrange bits or whole registers in place, and EXT changes how many bits of a register actually
+carry meaning, without touching memory at all.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is sign extension, and why does it matter?</summary>
+  <div class="x-body">
+    <p>A signed byte like -1 is stored as <code>$FF</code>, and a signed word holding -1 is stored
+    as <code>$FFFF</code>. If you simply copied that byte <code>$FF</code> into the low 8 bits of a
+    16-bit value and left the top 8 bits zero, you would get <code>$00FF</code>, which is 255, not
+    -1: a completely different number. Sign extension fixes this by copying the value's top bit
+    (the sign bit) into every new bit added above it, so <code>$FF</code> extended to 16 bits
+    correctly becomes <code>$FFFF</code>, still -1.</p>
+    <p>This matters constantly on the 68000 because so much game data is packed into bytes to save
+    ROM space (an object's radius, a velocity, an angle delta), but arithmetic on that data usually
+    needs to happen at word or long size. EXT exists specifically to do this conversion correctly;
+    getting it wrong (or skipping it, and doing math on an unextended byte) is a classic source of
+    "works for positive values, breaks for negative ones" bugs.</p>
+  </div>
+</details>
+
+<div class="instr" id="clr">
+  <h3><span class="mn">CLR</span> <span class="syn">CLR.b/.w/.l &lt;ea&gt;</span></h3>
+  <p>Sets the destination operand to zero, in any of the three sizes. It reads as "clear," and
+  does exactly that: whatever was there before is gone, replaced with 0.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by CLR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-clear" aria-label="N cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="Z set to 1"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <p>Zeroing a flag byte before a batch of work runs:</p>
+  <pre>loc_1072:
+	clr.b	(Do_Updates_in_H_int).w
+	movem.l	d0-a6,-(sp)
+	bsr.w	Do_Updates</pre>
+  <span class="src">s2disasm/s2.asm:1260-1263</span>
+  <p>And the canonical "clear a struct field" pattern, stopping an object's velocity by zeroing
+  both its axes directly:</p>
+  <pre>	st.b	(CutScene+objoff_34).w
+	clr.w	x_vel(a0)
+	clr.w	y_vel(a0)
+	bra.s	-</pre>
+  <span class="src">s2disasm/s2.asm:13594-13597</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  On the original MC68000 specifically (not the later 68010 and up), CLR to a memory destination
+  performs a read-then-write bus cycle, not a write-only one. That is invisible for ordinary
+  <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span>, but it matters if the destination is a hardware register with a
+  read side effect, since clearing it can silently trigger that side effect as an unwanted extra
+  read. Later 680x0 family members fixed CLR to be write-only.</div>
+</div>
+
+<div class="instr" id="swap">
+  <h3><span class="mn">SWAP</span> <span class="syn">SWAP Dn</span></h3>
+  <p>Exchanges the high 16 bits and the low 16 bits of a data register, in place. There is no size
+  suffix; it always operates on the full 32-bit register, and it only ever targets a register,
+  never memory.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by SWAP">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="swapviz" aria-hidden="true">
+    <span class="swapreg"><span class="half hi">high 16</span><span class="half lo">low 16</span></span>
+    <span class="sw-arrow">SWAP&nbsp;&rarr;</span>
+    <span class="swapreg"><span class="half lo">low 16</span><span class="half hi">high 16</span></span>
+  </div>
+  <p>Both real uses here build a <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could, while the CPU keeps working.">DMA</span> command word out of two 16-bit halves computed
+  separately, which is exactly the situation SWAP is built for. First, shaping a VRAM destination
+  address into the top half of a DMA command:</p>
+  <pre>	andi.l	<span class="n">#$FFFF</span>,d2 <span class="c">; command to specify destination address and begin DMA</span>
+	lsl.l	<span class="n">#2</span>,d2
+	lsr.w	<span class="n">#2</span>,d2
+	swap	d2
+	ori.l	<span class="n">#vdpComm($0000,VRAM,DMA)</span>,d2 <span class="c">; set bits to specify VRAM transfer</span></pre>
+  <span class="src">s2disasm/s2.asm:1744-1748</span>
+  <p>The same idiom again, in a different routine, moving a low-half command into position before
+  writing the full longword to the <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> control port:</p>
+  <pre>	ori.w	<span class="n">#vdpComm($0000,VRAM,WRITE)&gt;&gt;16</span>,d0
+	swap	d0
+	move.l	d0,(a4)</pre>
+  <span class="src">s2disasm/s2.asm:2228-2230</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  SWAP never touches memory, only a data register. It's a cheap way to assemble a 32-bit value out
+  of two independently-computed 16-bit halves (compute the low half, swap it into the top, OR or
+  add in the real low half) instead of reaching for shifted 32-bit arithmetic, which is exactly
+  the pattern both examples above share: building a VDP command word half by half.</div>
+</div>
+
+<div class="instr" id="exg">
+  <h3><span class="mn">EXG</span> <span class="syn">EXG Dn,Dn &nbsp;|&nbsp; EXG An,An &nbsp;|&nbsp; EXG Dn,An</span></h3>
+  <p>Exchanges the full 32-bit contents of two registers, in any mix of data and address registers.
+  Always a full-long swap, regardless of the "logical" size of the values held.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by EXG">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">none</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">none</span></span>
+  </div>
+  <p>EXG is genuinely uncommon in hand-written 68000 game code. Most register swaps go through a
+  spare register and a couple of MOVEs instead, since EXG doesn't obviously save time or registers
+  in most contexts; across the entire 91,000-line Sonic 2 disassembly it appears only a handful of
+  times, always as a plain two-register swap inside physics code. Here, swapping two
+  floor-distance candidates so the smaller ends up where the following code expects it:</p>
+  <pre>loc_1ECC6:
+	move.b	(Secondary_Angle).w,d3
+	cmp.w	d0,d1
+	ble.s	loc_1ECD4
+	move.b	(Primary_Angle).w,d3
+	exg	d0,d1</pre>
+  <span class="src">s2disasm/s2.asm:43601-43606 (Sonic_CheckFloor)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Three more near-identical <code>exg d1,d2</code> call sites exist elsewhere in the same
+  disassembly, at lines 47667, 47692, 54498, and 54548, all the same register-swap idiom in
+  different physics routines. That rarity is itself a useful signal: reach for a temp-register
+  MOVE first, and treat EXG as a specialist tool for the rare spot where swapping two full
+  registers in one step is genuinely worth it, not a routine replacement for MOVE.</div>
+</div>
+
+<div class="instr" id="ext">
+  <h3><span class="mn">EXT</span> <span class="syn">EXT.w Dn &nbsp;(byte&rarr;word)&nbsp; &nbsp;|&nbsp; EXT.l Dn &nbsp;(word&rarr;long)</span></h3>
+  <p>Sign-extends the low portion of a data register to fill the rest of the register, in place.
+  <code>EXT.w</code> takes the low byte and extends it to a full word; <code>EXT.l</code> takes the
+  low word and extends it to a full long.</p>
+  <div class="flags" role="group" aria-label="Condition codes affected by EXT">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <p>A byte radius field read off an object, extended to a word before it takes part in word-sized
+  arithmetic:</p>
+  <pre>	moveq	<span class="n">#0</span>,d0
+	move.b	y_radius(a0),d0
+	ext.w	d0
+	add.w	d0,d2</pre>
+  <span class="src">s2disasm/s2.asm:43587-43590</span>
+  <p>And a decoded code-length byte extended for use in a word-sized subtraction, inside a
+  compression decoder's bit-reading loop:</p>
+  <pre>	move.b	(a1,d1.w),d0	<span class="c">; get code length in bits</span>
+	ext.w	d0
+	sub.w	d0,d6	<span class="c">; subtracted from the shift value, such that the next time around the next code is read</span></pre>
+  <span class="src">s2disasm/s2.asm:1865-1867</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  EXT only ever operates on a register, never a memory operand; sign-extending a byte value that
+  lives in memory means MOVE.b-ing it into a register first, then EXT.w-ing it there, exactly the
+  shape of both examples above. There is also no single-step byte-to-long form on the plain 68000:
+  going all the way from a byte to a long takes two instructions, <code>ext.w</code> then
+  <code>ext.l</code>. Reference material for later 680x0 chips sometimes mentions
+  <code>EXTB.L</code>, a direct byte-to-long extension, but that instruction is 68020-and-up only
+  and does not exist on the plain 68000 this page covers.</div>
+</div>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-17 &middot; <a href="../index.html">Back to hub</a><br>
+Previous: Addressing Modes (coming) &middot; Next: Math, Logic &amp; Bits (coming)</footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+
+</body>
+</html>
