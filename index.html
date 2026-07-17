@@ -134,6 +134,26 @@ nav.toc a .n{color:var(--gold); margin-right:.35rem;}
 nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
   border-color:var(--accent); outline:none;}
 
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
 footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
 
@@ -154,6 +174,23 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   This wiki records what was built and why each decision went the way it did, and teaches the
   hardware from zero along the way.</p>
 </header>
+<div class="doors">
+  <div class="door soon">
+    <span class="dr-t">Learn from zero</span>
+    <span class="dr-d">A sequenced path from "what is a CPU" to reading the engine, with things to play with along the way</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <a class="door" href="#manual">
+    <span class="dr-t">The manual</span>
+    <span class="dr-d">The engine, system by system: every decision, the code that implements it, and what it costs</span>
+  </a>
+  <div class="door soon">
+    <span class="dr-t">See it run</span>
+    <span class="dr-d">Hands-on tutorials verified against the real engine in the emulator</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+</div>
+
 
 <p class="hub-h">The Suite</p>
 <div class="hub-grid">
@@ -184,7 +221,7 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   </div>
 </div>
 
-<p class="hub-h">Aeon: Hardware Foundations</p>
+<p class="hub-h" id="manual">Aeon: Hardware Foundations</p>
 <div class="hub-grid">
   <a class="card" href="aeon/section-0-boot.html">
     <span class="no">01</span>
