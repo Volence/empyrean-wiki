@@ -197,6 +197,73 @@ details.explain summary::-webkit-details-marker{display:none;}
 .ph-steps{margin:0; padding-left:1.1rem; font-size:.84rem; color:var(--dim);}
 .ph-steps li{margin:.18rem 0; max-width:38rem;}
 .ph-steps code{font-size:.78em;}
+
+/* 68000 memory map (section 1) */
+.mmap{display:flex; flex-direction:column; gap:3px; width:24rem; max-width:100%;}
+.mmr{font-family:var(--mono); font-size:.68rem; display:flex; justify-content:space-between;
+  align-items:baseline; gap:.8rem; text-align:left; padding:.45rem .6rem;
+  border:1px solid var(--line); background:var(--panel2); color:var(--dim);
+  cursor:pointer; border-radius:2px;}
+.mmr:hover{background:var(--panel);}
+.mmr:focus-visible{outline:2px solid var(--ink); outline-offset:1px;}
+.mmr.sel{background:#222244; outline:2px solid var(--ink); outline-offset:1px;}
+.mmr .a{white-space:nowrap;}
+.mmr .nm{text-align:right;}
+.mmr.m-rom{border-color:#EEAA00; color:#EEAA00; padding-top:1rem; padding-bottom:1rem;}
+.mmr.m-z80{border-color:#44CC88; color:#44CC88;}
+.mmr.m-io{border-color:#AAAACC; color:#AAAACC;}
+.mmr.m-tmss{border-color:#CC66AA; color:#CC66AA;}
+.mmr.m-vdp{border-color:#4466EE; color:#88AAEE;}
+.mmr.m-ram{border-color:#44CCEE; color:#44CCEE; padding-top:.8rem; padding-bottom:.8rem;}
+.mmgap{font-family:var(--mono); font-size:.58rem; color:#666688; text-align:center;
+  border:1px dashed #444466; border-radius:2px; padding:.12rem 0; letter-spacing:.15em;
+  text-transform:uppercase;}
+
+/* lane timelines (sections 5 and 7) */
+.lanes{min-width:44rem; display:flex; flex-direction:column; gap:.5rem;}
+.lane{display:grid; grid-template-columns:3.2rem 1fr; gap:.6rem;}
+.lane .ln{font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; color:var(--dim);
+  text-transform:uppercase; align-self:center;}
+.lane .track{display:flex; gap:2px;}
+.tseg{font-family:var(--mono); font-size:.6rem; line-height:1.35; padding:.35rem .25rem;
+  border:1px solid var(--line); border-radius:2px; display:flex; align-items:center;
+  justify-content:center; text-align:center; overflow:hidden;}
+.tseg.t-vdp{background:rgba(68,102,238,.12); border-color:#4466EE; color:#88AAEE;}
+.tseg.t-cpu{background:rgba(238,170,0,.12); border-color:#EEAA00; color:#EEAA00;}
+.tseg.t-big{background:rgba(238,170,0,.18);}
+.tseg.t-wait{border-style:dashed; background:transparent; color:var(--dim);}
+.tseg.t-sp{border:0; background:transparent;}
+
+/* frame timing strip (section 7) */
+.fstrip{min-width:46rem; padding-top:1.35rem;}
+.ftrack{position:relative;}
+.tseg.t-act{background:rgba(68,102,238,.12); border-color:#4466EE; color:#88AAEE;}
+.tseg.t-blank{background:rgba(238,170,0,.18); border-color:#EEAA00; color:#EEAA00;}
+.fmark{position:absolute; left:85.5%; top:-1.35rem; bottom:0; border-left:2px solid #EEAA00;
+  pointer-events:none;}
+.fmark span{position:absolute; right:.4rem; top:-.1rem; white-space:nowrap;
+  font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;}
+
+/* VRAM layout bar (section 3) */
+.vrwrap{position:relative; min-width:52rem; padding-top:1.3rem;}
+.vrbar{display:flex; height:3.2rem;}
+.vseg{font-family:var(--mono); font-size:.6rem; display:flex; align-items:center;
+  justify-content:center; text-align:center; overflow:hidden; border:1px solid var(--line);}
+.vseg.v-art{background:rgba(68,204,136,.12); border-color:#44CC88; color:#44CC88;}
+.vseg.v-sat{background:rgba(204,102,170,.12); border-color:#CC66AA;}
+.vseg.v-hs{background:rgba(238,170,0,.12); border-color:#EEAA00;}
+.vseg.v-pa{background:rgba(68,102,238,.12); border-color:#4466EE; color:#88AAEE;}
+.vseg.v-pb{background:rgba(68,102,238,.25); border-color:#4466EE; color:#88AAEE;}
+.vmark{position:absolute; left:93.75%; top:0; bottom:0; border-left:2px solid #EEAA00;
+  pointer-events:none;}
+.vmark span{position:absolute; right:.4rem; top:-.1rem; white-space:nowrap;
+  font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;}
+.mkey{display:flex; flex-wrap:wrap; gap:.35rem .95rem; margin-top:.7rem;
+  font-family:var(--mono); font-size:.62rem; color:var(--dim);}
+.mkey span::before{content:"■ ";}
+.mkey .k-art::before{color:#44CC88;} .mkey .k-sat::before{color:#CC66AA;}
+.mkey .k-hs::before{color:#EEAA00;} .mkey .k-pa::before{color:#4466EE;}
+.mkey .k-pb::before{color:#88AAEE;}
 </style>
 </head>
 <body>
@@ -337,6 +404,28 @@ DEBUG), so a crash on real hardware is a readable screen, never a silent freeze.
     trace.</p>
   </div>
 </details>
+
+<p>Before the decisions below, it helps to see the terrain they live in. The 68000 addresses
+16MB, and every piece of hardware this page touches sits at a fixed spot inside that space;
+"talking to the VDP" or "copying a program into the Z80" just means writing to the right
+addresses. Click a region to see what lives there and where this page uses it.</p>
+
+<figure class="diagram">
+  <div class="mmap" id="mmap">
+    <button type="button" class="mmr m-rom"><span class="a">$000000-$3FFFFF</span><span class="nm">cartridge ROM</span></button>
+    <div class="mmgap" aria-hidden="true">unmapped / expansion</div>
+    <button type="button" class="mmr m-z80"><span class="a">$A00000-$A0FFFF</span><span class="nm">Z80 address space</span></button>
+    <button type="button" class="mmr m-io"><span class="a">$A10000-$A1001F</span><span class="nm">I/O area</span></button>
+    <button type="button" class="mmr m-z80"><span class="a">$A11100 / $A11200</span><span class="nm">Z80 bus request / reset</span></button>
+    <button type="button" class="mmr m-tmss"><span class="a">$A14000</span><span class="nm">TMSS register</span></button>
+    <div class="mmgap" aria-hidden="true">unmapped</div>
+    <button type="button" class="mmr m-vdp"><span class="a">$C00000-$C0001F</span><span class="nm">VDP ports</span></button>
+    <div class="mmgap" aria-hidden="true">unmapped / mirrors</div>
+    <button type="button" class="mmr m-ram"><span class="a">$FF0000-$FFFFFF</span><span class="nm">work RAM (64KB)</span></button>
+  </div>
+  <div class="vcap" id="mmcap" aria-live="polite">Click a region to see what it is and where this page uses it.</div>
+  <figcaption>The 68000 address map, low addresses at the top (not to scale)</figcaption>
+</figure>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>Initial stack pointer = $FFFFFF00, not $00000000.</strong> The stack grows downward
@@ -528,6 +617,32 @@ and press Enter) to pin a highlight while you cross-reference.</p>
 </table>
 </div>
 <span class="src">engine/system/boot.asm:239 (BootData_VDPRegs)</span>
+
+<p>Registers $02, $04, $05 and $0D are all answering one question: where in the VDP's 64KB does
+each table live? Here is the map those four values draw, to proportion:</p>
+
+<figure class="diagram">
+  <div class="vrwrap">
+    <div class="vmark" aria-hidden="true"><span>window nametable · $F000 (reg $03)</span></div>
+    <div class="vrbar">
+      <div class="vseg v-art" style="width:71.875%;">$0000-$B7FF · art pool (tiles $000-$5BF)</div>
+      <div class="vseg v-sat" style="width:1.5625%;"></div>
+      <div class="vseg v-hs" style="width:1.5625%;"></div>
+      <div class="vseg v-pa" style="width:12.5%;">$C000-$DFFF · Plane A</div>
+      <div class="vseg v-pb" style="width:12.5%;">$E000-$FFFF · Plane B</div>
+    </div>
+  </div>
+  <div class="mkey">
+    <span class="k-art">$0000-$B7FF art pool</span>
+    <span class="k-sat">$B800-$BBFF sprite table</span>
+    <span class="k-hs">$BC00-$BFFF HScroll table</span>
+    <span class="k-pa">$C000-$DFFF Plane A</span>
+    <span class="k-pb">$E000-$FFFF Plane B</span>
+  </div>
+  <figcaption>VRAM $0000-$FFFF, widths proportional: the art pool dominates, and every table
+  packs into the top $4800 bytes. The $F000 tick marks where reg $03 points the window
+  nametable, inside Plane B's map (the overlap discussed in the table above).</figcaption>
+</figure>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>64×64-cell scroll planes.</strong> Most Genesis games (and every classic Sonic) use
@@ -758,6 +873,36 @@ CPU  [###### chores, 9 ######][wait 1]                   total = 10</pre>
   boot follows exactly this timeline, just with real durations.</p>
 </div>
 
+<p>And here is the real timeline, on both clocks. The top lane is the VDP grinding through the
+fill on its own; the bottom lane is everything the CPU does in the meantime, in the exact order
+<code>boot.asm</code> runs it:</p>
+
+<figure class="diagram">
+  <div class="lanes">
+    <div class="lane">
+      <span class="ln">VDP</span>
+      <div class="track">
+        <div class="tseg t-sp" style="width:7%;"></div>
+        <div class="tseg t-vdp" style="width:88%;">DMA fill: VRAM $0000-$FFFF with zeroes (on the VDP's clock)</div>
+        <div class="tseg t-sp" style="width:5%;"></div>
+      </div>
+    </div>
+    <div class="lane">
+      <span class="ln">CPU</span>
+      <div class="track">
+        <div class="tseg t-cpu" style="width:7%;">inc = 1, start fill</div>
+        <div class="tseg t-cpu" style="width:25%;">Z80 init + driver load</div>
+        <div class="tseg t-cpu t-big" style="width:46%;">clear 64KB work RAM (~180,000 cycles, the dominator)</div>
+        <div class="tseg t-cpu" style="width:8%;">PSG silence</div>
+        <div class="tseg t-wait" style="width:14%;">wait: fill done?</div>
+      </div>
+    </div>
+  </div>
+  <figcaption>The parallel window, order as shipped (boot.asm, phases B-D). Widths are
+  qualitative; the real durations are in the paragraph below, and the whole sequence finishes
+  in a small handful of frames.</figcaption>
+</figure>
+
 <p>For the record, those real durations: the 64KB work-RAM clear alone is roughly 180,000 CPU
 cycles, about 23 milliseconds, and it is the biggest single CPU chore in the sequence. The
 entire boot, from the reset vector to the handoff into the game loop, finishes in a small
@@ -869,6 +1014,34 @@ asymmetry is the design.</p>
     Genesis game shows you was smuggled into video memory during VBlanks.</p>
   </div>
 </details>
+
+<p>Seen as scanlines, a frame is mostly picture. On NTSC, 224 of the 262 lines are active
+display; VInt fires at the start of line 224, and the remaining 38 lines are the whole window
+before the next frame begins:</p>
+
+<figure class="diagram">
+  <div class="lanes fstrip">
+    <div class="lane">
+      <span class="ln">NTSC</span>
+      <div class="track ftrack">
+        <div class="tseg t-act" style="width:85.5%;">active display · lines 0-223</div>
+        <div class="tseg t-blank" style="width:14.5%;">the sliver · 224-261</div>
+        <div class="fmark" aria-hidden="true"><span>VInt fires · start of line 224</span></div>
+      </div>
+    </div>
+    <div class="lane">
+      <span class="ln">PAL</span>
+      <div class="track">
+        <div class="tseg t-act" style="width:71.8%;">active display · lines 0-223</div>
+        <div class="tseg t-blank" style="width:28.2%;">vblank · lines 224-311</div>
+      </div>
+    </div>
+  </div>
+  <figcaption>One frame as scanlines, widths proportional. Everything in this section's VInt
+  pipeline must finish inside the sliver: 38 blank lines of 262 on NTSC, 88 of 312 on PAL (the
+  bigger sliver behind section 6's per-region DMA budget). This window is why the DMA budget
+  exists.</figcaption>
+</figure>
 
 <p><strong>HBlank: RAM-dispatched, contract-bound.</strong> The vector points at this ROM stub,
 which never changes; per-section raster programs are installed by writing
@@ -1241,6 +1414,42 @@ function expandAll(btn){
       cap.innerHTML = '<b>' + off + ' · ' + e.purpose + '</b> → ' + e.handler + '<br>' + e.note;
     });
     grid.appendChild(b);
+  });
+})();
+
+/* ---- 68000 memory map ---- */
+(function(){
+  const D = [
+    ["Up to 4MB of cartridge: the 64-slot vector table and the ROM header occupy the first $200 bytes, and everything else on this page is code and data behind them.",
+     "On this page: section 1 (the vector table) and section 9 (the generated header)."],
+    ["The Z80's world as the 68000 sees it: the sound CPU's 8KB of RAM sits behind this window at $A00000, writable one byte at a time once the bus is granted.",
+     "On this page: section 4 (the byte-by-byte driver copy)."],
+    ["The I/O area: the version register at $A10001 (region, revision nibble) plus the data and control registers for the three controller ports.",
+     "On this page: section 2 (the revision check that gates TMSS) and section 6 (region detection, controller init)."],
+    ["Two control registers for the second CPU: write $A11100 to request or release the Z80's bus, $A11200 to hold or release its reset line.",
+     "On this page: section 4 (the bus dance, and every stopZ80/startZ80 bracket)."],
+    ["The Trademark Security System register: newer consoles demand the longword \"SEGA\" here before the VDP will respond.",
+     "On this page: section 2 (the handshake)."],
+    ["The video chip's mail slots: data port $C00000, control port $C00004, H/V counter $C00008, and the PSG's write port at $C00011.",
+     "On this page: section 3 (the register writes) and section 5 (the DMA fill, the CRAM/VSRAM clears, the PSG silence)."],
+    ["The 68000's own 64KB of work RAM: every engine and game variable lives here, and the stack grows down from $FFFFFF00, the initial SSP.",
+     "On this page: section 1 (the SSP decision) and section 5 (the 64KB clear)."]
+  ];
+  const cap = document.getElementById('mmcap');
+  const btns = document.querySelectorAll('#mmap .mmr');
+  let sel = null;
+  btns.forEach((b, i) => {
+    b.setAttribute('aria-pressed', 'false');
+    const range = b.querySelector('.a').textContent;
+    const name  = b.querySelector('.nm').textContent;
+    b.setAttribute('aria-label', range + ' ' + name);
+    b.addEventListener('click', () => {
+      if (sel) { sel.classList.remove('sel'); sel.setAttribute('aria-pressed', 'false'); }
+      sel = b;
+      b.classList.add('sel');
+      b.setAttribute('aria-pressed', 'true');
+      cap.innerHTML = '<b>' + range + ' · ' + name + '</b><br>' + D[i][0] + ' ' + D[i][1];
+    });
   });
 })();
 
