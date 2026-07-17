@@ -1,0 +1,1560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aeon 02: The VDP &amp; the Frame</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E📺%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+/* ============================================================
+   Page-specific styles: 02 The VDP & the Frame
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+
+/* frame strip (reused pattern from §0.7) */
+.lanes{min-width:44rem; display:flex; flex-direction:column; gap:.5rem;}
+.lane{display:grid; grid-template-columns:3.2rem 1fr; gap:.6rem;}
+.lane .ln{font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; color:var(--dim);
+  text-transform:uppercase; align-self:center;}
+.lane .track{display:flex; gap:2px;}
+.tseg{font-family:var(--mono); font-size:.6rem; line-height:1.35; padding:.35rem .25rem;
+  border:1px solid var(--line); border-radius:2px; display:flex; align-items:center;
+  justify-content:center; text-align:center; overflow:hidden;}
+.fstrip{min-width:46rem; padding-top:1.5rem;}
+.ftrack{position:relative;}
+.tseg.t-act{background:rgba(68,102,238,.12); border-color:#4466EE; color:#88AAEE;}
+.tseg.t-blank{background:rgba(238,170,0,.18); border-color:#EEAA00; color:#EEAA00;}
+.fmark{position:absolute; left:85.5%; top:-1.5rem; bottom:0; border-left:2px solid #EEAA00;
+  pointer-events:none;}
+.fmark span{position:absolute; right:.35rem; top:0; white-space:nowrap;
+  font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;
+  border-bottom:1px solid #EEAA00; padding-bottom:.08rem;}
+.fsub{font-family:var(--mono); font-size:.58rem; color:#EEAA00; letter-spacing:.06em;
+  text-align:right; margin-top:.2rem;}
+
+/* pipeline stepper (VBlank order, like §0's boot stepper) */
+.bootline{list-style:none; margin:1.2rem 0 0; padding:0 0 0 1rem;}
+.bootline>li{position:relative; margin:0; padding:.1rem 0 1.3rem 1.9rem;
+  border-left:2px solid var(--line);}
+.bootline>li:last-child{padding-bottom:.2rem;}
+.bootline>li::before{content:attr(data-ph); position:absolute; left:-1.05rem; top:-.1rem;
+  width:1.9rem; height:1.9rem; line-height:1.9rem; text-align:center; border-radius:50%;
+  background:var(--panel2); border:1px solid var(--gold); color:var(--gold);
+  font-family:var(--mono); font-size:.78rem;}
+.bootline>li.omit::before{border-color:#666688; color:#666688;}
+.bootline>li.omit{opacity:.5;}
+.ph-t{font-family:var(--mono); font-size:.88rem; color:var(--ink); margin:0 0 .25rem;}
+.ph-t small{color:var(--dim); font-size:.68rem; letter-spacing:.06em;}
+.ph-steps{margin:0; padding-left:1.1rem; font-size:.84rem; color:var(--dim);}
+.ph-steps li{margin:.18rem 0; max-width:38rem;}
+.ph-steps code{font-size:.78em;}
+
+/* DMA queue flow diagram */
+.qflow{display:flex; flex-direction:column; gap:.7rem; min-width:40rem;}
+.qrow{display:grid; grid-template-columns:9rem 1fr; gap:.7rem; align-items:center;}
+.qrow .qn{font-family:var(--mono); font-size:.68rem; color:var(--dim); text-align:right;}
+.qbox{font-family:var(--mono); font-size:.65rem; padding:.4rem .6rem; border-radius:3px;
+  border:1px solid var(--line); background:var(--panel);}
+.qbox.q-crit{border-color:#CC66AA; color:#CC66AA;}
+.qbox.q-imp{border-color:#4466EE; color:#88AAEE;}
+.qbox.q-def{border-color:#44CC88; color:#44CC88;}
+.qarrow{font-family:var(--mono); font-size:.7rem; color:var(--dim); text-align:center;
+  margin:.1rem 0;}
+
+/* generic bit-field word display (nametable composer + DMA entry) */
+.bitword{display:flex; font-family:var(--mono); font-size:.68rem; margin:.6rem 0;
+  border:1px solid var(--line); border-radius:3px; overflow:hidden; width:max-content;}
+.bitword .bf{padding:.35rem .5rem; border-right:1px solid var(--line); text-align:center;}
+.bitword .bf:last-child{border-right:0;}
+.bitword .bf.b-tile{background:rgba(68,102,238,.15); color:#88AAEE;}
+.bitword .bf.b-pal{background:rgba(238,170,0,.15); color:#EEAA00;}
+.bitword .bf.b-pri{background:rgba(204,102,170,.15); color:#CC66AA;}
+.bitword .bf.b-flip{background:rgba(68,204,136,.15); color:#44CC88;}
+
+/* nametable composer manipulable */
+.ntcomposer{display:flex; flex-wrap:wrap; gap:1.4rem; align-items:flex-start;}
+.ntc-controls{display:flex; flex-direction:column; gap:.55rem; font-family:var(--mono); font-size:.72rem;}
+.ntc-row{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;}
+.ntc-row label{color:var(--dim); min-width:5.2rem;}
+.tilepick{display:flex; gap:3px;}
+.tilepick button{width:1.9rem; height:1.9rem; padding:0; border:1px solid var(--line);
+  background:var(--panel); cursor:pointer; border-radius:2px;}
+.tilepick button.sel{outline:2px solid var(--ink); outline-offset:1px;}
+.tilepick button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.ntc-btn{font-family:var(--mono); font-size:.68rem; padding:.28rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.ntc-btn[aria-pressed="true"]{border-color:var(--accent); color:var(--ink); background:rgba(68,102,238,.18);}
+.ntc-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel);
+  color:var(--ink); border:1px solid var(--line); border-radius:3px; padding:.22rem .4rem;}
+.ntc-canvaswrap{display:flex; flex-direction:column; gap:.5rem; align-items:flex-start;}
+#ntcGrid{display:grid; grid-template-columns:repeat(4,2.4rem); grid-template-rows:repeat(4,2.4rem);
+  gap:2px; background:var(--line); border:1px solid var(--line);}
+.ntc-cell{background:#000; cursor:pointer; padding:0; border:0;}
+.ntc-cell canvas{width:100%; height:100%; display:block; image-rendering:pixelated;}
+.ntc-cell:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+.ntc-cell.cursel{outline:2px solid var(--gold); outline-offset:-2px;}
+.ntc-preview canvas{image-rendering:pixelated; border:1px solid var(--line);}
+.ntc-word{font-family:var(--mono); font-size:.75rem; color:var(--ink);}
+
+/* DMA budget packer manipulable */
+.dmapacker{display:flex; flex-direction:column; gap:.7rem; min-width:40rem;}
+.dmap-toprow{display:flex; align-items:center; gap:1rem; flex-wrap:wrap;
+  font-family:var(--mono); font-size:.72rem; color:var(--dim);}
+.dmap-blocks{display:flex; flex-wrap:wrap; gap:.4rem;}
+.dblk{font-family:var(--mono); font-size:.65rem; padding:.35rem .55rem; border-radius:3px;
+  border:1px solid var(--accent); background:rgba(68,102,238,.12); color:var(--ink);
+  cursor:pointer;}
+.dblk:focus-visible{outline:2px solid var(--ink); outline-offset:1px;}
+.dblk:disabled{opacity:.35; cursor:not-allowed;}
+.dmap-bar{position:relative; height:2.4rem; border:1px solid var(--line); border-radius:3px;
+  background:var(--panel2); overflow:hidden; display:flex; align-items:stretch;}
+.dmap-fill{display:flex; align-items:stretch;}
+.dseg{font-family:var(--mono); font-size:.62rem; display:flex; align-items:center;
+  justify-content:center; text-align:center; overflow:hidden; border-right:1px solid var(--ground);
+  background:rgba(68,204,136,.35); color:var(--ink); cursor:pointer; flex-shrink:0;}
+.dseg:hover{background:rgba(68,204,136,.55);}
+.dseg:focus-visible{outline:2px solid var(--ink); outline-offset:-2px;}
+.dmap-overbar{position:absolute; top:0; bottom:0; background:repeating-linear-gradient(
+  45deg, rgba(238,68,68,.25) 0 6px, rgba(238,68,68,.4) 6px 12px); pointer-events:none;}
+.dmap-nextframe{border:1px dashed var(--line); border-radius:3px; padding:.5rem .7rem;
+  min-height:2.6rem; display:flex; flex-wrap:wrap; gap:.3rem; align-items:center;}
+.dmap-nextframe .dseg{border-right:1px solid var(--ground); background:rgba(238,68,68,.3); flex-shrink:0;}
+.dmap-cap{font-family:var(--mono); font-size:.74rem; color:var(--ink); min-height:2.6rem;}
+.dmap-cap b{color:var(--gold); font-weight:normal;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / AEON / THE VDP &amp; THE FRAME</p>
+  <p class="eyebrow">Aeon Engine · 02</p>
+  <h1>The VDP &amp; the Frame</h1>
+  <p class="sub">Everything a player sees comes from one chip: the VDP, walking its own private
+  memory sixty times a second. This page explains what that chip actually is, then follows one
+  frame all the way through the engine, from the moment the game loop finishes work to the
+  moment pixels leave for the television. Verified line-by-line against
+  <code>engine/system/</code> and <code>engine/level/</code>.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>What the VDP draws with</a>
+  <a href="#s2"><span class="n">2</span>Two ports and a shadow table</a>
+  <a href="#s3"><span class="n">3</span>The frame and its sliver</a>
+  <a href="#s4"><span class="n">4</span>The VBlank pipeline</a>
+  <a href="#s5"><span class="n">5</span>The DMA queue</a>
+  <a href="#s6"><span class="n">6</span>Dirty buffers and static DMA</a>
+  <a href="#s7"><span class="n">7</span>The plane buffer</a>
+  <a href="#s8"><span class="n">8</span>The Z80 and DMA</a>
+  <a href="#s9"><span class="n">9</span>The HBlank seam</a>
+</nav>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 · What the VDP draws with</h2>
+
+<p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> never sees pixels arrive from the CPU one at a time. Instead it owns
+64KB of private memory and, sixty times a second, walks that memory and composites a picture out
+of four kinds of thing living inside it: <span class="term" data-def="An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.">tiles</span>, nametables, <span class="term" data-def="A set of 16 colors in CRAM. Every tile and sprite picks one of the four palettes.">palettes</span>, and <span class="term" data-def="A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.">sprites</span>. Everything else in this
+page, the queues, the buffers, the interrupts, exists to get bytes into that memory in the right
+shape, at the right time.</p>
+
+<details class="explain">
+  <summary>New here? · What is a tile, really?</summary>
+  <div class="x-body">
+    <p>A tile is the Genesis's atomic unit of picture: an 8&times;8 block of pixels, and nothing
+    the VDP draws is any smaller than one. Each pixel in a tile is 4 bits, not a full color, a
+    number from 0 to 15 that means "slot 15 of whichever palette this tile is told to use." That
+    indirection is the whole trick: the same 32 bytes of tile data can look like four different
+    things depending which of the four 16-color palettes gets attached to it at draw time.</p>
+    <p>32 bytes per tile (8 rows &times; 8 pixels &times; 4 bits, packed two pixels per byte) is
+    small enough that the unified art pool holds well over a thousand of them, resident,
+    permanently, in VRAM. There is no "load this sprite's graphics" step during gameplay the way
+    a modern engine streams a texture; the tile is already sitting in video memory, and drawing
+    it is just telling the VDP which slot to read.</p>
+  </div>
+</details>
+
+<p>A <span class="term" data-def="A grid map in VRAM saying which tile to draw in each 8x8 cell of a plane, plus that cell's palette, flip and priority bits.">nametable</span> is the map that turns loose tiles into a picture: a grid of 16-bit words, one per 8&times;8
+cell, where each word names a tile index and four small flags riding along with it. A <em>plane</em>
+is one such grid, scrollable as a whole; Aeon uses two, Plane A and Plane B, each a full
+64&times;64-cell map in <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>. Nothing about a nametable word touches pixels directly; it is a
+pointer plus some paint instructions, and the VDP does the actual pixel lookup every scanline as
+it draws.</p>
+
+<div class="bitword" aria-hidden="true">
+  <span class="bf b-pri">PRI<br>1 bit</span>
+  <span class="bf b-pal">PAL<br>2 bits</span>
+  <span class="bf b-flip">VF<br>1 bit</span>
+  <span class="bf b-flip">HF<br>1 bit</span>
+  <span class="bf b-tile">TILE INDEX<br>11 bits</span>
+</div>
+
+<p>Fifteen bits, laid out high to low: priority (draw above or below the other plane and most
+sprites), a 2-bit palette select (which of the four 16-color palettes), vertical flip, horizontal
+flip, and an 11-bit tile index (0-2047, which is exactly why the unified art pool tops out where
+it does). Bit 15 itself is unused by the plane hardware. The composer below lets you build one of
+these words by hand and watch both the bits and the picture update together.</p>
+
+<figure class="diagram">
+  <div class="ntcomposer">
+    <div class="ntc-controls">
+      <div class="ntc-row">
+        <label id="ntcTileLbl">Tile</label>
+        <div class="tilepick" id="ntcTilePick" role="group" aria-labelledby="ntcTileLbl"></div>
+      </div>
+      <div class="ntc-row">
+        <label id="ntcPalLbl">Palette</label>
+        <select class="ntc-sel" id="ntcPal" aria-labelledby="ntcPalLbl">
+          <option value="0">0</option><option value="1">1</option>
+          <option value="2">2</option><option value="3">3</option>
+        </select>
+      </div>
+      <div class="ntc-row">
+        <label>Flip</label>
+        <button type="button" class="ntc-btn" id="ntcFlipH" aria-pressed="false">H flip</button>
+        <button type="button" class="ntc-btn" id="ntcFlipV" aria-pressed="false">V flip</button>
+      </div>
+      <div class="ntc-row">
+        <label>Priority</label>
+        <button type="button" class="ntc-btn" id="ntcPri" aria-pressed="false">High priority</button>
+      </div>
+      <div class="ntc-word" id="ntcWordText" aria-live="polite">word = $0000</div>
+      <div class="bitword" id="ntcBits" aria-hidden="true"></div>
+    </div>
+    <div class="ntc-canvaswrap">
+      <div id="ntcGrid" role="group" aria-label="4 by 4 nametable grid, click a cell to place the current tile"></div>
+      <div class="ntc-preview"><canvas id="ntcPreview" width="64" height="64"></canvas></div>
+    </div>
+  </div>
+  <p class="dmap-cap" id="ntcCap" aria-live="polite">Pick a tile and its flags, then click a grid
+  cell to write that nametable word there. The preview canvas shows exactly what the VDP would
+  draw for the selected cell.</p>
+  <figcaption>Nametable composer: a plane is a grid of words like this one, not a grid of pixels
+  (static fallback: the bit-field diagram above shows the fixed layout of every nametable word).</figcaption>
+</figure>
+
+<details class="explain">
+  <summary>New here? · What is a palette, and why only four?</summary>
+  <div class="x-body">
+    <p>The Genesis can show 512 possible colors (9-bit color: 3 bits each of red, green, blue),
+    but never more than 64 on screen at once, held in a small dedicated memory called <span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>. Those 64 slots are split into four palettes of 16 colors each, and every tile,
+    every sprite, picks exactly one of the four for its lifetime on screen. Slot 0 of any
+    palette is transparent (or the backdrop color, for a whole-plane background), which is why a
+    4-bit tile only really shows 15 colors.</p>
+    <p>Four palettes sounds tight, but it buys something modern engines pay dearly for: instant,
+    zero-cost palette swaps. Recolor Sonic's shield by rewriting 16 bytes of CRAM, not a single
+    pixel of tile data. The wiki's own palette story lives on the Art &amp; Compression page.</p>
+  </div>
+</details>
+
+<p>Sprites are the fourth ingredient, and they are built from the same tiles as the planes but
+positioned independently, one entry per sprite in the <span class="term" data-def="The Sprite Attribute Table: the list in VRAM describing every sprite's position, size, tiles and drawing order.">Sprite Attribute Table</span> (SAT) in
+VRAM: up to 80 on screen, each naming a position, a size in tiles, and a starting tile index
+plus the same palette/flip/priority bits a nametable word carries. The SAT's anatomy, byte by
+byte, belongs to the Object System page; this page cares about it only as one more thing that has
+to reach VRAM every frame, and reliably.</p>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 · Two ports and a shadow table</h2>
+
+<p>The CPU cannot address <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>, <span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>, or the VDP's 24 configuration <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span> directly. Every access goes through two
+16-bit mail slots at fixed addresses: the data port (where bytes and words actually flow) and the
+control port (where you first say where those bytes are going, or, using a different write
+pattern, which register to set). A "register write" is really a magic word sent to the control
+port; there is no address named "register 5", only the convention that a control-port word shaped
+like <code>$85xx</code> means "put <code>xx</code> in register 5".</p>
+
+<details class="explain">
+  <summary>New here? · Why can't the CPU just read VDP memory directly?</summary>
+  <div class="x-body">
+    <p>On a modern computer, video memory is just another region of the same address space; the
+    CPU reads and writes it like anything else. The Genesis's VDP is a separate chip with its own
+    64KB of memory wired to nothing but itself, so the 68000 physically cannot point at a VRAM
+    address and read a byte the way it reads work RAM. The only door in is two narrow ports: tell
+    the control port where you want to go and what kind of access, then push bytes through the
+    data port.</p>
+    <p>That narrow door is why so much of this page exists. Every technique described here,
+    the shadow table, the DMA queue, the deferred plane buffer, is ultimately about getting bytes
+    through that one door as efficiently and safely as possible, because there is no other way
+    in.</p>
+  </div>
+</details>
+
+<p>That convention has a sharp edge: VDP registers are write-only. The chip never lets the CPU
+ask "what's in register 1 right now?" So Aeon keeps its own answer in RAM, a 19-byte
+<code>VDP_Shadow</code> struct mirroring registers $00-$12 (the five DMA registers $13-$17 are
+per-transfer state the DMA queue owns, not settled configuration, so they are deliberately not
+shadowed):</p>
+
+<pre>VDP_Shadow struct
+vdp_mode1               ds.b 1          <span class="c">; reg $00</span>
+vdp_mode2               ds.b 1          <span class="c">; reg $01</span>
+vdp_plane_a             ds.b 1          <span class="c">; reg $02</span>
+<span class="c">; … one field per register through $12 …</span>
+vdp_window_h            ds.b 1          <span class="c">; reg $11</span>
+vdp_window_v            ds.b 1          <span class="c">; reg $12</span>
+VDP_Shadow endstruct
+
+        if VDP_Shadow_len &lt;&gt; <span class="n">19</span>
+          error "VDP_Shadow struct is \{VDP_Shadow_len} bytes, expected 19"
+        endif</pre>
+<span class="src">engine/structs.asm:9</span>
+
+<p>Game code writes registers through a <code>SetVDPReg</code> macro that updates the shadow and
+sets a bit in a dirty mask; once per <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>, <code>Flush_VDP_Shadow</code> walks all 19 fields and writes only
+the ones whose dirty bit is set. On a typical gameplay frame zero to three registers actually
+change, so the flush skips sixteen-plus writes it would otherwise have to make blind.</p>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>The shadow is the only sanctioned path for settled state, with two narrow exceptions.</strong>
+  A raw control-port write to a shadowed register is legal exactly twice: transient pre-DMA setup
+  (the level streamer's auto-increment tweak right before a transfer, where nothing reads the
+  value back as authoritative), and mid-frame raster handlers, which may hit registers directly
+  because that is the entire point of a raster effect, but must never touch the shadow or dirty
+  mask, since the next VBlank flush would just re-assert the old value over the raster write.
+  Everything else goes through <code>SetVDPReg</code>.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Batman &amp; Robin ✓ RAM shadow table, bulk-writes all 19 every frame</span>
+    <span class="yes">Alien Soldier ✓ same</span>
+    <span class="yes">Aeon ✓ + dirty tracking (only changed registers written)</span>
+  </div>
+</div>
+
+<p>The rule has a known live exception, worth stating plainly rather than pretending the
+invariant is perfect: OJZ test/game-shell code contains a direct <code>$8B</code> control-port
+write for HScroll mode that bypasses <code>SetVDPReg</code> entirely. It is tracked as a bug, not
+a supported pattern; the engine-level convention still holds, and the violation is content-side,
+not something the engine itself does.</p>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 · The frame and its sliver</h2>
+
+<p>A television doesn't receive a picture all at once; it receives one <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 312.">scanline</span> at a time,
+top to bottom, and then the beam has to fly back up to start over. On NTSC, 224 of 262 lines per
+frame are actually visible; the remaining 38 are dead time from the display's point of view, but
+they are the only window where the CPU can safely rewrite video memory without the change tearing
+across a half-drawn picture. That window is called <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>, and almost everything on the rest of this
+page is about using it well.</p>
+
+<details class="explain">
+  <summary>New here? · What actually happens if you write to VRAM outside VBlank?</summary>
+  <div class="x-body">
+    <p>The VDP is reading from its own memory to build the picture at the exact same moment the
+    CPU would be trying to write to it, since the chip is drawing continuously, line after line,
+    the whole time the screen is lit. A write that lands mid-scanline doesn't crash anything, but
+    it can change a tile or a nametable entry the VDP is about to read for the very next pixel, so
+    the result is visible on screen as a fleeting tear or glitch, a texture that flickers wrong
+    for one frame and then looks fine again.</p>
+    <p>VBlank sidesteps the whole problem by being the one moment nothing is being drawn at all.
+    Writes that land there are guaranteed to be visible whole, never half-applied, starting with
+    the very next frame. That guarantee is why this page treats the 38-line sliver as sacred
+    ground and builds an entire queueing system just to make sure everything that needs to reach
+    video memory fits inside it.</p>
+  </div>
+</details>
+
+<figure class="diagram">
+  <div class="lanes fstrip">
+    <div class="lane">
+      <span class="ln">NTSC</span>
+      <div>
+        <div class="track ftrack">
+          <div class="tseg t-act" style="width:85.5%;">active display · lines 0-223</div>
+          <div class="tseg t-blank" style="width:14.5%;"></div>
+          <div class="fmark" aria-hidden="true"><span>VInt fires · start of line 224</span></div>
+        </div>
+        <div class="fsub">the sliver · lines 224-261 (38 of 262)</div>
+      </div>
+    </div>
+    <div class="lane">
+      <span class="ln">PAL</span>
+      <div class="track">
+        <div class="tseg t-act" style="width:71.8%;">active display · lines 0-223</div>
+        <div class="tseg t-blank" style="width:28.2%;">vblank · lines 224-311</div>
+      </div>
+    </div>
+  </div>
+  <figcaption>One frame as scanlines, widths proportional (reprised from §0.7 with this page's
+  numbers): everything in section 4 below must finish inside the sliver, 38 blank lines of 262 on
+  NTSC, 88 of 312 on PAL. PAL's sliver is nearly double NTSC's, which is exactly why the DMA
+  budget in section 5 is region-specific, not a single fixed number.</figcaption>
+</figure>
+
+<p>The sliver is not idle time to fill with anything convenient. It is the one place all of
+section 5's DMA queue, section 6's dirty buffers, and section 7's plane buffer are required to
+run, every single frame, or the player sees the consequence directly: a half-updated screen, or a
+frame that simply never got its work done at all (section 4's lag frame).</p>
+
+<!-- ================================================================ -->
+<h2 id="s4">4 · The VBlank pipeline</h2>
+
+<p>IRQ6 fires once per frame, at the start of the sliver, and <code>VBlank_Handler</code> is the
+first thing that runs. It saves every register, checks one flag, and picks one of exactly two
+paths:</p>
+
+<pre><span class="k">VBlank_Handler</span>:
+        movem.l d0-a6, -(sp)
+        tst.b   (VBlank_Ready).w
+        beq.s   .lag
+        movea.l (VInt_Ptr).w, a0
+        jsr     (a0)
+        bra.s   .done
+.lag:
+        bsr.w   VInt_Lag</pre>
+<span class="src">engine/system/vblank.asm:8</span>
+
+<p><code>VBlank_Ready</code> is the main loop's promise: "I finished this frame's work before you
+fired." When that promise holds, the handler dispatches through <code>VInt_Ptr</code>, which
+gameplay leaves pointed at <code>VInt_Level</code>, the full pipeline. When the promise doesn't
+hold, a <em>lag frame</em>, the handler runs <code>VInt_Lag</code> instead, a reduced path
+covered below.</p>
+
+<p><code>VInt_Level</code> runs in one fixed order, and the order is load-bearing: each stage
+either produces something the next stage depends on, or is the exact point where visual
+correctness would break if it moved.</p>
+
+<figure class="diagram">
+  <ol class="bootline">
+    <li data-ph="1"><p class="ph-t">DMA-window open <small>· vblank.asm:49-56</small></p>
+      <ul class="ph-steps"><li>Sound builds: brief <code>stopZ80</code> / raise <code>SND_CTRL_DMA_ACTIVE</code> / <code>startZ80</code> (see section 8)</li>
+      <li>Sound-off builds: <code>stopZ80</code> held across the whole window instead</li></ul></li>
+    <li data-ph="2"><p class="ph-t">Flush_VDP_Shadow <small>· vblank.asm:58</small></p>
+      <ul class="ph-steps"><li>Writes only the dirty VDP registers (section 2)</li></ul></li>
+    <li data-ph="3"><p class="ph-t">Enqueue_Dirty_Buffers <small>· vblank.asm:60</small></p>
+      <ul class="ph-steps"><li>Palette lines, sprite table, HScroll static entries (section 6)</li></ul></li>
+    <li data-ph="4"><p class="ph-t">VInt_DrawLevel <small>· vblank.asm:62</small></p>
+      <ul class="ph-steps"><li>Drains the plane buffer with direct CPU writes to the VDP data port (section 7)</li></ul></li>
+    <li data-ph="5"><p class="ph-t">Process_DMA_Critical <small>· vblank.asm:64</small></p>
+      <ul class="ph-steps"><li>Palette, sprite table, HScroll entries actually leave RAM for VRAM here (section 5)</li></ul></li>
+    <li data-ph="6"><p class="ph-t">Vscroll_Write (VSRAM) <small>· vblank.asm:67</small></p>
+      <ul class="ph-steps"><li>Must run after HScroll DMA, not before; a direct write, not queued</li></ul></li>
+    <li data-ph="7"><p class="ph-t">Budget reset <small>· vblank.asm:69</small></p>
+      <ul class="ph-steps"><li><code>DMA_Budget_Remaining</code> reloaded from <code>DMA_Budget_Default</code> (7,200 NTSC / 15,000 PAL)</li></ul></li>
+    <li data-ph="8"><p class="ph-t">Process_DMA_Important <small>· vblank.asm:70</small></p>
+      <ul class="ph-steps"><li>Budget-gated (section 5)</li></ul></li>
+    <li data-ph="9"><p class="ph-t">Process_DMA_Deferrable <small>· vblank.asm:71</small></p>
+      <ul class="ph-steps"><li>Budget-gated, same drain routine as Important</li></ul></li>
+    <li data-ph="10"><p class="ph-t">DMA-window close <small>· vblank.asm:73-86</small></p>
+      <ul class="ph-steps"><li>Sound builds: lower <code>SND_CTRL_DMA_ACTIVE</code>; sound-off builds: <code>startZ80</code></li></ul></li>
+    <li data-ph="11"><p class="ph-t">Controllers <small>· vblank.asm:89-98</small></p>
+      <ul class="ph-steps"><li><code>Read_Controllers</code> plus press-edge accumulator latch</li></ul></li>
+    <li data-ph="12"><p class="ph-t">Frame_Counter <small>· vblank.asm:99</small></p></li>
+    <li data-ph="13"><p class="ph-t">VBlank_Flag set <small>· vblank.asm:100</small></p>
+      <ul class="ph-steps"><li>Signals the main loop's <code>VSync_Wait</code> that this VBlank has run</li></ul></li>
+  </ol>
+  <figcaption>VInt_Level, all thirteen steps, in shipped order (static fallback: the same order is
+  spelled out in the paragraphs around this figure).</figcaption>
+</figure>
+
+<p>Two things about that order are easy to guess wrong. VSRAM (step 6) runs <em>after</em>
+Critical DMA, not before, because the write must follow the HScroll DMA it is paired with. And
+the plane buffer drain (step 4) runs <em>before</em> Critical DMA, not after, simply because
+nothing later in the list depends on it and nothing about the plane buffer waits on DMA either;
+putting visual-stability work first is the whole ordering philosophy of this handler.</p>
+
+<pre><span class="k">VInt_Level</span>:
+    ifdef SOUND_DRIVER_ENABLED
+        stopZ80
+        move.b  <span class="n">#1</span>, (SND_Z80_BASE+SND_CTRL_DMA_ACTIVE).l   <span class="c">; raise: DMA window open (Z80 -> DRAIN)</span>
+        startZ80
+    endif
+    ifndef SOUND_DRIVER_ENABLED
+        stopZ80
+    endif
+
+        bsr.w   Flush_VDP_Shadow
+        bsr.w   Enqueue_Dirty_Buffers   <span class="c">; queues palette + sprites + HScroll (§4.6)</span>
+        bsr.w   VInt_DrawLevel          <span class="c">; drain Plane_Buffer to VDP (§4.1)</span>
+        bsr.w   Process_DMA_Critical    <span class="c">; drains palette + sprites + HScroll</span>
+
+        <span class="c">; §4.6: VSRAM write must come AFTER HScroll DMA (CODING_CONVENTIONS §3.4)</span>
+        bsr.w   Vscroll_Write
+
+        move.w  (DMA_Budget_Default).w, (DMA_Budget_Remaining).w
+        bsr.w   Process_DMA_Important
+        bsr.w   Process_DMA_Deferrable</pre>
+<span class="src">engine/system/vblank.asm:37</span>
+
+<details class="explain">
+  <summary>New here? · What's a "lag frame", and why does it need its own code path?</summary>
+  <div class="x-body">
+    <p>Every VBlank is a deadline. Most frames, the main loop finishes its physics, camera, and
+    object work well before the VDP starts its blanking interval, and by the time IRQ6 fires,
+    everything is ready to draw. Sometimes the main loop is still working when VBlank arrives
+    anyway, a heavy frame, too many objects, a slow decompression, and that is a lag frame: the
+    deadline was missed.</p>
+    <p>Firing the full pipeline anyway would be actively dangerous, not just wasteful. The main
+    loop might be mid-write into a buffer the pipeline is about to read, and draining a
+    half-written buffer sends garbage to the VDP. So the interrupt handler checks a flag the main
+    loop sets only when it's actually done, and runs a smaller, safer pipeline instead when that
+    flag isn't set. The player still gets a frame; it's just a frame that skips exactly the parts
+    that would be unsafe to run early.</p>
+  </div>
+</details>
+
+<p><code>VInt_Lag</code> is not a do-nothing stub; it is nearly the whole pipeline with two steps
+removed. It still runs the shadow flush, the dirty-buffer enqueue, Critical DMA, and the VSRAM
+write, so palette and sprite updates never visibly stall on a lag frame. Controllers still read
+and the frame counter still advances. What it omits is exactly the pieces that are unsafe to run
+against a main loop still mid-write: the plane-buffer drain (section 7 explains why draining a
+half-written buffer is actively dangerous, not just wasted work) and the budget-gated Important
+and Deferrable DMA drains, which simply persist to the next normal frame instead.</p>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>Lag_Frame_Count is the real performance meter, not a cycle profiler.</strong> A
+  cycle-counting profiler tells you a routine got slower; it does not tell you whether that
+  slowdown ever cost a frame. <code>Lag_Frame_Count</code> (debug builds only,
+  <code>ifdef __DEBUG__</code>, incremented at the tail of <code>VInt_Lag</code>) counts the one
+  number that actually matters: how many times the deadline was missed. Zero lag frames during a
+  worst-case diagonal fast-scroll is the real pass condition for any streaming or rendering change,
+  not a cycle budget on paper.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Aeon ✓ Lag_Frame_Count as the pass/fail gate for streaming work</span>
+  </div>
+</div>
+
+<p>A lag frame leaves one hazard behind that took real debugging to find and fix. Because
+<code>VInt_Lag</code> also sets <code>VBlank_Flag</code>, the main loop's wait routine
+(<code>VSync_Wait</code>) has to clear any stale flag before it starts waiting, and the
+clear-flag / raise-<code>VBlank_Ready</code> pair has to land as a single atomic act. If a VBlank
+fires between those two writes, with <code>Ready</code> still 0, it runs <code>VInt_Lag</code>,
+which sets the flag, so the wait falls straight through with no real sync at all, while
+<code>Ready</code> is left armed for the <em>next</em> VBlank to fully dispatch
+<code>VInt_Level</code> and drain a plane buffer the main loop is still mid-fill on. This is
+exactly the kind of Genesis-timing gotcha that only shows up under load, and the fix (commit
+<code>b96c861</code>) is a few dozen cycles of interrupt masking around the pair, on a
+once-per-frame path where the cost is free:</p>
+
+<pre>        move.w  sr, -(sp)
+        move.w  <span class="n">#$2700</span>, sr             <span class="c">; mask: the pair below must be atomic</span>
+        move.b  d0, (VBlank_Flag).w     <span class="c">; clear any stale lag-frame flag</span>
+        move.b  <span class="n">#1</span>, (VBlank_Ready).w    <span class="c">; this frame's work is done</span>
+        move.w  (sp)+, sr               <span class="c">; unmask BEFORE waiting; IRQ6 sets the flag</span>
+.wait:
+        tst.b   (VBlank_Flag).w
+        beq.s   .wait</pre>
+<span class="src">engine/system/vblank.asm:182</span>
+
+<p>It is a small fix precisely because the underlying design was already close: only the
+clear-and-arm pair needed to be atomic, not the whole wait. That is the value of building the
+lag path deliberately instead of bolting it on afterward.</p>
+
+<!-- ================================================================ -->
+<h2 id="s5">5 · The DMA queue</h2>
+
+<p>Steps 5, 8, and 9 of the pipeline above all drain from the same structure: a 32-slot,
+three-priority <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could, while the CPU keeps working.">DMA</span> queue that the main loop feeds all frame long and VBlank empties in one pass. Nothing in
+the game loop ever DMAs directly; it enqueues a request (source, destination, length) and moves
+on, so a slow VBlank never stalls gameplay logic, only graphics delivery.</p>
+
+<div class="tbl">
+<table>
+  <thead><tr><th>Queue</th><th>Slots</th><th>Bytes</th><th>Drains</th><th>Budget-gated?</th></tr></thead>
+  <tbody>
+    <tr><td>Critical</td><td>8</td><td>112</td><td>Always, fully, every frame</td><td>No</td></tr>
+    <tr><td>Important</td><td>12</td><td>168</td><td>Until the byte budget runs out</td><td>Yes</td></tr>
+    <tr><td>Deferrable</td><td>12</td><td>168</td><td>Whatever budget Important left behind</td><td>Yes</td></tr>
+  </tbody>
+</table>
+</div>
+<span class="src">engine/constants.asm:118 (DMA_CRITICAL_SLOTS/DMA_IMPORTANT_SLOTS/DMA_DEFERRABLE_SLOTS)</span>
+
+<figure class="diagram">
+  <div class="qflow">
+    <div class="qrow">
+      <span class="qn">Enqueue_Dirty_Buffers</span>
+      <span class="qarrow">-&gt;</span>
+    </div>
+    <div class="qrow">
+      <span class="qn">QueueDMA_Critical</span>
+      <span class="qbox q-crit">Critical &middot; 8 slots &middot; always drains fully, jump-table</span>
+    </div>
+    <div class="qrow">
+      <span class="qn">Perform_DPLC (Important)</span>
+      <span class="qbox q-imp">Important &middot; 12 slots &middot; budget-gated, Drain_Budgeted_Queue</span>
+    </div>
+    <div class="qrow">
+      <span class="qn">Section streaming (Deferrable)</span>
+      <span class="qbox q-def">Deferrable &middot; 12 slots &middot; budget-gated, same drain routine</span>
+    </div>
+    <div class="qrow">
+      <span class="qn"></span>
+      <span class="qarrow">&darr; VInt_Level, in order &darr;</span>
+    </div>
+    <div class="qrow">
+      <span class="qn">Step 5</span>
+      <span class="qbox q-crit">Process_DMA_Critical drains to VRAM/CRAM</span>
+    </div>
+    <div class="qrow">
+      <span class="qn">Step 8</span>
+      <span class="qbox q-imp">Process_DMA_Important drains while budget remains</span>
+    </div>
+    <div class="qrow">
+      <span class="qn">Step 9</span>
+      <span class="qbox q-def">Process_DMA_Deferrable drains whatever budget is left</span>
+    </div>
+  </div>
+  <figcaption>DMA queue flow: three enqueue paths feed three sub-queues; VBlank drains them in
+  fixed priority order every frame (static fallback: the table above states the same slot counts,
+  drain order, and budget-gating per queue in prose).</figcaption>
+</figure>
+
+<p>Critical carries palette lines, the sprite table, and HScroll: things that must land every
+frame or the player sees stale colors or a frozen sprite. Important and Deferrable carry
+lower-urgency traffic like character DPLC art and streamed level tiles, and both share one drain
+routine gated by a shrinking byte budget.</p>
+
+<p>Every entry is 14 bytes (<code>DMAEntry</code>), and the layout is deliberately odd: VDP
+register-marker bytes sit at the even offsets, written once at boot via <code>movep</code>, with
+the size and source data interleaved at the odd offsets in between them.</p>
+
+<div class="bitword" aria-hidden="true" style="font-size:.6rem;">
+  <span class="bf b-pri">Reg94<br>+0</span><span class="bf b-tile">SizeH<br>+1</span>
+  <span class="bf b-pri">Reg93<br>+2</span><span class="bf b-tile">SizeL<br>+3</span>
+  <span class="bf b-pri">Reg97<br>+4</span><span class="bf b-tile">SrcH<br>+5</span>
+  <span class="bf b-pri">Reg96<br>+6</span><span class="bf b-tile">SrcM<br>+7</span>
+  <span class="bf b-pri">Reg95<br>+8</span><span class="bf b-tile">SrcL<br>+9</span>
+  <span class="bf b-pal">Command (long)<br>+10..13</span>
+</div>
+
+<pre>DMAEntry struct
+Reg94           ds.b 1          <span class="c">; +0  VDP reg $14 marker</span>
+SizeH           ds.b 1          <span class="c">; +1  DMA length high byte</span>
+Reg93           ds.b 1          <span class="c">; +2  VDP reg $13 marker</span>
+SizeL           ds.b 1          <span class="c">; +3  DMA length low byte</span>
+Reg97           ds.b 1          <span class="c">; +4  VDP reg $17 marker</span>
+SrcH            ds.b 1          <span class="c">; +5  source address bits 22-16</span>
+Reg96           ds.b 1          <span class="c">; +6  VDP reg $16 marker</span>
+SrcM            ds.b 1          <span class="c">; +7  source address bits 15-8</span>
+Reg95           ds.b 1          <span class="c">; +8  VDP reg $15 marker</span>
+SrcL            ds.b 1          <span class="c">; +9  source address bits 7-0</span>
+Command         ds.l 1          <span class="c">; +10 VDP command (destination + DMA trigger)</span>
+DMAEntry endstruct
+
+        if DMAEntry_len &lt;&gt; <span class="n">14</span>
+          error "DMAEntry struct is \{DMAEntry_len} bytes, expected 14"
+        endif</pre>
+<span class="src">engine/structs.asm:41</span>
+
+<details class="explain">
+  <summary>New here? · Why interleave register markers into the data at all?</summary>
+  <div class="x-body">
+    <p>The VDP's DMA-source registers ($13-$17) have to be set one byte at a time, in a specific
+    order, before a transfer can start, and normally that means five separate instructions per
+    transfer just for setup. The <code>movep</code> instruction is a 68000 oddity built for
+    exactly this: it moves a register's bytes to memory (or back) at every <em>other</em> address,
+    skipping one byte between each. Interleave a VDP register-select marker into the gaps of a
+    data structure, and one <code>movep</code> can write the marker bytes and the payload bytes in
+    a single instruction, because they were never really separate in memory to begin with.</p>
+    <p>The entry format on this page borrows that trick directly (credited to Flamewing's Ultra
+    DMA Queue design): the register markers are baked in once at boot, and the drain loop below
+    never has to think about them again, just fire pre-assembled words at the VDP's control port.</p>
+  </div>
+</details>
+
+<p>The three drain routines share the goal but not the mechanism, and the split is deliberate:</p>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>Hybrid drain: unrolled jump table for Critical, address-compare loop for the rest.</strong>
+  <code>Process_DMA_Critical</code> converts the slot pointer into a byte offset and jumps
+  straight into a fully unrolled sequence of <code>move.l</code>/<code>move.w</code> per slot,
+  zero comparisons per entry, about 514 cycles to drain all 8. Important and Deferrable share
+  <code>Drain_Budgeted_Queue</code>, a loop that checks <code>DMA_Budget_Remaining</code> before
+  each entry and stops by comparing the current pointer against the queue's first-free address,
+  not a <code>dbf</code>-counted loop. Unrolling all 32 slots the Critical way would cost 704
+  bytes of ROM; the hybrid costs roughly 280, putting the fully-unrolled speed only where every
+  cycle affects visual stability, and a compact shared loop where one extra frame of latency is
+  tolerable.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">S.C.E. ✓ jump-table drain mechanism (Process_DMA_Queue), ported</span>
+    <span class="yes">Aeon ✓ + budget-gated shared loop for the other two queues</span>
+  </div>
+</div>
+
+<pre><span class="k">Process_DMA_Critical</span>:
+        movea.w (DMA_Critical_Slot).w, a1
+        suba.w  <span class="n">#DMA_Critical</span>, a1               <span class="c">; a1 = byte offset into queue</span>
+        jmp     .jump_table(a1)</pre>
+<span class="src">engine/system/dma_queue.asm:154</span>
+
+<pre><span class="k">Drain_Budgeted_Queue</span>:
+        lea     (VDP_CTRL).l, a5
+        movea.l a0, a3                          <span class="c">; a3 = queue base</span>
+.loop:
+        move.w  (DMA_Budget_Remaining).w, d0
+        ble.s   .out_of_budget
+        movep.w DMAEntry_SizeH(a0), d1          <span class="c">; read size in words</span>
+        add.w   d1, d1                          <span class="c">; words -&gt; bytes</span>
+        sub.w   d1, (DMA_Budget_Remaining).w
+        move.l  (a0)+, (a5)
+        move.l  (a0)+, (a5)
+        move.l  (a0)+, (a5)
+        move.w  (a0)+, (a5)
+        cmpa.l  a0, a1
+        bhi.s   .loop
+        move.w  a3, (a2)
+        rts</pre>
+<span class="src">engine/system/dma_queue.asm:232</span>
+
+<p>When the budget runs dry mid-queue, entries are not dropped. <code>.out_of_budget</code> falls
+into <code>.compact</code>, which shifts the undrained tail down to the queue base so those
+entries are still there, at the front, next VBlank:</p>
+
+<pre>.out_of_budget:
+        cmpa.l  a0, a3
+        beq.s   .no_drain
+.compact:
+        move.l  (a0)+, (a3)+
+        move.l  (a0)+, (a3)+
+        move.l  (a0)+, (a3)+
+        move.w  (a0)+, (a3)+
+        cmpa.l  a0, a1
+        bhi.s   .compact
+        move.w  a3, (a2)
+.no_drain:
+        rts</pre>
+<span class="src">engine/system/dma_queue.asm:250</span>
+
+<p>The budget itself is region-aware and fixed at boot, not adaptive frame-to-frame:</p>
+
+<div class="tbl">
+<table>
+  <thead><tr><th>Region</th><th>Constant</th><th>Bytes / VBlank</th></tr></thead>
+  <tbody>
+    <tr><td>NTSC</td><td><code>DMA_BUDGET_NTSC</code></td><td>7,200</td></tr>
+    <tr><td>PAL</td><td><code>DMA_BUDGET_PAL</code></td><td>15,000</td></tr>
+  </tbody>
+</table>
+</div>
+<span class="src">engine/constants.asm:123</span>
+
+<p>Boot writes the region-appropriate constant into <code>DMA_Budget_Default</code>, and step 7
+of the pipeline (section 4) copies it into <code>DMA_Budget_Remaining</code> unconditionally,
+every VBlank, win or lose. A shrink-after-a-lag-frame scheme and a temporary post-lag boost to
+Deferrable were both part of the original design; neither is built. <code>DMA_Budget_Remaining</code>
+resets to the same number regardless of how the previous frame went. This is a real gap, not a
+secret one: a self-tuning budget remains future work, noted here rather than claimed as shipped.</p>
+
+<p>The packer below lets you feel the budget directly: it's a fixed-size box, and real transfers
+either fit or they spill.</p>
+
+<figure class="diagram">
+  <div class="dmapacker">
+    <div class="dmap-toprow">
+      <span>VBlank window:</span>
+      <button type="button" class="ntc-btn" id="dmapNtsc" aria-pressed="true">NTSC · 7,200 B</button>
+      <button type="button" class="ntc-btn" id="dmapPal" aria-pressed="false">PAL · 15,000 B</button>
+      <button type="button" class="ntc-btn" id="dmapReset" aria-pressed="false">Clear window</button>
+    </div>
+    <div class="dmap-blocks" id="dmapBlocks" role="group" aria-label="Transfer blocks: click one to add it to the VBlank window"></div>
+    <div class="dmap-bar" id="dmapBar" aria-hidden="true"></div>
+    <div class="dmap-cap" id="dmapCap" aria-live="polite">0 of 7,200 bytes used. Click a block above to enqueue it.</div>
+    <div>
+      <span style="font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.1em; text-transform:uppercase;">Spilled to next frame</span>
+      <div class="dmap-nextframe" id="dmapNext" aria-live="polite"></div>
+    </div>
+  </div>
+  <figcaption>DMA budget packer: click a block to enqueue it into this frame's VBlank window,
+  click a placed block to remove it; once the window fills, further blocks spill into the next
+  frame instead of being lost (static fallback: the budget table above states the two fixed
+  window sizes and the compaction behavior on overrun).</figcaption>
+</figure>
+
+<p>Two safety details round out the enqueue path, both in <code>QueueDMATransfer</code>, the
+shared core all three <code>QueueDMA_*</code> entry points fall through to. First, a RAM source
+address ($FF0000+) can set bit 23 after being shifted for the VDP, which the chip would
+misinterpret as a VRAM-to-VRAM copy flag instead of a normal 68K-to-VDP transfer; the routine
+clears that bit explicitly. Second, the whole enqueue runs with interrupts masked, so a VBlank
+landing mid-write into a queue slot can never tear an entry.</p>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>128KB boundary splitting is implemented, not deferred.</strong> The VDP's DMA source
+  address only auto-increments its low 17 bits; a transfer that crosses a 128KB boundary wraps
+  within the same block and corrupts. <code>QueueDMATransfer</code> detects the crossing with a
+  sub+sub carry check and, on a hit, splits the request into two queue entries in the same
+  sub-queue: the first finishing exactly at the boundary, the second resuming from the wrapped
+  source with the correct destination offset. If only one free slot remains, the second half is
+  quietly dropped and only the first part enqueues, a documented, vanishingly rare edge case for
+  small DPLC transfers that happen to straddle a boundary.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Flamewing Ultra DMA Queue ✓ boundary-safety design this borrows</span>
+    <span class="yes">Aeon ✓ shipped in QueueDMATransfer's .split path</span>
+  </div>
+</div>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>No double-buffered queues.</strong> Vectorman writes to one queue buffer while draining
+  another, then swaps, to guarantee a mid-enqueue interrupt never corrupts an in-progress drain.
+  Aeon gets the same guarantee more cheaply: <code>QueueDMATransfer</code> already masks
+  interrupts for the few instructions it takes to write one entry, so there is no window for a
+  VBlank to interrupt an enqueue in a way double buffering would prevent. Skipping the second
+  buffer saves 448 bytes of RAM outright.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="no">Vectorman: double-buffered queues (write A, drain B, swap)</span>
+    <span class="yes">Aeon ✓ single buffer + SR masking during enqueue</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s6">6 · Dirty buffers and static DMA</h2>
+
+<p>Some transfers never change shape: the sprite table is always 640 bytes from the same RAM
+buffer to the same VRAM address, and each palette line is always a fixed 32-byte copy. For these,
+<code>BuildStaticDMA</code> pre-computes the entire 14-byte queue entry once, at boot, and
+<code>Enqueue_Dirty_Buffers</code> just block-copies the pre-built entry into the Critical queue
+whenever the corresponding dirty flag says something actually changed. No source/dest/length math,
+no boundary check, no SR masking, none of <code>QueueDMATransfer</code>'s per-call overhead;
+just a macro-driven copy.</p>
+
+<details class="explain">
+  <summary>New here? · Why bother pre-computing something the CPU could just calculate each time?</summary>
+  <div class="x-body">
+    <p>A DMA transfer needs five pieces of information written into VDP registers before it can
+    start: source address (split across three bytes), length, and a destination command word. If
+    the source, destination, and length never change, and for the sprite table and each palette
+    line they genuinely never do, then computing those bytes over and over, every single frame, is
+    pure waste. The values are the same every time.</p>
+    <p>This is the same instinct behind compiling a program once instead of re-interpreting it on
+    every run: do the work exactly once, at a moment that costs nothing (boot, before the player
+    is even looking at a screen), and every later use is just a fast copy of the finished answer.
+    Aeon leans on this build-time-and-boot-time philosophy everywhere; static DMA entries are one
+    of its smallest, clearest examples.</p>
+  </div>
+</details>
+
+<pre><span class="k">BuildStaticDMA</span>:
+        moveq   <span class="n">#-$6C</span>, d0                      <span class="c">; $94 sign-extended</span>
+        move.l  <span class="n">#$93979695</span>, d5
+
+        <span class="c">; Palette line 0: Palette_Buffer+$00 -&gt; CRAM $0000, 32 bytes</span>
+        lea     (Static_Pal_Line0).w, a0
+        move.l  <span class="n">#dmaSource(Palette_Buffer)</span>, d1
+        move.w  <span class="n">#dmaLength(32)</span>, d3
+        move.l  <span class="n">#vdpComm(0, CRAM, DMA)</span>, d2
+        bsr.w   .build_entry</pre>
+<span class="src">engine/system/buffers.asm:36</span>
+
+<p>Seven entries, not five: four palette lines, one sprite table, and two HScroll variants
+(per-cell and per-line, picked by whichever parallax mode is active). All seven exist before the
+game loop ever runs.</p>
+
+<pre><span class="k">Enqueue_Dirty_Buffers</span>:
+        move.b  (Palette_Dirty).w, d0
+        beq.w   .no_pal
+        btst    <span class="n">#0</span>, d0
+        beq.s   .skip_pal0
+        queueStaticDMA DMA_Critical_Slot, DMA_Critical_End, Static_Pal_Line0
+.skip_pal0:
+<span class="c">; ... one btst/queueStaticDMA pair per palette line ...</span>
+.skip_pal3:
+        moveq   <span class="n">#0</span>, d0
+        move.b  d0, (Palette_Dirty).w
+.no_pal:
+        tst.b   (Sprite_Table_Dirty).w
+        beq.s   .no_spr
+        queueStaticDMA DMA_Critical_Slot, DMA_Critical_End, Static_Sprite_DMA
+        move.b  d0, (Sprite_Table_Dirty).w
+.no_spr:</pre>
+<span class="src">engine/system/buffers.asm:128</span>
+
+<p><code>Palette_Dirty</code> is a 4-bit mask, one bit per 32-byte palette line, so a frame where
+only the water line's colors cycle sends 32 bytes, not 128. HScroll works differently: the
+<code>Hscroll_Dirty_Start</code>/<code>Hscroll_Dirty_End</code> fields exist in RAM but are dead,
+nothing reads them. The shipped mechanism enqueues one of exactly two fixed-size static entries
+depending on parallax mode, <code>Static_Hscroll_Cell</code> (112 bytes, per-cell) or
+<code>Static_Hscroll_Line</code> (896 bytes, whenever a per-line horizontal deformation table is
+active on either plane), never a computed variable-range transfer.</p>
+
+<div class="decision"><span class="d-tag">Decision</span> <span style="color:#EE8888;">Known issue</span>
+  <strong>The dirty flag clears even when the DMA was dropped.</strong> Look again at the excerpt
+  above: <code>Palette_Dirty</code> and <code>Sprite_Table_Dirty</code> are cleared
+  <em>unconditionally</em>, immediately after the <code>queueStaticDMA</code> call, regardless of
+  whether the Critical queue actually had room. If the Critical queue was already full (eight
+  slots, all spoken for by something else that frame), the enqueue silently fails and the dirty
+  bit that would have triggered a retry next frame is already gone. The failure scenario is
+  concrete: a palette change lands on a frame where the Critical queue happens to be saturated,
+  the DMA never fires, the dirty flag is cleared anyway, and the stale colors persist on screen
+  indefinitely with no automatic path back to correct, until something else marks that line dirty
+  again. Confirmed live in code as of the 2026-07-16 optimization review; not yet fixed.
+  <p class="prov-label">Status</p>
+  <div class="prov">
+    <span class="no">Live bug, unfixed as of this page</span>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s7">7 · The plane buffer</h2>
+
+<p>Nametable writes never touch the VDP during the game loop. Instead, the camera scrolling into
+new territory appends tile updates to one shared 1,536-byte RAM buffer
+(<code>Plane_Buffer</code>, 768 words, <code>PLANE_BUFFER_SIZE</code>), and step 4 of the VBlank
+pipeline drains that buffer to VRAM with direct CPU writes, once per frame, in one pass.</p>
+
+<details class="explain">
+  <summary>New here? · What does "the camera scrolling reveals new tiles" actually mean?</summary>
+  <div class="x-body">
+    <p>A scroll plane is much bigger than the screen, 64 tiles wide and 64 tall here, but the
+    screen only ever shows a 40-tile-wide window into it. As Sonic runs right, that window slides
+    across the plane, and the VDP's own hardware scroll registers handle sliding the picture
+    smoothly, pixel by pixel, for free. What the hardware cannot do on its own is invent new
+    content: the tiles that scroll into view from off the right edge have to already be sitting
+    in that plane's nametable before the window reaches them, or the player sees the plane's old,
+    wrapped-around content instead of the level.</p>
+    <p>So "the camera scrolling into new territory" means exactly that: every time the visible
+    window crosses into a strip of the plane it hasn't shown yet, something has to write fresh
+    tile data into that strip, in VRAM, before the scroll register reaches it. That something is
+    the plane buffer described in this section.</p>
+  </div>
+</details>
+
+<p>Three producer routines feed it, all doing cache lookup, VRAM-address math, and the buffer
+write in a single pass, no separate setup step:</p>
+
+<ul>
+  <li><code>Draw_TileColumn</code>: Plane A, one new tile column, word-mode drain</li>
+  <li><code>Draw_TileRow_FromCache</code>: Plane A, one new tile row, longword-mode drain</li>
+  <li><code>Draw_BG_TileColumn</code>: Plane B (background), always a fixed 32-word column strip</li>
+</ul>
+
+<p>Plane A and Plane B entries interleave in this <em>same</em> buffer, distinguished only by
+which VRAM destination address each entry carries, not by separate buffers. Each entry starts
+with a VRAM address word and a flags/count word, bit 15 set for column mode (word-at-a-time
+drain, autoincrement $80) or clear for row mode (longword-packed drain, autoincrement $02), and
+the whole buffer is terminated by a zero address:</p>
+
+<pre><span class="k">VInt_DrawLevel</span>:
+        tst.w   Plane_Buffer_Ptr
+        beq     .reset                             <span class="c">// nothing to draw</span>
+
+        lea     Plane_Buffer, a0
+        lea     VDP_DATA, a6
+        lea     VDP_CTRL_OFF(a6), a5
+
+    .next:
+        moveq   <span class="n">#0</span>, d0
+        move.w  (a0)+, d0                          <span class="c">// VRAM addr (0 = end)</span>
+        beq     .done
+        move.w  (a0)+, d1                          <span class="c">// flags | count</span>
+        bmi     .col_entry
+
+        <span class="c">// -- ROW entry: autoincrement $02, longword drain --</span>
+        move.w  <span class="n">#$8F02</span>, (a5)
+        lsl.l   <span class="n">#2</span>, d0
+        addq.w  <span class="n">#1</span>, d0
+        ror.w   <span class="n">#2</span>, d0
+        swap    d0
+        move.l  d0, (a5)
+    .drain_row:
+        move.l  (a0)+, (a6)
+        dbf     d1, .drain_row
+        jbra    .next</pre>
+<span class="src">engine/level/plane_buffer.emp:381</span>
+
+<p>Each producer checks remaining capacity before writing (worst case for a column: two headers
+plus 64 data words). On overflow, the update is silently dropped for that frame; the routines'
+own header comments say so directly (<code>Out: none (silently drops if buffer full)</code>),
+and there is no re-queue mechanism. In practice a dropped update reads as a momentary pop at the
+screen edge, not corruption, but it is genuinely lost, not delayed.</p>
+
+<div class="teach"><span class="t-tag">Teaching example · not engine code</span>
+  <p style="margin:.2rem 0 .4rem;">Say the camera whips sideways fast enough in one frame to
+  cross four 16-pixel block boundaries at once. Four calls to <code>Draw_TileColumn</code> queue
+  four column entries, each up to 136 bytes worst case (two headers plus 64 rows). If the buffer
+  already had, say, 1,400 of its 1,536 bytes spoken for from earlier in the frame, the third or
+  fourth column simply won't fit and its <code>cmpi.w</code> capacity check fails before it
+  writes a single word. The first two columns still land at VBlank; the third and fourth are
+  gone. The player sees the newly-revealed strip pop in a frame late at the very edge of the
+  screen, exactly where a fast pan is least likely to be scrutinized.</p>
+</div>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>One shared buffer and one shared pointer, not two per-plane buffers with independent
+  dirty flags.</strong> The original plan called for <code>Plane_A_Buffer</code>/<code>Plane_B_Buffer</code>
+  and matching <code>Plane_A_Dirty</code>/<code>Plane_B_Dirty</code> flags. Neither exists in the
+  shipped engine. <code>VInt_DrawLevel</code> gates on a single check,
+  <code>tst.w Plane_Buffer_Ptr</code>, and drains everything in one pass regardless of which
+  plane contributed which entry. This is the largest gap between the original design and what
+  actually shipped: not a regression, just a simplification that turned out to need nothing the
+  two-buffer plan offered, since VRAM destination address already disambiguates every entry.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Aeon ✓ one buffer, entries tagged by destination address</span>
+  </div>
+</div>
+
+<p>Two more design ideas from the original plan never got built and are worth naming so nobody
+goes looking for them in the code. A <code>Plane_Double_Update_Flag</code> would have queued two
+sequential updates when the camera moved more than 16 pixels in a single frame; it does not
+exist, and each producer always queues exactly one update per call regardless of how far the
+camera moved. And the buffer's generous size, 768 words against S.C.E.'s 576, was sized for a
+worst-case diagonal fast-scroll around 400 words per plane, with headroom for section
+transitions; that sizing rationale is carried over design reasoning, not something independently
+re-measured against this engine's own worst case.</p>
+
+<!-- ================================================================ -->
+<h2 id="s8">8 · The Z80 and DMA</h2>
+
+<p>The classic rule, repeated in every Genesis hardware reference, is: halt the <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz. In Aeon it runs the entire sound driver autonomously, leaving the 68000 free.">Z80</span> before
+starting any DMA, release it after. The two CPUs share one bus, and a Z80 fetch landing mid-transfer
+can corrupt the data in flight. Every reference engine follows this rule literally: hold
+<code>stopZ80</code> across the entire DMA window.</p>
+
+<details class="explain">
+  <summary>New here? · Why do two CPUs sharing a bus need any of this at all?</summary>
+  <div class="x-body">
+    <p>The 68000 and the Z80 are two independent processors, but there is only one set of wires
+    running out to the cartridge and its ROM. Ordinarily that's fine: the 68000 does almost all
+    the work, and the Z80 occasionally needs to fetch a byte of sound data across that same set of
+    wires, a request that gets quietly relayed onto the 68000's bus and handled in between other
+    traffic.</p>
+    <p>A DMA transfer is a burst of the VDP reading many bytes off that same bus, back to back, as
+    fast as the hardware allows. On some board revisions, a Z80 fetch that happens to land inside
+    that burst doesn't just wait politely; it can interleave with the transfer and corrupt the
+    data actually arriving in video memory, showing up as garbled tiles or shredded sprites.
+    "Stop the Z80 during DMA" is the blunt, always-safe fix. Section 8 explains why Aeon narrows
+    that fix to something more precise instead.</p>
+  </div>
+</details>
+
+<p>Aeon's sound-on build does not. Holding the Z80 for the whole VBlank pipeline starves the
+sound driver of the steady feed its <span class="term" data-def="The raw-sample channel on the FM chip: it plays recorded audio (like drums) one byte at a time, in place of FM channel six.">DAC</span> drum channel depends on, audibly: sampled drums skip. So instead of
+a held fence, <code>VInt_Level</code> and <code>VInt_Lag</code> both bracket the whole VDP/DMA
+window with a single flag in Z80 RAM, <code>SND_CTRL_DMA_ACTIVE</code>, and the Z80 itself keeps
+running free through the entire pipeline in between:</p>
+
+<pre>    ifdef SOUND_DRIVER_ENABLED
+        stopZ80
+        move.b  <span class="n">#1</span>, (SND_Z80_BASE+SND_CTRL_DMA_ACTIVE).l   <span class="c">; raise: DMA window open (Z80 -&gt; DRAIN)</span>
+        startZ80
+    endif
+    ifndef SOUND_DRIVER_ENABLED
+        stopZ80
+    endif</pre>
+<span class="src">engine/system/vblank.asm:49</span>
+
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>A flag bracket, not a held fence, in sound-on builds.</strong> While
+  <code>SND_CTRL_DMA_ACTIVE</code> is up, the Z80's sound driver feeds the DAC only from a ring
+  buffer already sitting in its own RAM and never reads ROM across the shared bus, so it cannot
+  land inside a DMA burst even though it's technically still running. Only the two one-byte flag
+  writes themselves briefly hold the bus, a few cycles each, not the whole pipeline. The rule the
+  hardware actually enforces (no Z80 <em>bus access</em> during a transfer) is honored precisely;
+  the classic full-DMA fence enforces a blunter version of the same rule (no Z80 activity at all)
+  that costs far more than the hardware requires. Sound-off builds keep the classic fence, since
+  there's no driver to starve.
+  <p class="prov-label">Who does what</p>
+  <div class="prov">
+    <span class="yes">Aeon (sound-on) ✓ flag bracket, Z80 free during DMA (MegaPCM-2-informed drain model)</span>
+    <span class="no">Classic Sonic drivers: stopZ80 around every DMA</span>
+    <span class="yes">Aeon (sound-off) ✓ classic fence retained, no driver to protect</span>
+  </div>
+</div>
+
+<p>The bracket opens as the very first act of the VBlank pipeline, before any VDP work at all,
+and closes only after the last DMA drain (step 10, section 4), so its coverage matches the
+pipeline's DMA-touching steps exactly, no wider and no narrower.</p>
+
+<!-- ================================================================ -->
+<h2 id="s9">9 · The HBlank seam</h2>
+
+<p>Where VBlank is the once-per-frame window for bulk updates, <span class="term" data-def="The tiny gap at the end of each scanline. An interrupt can run here for per-line tricks like bending the background mid-screen.">HBlank</span> is the tiny gap at the end
+of every single scanline, up to 224 times a frame, and it's the hook raster effects use to change
+VDP state mid-picture: a different scroll value on line 100 than line 99 is what makes parallax
+bend a background instead of just sliding it.</p>
+
+<details class="explain">
+  <summary>New here? · How does changing a scroll value mid-frame bend a background?</summary>
+  <div class="x-body">
+    <p>A plane's horizontal scroll value is a single number: shift everything on this plane left
+    or right by this many pixels. Normally that number is set once and holds for the whole frame,
+    so the plane slides as a rigid sheet. But the VDP reads the scroll value fresh, from a table
+    in VRAM, for every scanline it draws, not just once at the top of the frame.</p>
+    <p>An HBlank interrupt firing between scanlines is the moment to rewrite that table entry
+    before the next line gets drawn. Give line 50 a different scroll value than line 49, and the
+    picture literally bends at that seam, foreground rows scrolling faster than a distant
+    background above them, or a wavy heat-shimmer effect where each line offsets by a slightly
+    different amount. It's not a special hardware mode; it's the ordinary scroll register, just
+    rewritten far more often than once per frame.</p>
+  </div>
+</details>
+
+<p>The dispatch mechanism is built and wired today; nothing installed on top of it yet is. The
+HBlank vector points at a tiny, permanent ROM stub that reads a handler pointer from RAM and
+calls through it:</p>
+
+<pre><span class="k">HBlank_Dispatch</span>:
+        movem.l d0-d1/a0, -(sp)
+        movea.l (HBlank_Handler_Ptr).w, a0
+        jsr     (a0)
+        movem.l (sp)+, d0-d1/a0
+        rte</pre>
+<span class="src">engine/system/hblank.asm:12</span>
+
+<p>The contract is strict on purpose: an installed handler may clobber only <code>d0-d1/a0</code>,
+because this stub can run 224 times in a single frame and every register it saved would be paid
+for on every one of those lines. Boot installs <code>HBlank_Null</code>, a bare <code>rts</code>,
+as the default:</p>
+
+<pre><span class="k">HBlank_Null</span>:
+        rts</pre>
+<span class="src">engine/system/hblank.asm:22</span>
+
+<p>That "does nothing" handler is not free: the dispatch overhead plus the interrupt entry and
+exit, movem save, jsr, rts, movem restore, rte, runs roughly 180 cycles per scanline, not the 20
+or so you might assume from reading the handler itself. A proposed
+RAM-trampoline fix, not yet applied, would shortcut the indirect call for the common empty-table
+case and bring that down to roughly 76 cycles. Today, every scanline of every frame pays the
+full 180.</p>
+
+<p>The raster command table walker, the system that would actually install per-section stackable
+effects (shadow/highlight lighting, palette gradients, water-line splits) through this seam, is
+design-stage: zero handlers exist beyond <code>HBlank_Null</code> as of this page. The pointer
+indirection above is ready to receive it; nothing currently does. Four of the five commercial
+disassemblies studied while designing Aeon (Vectorman, Thunder Force IV, Gunstar Heroes, Alien
+Soldier) RAM-patch HBlank the same way, which is why the dispatch shape was worth building ahead
+of the walker that will eventually use it.</p>
+
+<footer class="page">Part of the Empyrean wiki · last updated 2026-07-17 · <a href="../index.html">Back to hub</a><br>
+Previous: <a href="section-0-boot.html">01 Boot &amp; Hardware Init</a> · Next: 03 Reading Aeon Code (coming)</footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- Nametable composer ---- */
+(function(){
+  // 6 tiny predefined 8x8 4bpp-style tiles, expressed as 8x8 palette-index grids (0-3 used).
+  const TILES = [
+    { name: 'solid',  px: Array(8).fill(Array(8).fill(2)) },
+    { name: 'brick',  px: [
+        [1,1,1,1,1,1,1,1],[2,2,2,2,2,2,2,2],[1,0,1,1,1,0,1,1],[1,0,1,1,1,0,1,1],
+        [1,1,1,1,1,1,1,1],[2,2,2,2,2,2,2,2],[1,1,0,1,1,1,0,1],[1,1,0,1,1,1,0,1]] },
+    { name: 'slope',  px: [
+        [0,0,0,0,0,0,0,3],[0,0,0,0,0,0,3,3],[0,0,0,0,0,3,3,3],[0,0,0,0,3,3,3,3],
+        [0,0,0,3,3,3,3,3],[0,0,3,3,3,3,3,3],[0,3,3,3,3,3,3,3],[3,3,3,3,3,3,3,3]] },
+    { name: 'dot',    px: [
+        [0,0,1,1,1,1,0,0],[0,1,2,2,2,2,1,0],[1,2,2,3,3,2,2,1],[1,2,3,3,3,3,2,1],
+        [1,2,3,3,3,3,2,1],[1,2,2,3,3,2,2,1],[0,1,2,2,2,2,1,0],[0,0,1,1,1,1,0,0]] },
+    { name: 'stripe', px: [
+        [1,1,0,0,1,1,0,0],[1,1,0,0,1,1,0,0],[0,0,1,1,0,0,1,1],[0,0,1,1,0,0,1,1],
+        [1,1,0,0,1,1,0,0],[1,1,0,0,1,1,0,0],[0,0,1,1,0,0,1,1],[0,0,1,1,0,0,1,1]] },
+    { name: 'empty',  px: Array(8).fill(Array(8).fill(0)) }
+  ];
+  // 4 CRAM-legal toy palettes (index 0 = transparent, shown as panel bg)
+  const PALETTES = [
+    ['#000044','#4466EE','#88AAEE','#EEAA00'],
+    ['#000044','#44CC88','#88EECC','#EEEEEE'],
+    ['#000044','#CC66AA','#EE88CC','#EEAA00'],
+    ['#000044','#666688','#AAAACC','#44CC88']
+  ];
+
+  let curTile = 0, curPal = 0, flipH = false, flipV = false, pri = false;
+  const gridState = new Array(16).fill(null); // each: {tile,pal,flipH,flipV,pri} or null
+  let curCell = 0;
+
+  const tilePick = document.getElementById('ntcTilePick');
+  TILES.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'tile ' + i + ' (' + t.name + ')');
+    const cv = document.createElement('canvas');
+    cv.width = 8; cv.height = 8; cv.style.width = '100%'; cv.style.height = '100%';
+    cv.style.imageRendering = 'pixelated';
+    b.appendChild(cv);
+    drawTile(cv.getContext('2d'), t.px, PALETTES[0], false, false);
+    if (i === 0) b.classList.add('sel');
+    b.addEventListener('click', () => {
+      curTile = i;
+      [...tilePick.children].forEach(c => c.classList.remove('sel'));
+      b.classList.add('sel');
+      updateWord();
+    });
+    tilePick.appendChild(b);
+  });
+
+  function drawTile(ctx, px, pal, fh, fv){
+    ctx.clearRect(0,0,8,8);
+    for (let y = 0; y < 8; y++){
+      for (let x = 0; x < 8; x++){
+        const sx = fh ? 7-x : x, sy = fv ? 7-y : y;
+        const idx = px[sy][sx];
+        ctx.fillStyle = pal[idx];
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+
+  const palSel = document.getElementById('ntcPal');
+  const flipHBtn = document.getElementById('ntcFlipH');
+  const flipVBtn = document.getElementById('ntcFlipV');
+  const priBtn = document.getElementById('ntcPri');
+  const wordText = document.getElementById('ntcWordText');
+  const bitsEl = document.getElementById('ntcBits');
+  const preview = document.getElementById('ntcPreview').getContext('2d');
+  const cap = document.getElementById('ntcCap');
+
+  palSel.addEventListener('change', () => { curPal = +palSel.value; updateWord(); });
+  flipHBtn.addEventListener('click', () => { flipH = !flipH; flipHBtn.setAttribute('aria-pressed', flipH); updateWord(); });
+  flipVBtn.addEventListener('click', () => { flipV = !flipV; flipVBtn.setAttribute('aria-pressed', flipV); updateWord(); });
+  priBtn.addEventListener('click', () => { pri = !pri; priBtn.setAttribute('aria-pressed', pri); updateWord(); });
+
+  function computeWord(tile, pal, fh, fv, pr){
+    return (pr?1:0)<<15 | (pal&3)<<13 | (fv?1:0)<<12 | (fh?1:0)<<11 | (tile&0x7FF);
+  }
+
+  function updateWord(){
+    const w = computeWord(curTile, curPal, flipH, flipV, pri);
+    wordText.textContent = 'word = $' + w.toString(16).toUpperCase().padStart(4,'0');
+    bitsEl.innerHTML =
+      '<span class="bf b-pri">PRI ' + (pri?1:0) + '</span>' +
+      '<span class="bf b-pal">PAL ' + curPal + '</span>' +
+      '<span class="bf b-flip">VF ' + (flipV?1:0) + '</span>' +
+      '<span class="bf b-flip">HF ' + (flipH?1:0) + '</span>' +
+      '<span class="bf b-tile">TILE ' + curTile + '</span>';
+    drawTile(preview, TILES[curTile].px, PALETTES[curPal], flipH, flipV);
+  }
+
+  const grid = document.getElementById('ntcGrid');
+  const cells = [];
+  for (let i = 0; i < 16; i++){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ntc-cell';
+    b.setAttribute('aria-label', 'grid cell ' + (i+1) + ', empty');
+    const cv = document.createElement('canvas');
+    cv.width = 8; cv.height = 8;
+    b.appendChild(cv);
+    b.addEventListener('click', () => {
+      gridState[i] = { tile: curTile, pal: curPal, fh: flipH, fv: flipV, pri: pri };
+      [...grid.children].forEach(c => c.classList.remove('cursel'));
+      b.classList.add('cursel');
+      curCell = i;
+      redrawCell(i);
+      const w = computeWord(curTile, curPal, flipH, flipV, pri);
+      b.setAttribute('aria-label', 'grid cell ' + (i+1) + ', word $' + w.toString(16).toUpperCase().padStart(4,'0'));
+      cap.textContent = 'Cell ' + (i+1) + ' now holds word $' + w.toString(16).toUpperCase().padStart(4,'0') + ' (' + TILES[curTile].name + ', palette ' + curPal + (flipH?', H-flip':'') + (flipV?', V-flip':'') + (pri?', high priority':'') + ').';
+    });
+    cells.push(b);
+    grid.appendChild(b);
+  }
+
+  function redrawCell(i){
+    const st = gridState[i];
+    const ctx = cells[i].querySelector('canvas').getContext('2d');
+    if (!st){ ctx.clearRect(0,0,8,8); ctx.fillStyle = '#000044'; ctx.fillRect(0,0,8,8); return; }
+    drawTile(ctx, TILES[st.tile].px, PALETTES[st.pal], st.fh, st.fv);
+  }
+  for (let i = 0; i < 16; i++) redrawCell(i);
+
+  updateWord();
+})();
+
+/* ---- DMA budget packer ---- */
+(function(){
+  // Real transfer sizes, verified against engine code (§5/§6 of this page).
+  const BLOCKS = [
+    { name: 'Palette line', bytes: 32 },
+    { name: 'Full palette', bytes: 128 },
+    { name: 'Sprite table', bytes: 640 },
+    { name: 'HScroll (cell)', bytes: 112 },
+    { name: 'HScroll (line)', bytes: 896 },
+    { name: 'One tile', bytes: 32 },
+    { name: '16-tile art burst', bytes: 512 }
+  ];
+  let budget = 7200;
+  let placed = [];   // {name, bytes}
+  let spilled = [];
+  let uid = 0;       // monotonic id so identical blocks never collide
+
+  const blocksEl = document.getElementById('dmapBlocks');
+  const barEl = document.getElementById('dmapBar');
+  const capEl = document.getElementById('dmapCap');
+  const nextEl = document.getElementById('dmapNext');
+  const ntscBtn = document.getElementById('dmapNtsc');
+  const palBtn = document.getElementById('dmapPal');
+  const resetBtn = document.getElementById('dmapReset');
+
+  BLOCKS.forEach((blk, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dblk';
+    b.textContent = blk.name + ' · ' + blk.bytes + ' B';
+    b.setAttribute('aria-label', 'add ' + blk.name + ', ' + blk.bytes + ' bytes, to the VBlank window');
+    b.addEventListener('click', () => {
+      const used = placed.reduce((a,p) => a + p.bytes, 0);
+      const entry = { name: blk.name, bytes: blk.bytes, id: ++uid };
+      if (used + blk.bytes > budget){ spilled.push(entry); } else { placed.push(entry); }
+      render();
+    });
+    blocksEl.appendChild(b);
+  });
+
+  function setBudget(newBudget, ntscPressed){
+    budget = newBudget;
+    ntscBtn.setAttribute('aria-pressed', ntscPressed);
+    palBtn.setAttribute('aria-pressed', !ntscPressed);
+    // re-evaluate: anything placed that no longer fits spills; nothing un-spills automatically
+    let used = 0;
+    const keep = [];
+    placed.forEach(p => {
+      if (used + p.bytes <= budget){ keep.push(p); used += p.bytes; }
+      else { spilled.push(p); }
+    });
+    placed = keep;
+    render();
+  }
+  ntscBtn.addEventListener('click', () => setBudget(7200, true));
+  palBtn.addEventListener('click', () => setBudget(15000, false));
+  resetBtn.addEventListener('click', () => { placed = []; spilled = []; render(); });
+
+  function render(){
+    barEl.innerHTML = '';
+    const used = placed.reduce((a,p) => a + p.bytes, 0);
+    placed.forEach(p => {
+      const seg = document.createElement('button');
+      seg.type = 'button';
+      seg.className = 'dseg';
+      const pct = Math.max((p.bytes / budget) * 100, 1.5);
+      seg.style.width = pct + '%';
+      seg.textContent = p.bytes >= 200 ? p.name : '';
+      seg.setAttribute('aria-label', 'remove ' + p.name + ', ' + p.bytes + ' bytes, from the window');
+      seg.title = p.name + ' - ' + p.bytes + ' B';
+      seg.addEventListener('click', () => {
+        placed = placed.filter(x => x.id !== p.id);
+        render();
+      });
+      barEl.appendChild(seg);
+    });
+
+    nextEl.innerHTML = '';
+    if (spilled.length === 0){
+      const none = document.createElement('span');
+      none.style.cssText = 'font-family:var(--mono);font-size:.65rem;color:var(--dim);';
+      none.textContent = '(nothing spilled yet)';
+      nextEl.appendChild(none);
+    }
+    spilled.forEach(p => {
+      const seg = document.createElement('button');
+      seg.type = 'button';
+      seg.className = 'dseg';
+      seg.style.width = 'auto';
+      seg.style.padding = '.3rem .5rem';
+      seg.textContent = p.name + ' · ' + p.bytes + 'B';
+      seg.setAttribute('aria-label', 'remove ' + p.name + ' from next-frame spill list');
+      seg.addEventListener('click', () => {
+        spilled = spilled.filter(x => x.id !== p.id);
+        render();
+      });
+      nextEl.appendChild(seg);
+    });
+
+    const pct = Math.min((used / budget) * 100, 100);
+    capEl.innerHTML = '<b>' + used.toLocaleString() + ' of ' + budget.toLocaleString() +
+      ' bytes</b> used this VBlank (' + pct.toFixed(1) + '%).' +
+      (spilled.length ? ' ' + spilled.length + ' block' + (spilled.length>1?'s':'') + ' spilled to next frame, exactly what Drain_Budgeted_Queue\'s compaction does with real Important/Deferrable entries.' : ' Click a placed block to remove it.');
+  }
+
+  render();
+})();
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+
+</body>
+</html>
