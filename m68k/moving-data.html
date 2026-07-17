@@ -302,17 +302,8 @@ details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
 .szgrp{display:inline-flex; gap:.25rem;}
 .msim-ctrl .szbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
 
-/* sign-extension toy */
-.extviz{display:flex; flex-direction:column; gap:.8rem;}
-.ext-row{display:flex; flex-wrap:wrap; align-items:center; gap:.6rem;
-  font-family:var(--mono); font-size:.8rem;}
-.ext-cell{border:1px solid var(--line); border-radius:4px; background:var(--panel);
-  padding:.45rem .7rem; text-align:center;}
-.ext-cell .xc-l{display:block; font-size:.6rem; letter-spacing:.12em;
-  text-transform:uppercase; color:var(--dim);}
-.ext-cell .xc-v{font-size:1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
-.ext-cell .xc-v b{color:#CC66AA; font-weight:normal;}
-.ext-arrow{color:var(--dim); font-size:.72rem;}
+/* sign-extension toy: freshly repainted digits highlighted inside the register */
+.mr-val b{color:#CC66AA; font-weight:normal;}
 
 /* this page's fallback captions run long; sentence case reads better than the
    theme's small-caps at that length */
@@ -471,7 +462,9 @@ into registers, working on them there, and writing results back out.</p>
   <p>MOVE takes a value from one place and copies it into another. The place it copies FROM keeps its
   value; the place it copies INTO is overwritten with the copy. That is the whole idea. It works in
   any of the three sizes and is the single most common instruction in any 68000 program: the
-  general-purpose "get this value from here to there."</p>
+  general-purpose "get this value from here to there." Setting an object's speed, arming a timer,
+  handing a command to the VDP: nearly everything a game does, every frame, starts with a MOVE
+  putting a value where the next routine expects to find it.</p>
 
   <details class="explain">
   <summary>New here? &middot; What are these X N Z V C flags?</summary>
@@ -589,7 +582,9 @@ into registers, working on them there, and writing results back out.</p>
   </div>
   <p>Loads an 8-bit immediate into a data register, sign-extended to fill the entire 32 bits, and
   does it in a single word of opcode instead of MOVE's longer encoding. There is no size suffix:
-  MOVEQ always writes a full long.</p>
+  MOVEQ always writes a full long. This is the everyday way to load any small constant: a loop
+  count, an object's state number, a zero to wipe a register clean. If the value fits in -128 to
+  127, MOVEQ is the cheapest possible way to get it into a register.</p>
   <p>The classic full-register zero idiom, from the console's boot-time VDP check:</p>
   <pre>	move.w	(a4),d0	<span class="c">; check if VDP works</span>
 	moveq	<span class="n">#0</span>,d0	<span class="c">; clear d0</span></pre>
@@ -601,7 +596,7 @@ into registers, working on them there, and writing results back out.</p>
   The immediate is an 8-bit signed field, range -128 to 127. MOVEQ cannot express <code>#200</code>
   or <code>#$8000</code> at all; those need a plain MOVE instead. And despite encoding only a byte,
   MOVEQ always clears the entire 32-bit destination through sign extension (the
-  <a href="#signext">sign-extension toy</a> in section 3 shows the exact bit behavior), which is
+  <a href="#signext">sign-extension toy</a> at EXT shows the exact bit behavior), which is
   exactly why <code>moveq #0,d0</code> is the standard way to zero a whole data register.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   There is nothing cheaper; MOVEQ is the floor. Go the other way instead: a constant outside
@@ -656,7 +651,10 @@ into registers, working on them there, and writing results back out.</p>
   </div>
   <p>The address-register form of MOVE: copies a value into one of A0-A7. Plain MOVE cannot target
   an address register directly, so whenever the destination is An, this is the instruction that
-  actually gets assembled, whether or not the source code spells out "movea" explicitly.</p>
+  actually gets assembled, whether or not the source code spells out "movea" explicitly. In
+  practice this is how pointers travel: whenever an address stored in data, in a table, or in
+  another register needs to become the thing you dereference next, MOVEA is what lands it in an
+  An where <code>(An)</code> and <code>d(An)</code> can get at it.</p>
   <p>Two absolute addresses loaded ahead of a checksum scan:</p>
   <pre>	movea.l	<span class="n">#EndOfHeader</span>,a0	<span class="c">; start checking bytes after the header ($200)</span>
 	movea.l	<span class="n">#ROMEndLoc</span>,a1	<span class="c">; stop at end of ROM</span></pre>
@@ -669,7 +667,7 @@ into registers, working on them there, and writing results back out.</p>
   A <code>.w</code> source is sign-extended to 32 bits on the way in, so
   <code>movea.w #$8000,a0</code> leaves <code>a0 = $FFFF8000</code>, not <code>$00008000</code>,
   which surprises anyone thinking in 16-bit address spaces (the
-  <a href="#signext">sign-extension toy</a> in section 3 shows the mechanism). And because MOVEA
+  <a href="#signext">sign-extension toy</a> at EXT shows the mechanism). And because MOVEA
   touches no flags at all, you cannot branch on its result the way MOVE's example above does; a
   MOVEA immediately followed by <code>bne</code> is testing whatever flags were already set
   beforehand, not this instruction's outcome.</div>
@@ -770,7 +768,9 @@ as it was.</p>
     actually touches the data. The destination is always an address register.</p>
   </div>
   <p>Computes an effective address and loads that address itself, not the data living there, into
-  an address register. Always a longword operation; there is no size suffix.</p>
+  an address register. Always a longword operation; there is no size suffix. It is the standard
+  opening move of a routine that is about to work on something: point a register at the table,
+  the object, or the port first, and everything that follows gets shorter and cheaper.</p>
   <p>A PC-relative table load, right at reset, the standard position-independent way to address a
   local table:</p>
   <pre>	lea	SetupValues(pc),a5	<span class="c">; Load setup values array address.</span></pre>
@@ -778,6 +778,12 @@ as it was.</p>
   <p>And loading a hardware port address once, for repeated reuse through the register afterward:</p>
   <pre>	lea	(VDP_control_port).l,a5</pre>
   <span class="src">s2disasm/s2.asm:704</span>
+  <p>That second example is the reason to use LEA at all. Every later write through
+  <code>(a5)</code> is a 2-byte, 8-cycle instruction; spelling out
+  <code>(VDP_control_port).l</code> again would cost 6 bytes and 16 cycles, every single time.
+  Pay for the address once, and every use after that is nearly free. Whenever code is about to
+  touch the same port, table, or structure more than once or twice, a LEA up front is the setup
+  move that makes everything after it cheap.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   Beginners commonly confuse <code>lea (foo).w,a0</code> (load
   the address of foo) with <code>move.w (foo).w,d0</code> (load the value stored at foo); the
@@ -836,12 +842,21 @@ as it was.</p>
   </div>
   <p>Computes an effective address exactly like LEA, then pushes that 32-bit address onto the
   stack instead of loading it into a register. Always pushes 4 bytes.</p>
-  <p>PEA is genuinely rare in hand-written 68000 game code; it shows up far more often as
-  compiler-generated "push this argument's address" glue than as something a person types. The one
-  real use found in the Sonic 2 disassembly is not that at all: it is a deliberate, commented
-  "fake call" trick. The routine pushes the address right after itself, then branches (not calls)
-  into shared code, so that shared code's own <code>rts</code> returns to the label following the
-  PEA, exactly as if the PEA'd branch had been a subroutine call all along:</p>
+  <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+  <p>PEA's everyday job is passing a pointer: push the <em>address</em> of a thing so a
+  subroutine can find the thing itself, without either side caring which register anything
+  lives in.</p>
+  <pre>	pea	(Score_Digits).w	<span class="c">; push the ADDRESS of the score buffer</span>
+	bsr.w	DrawNumber	<span class="c">; DrawNumber reads the digits through that pointer</span>
+	addq.l	<span class="n">#4</span>,sp	<span class="c">; discard the argument afterward</span></pre>
+  <p>That calling style is everywhere in compiled C code. Sonic-era game code passes pointers in
+  address registers instead, which is faster, so PEA barely appears in it at all.</p>
+  </div>
+  <p>Which is why the one real use in the Sonic 2 disassembly is not parameter passing: it is a
+  deliberate, commented "fake call" trick. The routine pushes the address right after itself,
+  then branches (not calls) into shared code, so that shared code's own <code>rts</code> returns
+  to the label following the PEA, exactly as if the PEA'd branch had been a subroutine call all
+  along:</p>
   <pre>	<span class="c">; This is just a fancy efficient way of doing 'if true then call this, else call that'.</span>
 	pea	+(pc)
 	tst.w	(Two_player_mode).w
@@ -986,42 +1001,6 @@ value that is already sitting where it needs to be. CLR wipes a location to zero
 rearrange bits or whole registers in place, and EXT changes how many bits of a register actually
 carry meaning, without touching memory at all.</p>
 
-<details class="explain">
-  <summary>New here? &middot; What is sign extension, and why does it matter?</summary>
-  <div class="x-body">
-    <p>A signed byte like -1 is stored as <code>$FF</code>, and a signed word holding -1 is stored
-    as <code>$FFFF</code>. If you simply copied that byte <code>$FF</code> into the low 8 bits of a
-    16-bit value and left the top 8 bits zero, you would get <code>$00FF</code>, which is 255, not
-    -1: a completely different number. Sign extension fixes this by copying the value's top bit
-    (the sign bit) into every new bit added above it, so <code>$FF</code> extended to 16 bits
-    correctly becomes <code>$FFFF</code>, still -1.</p>
-    <p>This matters constantly on the 68000 because so much game data is packed into bytes to save
-    ROM space (an object's radius, a velocity, an angle delta), but arithmetic on that data usually
-    needs to happen at word or long size. EXT exists specifically to do this conversion correctly;
-    getting it wrong (or skipping it, and doing math on an unextended byte) is a classic source of
-    "works for positive values, breaks for negative ones" bugs.</p>
-  </div>
-</details>
-
-<figure class="diagram" id="signext">
-  <div class="extviz">
-    <div class="msim-instr"><code>ext.w</code> / <code>ext.l</code> <span>type a byte value and watch the sign bit paint every new bit above it. The same mechanism runs inside MOVEQ and MOVEA.w.</span></div>
-    <div class="msim-ctrl">
-      <label for="xsrc">Byte value (hex, 2 digits)</label>
-      <input id="xsrc" type="text" value="80" maxlength="2" autocomplete="off" aria-describedby="xnote">
-    </div>
-    <div class="ext-row">
-      <span class="ext-cell"><span class="xc-l">byte</span><span class="xc-v" id="xb">$80</span></span>
-      <span class="ext-arrow" aria-hidden="true">ext.w &rarr;</span>
-      <span class="ext-cell"><span class="xc-l">word</span><span class="xc-v" id="xw">$<b>FF</b>80</span></span>
-      <span class="ext-arrow" aria-hidden="true">ext.l &rarr;</span>
-      <span class="ext-cell"><span class="xc-l">long</span><span class="xc-v" id="xl">$<b>FFFFFF</b>80</span></span>
-    </div>
-    <p class="msim-note" id="xnote" aria-live="polite">$80 reads as -128 as a signed byte. Its top bit is 1, so sign extension paints ones into every new bit, and the value stays -128 at every size. Try $7F next and watch the paint turn to zeros.</p>
-  </div>
-  <figcaption>Sign extension copies the top bit upward so the number keeps its value (static fallback: $80, which is -128, extends to $FF80 and then $FFFFFF80, still -128; $7F, which is 127, extends to $007F and $0000007F, still 127; the painted-in bits are highlighted).</figcaption>
-</figure>
-
 <div class="instr" id="clr">
   <h3><span class="mn">CLR</span> <span class="syn">CLR.b/.w/.l &lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by CLR">
@@ -1064,7 +1043,9 @@ carry meaning, without touching memory at all.</p>
     PC-relative destinations, since nothing in ROM is writable.</p>
   </div>
   <p>Sets the destination operand to zero, in any of the three sizes. It reads as "clear," and
-  does exactly that: whatever was there before is gone, replaced with 0.</p>
+  does exactly that: whatever was there before is gone, replaced with 0. Resetting a timer,
+  dropping a flag, stopping an object dead by zeroing its velocity: whenever a field needs to
+  become 0 in one step, this is the tool.</p>
   <p>Zeroing a flag byte before a batch of work runs:</p>
   <pre>loc_1072:
 	clr.b	(Do_Updates_in_H_int).w
@@ -1118,7 +1099,8 @@ carry meaning, without touching memory at all.</p>
   </div>
   <p>Exchanges the high 16 bits and the low 16 bits of a data register, in place. There is no size
   suffix; it always operates on the full 32-bit register, and it only ever targets a register,
-  never memory.</p>
+  never memory. Its everyday job is values that are really two 16-bit halves glued together,
+  which on the Genesis usually means one thing: VDP command words, built half by half.</p>
   <div class="swapviz" aria-hidden="true">
     <span class="swapreg"><span class="half hi">high 16</span><span class="half lo">low 16</span></span>
     <span class="sw-arrow">SWAP&nbsp;&rarr;</span>
@@ -1226,8 +1208,45 @@ carry meaning, without touching memory at all.</p>
   </div>
   <p>Sign-extends the low portion of a data register to fill the rest of the register, in place.
   <code>EXT.w</code> takes the low byte and extends it to a full word; <code>EXT.l</code> takes the
-  low word and extends it to a full long. The <a href="#signext">sign-extension toy</a> at the top
-  of this section shows the exact bit behavior.</p>
+  low word and extends it to a full long. You need it whenever a signed byte from object data (a
+  radius, a height, a speed delta) is about to meet word-sized math; skip it and negative values
+  silently turn into large positive ones.</p>
+
+  <details class="explain">
+  <summary>New here? &middot; What is sign extension, and why does it matter?</summary>
+  <div class="x-body">
+    <p>A signed byte like -1 is stored as <code>$FF</code>, and a signed word holding -1 is stored
+    as <code>$FFFF</code>. If you simply copied that byte <code>$FF</code> into the low 8 bits of a
+    16-bit value and left the top 8 bits zero, you would get <code>$00FF</code>, which is 255, not
+    -1: a completely different number. Sign extension fixes this by copying the value's top bit
+    (the sign bit) into every new bit added above it, so <code>$FF</code> extended to 16 bits
+    correctly becomes <code>$FFFF</code>, still -1.</p>
+    <p>This matters constantly on the 68000 because so much game data is packed into bytes to save
+    ROM space (an object's radius, a velocity, an angle delta), but arithmetic on that data usually
+    needs to happen at word or long size. EXT exists specifically to do this conversion correctly;
+    getting it wrong (or skipping it, and doing math on an unextended byte) is a classic source of
+    "works for positive values, breaks for negative ones" bugs.</p>
+  </div>
+  </details>
+
+  <figure class="diagram" id="signext">
+  <div class="movesim">
+    <div class="msim-instr"><code>ext.w d0</code> / <code>ext.l d0</code> <span>load a byte into d0 next to leftover junk, then run each EXT and watch which digits it repaints. MOVEQ and MOVEA.w run this same mechanism on their results automatically.</span></div>
+    <div class="msim-ctrl">
+      <label for="xsrc">Byte value (hex, 2 digits)</label>
+      <input id="xsrc" type="text" value="80" maxlength="2" autocomplete="off" aria-describedby="xnote">
+      <button type="button" id="xload">Load d0</button>
+      <button type="button" id="xw">Run ext.w d0</button>
+      <button type="button" id="xl">Run ext.l d0</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="xd0">$DDDDDD80</span><span class="mr-tag">watch the repainted digits</span></span>
+    </div>
+    <p class="msim-note" id="xnote" aria-live="polite">d0 holds your byte with $DD junk above it, the exact situation EXT exists for. Run ext.w, then ext.l. Then reload and try ext.l FIRST, and see what goes wrong.</p>
+  </div>
+  <figcaption>Each EXT repaints exactly one region with the sign bit of the part below it, and no more (static fallback: with $80 loaded, d0 = $DDDDDD80; ext.w repaints bits 8-15 to give $DDDDFF80; ext.l then repaints bits 16-31 to give $FFFFFF80. Running ext.l without ext.w extends the junk word $DD80 into $FFFFDD80 instead, which is why byte-to-long is always ext.w first).</figcaption>
+  </figure>
+
   <p>A byte radius field read off an object, extended to a word before it takes part in word-sized
   arithmetic:</p>
   <pre>	moveq	<span class="n">#0</span>,d0
@@ -1355,26 +1374,46 @@ function expandAll(btn){
   sync(); norm();
 })();
 
-/* sign-extension toy: the sign bit paints every new bit above it */
+/* sign-extension toy: run ext.w / ext.l on a register holding junk above your byte */
 (function(){
   var i=document.getElementById('xsrc'); if(!i) return;
-  var xb=document.getElementById('xb'), xw=document.getElementById('xw'), xl=document.getElementById('xl'), note=document.getElementById('xnote');
-  function upd(){
+  var d0e=document.getElementById('xd0'), note=document.getElementById('xnote');
+  var load=document.getElementById('xload'), bw=document.getElementById('xw'), bl=document.getElementById('xl');
+  var d0=0xDDDDDD80;
+  function show(paint){
+    var h=(d0>>>0).toString(16).toUpperCase().padStart(8,'0');
+    if(paint==='w'){ d0e.innerHTML='$'+h.slice(0,4)+'<b>'+h.slice(4,6)+'</b>'+h.slice(6); }
+    else if(paint==='l'){ d0e.innerHTML='$<b>'+h.slice(0,4)+'</b>'+h.slice(4); }
+    else { d0e.textContent='$'+h; }
+    d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+  }
+  function byteVal(){
     var v=(i.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase();
     i.value=v;
-    var n=parseInt(v||'0',16)&0xFF;
-    var neg=(n&0x80)!==0;
-    var h=n.toString(16).toUpperCase().padStart(2,'0');
-    xb.textContent='$'+h;
-    xw.innerHTML='$<b>'+(neg?'FF':'00')+'</b>'+h;
-    xl.innerHTML='$<b>'+(neg?'FFFFFF':'000000')+'</b>'+h;
-    var signed=neg?n-256:n;
-    note.textContent='$'+h+' reads as '+signed+' as a signed byte. Its top bit is '
-      +(neg?'1, so sign extension paints ones':'0, so sign extension paints zeros')
-      +' into every new bit, and the value stays '+signed+' at every size. MOVEQ and MOVEA.w run this same mechanism on their results automatically; EXT is how you ask for it on demand.';
+    return parseInt(v||'0',16)&0xFF;
   }
-  i.addEventListener('input',upd);
-  upd();
+  load.addEventListener('click',function(){
+    d0=(0xDDDDDD00|byteVal())>>>0;
+    show(null);
+    note.textContent='d0 loaded: your byte in the low 8 bits, $DD junk above it. Now extend it.';
+  });
+  bw.addEventListener('click',function(){
+    var b=d0&0xFF, w=(b&0x80)?(0xFF00|b):b;
+    d0=(((d0&0xFFFF0000)>>>0)|w)>>>0;
+    show('w');
+    note.textContent='ext.w read only the low byte, saw its top bit was '
+      +((b&0x80)?'1, and painted $FF':'0, and painted $00')
+      +' over bits 8-15. Bits 16-31 are untouched: ext.w stops at the word boundary.';
+  });
+  bl.addEventListener('click',function(){
+    var w=d0&0xFFFF, junk=((w>>8)&0xFF)===0xDD;
+    d0=((w&0x8000)?(0xFFFF0000|w):w)>>>0;
+    show('l');
+    note.textContent='ext.l read the low word $'+w.toString(16).toUpperCase().padStart(4,'0')
+      +' and painted its top bit over bits 16-31.'
+      +(junk?' But that word still contained the junk, so the junk just got signed into your result. This is exactly why byte-to-long is ext.w first, then ext.l.':'');
+  });
+  show(null);
 })();
 
 /* flag chip tooltips (hover / focus / tap shows what each condition code means) */
