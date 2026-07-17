@@ -273,6 +273,7 @@ details.refbox summary::before{content:"\25B8 ";}
 details.refbox[open] summary::before{content:"\25BE ";}
 details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
 details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
 </style>
 </head>
 <body>
@@ -385,22 +386,20 @@ into registers, working on them there, and writing results back out.</p>
     <span class="fl-label">Cost</span>
     <span class="cchip">4 cycles</span>
     <span class="cchip">2 bytes</span>
-    <span class="cctx">register to register, same for .b / .w / .l</span>
-    <span class="cnote">Register to register is the cheap case, and all three sizes cost the same there. Memory and immediate operands change it, and the long size costs more again: <code>move.w #n,d0</code> is 8 cycles / 4 bytes, <code>move.l #n,d0</code> is 12 / 6. Full breakdown below. These are core CPU cycles; real Genesis memory accesses (ROM, VDP) add hardware wait states on top.</span>
+    <span class="cctx">register to register, any size. More for memory operands and the long size:</span>
   </div>
-
   <details class="refbox">
-    <summary>Timing by operand</summary>
+    <summary>Full timing and size</summary>
     <div class="enc-body">
     <div class="tbl"><table>
       <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
-      <tr><td><code>move Dn,Dn</code></td><td>4</td><td>4</td></tr>
-      <tr><td><code>move #n,Dn</code></td><td>8</td><td>12</td></tr>
-      <tr><td><code>move (An),Dn</code></td><td>8</td><td>12</td></tr>
-      <tr><td><code>move Dn,(An)</code></td><td>8</td><td>12</td></tr>
-      <tr><td><code>move (An),(An)</code></td><td>12</td><td>20</td></tr>
+      <tr><td><code>move Dn,Dn</code></td><td>4c, 2b</td><td>4c, 2b</td></tr>
+      <tr><td><code>move #n,Dn</code></td><td>8c, 4b</td><td>12c, 6b</td></tr>
+      <tr><td><code>move (An),Dn</code></td><td>8c, 2b</td><td>12c, 2b</td></tr>
+      <tr><td><code>move Dn,(An)</code></td><td>8c, 2b</td><td>12c, 2b</td></tr>
+      <tr><td><code>move (An),(An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
     </table></div>
-    <p>Cycles for the common forms. Register to register is 4 for any size; each memory operand adds bus cycles, and the long size doubles the memory traffic. Instruction size in bytes follows the same shape: 2 bytes for register operands, plus 2 more for each 16-bit extension word an immediate or displacement needs (so <code>move.l #n,d0</code> is 6 bytes, the opcode plus a 4-byte immediate).</p>
+    <p class="enc-note">c = CPU cycles, b = instruction bytes. Cycles are core-CPU figures; real Genesis memory accesses (ROM, VDP) add wait states on top. Bytes grow only when an operand needs an extension word, meaning an immediate or a displacement.</p>
     </div>
   </details>
 
