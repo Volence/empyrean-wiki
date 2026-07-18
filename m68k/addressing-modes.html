@@ -197,7 +197,8 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .resolved .r-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.16em;
   text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
 .resolved code{font-variant-numeric:tabular-nums;}
-.resolved .rv{color:var(--gold); font-weight:600;}
+/* a data VALUE (the contents of memory or a register): distinct from a bare address/location */
+code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em; font-weight:600;}
 
 /* gotcha note */
 .gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
@@ -313,15 +314,15 @@ are not the same thing, and the parentheses are what tell them apart:</p>
 <p style="margin:.5rem 0 .3rem;">After that store, the same number means two different things depending
 on how you write it:</p>
 <div style="font-size:.92rem; line-height:1.95; margin:.2rem 0 .3rem;">
-  <div><code>#$FFFFF000</code> &nbsp;resolves to&nbsp; <code>$FFFFF000</code> &mdash; the <strong>address</strong> (a plain number, a location)</div>
-  <div><code>($FFFFF000).w</code> &nbsp;resolves to&nbsp; <code>$20</code> &mdash; the <strong>value</strong> that location now holds</div>
+  <div><code>#$FFFFF000</code> &nbsp;resolves to&nbsp; <code>$FFFFF000</code>, the <strong>address</strong> (a plain number, a location)</div>
+  <div><code>($FFFFF000).w</code> &nbsp;resolves to&nbsp; <code class="v">$20</code>, the <strong>value</strong> that location now holds</div>
 </div>
 <p style="margin:.4rem 0 0;">The leading <code>#</code> gives you the number itself; the parentheses
 send the CPU to fetch what lives there. That one difference is the whole of this page.</p>
 </div>
 
 <p style="color:var(--dim); font-size:.9rem; max-width:42rem;">Real Sonic code writes a <em>name</em>
-&mdash; <code>(Vint_routine).w</code> &mdash; instead of the raw <code>($FFFFF000).w</code>. A
+<code>(Vint_routine).w</code>, instead of the raw <code>($FFFFF000).w</code>. A
 <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#labels">label</a>
 is just a readable alias the assembler swaps for the address at build time; the machine sees the same
 number either way. The examples below use the real names, with the raw address worked out beside each.</p>
@@ -547,7 +548,7 @@ cheap offset away.</p>
   <h3><span class="mn">Dn</span> <span class="syn">Data register direct</span></h3>
   <div class="mmeta">
     <div class="row bd"><span class="lbl">You write</span><span class="val">A data register, <code>d0</code> through <code>d7</code>.</span></div>
-    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">No address to compute &mdash; the register itself is the operand.</span></div>
+    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">No address to compute. The register itself is the operand.</span></div>
     <div class="row bd"><span class="lbl">You work with</span><span class="val">The contents of that register, at the size you name (<code>.b</code>/<code>.w</code>/<code>.l</code>).</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-dn">0 cycles, 0 extension bytes</a>. The cheapest possible operand.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Anything already in hand: a counter, an intermediate result, a value you are about to combine with another. Most arithmetic keeps both operands in data registers precisely because it is free.</span></div>
@@ -567,8 +568,8 @@ cheap offset away.</p>
   <h3><span class="mn">An</span> <span class="syn">Address register direct</span></h3>
   <div class="mmeta">
     <div class="row bd"><span class="lbl">You write</span><span class="val">An address register, <code>a0</code> through <code>a7</code>.</span></div>
-    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">No address to compute &mdash; the register's own value is the operand.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The 32-bit number held in that register, used as a plain value &mdash; <em>not</em> the memory it points at.</span></div>
+    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">No address to compute. The register's own value is the operand.</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The 32-bit number held in that register, used as a plain value, <em>not</em> the memory it points at.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-an">0 cycles, 0 extension bytes</a>, same as a data register.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Comparing or copying pointers: testing whether a scan pointer has reached an end pointer, moving one address register into another. Note this uses the register's <em>value</em>, not the memory it points at.</span></div>
   </div>
@@ -594,7 +595,7 @@ cheap offset away.</p>
 <div class="mode" id="mode-anind">
   <h3><span class="mn">(An)</span> <span class="syn">Address register indirect</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(a1)</code> &mdash; an address register in parentheses.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(a1)</code>, an address register in parentheses.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = the address held in <code>a1</code>. No arithmetic.</span></div>
     <div class="row bd"><span class="lbl">You work with</span><span class="val">The value in memory at that address.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-anind">4 cycles for a byte or word, 8 for a long, 0 extension bytes</a>.</span></div>
@@ -609,8 +610,8 @@ cheap offset away.</p>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   <code>ReadJoypads</code> loaded <code>a1</code> with <code>HW_Port_1_Data</code> = <code>$A10003</code>, the
   controller data port. So <code>move.b&nbsp;(a1),d0</code> reads the byte living at <code>$A10003</code>; if the
-  pad reports <code>$7F</code> this instant, the line is effectively <span class="rv">load $7F into d0</span>
-  &mdash; the port's current reading, not the address <code>$A10003</code> itself.</div>
+  pad reports <code class="v">$7F</code> this instant, the line is effectively load <code class="v">$7F</code> into d0,
+  the port's current reading, not the address <code>$A10003</code> itself.</div>
   <p><code>(a1)</code> is "the byte at the address a1 holds": no offset, the pointer <em>is</em> the
   address. The two lines after shift and mask that freshly-read byte into the Start and A bits, so the
   value the mode fetched is consumed immediately.</p>
@@ -619,7 +620,7 @@ cheap offset away.</p>
 <div class="mode" id="mode-postinc">
   <h3><span class="mn">(An)+</span> <span class="syn">Address register indirect with postincrement</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(a1)+</code> &mdash; a register in parentheses with a trailing <code>+</code>.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(a1)+</code>, a register in parentheses with a trailing <code>+</code>.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = the address in <code>a1</code>; <em>then</em> <code>a1</code> steps forward by the operand size (1, 2, or 4).</span></div>
     <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address. The step lands after the access, so it is not part of the operand.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-postinc">4 cycles for a byte or word, 8 for a long, 0 extension bytes</a>. The auto-step is free.</span></div>
@@ -652,8 +653,8 @@ cheap offset away.</p>
   <span class="src">s2disasm/s2.asm:1775-1780 (ProcessDMAQueue)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   Say <code>a1</code> points into the queued command block at <code>$FFFFDC00</code>. Then
-  <code>move.w&nbsp;(a1)+,d0</code> reads the word at <code>$FFFFDC00</code>; if that word is <code>$9340</code>,
-  the line is effectively <span class="rv">load $9340 into d0</span> &mdash; and only <em>after</em> the read does
+  <code>move.w&nbsp;(a1)+,d0</code> reads the word at <code>$FFFFDC00</code>; if that word is <code class="v">$9340</code>,
+  the line is effectively load <code class="v">$9340</code> into d0, and only <em>after</em> the read does
   <code>a1</code> advance to <code>$FFFFDC02</code>, ready for the next word.</div>
   <p>Each <code>(a1)+</code> reads a word and steps a1 two bytes onward, so the run of them marches
   through the command block without any separate "add 2 to a1" instruction. The <code>beq</code>
@@ -690,9 +691,9 @@ cheap offset away.</p>
 <div class="mode" id="mode-predec">
   <h3><span class="mn">-(An)</span> <span class="syn">Address register indirect with predecrement</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>-(sp)</code> &mdash; a leading <code>-</code>, then a register in parentheses.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>-(sp)</code>, a leading <code>-</code>, then a register in parentheses.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val"><code>sp</code> <em>first</em> steps back by the operand size; that new address is the effective address. Step before, access after.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The memory at that new address (a store target here) &mdash; the mirror image of postincrement.</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The memory at that new address (a store target here), the mirror image of postincrement.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-predec">6 cycles for a byte or word, 10 for a long, 0 extension bytes</a>: 2 more than postincrement, for the internal decrement.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Pushing onto the stack, and building a buffer backwards. <code>-(sp)</code> is how a value gets pushed; paired with a later <code>(sp)+</code> it round-trips exactly.</span></div>
   </div>
@@ -704,9 +705,9 @@ cheap offset away.</p>
 	move.l	(sp)+,d1</pre>
   <span class="src">s2disasm/s2.asm:446-449 (ChecksumError)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  Say <code>sp</code> = <code>$FFFFFF00</code> and <code>d1</code> holds <code>$0000ABCD</code>. Then
+  Say <code>sp</code> = <code>$FFFFFF00</code> and <code>d1</code> holds <code class="v">$0000ABCD</code>. Then
   <code>move.l&nbsp;d1,-(sp)</code> <em>first</em> drops <code>sp</code> to <code>$FFFFFEFC</code>, then stores
-  <code>$0000ABCD</code> there &mdash; effectively <span class="rv">put d1's value at $FFFFFEFC</span>, a push.
+  <code class="v">$0000ABCD</code> there, putting d1's value at <code>$FFFFFEFC</code>, a push.
   The later <code>(sp)+</code> reads it back and lifts <code>sp</code> to <code>$FFFFFF00</code> again.</div>
   <p><code>-(sp)</code> steps sp back 4 bytes and stores d1 there; the call runs and is free to
   clobber d1; then <code>(sp)+</code> reads the value back and steps sp forward again. The pop is the
@@ -728,9 +729,9 @@ cheap offset away.</p>
 <div class="mode" id="mode-disp">
   <h3><span class="mn">d(An)</span> <span class="syn">Address register indirect with displacement</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>y_radius(a0)</code> &mdash; a displacement (often a field name) before a register in parentheses.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>y_radius(a0)</code>, a displacement (often a field name) before a register in parentheses.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = <code>a0</code> + a 16-bit signed displacement baked into the instruction.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address &mdash; here, one named field of the object <code>a0</code> points at.</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address, here, one named field of the object <code>a0</code> points at.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-disp">8 cycles for a byte or word, 12 for a long, 2 extension bytes</a> for the displacement word.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Reaching a named field of a structure. This is <em>the</em> object-code mode: point a0 at an object once, then <code>x_pos(a0)</code>, <code>y_vel(a0)</code>, <code>y_radius(a0)</code> each name a field by its fixed offset.</span></div>
   </div>
@@ -743,8 +744,8 @@ cheap offset away.</p>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   The field <code>y_radius</code> is the fixed offset <code>$16</code>. Say <code>a0</code> points at an object slot
   at <code>$FFFFB000</code>. Then the address is <code>$FFFFB000 + $16</code> = <code>$FFFFB016</code>; if that byte
-  holds <code>$13</code> (a 19-pixel half-height), <code>move.b&nbsp;y_radius(a0),d3</code> is effectively
-  <span class="rv">load $13 into d3</span> &mdash; the one field, picked out by its offset.</div>
+  holds <code class="v">$13</code> (a 19-pixel half-height), <code>move.b&nbsp;y_radius(a0),d3</code> is effectively
+  load <code class="v">$13</code> into d3, the one field, picked out by its offset.</div>
   <p><code>y_radius(a0)</code> is "the byte at a0 plus the fixed offset of the y_radius field": the
   assembler turns the field name into a small constant displacement. The <code>addq</code> right after
   is the consumer, adjusting the value the mode just fetched. Clearing d3 first with
@@ -759,9 +760,9 @@ cheap offset away.</p>
 <div class="mode" id="mode-index">
   <h3><span class="mn">d(An,Xn)</span> <span class="syn">Address register indirect with index</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>SoundQueue.SFX0(a0,d1.w)</code> &mdash; a displacement, a base register, and an index register.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>SoundQueue.SFX0(a0,d1.w)</code>, a displacement, a base register, and an index register.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = <code>a0</code> + <code>d1</code> (taken as a word or long) + an 8-bit signed displacement.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address &mdash; the table entry the runtime index picked.</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address, the table entry the runtime index picked.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-index">10 cycles for a byte or word, 14 for a long, 2 extension bytes</a> for the index-and-displacement word.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Indexing a table by a value computed at runtime: sound-queue slot number, animation frame, tile id. The base names the table, the index picks the entry.</span></div>
   </div>
@@ -791,9 +792,9 @@ cheap offset away.</p>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   <code>SoundQueue.SFX0</code> is the <code>+$1</code> field (<code>Music0</code> sits at <code>+$0</code>). Say
   <code>a0</code> holds the queue base <code>$FFFFF0A0</code> and <code>d1</code> = <code>$0002</code> (slot 2). Then
-  the address is <code>$FFFFF0A0 + $2 + $1</code> = <code>$FFFFF0A3</code>; if that byte holds <code>$81</code>
+  the address is <code>$FFFFF0A0 + $2 + $1</code> = <code>$FFFFF0A3</code>; if that byte holds <code class="v">$81</code>
   (a queued sound id), <code>move.b&nbsp;SoundQueue.SFX0(a0,d1.w),d0</code> is effectively
-  <span class="rv">load $81 into d0</span> &mdash; the base names the table, the index picks the entry.</div>
+  load <code class="v">$81</code> into d0: the base names the table, the index picks the entry.</div>
   <p>All three parts show at once: the base a0, the runtime index <code>d1.w</code>, and the fixed
   field displacement <code>SoundQueue.SFX0</code>, summed into one address. The <code>beq</code> is the
   consumer, skipping the slot when the byte fetched is zero (nothing queued).</p>
@@ -835,9 +836,9 @@ variables, bakes in constants, and finds its own tables.</p>
 <div class="mode" id="mode-absw">
   <h3><span class="mn">(xx).w</span> <span class="syn">Absolute short</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(Vint_routine).w</code> &mdash; an address (usually a name) in parentheses with a <code>.w</code> tag.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(Vint_routine).w</code>, an address (usually a name) in parentheses with a <code>.w</code> tag.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">A single 16-bit address stored in the instruction, sign-extended to 32 bits. Effective address = that fixed number.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value stored at that address. (The <code>.w</code> is the <em>address</em> size, not the data size &mdash; <code>tst.b</code> still tests a byte.)</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value stored at that address. (The <code>.w</code> is the <em>address</em> size, not the data size, <code>tst.b</code> still tests a byte.)</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-absw">8 cycles for a byte or word, 12 for a long, 2 extension bytes</a> for the one address word.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Named variables in <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span> and hardware in the low addresses. Because it sign-extends, a 2-byte address reaches the whole top 32KB of the map, which is exactly where the Genesis puts its RAM.</span></div>
   </div>
@@ -848,8 +849,8 @@ variables, bakes in constants, and finds its own tables.</p>
   <span class="src">s2disasm/s2.asm:483-484 (V_Int)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   <code>Vint_routine</code> is the name for the work-RAM byte at <code>$FFFFF62A</code>. Say that byte currently
-  holds <code>$06</code>. Then <code>tst.b&nbsp;(Vint_routine).w</code> is effectively <span class="rv">test the
-  value $06</span> &mdash; the byte living at that address, not the address itself. The parentheses turn
+  holds <code class="v">$06</code>. Then <code>tst.b&nbsp;(Vint_routine).w</code> is effectively a test of the
+  value <code class="v">$06</code>, the byte living at that address, not the address itself. The parentheses turn
   <code>$FFFFF62A</code> into &ldquo;go get what is there.&rdquo;</div>
   <p><code>(Vint_routine).w</code> names a work-RAM byte by a 16-bit absolute address; the
   <code>beq</code> reads the test and, if the flag is zero, jumps to the lag path. One address word,
@@ -867,9 +868,9 @@ variables, bakes in constants, and finds its own tables.</p>
 <div class="mode" id="mode-absl">
   <h3><span class="mn">(xx).l</span> <span class="syn">Absolute long</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(HW_Version).l</code> &mdash; an address in parentheses with a <code>.l</code> tag.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>(HW_Version).l</code>, an address in parentheses with a <code>.l</code> tag.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">A full 32-bit address stored in the instruction. Effective address = that fixed number, no arithmetic.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address. (The <code>.l</code> is the <em>address</em> size &mdash; a full 32-bit address, the priciest form.)</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address. (The <code>.l</code> is the <em>address</em> size, a full 32-bit address, the priciest form.)</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-absl">12 cycles for a byte or word, 16 for a long, 4 extension bytes</a> for the two address words. The priciest way to name a memory operand.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Any address the short form cannot reach: far-off ROM data, a hardware register outside the two short windows. Real code prefers a register (<code>lea</code> once, then <code>(An)</code>) when it touches the same place repeatedly, because absolute long is expensive per use.</span></div>
   </div>
@@ -882,7 +883,7 @@ variables, bakes in constants, and finds its own tables.</p>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   <code>HW_Version</code> is the fixed hardware address <code>$A10001</code>. So
   <code>move.b&nbsp;(HW_Version).l,d0</code> reads the byte at <code>$A10001</code>; if this console reports
-  <code>$A0</code>, the line is effectively <span class="rv">load $A0 into d0</span>, and the
+  <code class="v">$A0</code>, the line is effectively load <code class="v">$A0</code> into d0, and the
   <code>andi.b&nbsp;#$C0</code> right after keeps only the region bits. It needs the full 4-byte
   <code>.l</code> address because <code>$A10001</code> sits outside the short form's two windows.</div>
   <p><code>(HW_Version).l</code> spells out the register's full 32-bit address in two extension words.
@@ -895,8 +896,8 @@ variables, bakes in constants, and finds its own tables.</p>
 <div class="mode" id="mode-imm">
   <h3><span class="mn">#n</span> <span class="syn">Immediate</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>#60</code> &mdash; a leading <code>#</code>, then the constant.</span></div>
-    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">No address to compute &mdash; the constant sits in the instruction's own extension word.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>#60</code>, a leading <code>#</code>, then the constant.</span></div>
+    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">No address to compute. The constant sits in the instruction's own extension word.</span></div>
     <div class="row bd"><span class="lbl">You work with</span><span class="val">That number itself. Nothing to fetch, nothing to resolve: <code>#60</code> <em>is</em> the operand.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-imm">4 cycles for a byte or word, 8 for a long; 2 extension bytes for a byte or word constant, 4 for a long</a>.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Loading a literal value: a timer count, a velocity, a bit mask, a state number. Any time the number is known when you write the code, not read from somewhere at runtime.</span></div>
@@ -920,9 +921,9 @@ variables, bakes in constants, and finds its own tables.</p>
 <div class="mode" id="mode-pcdisp">
   <h3><span class="mn">d(PC)</span> <span class="syn">Program counter with displacement</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>SetupValues(pc)</code> &mdash; a label with <code>(pc)</code>, measured from the program counter.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>SetupValues(pc)</code>, a label with <code>(pc)</code>, measured from the program counter.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = <code>PC</code> + a 16-bit signed displacement, so it names a spot a fixed distance from the instruction itself.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address &mdash; or, with <code>lea</code>/<code>pea</code>, the address itself (this example loads it into <code>a5</code>).</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address, or, with <code>lea</code>/<code>pea</code>, the address itself (this example loads it into <code>a5</code>).</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-pcdisp">8 cycles for a byte or word, 12 for a long, 2 extension bytes</a>, the same as <code>d(An)</code>.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Position-independent access to nearby code-space data: a lookup table, a setup array, a string that sits right next to the code that uses it. Reaches it "this far from me" so the block keeps working if it is relocated in ROM.</span></div>
   </div>
@@ -935,7 +936,7 @@ variables, bakes in constants, and finds its own tables.</p>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   The assembler bakes in the distance from this instruction to <code>SetupValues</code>. Say that works out so
   <code>PC + d16</code> = <code>$000796</code>, where the table sits. Then <code>lea&nbsp;SetupValues(pc),a5</code>
-  is effectively <span class="rv">load the address $000796 into a5</span> &mdash; note <code>lea</code> hands you
+  is effectively load the address <code>$000796</code> into a5. Note <code>lea</code> hands you
   the <em>address</em>, not the bytes there; the two <code>movem</code> lines then read the table
   <em>through</em> a5.</div>
   <p><code>SetupValues(pc)</code> tells the assembler to encode the table's location as a distance
@@ -948,9 +949,9 @@ variables, bakes in constants, and finds its own tables.</p>
 <div class="mode" id="mode-pcindex">
   <h3><span class="mn">d(PC,Xn)</span> <span class="syn">Program counter with index</span></h3>
   <div class="mmeta">
-    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>Vint_SwitchTbl(pc,d0.w)</code> &mdash; a PC-relative label, plus an index register.</span></div>
+    <div class="row bd"><span class="lbl">You write</span><span class="val"><code>Vint_SwitchTbl(pc,d0.w)</code>, a PC-relative label, plus an index register.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = <code>PC</code> + <code>d0</code> (as a word) + an 8-bit signed displacement (zero here).</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address &mdash; the table entry the runtime index selects.</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address, the table entry the runtime index selects.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-pcindex">10 cycles for a byte or word, 14 for a long, 2 extension bytes</a>, the same as <code>d(An,Xn)</code>.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Position-independent jump and lookup tables: pick an entry of a code-space table by a runtime index without pinning the table to a fixed address. The classic dispatch idiom.</span></div>
   </div>
@@ -962,8 +963,8 @@ variables, bakes in constants, and finds its own tables.</p>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   Say the PC-relative distance puts <code>Vint_SwitchTbl</code> at <code>$000A00</code>, and <code>d0</code> =
   <code>$0004</code> (routine 2, already doubled to a word offset). Then the address is <code>$000A00 + $4</code>
-  = <code>$000A04</code>; if the word there is <code>$0140</code>, <code>move.w&nbsp;Vint_SwitchTbl(pc,d0.w),d0</code>
-  is effectively <span class="rv">load $0140 into d0</span> &mdash; the entry the index picked. The <code>jsr</code>
+  = <code>$000A04</code>; if the word there is <code class="v">$0140</code>, <code>move.w&nbsp;Vint_SwitchTbl(pc,d0.w),d0</code>
+  is effectively load <code class="v">$0140</code> into d0, the entry the index picked. The <code>jsr</code>
   on the next line recomputes with that new <code>d0</code> to call the chosen routine.</div>
   <p>The table base <code>Vint_SwitchTbl</code> is measured from the PC, the index <code>d0.w</code>
   picks the entry, and the 8-bit displacement is zero here. The <code>jsr</code> on the next line is
