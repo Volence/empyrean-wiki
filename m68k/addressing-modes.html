@@ -657,6 +657,13 @@ cheap offset away.</p>
   </div>
   <p class="rf-note">Say <code>d0</code> holds <code class="v">$0004</code>. <code>add.w d0,d0</code> works with that value straight from the register and writes <code class="v">$0008</code> back, never touching memory. Having no address step is exactly why register mode is free.</p></div>
   <p>The very next line consumes that doubled value as the index in <code>(a1,d0.w)</code>, the indexed mode further down this page.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  You cannot dereference a data register: there is no <code>(d0)</code> mode. If a value in a data
+  register is meant to be an address, move it into an address register first
+  (<code>movea.l d0,a0</code>, then <code>(a0)</code>). A data register can only take part in an address
+  as the <em>index</em> of an indexed mode, <code>(a0,d0.w)</code>, never as the base. That split,
+  address registers can be pointed through and data registers cannot, is the whole reason the 68000
+  carries two register files.</div>
 </div>
 
 <div class="mode" id="mode-an">
@@ -668,8 +675,10 @@ cheap offset away.</p>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-an">0 cycles, 0 extension bytes</a>, same as a data register.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Comparing or copying pointers: testing whether a scan pointer has reached an end pointer, moving one address register into another. Note this uses the register's <em>value</em>, not the memory it points at.</span></div>
   </div>
-  <p>The boot checksum walks a0 through the ROM and stops when it passes the end address, which it
-  keeps in d0. The comparison names a0 directly, using the running pointer as a plain number:</p>
+  <p>The boot checksum walks <code>a0</code> up through ROM, summing each word into d1, and stops once
+  a0 passes the end address it keeps in d0. Watch <code>a0</code> play two roles one line apart:
+  <code>(a0)+</code> reads the data it <em>points at</em>, then <code>cmp.l a0,d0</code> uses a0's own
+  <em>value</em>, the address it has reached:</p>
   <pre>ChecksumLoop:
 	add.w	(a0)+,d1
 	cmp.l	a0,d0
@@ -683,7 +692,7 @@ cheap offset away.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$00000300</code></span>
   </div>
-  <p class="rf-note">Say <code>a0</code> has walked to <code class="v">$00000300</code>. <code>cmp.l a0,d0</code> compares that number against the end address in d0; it uses the pointer's <em>value</em>, not the memory it points at.</p></div>
+  <p class="rf-note">On <code>cmp.l a0,d0</code> the operand is a0's own value: the ROM address it has walked to, say <code class="v">$00000300</code>, compared as a plain number against the end address in d0. No memory is read. That is the whole difference from the line above: <code>(a0)+</code> uses what a0 <em>points at</em>, while <code>a0</code> uses the pointer <em>itself</em>.</p></div>
   <p>The <code>bhs</code> right after reads that comparison and loops until a0 has walked past the end address.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   There is no byte size for an address register. <code>move.b a0,d0</code> will not assemble: An can
