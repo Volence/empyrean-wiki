@@ -199,6 +199,14 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .resolved code{font-variant-numeric:tabular-nums;}
 /* a data VALUE (the contents of memory or a register): distinct from a bare address/location */
 code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em; font-weight:600;}
+/* the resolved FLOW: you write -> under the hood -> you work with, filled with the real numbers */
+.rflow{display:flex; flex-wrap:wrap; align-items:center; gap:.35rem .4rem; margin:.1rem 0 .45rem;}
+.rf-cell{display:flex; flex-direction:column; gap:.14rem; border:1px solid var(--line);
+  border-radius:4px; padding:.3rem .55rem; background:var(--panel2);}
+.rf-k{font-family:var(--mono); font-size:.54rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.rf-cell code{font-size:.86rem;}
+.rf-arrow{color:var(--dim); font-size:.95rem;}
+.rf-note{font-size:.86rem; line-height:1.5; margin:.1rem 0 0; color:var(--ink); max-width:40rem;}
 
 /* gotcha note */
 .gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
@@ -559,9 +567,16 @@ cheap offset away.</p>
 	add.w	d0,d0	<span class="c">; each code gets a word-sized entry in the table</span>
 	move.w	d7,(a1,d0.w)	<span class="c">; store the entry for the code</span></pre>
   <span class="src">s2disasm/s2.asm:2010-2012 (NemDecPrepare, the Nemesis art decompressor setup)</span>
-  <p><code>add.w d0,d0</code> reads d0, adds it to d0, writes d0: three uses of the register-direct
-  mode, zero memory traffic. The very next line consumes the doubled value as the index in
-  <code>(a1,d0.w)</code>, which is the indexed mode further down this page.</p>
+  <div class="resolved"><span class="r-tag">The same line, resolved</span>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>d0</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>no address</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$0004</code></span>
+  </div>
+  <p class="rf-note">Say <code>d0</code> holds <code class="v">$0004</code>. <code>add.w d0,d0</code> works with that value straight from the register and writes <code class="v">$0008</code> back, never touching memory. Having no address step is exactly why register mode is free.</p></div>
+  <p>The very next line consumes that doubled value as the index in <code>(a1,d0.w)</code>, the indexed mode further down this page.</p>
 </div>
 
 <div class="mode" id="mode-an">
@@ -580,9 +595,16 @@ cheap offset away.</p>
 	cmp.l	a0,d0
 	bhs.s	ChecksumLoop</pre>
   <span class="src">s2disasm/s2.asm:387-390 (ChecksumLoop)</span>
-  <p><code>cmp.l a0,d0</code> compares the address <em>in</em> a0 against the end address in d0; the
-  <code>bhs</code> right after reads that comparison and loops until a0 has walked past the end. The
-  address register is the operand here, not a doorway to memory.</p>
+  <div class="resolved"><span class="r-tag">The same line, resolved</span>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>a0</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>no address</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$00000300</code></span>
+  </div>
+  <p class="rf-note">Say <code>a0</code> has walked to <code class="v">$00000300</code>. <code>cmp.l a0,d0</code> compares that number against the end address in d0; it uses the pointer's <em>value</em>, not the memory it points at.</p></div>
+  <p>The <code>bhs</code> right after reads that comparison and loops until a0 has walked past the end address.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   There is no byte size for an address register. <code>move.b a0,d0</code> will not assemble: An can
   only be read or written as a word or a long, because a byte cannot meaningfully hold an address.
@@ -608,13 +630,14 @@ cheap offset away.</p>
 	andi.b	<span class="n">#$C0</span>,d0</pre>
   <span class="src">s2disasm/s2.asm:1372-1374 (Joypad_Read)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  <code>ReadJoypads</code> loaded <code>a1</code> with <code>HW_Port_1_Data</code> = <code>$A10003</code>, the
-  controller data port. So <code>move.b&nbsp;(a1),d0</code> reads the byte living at <code>$A10003</code>; if the
-  pad reports <code class="v">$7F</code> this instant, the line is effectively load <code class="v">$7F</code> into d0,
-  the port's current reading, not the address <code>$A10003</code> itself.</div>
-  <p><code>(a1)</code> is "the byte at the address a1 holds": no offset, the pointer <em>is</em> the
-  address. The two lines after shift and mask that freshly-read byte into the Start and A bits, so the
-  value the mode fetched is consumed immediately.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>(a1)</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$A10003</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$7F</code></span>
+  </div>
+  <p class="rf-note"><code>a1</code> holds the controller port <code>$A10003</code>; the byte read there, <code class="v">$7F</code>, is what the next two lines shift and mask into the Start and A bits.</p></div>
 </div>
 
 <div class="mode" id="mode-postinc">
@@ -652,13 +675,14 @@ cheap offset away.</p>
 	move.w	(a1)+,(a5)	<span class="c">; source address</span></pre>
   <span class="src">s2disasm/s2.asm:1775-1780 (ProcessDMAQueue)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  Say <code>a1</code> points into the queued command block at <code>$FFFFDC00</code>. Then
-  <code>move.w&nbsp;(a1)+,d0</code> reads the word at <code>$FFFFDC00</code>; if that word is <code class="v">$9340</code>,
-  the line is effectively load <code class="v">$9340</code> into d0, and only <em>after</em> the read does
-  <code>a1</code> advance to <code>$FFFFDC02</code>, ready for the next word.</div>
-  <p>Each <code>(a1)+</code> reads a word and steps a1 two bytes onward, so the run of them marches
-  through the command block without any separate "add 2 to a1" instruction. The <code>beq</code>
-  consumes the first read: a zero word is the end marker, and the loop stops.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>(a1)+</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$FFFFDC00</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$9340</code></span>
+  </div>
+  <p class="rf-note">Reads the word <code class="v">$9340</code>, then steps <code>a1</code> to <code>$FFFFDC02</code> for the next one, so the run marches through the block with no separate "add 2." A zero word is the end marker the <code>beq</code> stops on.</p></div>
 
   <figure class="diagram">
   <div class="exp">
@@ -705,13 +729,14 @@ cheap offset away.</p>
 	move.l	(sp)+,d1</pre>
   <span class="src">s2disasm/s2.asm:446-449 (ChecksumError)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  Say <code>sp</code> = <code>$FFFFFF00</code> and <code>d1</code> holds <code class="v">$0000ABCD</code>. Then
-  <code>move.l&nbsp;d1,-(sp)</code> <em>first</em> drops <code>sp</code> to <code>$FFFFFEFC</code>, then stores
-  <code class="v">$0000ABCD</code> there, putting d1's value at <code>$FFFFFEFC</code>, a push.
-  The later <code>(sp)+</code> reads it back and lifts <code>sp</code> to <code>$FFFFFF00</code> again.</div>
-  <p><code>-(sp)</code> steps sp back 4 bytes and stores d1 there; the call runs and is free to
-  clobber d1; then <code>(sp)+</code> reads the value back and steps sp forward again. The pop is the
-  consumer, and the pairing is exact: predecrement to push, postincrement to pop.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>d1,-(sp)</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$FFFFFEFC</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$0000ABCD</code></span>
+  </div>
+  <p class="rf-note"><code>sp</code> drops 4 to <code>$FFFFFEFC</code> <em>first</em>, then <code>d1</code>'s <code class="v">$0000ABCD</code> is stored there: a push. The later <code>(sp)+</code> reads it back and lifts <code>sp</code> again, so the pair round-trips exactly.</p></div>
 
   <figure class="diagram">
     <figcaption style="margin:0 0 .6rem; text-transform:none; letter-spacing:.02em;">Why the pair
@@ -742,14 +767,14 @@ cheap offset away.</p>
 	addq.b	<span class="n">#1</span>,d3</pre>
   <span class="src">s2disasm/s2.asm:22532-22534 (Obj15_State2)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  The field <code>y_radius</code> is the fixed offset <code>$16</code>. Say <code>a0</code> points at an object slot
-  at <code>$FFFFB000</code>. Then the address is <code>$FFFFB000 + $16</code> = <code>$FFFFB016</code>; if that byte
-  holds <code class="v">$13</code> (a 19-pixel half-height), <code>move.b&nbsp;y_radius(a0),d3</code> is effectively
-  load <code class="v">$13</code> into d3, the one field, picked out by its offset.</div>
-  <p><code>y_radius(a0)</code> is "the byte at a0 plus the fixed offset of the y_radius field": the
-  assembler turns the field name into a small constant displacement. The <code>addq</code> right after
-  is the consumer, adjusting the value the mode just fetched. Clearing d3 first with
-  <code>moveq #0</code> is the usual guard so the byte read lands in a clean register.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>y_radius(a0)</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$FFFFB016</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$13</code></span>
+  </div>
+  <p class="rf-note">Say <code>a0</code> points at an object at <code>$FFFFB000</code>; the <code>y_radius</code> field is <code>$16</code> in, so the byte at <code>$FFFFB016</code>, <code class="v">$13</code>, is a 19-pixel half-height. The <code>moveq #0</code> first clears d3 so it lands in a clean register.</p></div>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   The displacement is 16 bits <em>signed</em>, so it reaches from 32768 bytes before An to 32767
   bytes after. That is plenty for a struct field but not for indexing a large table; when the offset
@@ -790,14 +815,14 @@ cheap offset away.</p>
 	beq.s	.skip</pre>
   <span class="src">s2disasm/s2.asm:1319-1320 (sndDriverInput)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  <code>SoundQueue.SFX0</code> is the <code>+$1</code> field (<code>Music0</code> sits at <code>+$0</code>). Say
-  <code>a0</code> holds the queue base <code>$FFFFF0A0</code> and <code>d1</code> = <code>$0002</code> (slot 2). Then
-  the address is <code>$FFFFF0A0 + $2 + $1</code> = <code>$FFFFF0A3</code>; if that byte holds <code class="v">$81</code>
-  (a queued sound id), <code>move.b&nbsp;SoundQueue.SFX0(a0,d1.w),d0</code> is effectively
-  load <code class="v">$81</code> into d0: the base names the table, the index picks the entry.</div>
-  <p>All three parts show at once: the base a0, the runtime index <code>d1.w</code>, and the fixed
-  field displacement <code>SoundQueue.SFX0</code>, summed into one address. The <code>beq</code> is the
-  consumer, skipping the slot when the byte fetched is zero (nothing queued).</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>SoundQueue.SFX0(a0,d1.w)</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$FFFFF0A3</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$81</code></span>
+  </div>
+  <p class="rf-note">Base <code>a0</code> (say the queue at <code>$FFFFF0A0</code>) + index <code>d1</code> (slot 2) + the <code>SFX0</code> field (<code>+$1</code>) = <code>$FFFFF0A3</code>; the byte there, <code class="v">$81</code>, is a queued sound id, and the <code>beq</code> skips the slot when it reads zero.</p></div>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   Two size traps live in this mode. The displacement is only 8 bits signed (-128 to 127), far
   smaller than the plain <code>d(An)</code> mode's 16, so a large constant offset does not fit here.
@@ -848,13 +873,14 @@ variables, bakes in constants, and finds its own tables.</p>
 	beq.w	Vint_Lag</pre>
   <span class="src">s2disasm/s2.asm:483-484 (V_Int)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  <code>Vint_routine</code> is the name for the work-RAM byte at <code>$FFFFF62A</code>. Say that byte currently
-  holds <code class="v">$06</code>. Then <code>tst.b&nbsp;(Vint_routine).w</code> is effectively a test of the
-  value <code class="v">$06</code>, the byte living at that address, not the address itself. The parentheses turn
-  <code>$FFFFF62A</code> into &ldquo;go get what is there.&rdquo;</div>
-  <p><code>(Vint_routine).w</code> names a work-RAM byte by a 16-bit absolute address; the
-  <code>beq</code> reads the test and, if the flag is zero, jumps to the lag path. One address word,
-  no register needed.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>(Vint_routine).w</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$FFFFF62A</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$06</code></span>
+  </div>
+  <p class="rf-note"><code>Vint_routine</code> names the work-RAM byte <code>$FFFFF62A</code>; <code>tst.b</code> tests the value there, <code class="v">$06</code>, and the <code>beq</code> jumps to the lag path if it is zero. The <code>.w</code> is the address size; the byte is what gets tested.</p></div>
   <div class="decision"><span class="d-tag">Hardware choice &middot; why the short form sign-extends</span>
   A 16-bit address by itself can only name the bottom 64KB of memory. The 68000 instead treats the
   stored 16 bits as <em>signed</em> and extends the top bit across the upper half, so an address like
@@ -881,16 +907,14 @@ variables, bakes in constants, and finds its own tables.</p>
 	move.b	d0,(Graphics_Flags).w</pre>
   <span class="src">s2disasm/s2.asm:404-406 (boot-time region detect)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  <code>HW_Version</code> is the fixed hardware address <code>$A10001</code>. So
-  <code>move.b&nbsp;(HW_Version).l,d0</code> reads the byte at <code>$A10001</code>; if this console reports
-  <code class="v">$A0</code>, the line is effectively load <code class="v">$A0</code> into d0, and the
-  <code>andi.b&nbsp;#$C0</code> right after keeps only the region bits. It needs the full 4-byte
-  <code>.l</code> address because <code>$A10001</code> sits outside the short form's two windows.</div>
-  <p><code>(HW_Version).l</code> spells out the register's full 32-bit address in two extension words.
-  The next two lines are the consumer: mask off everything but the region bits and stash them in a
-  RAM flag, which is itself named by the cheaper short form <code>(Graphics_Flags).w</code>. One read
-  from far-off hardware, one write to nearby RAM, and you can see the cost difference in the byte
-  counts.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>(HW_Version).l</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$A10001</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$A0</code></span>
+  </div>
+  <p class="rf-note">The fixed hardware byte <code>$A10001</code> reads <code class="v">$A0</code>; <code>andi.b #$C0</code> keeps the region bits, then stashes them in RAM named by the cheaper <code>(Graphics_Flags).w</code>. One far read in 4 address bytes, one near write in 2: the cost gap shows in the byte counts.</p></div>
 </div>
 
 <div class="mode" id="mode-imm">
@@ -934,16 +958,14 @@ variables, bakes in constants, and finds its own tables.</p>
 	movem.l	(a5)+,a0-a4</pre>
   <span class="src">s2disasm/s2.asm:206-208 (PortA_Ok)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  The assembler bakes in the distance from this instruction to <code>SetupValues</code>. Say that works out so
-  <code>PC + d16</code> = <code>$000796</code>, where the table sits. Then <code>lea&nbsp;SetupValues(pc),a5</code>
-  is effectively load the address <code>$000796</code> into a5. Note <code>lea</code> hands you
-  the <em>address</em>, not the bytes there; the two <code>movem</code> lines then read the table
-  <em>through</em> a5.</div>
-  <p><code>SetupValues(pc)</code> tells the assembler to encode the table's location as a distance
-  from the PC rather than as its absolute address; <code>lea</code> works that distance out into a5.
-  The two <code>movem</code> lines are the consumer, reading the table through a5. Because the
-  reference is a distance, this whole block would still find its table if it were moved elsewhere in
-  ROM.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>SetupValues(pc)</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>PC + d16 = $000796</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code>$000796</code></span>
+  </div>
+  <p class="rf-note">With <code>lea</code> the operand you work with is the <em>address</em> itself, <code>$000796</code>, loaded into <code>a5</code> (not the bytes there); the <code>movem</code> lines then read the table through a5. Being a distance from the PC, the block still finds its table if it moves in ROM.</p></div>
 </div>
 
 <div class="mode" id="mode-pcindex">
@@ -961,15 +983,14 @@ variables, bakes in constants, and finds its own tables.</p>
 	jsr	Vint_SwitchTbl(pc,d0.w)</pre>
   <span class="src">s2disasm/s2.asm:504-505 (V_Int)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
-  Say the PC-relative distance puts <code>Vint_SwitchTbl</code> at <code>$000A00</code>, and <code>d0</code> =
-  <code>$0004</code> (routine 2, already doubled to a word offset). Then the address is <code>$000A00 + $4</code>
-  = <code>$000A04</code>; if the word there is <code class="v">$0140</code>, <code>move.w&nbsp;Vint_SwitchTbl(pc,d0.w),d0</code>
-  is effectively load <code class="v">$0140</code> into d0, the entry the index picked. The <code>jsr</code>
-  on the next line recomputes with that new <code>d0</code> to call the chosen routine.</div>
-  <p>The table base <code>Vint_SwitchTbl</code> is measured from the PC, the index <code>d0.w</code>
-  picks the entry, and the 8-bit displacement is zero here. The <code>jsr</code> on the next line is
-  the consumer: it uses the same computed address to call the chosen routine. Reaching the table
-  PC-relative keeps the interrupt handler relocatable.</p>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>Vint_SwitchTbl(pc,d0.w)</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$000A04</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$0140</code></span>
+  </div>
+  <p class="rf-note">Say the table lands at <code>$000A00</code>; <code>d0</code> (routine 2, pre-doubled) picks the entry at <code>$000A04</code>, whose word <code class="v">$0140</code> is the offset the following <code>jsr</code> jumps through. PC-relative keeps the handler relocatable.</p></div>
 </div>
 
 <!-- ================================================================ -->
