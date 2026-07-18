@@ -441,6 +441,16 @@ into registers, working on them there, and writing results back out.</p>
     the reach as "this many bytes ahead of the current instruction" instead of as the full
     address, arithmetic it likewise does itself. Either way, you write the name and the assembler
     does the numbers.</p>
+    <p>So why ever write the <code>(pc)</code>? Both forms are legal and reach the same place;
+    the difference is cost and survival. The full-address form spends two extension words
+    (<code>pea (Label).l</code>: 6 bytes, 20 cycles); the distance form spends one
+    (<code>pea Label(pc)</code>: 4 bytes, 16 cycles), and because it says "this far from me"
+    rather than "at this fixed spot," it keeps working if the whole block of code is moved
+    somewhere else in ROM. The catch is reach: the distance field is 16 bits signed, so
+    <code>(pc)</code> only works for labels within 32KB of the instruction, which is also why a
+    RAM variable can never use it (RAM is nowhere near the code). Hence the pattern all over
+    Sonic-era source: nearby code labels get <code>(pc)</code>, RAM variables get
+    <code>(xxx).w</code>, far-away data gets <code>(xxx).l</code>.</p>
   </div>
 </details>
 
