@@ -620,9 +620,10 @@ into registers, working on them there, and writing results back out.</p>
       <label for="mq-src">Immediate #n (decimal)</label>
       <input id="mq-src" type="text" value="100" maxlength="6" autocomplete="off" aria-describedby="mq-note">
       <button type="button" id="mq-run">Run moveq #n,d0</button>
+      <button type="button" id="mq-reset">Reset d0</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="mq-d0">$FFFFFFFF</span><span class="mr-tag">destination</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="mq-d0">$FFFFFFFF</span><span class="mr-tag" id="mq-tag">destination</span></span>
     </div>
     <p class="msim-note" id="mq-note" aria-live="polite">d0 starts full of junk. moveq writes the whole 32-bit register every time, so a valid moveq wipes that junk clean. Try 100, then try 200 and watch the line get rejected.</p>
   </div>
@@ -706,6 +707,7 @@ into registers, working on them there, and writing results back out.</p>
       <label for="ma-src">Word source (hex, 4 digits)</label>
       <input id="ma-src" type="text" value="8000" maxlength="4" autocomplete="off" aria-describedby="ma-note">
       <button type="button" id="ma-run">Run movea.w #n,a0</button>
+      <button type="button" id="ma-reset">Reset a0</button>
     </div>
     <div class="msim-regs">
       <span class="mreg"><span class="mr-name">a0</span><span class="mr-val" id="ma-a0">$00000000</span><span class="mr-tag">destination</span></span>
@@ -845,7 +847,7 @@ as it was.</p>
   the object, or the port first, and everything that follows gets shorter and cheaper.</p>
   <figure class="diagram">
   <div class="movesim">
-    <div class="msim-instr"><code id="le-instr">lea Score,a0  vs  move.w Score,d0</code> <span>one memory cell, two instructions. LEA writes down the cell's address; MOVE.w walks in and copies its contents. Change the contents and see which one notices.</span></div>
+    <div class="msim-instr"><code id="le-instr">lea Score,a0  vs  move.w Score,d0</code> <span>Score is a game variable living in RAM: the label means address $00FF1000, and the current score is the number stored in the cell there. LEA writes down where the cell is; MOVE.w walks in and copies what it holds. Change the contents and see which one notices.</span></div>
     <div class="msim-ctrl">
       <label for="le-src">Contents stored at Score (hex, 4 digits)</label>
       <input id="le-src" type="text" value="1068" maxlength="4" autocomplete="off" aria-describedby="le-note">
@@ -854,7 +856,7 @@ as it was.</p>
       <button type="button" id="le-reset">Reset</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">Score (memory)</span><span class="mr-val" id="le-cell">$1068</span><span class="mr-tag">at $00FF1000</span></span>
+      <span class="mreg"><span class="mr-name">Score</span><span class="mr-val" id="le-cell">$1068</span><span class="mr-tag">memory cell at $00FF1000</span></span>
       <span class="mr-arrow" aria-hidden="true">read by</span>
       <span class="mreg"><span class="mr-name">a0</span><span class="mr-val" id="le-a0">$00000000</span><span class="mr-tag">lea: the address</span></span>
       <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="le-d0">$00000000</span><span class="mr-tag">move.w: the contents</span></span>
@@ -956,7 +958,7 @@ DrawNumber:
   </div>
   <figure class="diagram">
   <div class="movesim">
-    <div class="msim-instr"><code id="pe-instr">pea Return_Here(pc)</code> <span>watch the stack. pea drops a 32-bit address onto it and sp falls by 4; rts then lifts that same address off and jumps the PC to it. The <a href="#stack">stack</a> is just memory, and rts follows whatever is on top.</span></div>
+    <div class="msim-instr"><code id="pe-instr">pea Return_Here(pc)</code> <span>two different worlds on screen. Return_Here is a spot in the code, sitting at ROM address $00020010; the <a href="#stack">stack</a> is a separate patch of RAM up near $00FFFF00. pea copies that code address INTO a stack slot; rts reads the top slot back and jumps the PC to whatever it holds.</span></div>
     <div class="msim-ctrl">
       <button type="button" id="pe-pea">Run pea Return_Here(pc)</button>
       <button type="button" id="pe-rts">Run rts</button>
@@ -966,10 +968,11 @@ DrawNumber:
       <span class="mreg"><span class="mr-name">sp (a7)</span><span class="mr-val" id="pe-sp">$00FFFF00</span><span class="mr-tag">stack pointer</span></span>
       <span class="mreg"><span class="mr-name">pc</span><span class="mr-val" id="pe-pc">$00020000</span><span class="mr-tag">program counter</span></span>
     </div>
+    <span class="sd-title">The stack, in RAM: each slot's own address on the left, the 4 bytes it holds on the right</span>
     <div class="sd-col" id="pe-stack"></div>
     <p class="msim-note" id="pe-note" aria-live="polite">The stack holds only older data right now. Push an address with pea, then pop it with rts and watch the PC follow it.</p>
   </div>
-  <figcaption>PEA pushes an address and rts pops whatever is on top and jumps there (static fallback: pea Return_Here(pc) writes $00020010 to the stack and drops sp from $00FFFF00 to $00FFFEFC; a following rts lifts $00020010 back off, sets the PC to it, and restores sp, exactly as if a real call had pushed the return address).</figcaption>
+  <figcaption>PEA copies a code address into stack RAM, and rts jumps to whatever the top slot holds (static fallback: pea Return_Here(pc) copies the code address $00020010 into the stack slot at $00FFFEFC, dropping sp by the 4 bytes it stored; a following rts reads those 4 bytes back, sets the PC to $00020010, and sp steps back up to $00FFFF00, exactly as if a real call had pushed the return address).</figcaption>
   </figure>
   <p>Which is why the one real use in the Sonic 2 disassembly is not parameter passing: it is a
   deliberate, commented "fake call" trick. The routine pushes the address right after itself,
@@ -1049,7 +1052,7 @@ DrawNumber:
   and restore them all on exit, without a separate MOVE per register.</p>
   <figure class="diagram">
   <div class="movesim">
-    <div class="msim-instr"><code id="mm-instr">movem.l d0/d1/d2/a0/a1,-(sp)</code> <span>pick registers, then save them to the stack and restore them. Watch two things: they push in descending order so a matching pop lands each back home, and the cost is 8 + 8 per register.</span></div>
+    <div class="msim-instr"><code id="mm-instr">movem.l d0/d1/d2/a0/a1,-(sp)</code> <span>pick registers, then save them to the stack and restore them. Watch two things: they push in descending order so a matching pop lands each back home, and the cost is 8 + 8 per register. The instruction line above is the exact syntax real code uses: slashes between single registers, a hyphen for a run, like the movem.l d0-a6,-(sp) in the excerpt below.</span></div>
     <div class="msim-ctrl" role="group" aria-label="Registers to move">
       <label><input type="checkbox" class="mm-cb" value="d0" checked> d0</label>
       <label><input type="checkbox" class="mm-cb" value="d1" checked> d1</label>
@@ -1685,6 +1688,7 @@ function expandAll(btn){
   var src=document.getElementById('mq-src'); if(!src) return;
   var d0e=document.getElementById('mq-d0'), run=document.getElementById('mq-run');
   var note=document.getElementById('mq-note'), instr=document.getElementById('mq-instr');
+  var rst=document.getElementById('mq-reset'), tag=document.getElementById('mq-tag');
   var d0=0xFFFFFFFF;
   function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
   function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
@@ -1700,7 +1704,12 @@ function expandAll(btn){
     }
     var prev=d0; d0=(n<0?(0x100000000+n):n)>>>0;
     paint(d0e,d0,prev);
-    note.textContent='moveq #'+n+',d0 wrote the whole 32-bit register: '+hx(d0)+' hex, '+n+' signed. The 8-bit '+(n<0?'negative ':'')+'immediate was sign-extended to fill all 32 bits, which is why moveq #0 is the standard way to zero a register.';
+    tag.textContent='= '+n+' signed';
+    note.textContent='moveq #'+n+',d0 wrote the whole 32-bit register: $'+hx(d0)+' is '+n+' written in hex with all 32 bits shown. The 8-bit '+(n<0?'negative ':'')+'immediate was sign-extended to fill the register, which is why moveq #0 is the standard way to zero one.';
+  });
+  rst.addEventListener('click',function(){
+    d0=0xFFFFFFFF; d0e.textContent='$FFFFFFFF'; tag.textContent='destination';
+    note.textContent='d0 reset to junk. Run a moveq and watch the whole register get rewritten.';
   });
   sync();
 })();
@@ -1723,6 +1732,10 @@ function expandAll(btn){
     var sv=(w&0x8000)?w-0x10000:w;
     note.textContent='movea.w #$'+hx(w).slice(4)+',a0 put '+hx(a0)+' into a0: the word was sign-extended to 32 bits ('+((w&0x8000)?'top bit set, so $FFFF filled the high half, '+sv+' signed':'top bit clear, high half zero, '+sv)+'). The flags above did not move, because MOVEA writes none. A bne right here would test whatever was set before.';
   });
+  document.getElementById('ma-reset').addEventListener('click',function(){
+    a0=0; a0e.textContent='$00000000';
+    note.textContent='a0 reset. The flags above are still the same leftovers: nothing on this toy will ever move them.';
+  });
   sync();
 })();
 
@@ -1739,7 +1752,7 @@ function expandAll(btn){
   function showCell(){ cell.textContent='$'+w4(cont()); }
   src.addEventListener('input',showCell);
   blea.addEventListener('click',function(){ var p=a0; a0=ADDR>>>0; paint(a0e,a0,p); note.textContent='lea Score,a0 wrote the address itself, $00FF1000, into a0. It never read the cell, so changing the contents would not change this at all: lea gives the house number, not what is inside.'; });
-  bmv.addEventListener('click',function(){ var c=cont(); var p=d0; d0=(((d0&0xFFFF0000)>>>0)|c)>>>0; paint(d0e,d0,p); note.textContent='move.w Score,d0 walked into the cell and copied what is inside, $'+w4(c)+' ('+c+'), into d0. That is the value, not the address: run lea and move.w side by side and watch them land different numbers.'; });
+  bmv.addEventListener('click',function(){ var c=cont(); var p=d0; d0=(((d0&0xFFFF0000)>>>0)|c)>>>0; paint(d0e,d0,p); note.textContent='move.w Score,d0 walked into the cell and copied what is inside, $'+w4(c)+' ('+c+'), into d0. Note there is no # here: a bare Score means the memory AT that label, while move.w #Score,d0 would load the address itself as a plain number (the # rule from the immediate explainer in section 1).'; });
   brs.addEventListener('click',function(){ a0=0; d0=0; a0e.textContent='$00000000'; d0e.textContent='$00000000'; note.textContent='Reset. Score still lives at $00FF1000. Run lea for the address, move.w for the contents.'; });
   showCell();
 })();
@@ -1754,20 +1767,20 @@ function expandAll(btn){
   function hx(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
   function render(){
     var html='';
-    if(pushed){ html+='<div class="sd-cell sd-first"><span>'+hx(sp)+'</span><span class="sd-ord">'+hx(RET)+' &middot; pushed by pea</span></div>'; }
-    html+='<div class="sd-cell'+(pushed?'':' sd-first')+'"><span>'+hx(TOP)+'</span><span class="sd-ord">'+hx(OLD)+' &middot; older data</span></div>';
+    if(pushed){ html+='<div class="sd-cell sd-first"><span>at '+hx(sp)+'</span><span class="sd-ord">holds '+hx(RET)+' &middot; pushed by pea</span></div>'; }
+    html+='<div class="sd-cell'+(pushed?'':' sd-first')+'"><span>at '+hx(TOP)+'</span><span class="sd-ord">holds '+hx(OLD)+' &middot; older data</span></div>';
     col.innerHTML=html; spe.textContent=hx(sp); pce.textContent=hx(pc);
   }
   pea.addEventListener('click',function(){
     if(pushed){ note.textContent='The address is already on the stack. Press Run rts to see it consumed.'; return; }
     pushed=true; sp=(TOP-4)>>>0; render();
-    note.textContent='pea Return_Here(pc) computed the address $00020010 and wrote it to the stack. sp fell by 4, from $00FFFF00 to $00FFFEFC. Nothing was copied but that one address; it now sits on top as a plain number, waiting.';
+    note.textContent='pea Return_Here(pc) computed the code address $00020010 and copied it into the stack slot at $00FFFEFC. sp fell by 4 because it just stored 4 bytes and the stack grows downward; sp always points at the newest bytes. Return_Here itself did not move: its address is now also a plain number sitting in RAM, waiting.';
   });
   rts.addEventListener('click',function(){
     if(pushed){ pc=RET>>>0; pushed=false; sp=TOP; render();
-      note.textContent='rts lifted the top 4 bytes, $00020010, off the stack and jumped the PC straight there. sp rose back to $00FFFF00. rts has no memory of who pushed that address: pea steered it exactly as a real call would.';
+      note.textContent='rts read the 4 bytes sp points at, $00020010, jumped the PC straight there, and stepped sp back up to $00FFFF00. rts has no memory of who put that address in the slot: pea steered it exactly as a real call would.';
     } else {
-      note.textContent='Nothing you pushed is on top. rts does not check: it would take the older data $0001A0C4 sitting there and jump the PC into it, a crash. That danger is the flip side of the trick. Run pea first and rts lands somewhere real.';
+      note.textContent='Nothing you pushed is on top. rts does not check: it would read the older data $0001A0C4 out of the slot at $00FFFF00 and jump the PC into it, a crash. That danger is the flip side of the trick. Run pea first and rts lands somewhere real.';
     }
   });
   rst.addEventListener('click',function(){ pushed=false; sp=TOP; pc=RUN; render(); note.textContent='Reset. The stack holds only older data. pea pushes an address; rts pops whatever is on top and jumps there.'; });
