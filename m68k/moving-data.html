@@ -426,6 +426,41 @@ into registers, working on them there, and writing results back out.</p>
   </div>
 </details>
 
+<details class="explain" id="labels">
+  <summary>New here? &middot; What is a label, and who decides its address?</summary>
+  <div class="x-body">
+    <p>A label like <code>Score</code>, <code>Return_Here</code>, or <code>ObjCC</code> is just a
+    name for a spot: a place in the code, or a slot in RAM. You never assign it a number. The
+    assembler does that at build time, by plain bookkeeping: it walks the source top to bottom,
+    adds up the size of everything it emits, and whatever address the count has reached when it
+    meets your label IS that label's value from then on. Write the same code with one extra
+    instruction above the label and the label's address quietly moves; nobody edits it by hand.</p>
+    <p>So when an example says "Return_Here is at $00020010," that number came from the
+    assembler's bookkeeping, not from anyone declaring it. And the <code>(pc)</code> suffix in
+    <code>pea Return_Here(pc)</code> changes none of this: it only tells the assembler to ENCODE
+    the reach as "this many bytes ahead of the current instruction" instead of as the full
+    address, arithmetic it likewise does itself. Either way, you write the name and the assembler
+    does the numbers.</p>
+  </div>
+</details>
+
+<details class="explain" id="pc">
+  <summary>New here? &middot; What is the program counter?</summary>
+  <div class="x-body">
+    <p>The program counter (PC) is the CPU's finger on the page: a special register holding the
+    address of the next instruction to fetch. Execute an instruction and the finger has already
+    slid past it; that is the entire mechanism of "running a program." It is not one of the
+    d0-d7 / a0-a7 registers and you cannot MOVE into it: the only instructions allowed to write
+    the PC are the jumps, branches, calls, and returns, which exist precisely to do that one job.
+    A <code>jmp ($00020010).l</code> is the 68000's way of spelling "move this address into the
+    PC," and rts is "pop 4 bytes into the PC."</p>
+    <p>The PC also moonlights as an addressing base: a <code>d(PC)</code> operand like
+    <code>SetupValues(pc)</code> means "this far from where the PC is right now," which is what
+    lets code find its own tables no matter where in ROM it ends up. The Programming Model page
+    (coming) covers the full register set.</p>
+  </div>
+</details>
+
 <div class="instr" id="move">
   <h3><span class="mn">MOVE</span> <span class="syn">MOVE.b/.w/.l &lt;ea&gt;,&lt;ea&gt;</span></h3>
 
@@ -958,7 +993,11 @@ DrawNumber:
   </div>
   <figure class="diagram">
   <div class="movesim">
-    <div class="msim-instr"><code id="pe-instr">pea Return_Here(pc)</code> <span>two different worlds on screen. Return_Here is a spot in the code, sitting at ROM address $00020010; the <a href="#stack">stack</a> is a separate patch of RAM up near $00FFFF00. pea copies that code address INTO a stack slot; rts reads the top slot back and jumps the PC to whatever it holds.</span></div>
+    <div class="msim-instr"><code id="pe-instr">pea Return_Here(pc)</code> <span>two different worlds on screen. Return_Here is a <a href="#labels">label</a>, a spot in the code; the <a href="#stack">stack</a> is a separate patch of RAM up near $00FFFF00. pea copies the label's address INTO a stack slot; rts reads the top slot back and jumps the <a href="#pc">PC</a> to whatever it holds. The layout below shows where the label's number comes from; nobody typed it anywhere.</span></div>
+    <pre>$00020000:  pea Return_Here(pc)	<span class="c">; the pc is here; push the label's address</span>
+$00020004:  bra.w Shared_Code	<span class="c">; then branch away (bra pushes nothing)</span>
+  ...
+$00020010:  Return_Here:	<span class="c">; the label names this spot; the assembler's bookkeeping gave it this address</span></pre>
     <div class="msim-ctrl">
       <button type="button" id="pe-pea">Run pea Return_Here(pc)</button>
       <button type="button" id="pe-rts">Run rts</button>
