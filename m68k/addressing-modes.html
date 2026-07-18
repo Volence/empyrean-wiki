@@ -1062,12 +1062,17 @@ variables, bakes in constants, and finds its own tables.</p>
   <div class="rflow">
     <span class="rf-cell"><span class="rf-k">you write</span><code>SetupValues(pc)</code></span>
     <span class="rf-arrow">&rarr;</span>
-    <span class="rf-cell"><span class="rf-k">under the hood</span><code>PC + d16 = $000796</code></span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>$000796</code></span>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code>$000796</code></span>
   </div>
-  <div class="rf-legend"><span class="lead">given</span> <span>PC + d16 = <code>$000796</code></span> <span>a5 &larr; <code>$000796</code> (the address, via lea)</span></div>
-  <p class="rf-note">With <code>lea</code> the operand is the <em>address</em> itself, not the bytes there; the <code>movem</code> lines then read the table through a5. Being a distance from the PC, the block still finds its table if it moves in ROM.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>PC = <code>$000200</code></span> <span>d16 = <code>$000596</code></span> <span>$000200 + $000596 = <code>$000796</code></span> <span>a5 &larr; <code>$000796</code></span></div>
+  <p class="rf-note"><code>d16</code> is the 16-bit signed displacement baked into the instruction: the distance from here to <code>SetupValues</code>, so <code>PC + d16</code> lands on the label. With <code>lea</code> the operand is that <em>address</em>, not the bytes there; the <code>movem</code> lines then read the table through a5, and being a distance from the PC, the block still works if it moves in ROM.</p></div>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  One precision the value hides: the PC the 68000 uses as the base is the address of the displacement
+  word, which sits 2 bytes past the instruction's first byte, not the opcode itself. The assembler
+  works the displacement out with that in mind, so you never adjust for it by hand; it only matters if
+  you ever compute a PC-relative displacement yourself.</div>
 </div>
 
 <div class="mode" id="mode-pcindex">
