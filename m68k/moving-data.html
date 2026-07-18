@@ -613,6 +613,21 @@ into registers, working on them there, and writing results back out.</p>
   MOVEQ always writes a full long. This is the everyday way to load any small constant: a loop
   count, an object's state number, a zero to wipe a register clean. If the value fits in -128 to
   127, MOVEQ is the cheapest possible way to get it into a register.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="mq-instr">moveq #100,d0</code> <span>type a number, then run it. In range, watch moveq fill all 32 bits by <a href="#signext">sign extension</a>; out of range, watch the assembler refuse the line before any code exists.</span></div>
+    <div class="msim-ctrl">
+      <label for="mq-src">Immediate #n (decimal)</label>
+      <input id="mq-src" type="text" value="100" maxlength="6" autocomplete="off" aria-describedby="mq-note">
+      <button type="button" id="mq-run">Run moveq #n,d0</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="mq-d0">$FFFFFFFF</span><span class="mr-tag">destination</span></span>
+    </div>
+    <p class="msim-note" id="mq-note" aria-live="polite">d0 starts full of junk. moveq writes the whole 32-bit register every time, so a valid moveq wipes that junk clean. Try 100, then try 200 and watch the line get rejected.</p>
+  </div>
+  <figcaption>MOVEQ carries one signed 8-bit immediate, sign-extended to fill all 32 bits (static fallback: moveq #100,d0 sets d0 = $00000064; moveq #-1,d0 sets d0 = $FFFFFFFF; moveq #200,d0 does not assemble at all, because 200 does not fit the signed -128 to 127 field).</figcaption>
+  </figure>
   <p>The classic full-register zero idiom, from the console's boot-time VDP check:</p>
   <pre>	move.w	(a4),d0	<span class="c">; check if VDP works</span>
 	moveq	<span class="n">#0</span>,d0	<span class="c">; clear d0</span></pre>
@@ -684,6 +699,29 @@ into registers, working on them there, and writing results back out.</p>
   practice this is how pointers travel: whenever an address stored in data, in a table, or in
   another register needs to become the thing you dereference next, MOVEA is what lands it in an
   An where <code>(An)</code> and <code>d(An)</code> can get at it.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="ma-instr">movea.w #$8000,a0</code> <span>load a 16-bit value into an address register and watch two things: it gets <a href="#signext">sign-extended</a> to 32 bits, and not one flag moves.</span></div>
+    <div class="msim-ctrl">
+      <label for="ma-src">Word source (hex, 4 digits)</label>
+      <input id="ma-src" type="text" value="8000" maxlength="4" autocomplete="off" aria-describedby="ma-note">
+      <button type="button" id="ma-run">Run movea.w #n,a0</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">a0</span><span class="mr-val" id="ma-a0">$00000000</span><span class="mr-tag">destination</span></span>
+    </div>
+    <div class="msim-fl" aria-label="Condition codes around the movea">
+      <span class="fl-label">Flags</span>
+      <span class="sfchip on" id="ma-fx">X 1</span>
+      <span class="sfchip on" id="ma-fn">N 1</span>
+      <span class="sfchip" id="ma-fz">Z 0</span>
+      <span class="sfchip" id="ma-fv">V 0</span>
+      <span class="sfchip on" id="ma-fc">C 1</span>
+    </div>
+    <p class="msim-note" id="ma-note" aria-live="polite">The flags above are leftovers from some earlier instruction. Run the movea and watch: a0 changes, every flag stays exactly where it was. MOVEA sets none, so you cannot branch on its result.</p>
+  </div>
+  <figcaption>MOVEA.w sign-extends its 16-bit source across all 32 bits of the address register and touches no condition codes (static fallback: movea.w #$8000,a0 leaves a0 = $FFFF8000, not $00008000, because $8000 has its top bit set; the X N Z V C flags read exactly as they did before, since MOVEA never writes them).</figcaption>
+  </figure>
   <p>Two absolute addresses loaded ahead of a checksum scan:</p>
   <pre>	movea.l	<span class="n">#EndOfHeader</span>,a0	<span class="c">; start checking bytes after the header ($200)</span>
 	movea.l	<span class="n">#ROMEndLoc</span>,a1	<span class="c">; stop at end of ROM</span></pre>
@@ -730,7 +768,7 @@ as it was.</p>
   </div>
 </details>
 
-<details class="explain">
+<details class="explain" id="stack">
   <summary>New here? &middot; What is the stack, and why does the CPU need one?</summary>
   <div class="x-body">
     <p>The stack is a region of <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span> that grows downward and is always
@@ -805,6 +843,26 @@ as it was.</p>
   an address register. Always a longword operation; there is no size suffix. It is the standard
   opening move of a routine that is about to work on something: point a register at the table,
   the object, or the port first, and everything that follows gets shorter and cheaper.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="le-instr">lea Score,a0  vs  move.w Score,d0</code> <span>one memory cell, two instructions. LEA writes down the cell's address; MOVE.w walks in and copies its contents. Change the contents and see which one notices.</span></div>
+    <div class="msim-ctrl">
+      <label for="le-src">Contents stored at Score (hex, 4 digits)</label>
+      <input id="le-src" type="text" value="1068" maxlength="4" autocomplete="off" aria-describedby="le-note">
+      <button type="button" id="le-lea">Run lea Score,a0</button>
+      <button type="button" id="le-move">Run move.w Score,d0</button>
+      <button type="button" id="le-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">Score (memory)</span><span class="mr-val" id="le-cell">$1068</span><span class="mr-tag">at $00FF1000</span></span>
+      <span class="mr-arrow" aria-hidden="true">read by</span>
+      <span class="mreg"><span class="mr-name">a0</span><span class="mr-val" id="le-a0">$00000000</span><span class="mr-tag">lea: the address</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="le-d0">$00000000</span><span class="mr-tag">move.w: the contents</span></span>
+    </div>
+    <p class="msim-note" id="le-note" aria-live="polite">Score lives at address $00FF1000 and currently holds $1068 (4200). Run lea and a0 gets the house number $00FF1000; run move.w and d0 gets what is inside, $1068. Change the contents and only move.w notices.</p>
+  </div>
+  <figcaption>LEA loads where a value lives; MOVE.w loads what lives there (static fallback: with Score at $00FF1000 holding $1068, lea Score,a0 sets a0 = $00FF1000 while move.w Score,d0 sets d0 = $00001068; changing the stored contents changes what move.w brings back but never changes the address lea produces).</figcaption>
+  </figure>
   <p>A PC-relative table load, right at reset, the standard position-independent way to address a
   local table:</p>
   <pre>	lea	SetupValues(pc),a5	<span class="c">; Load setup values array address.</span></pre>
@@ -896,6 +954,23 @@ DrawNumber:
   passes pointers in address registers instead, which is faster, so PEA barely appears in it at
   all.</p>
   </div>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="pe-instr">pea Return_Here(pc)</code> <span>watch the stack. pea drops a 32-bit address onto it and sp falls by 4; rts then lifts that same address off and jumps the PC to it. The <a href="#stack">stack</a> is just memory, and rts follows whatever is on top.</span></div>
+    <div class="msim-ctrl">
+      <button type="button" id="pe-pea">Run pea Return_Here(pc)</button>
+      <button type="button" id="pe-rts">Run rts</button>
+      <button type="button" id="pe-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">sp (a7)</span><span class="mr-val" id="pe-sp">$00FFFF00</span><span class="mr-tag">stack pointer</span></span>
+      <span class="mreg"><span class="mr-name">pc</span><span class="mr-val" id="pe-pc">$00020000</span><span class="mr-tag">program counter</span></span>
+    </div>
+    <div class="sd-col" id="pe-stack"></div>
+    <p class="msim-note" id="pe-note" aria-live="polite">The stack holds only older data right now. Push an address with pea, then pop it with rts and watch the PC follow it.</p>
+  </div>
+  <figcaption>PEA pushes an address and rts pops whatever is on top and jumps there (static fallback: pea Return_Here(pc) writes $00020010 to the stack and drops sp from $00FFFF00 to $00FFFEFC; a following rts lifts $00020010 back off, sets the PC to it, and restores sp, exactly as if a real call had pushed the return address).</figcaption>
+  </figure>
   <p>Which is why the one real use in the Sonic 2 disassembly is not parameter passing: it is a
   deliberate, commented "fake call" trick. The routine pushes the address right after itself,
   then branches (not calls) into shared code, so that shared code's own <code>rts</code> returns
@@ -972,6 +1047,27 @@ DrawNumber:
   <p>Transfers a bitmask-selected list of registers to or from consecutive memory in a single
   instruction. This is the standard way to save every register a routine will clobber on entry,
   and restore them all on exit, without a separate MOVE per register.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="mm-instr">movem.l d0/d1/d2/a0/a1,-(sp)</code> <span>pick registers, then save them to the stack and restore them. Watch two things: they push in descending order so a matching pop lands each back home, and the cost is 8 + 8 per register.</span></div>
+    <div class="msim-ctrl" role="group" aria-label="Registers to move">
+      <label><input type="checkbox" class="mm-cb" value="d0" checked> d0</label>
+      <label><input type="checkbox" class="mm-cb" value="d1" checked> d1</label>
+      <label><input type="checkbox" class="mm-cb" value="d2" checked> d2</label>
+      <label><input type="checkbox" class="mm-cb" value="a0" checked> a0</label>
+      <label><input type="checkbox" class="mm-cb" value="a1" checked> a1</label>
+    </div>
+    <div class="msim-ctrl">
+      <button type="button" id="mm-save">Run movem.l regs,-(sp)</button>
+      <button type="button" id="mm-restore">Run movem.l (sp)+,regs</button>
+      <button type="button" id="mm-reset">Reset</button>
+    </div>
+    <p class="msim-cost" id="mm-cost">movem.l d0/d1/d2/a0/a1,-(sp) &middot; 8 + 8&times;5 = 48 cycles &middot; saving 5 registers</p>
+    <div class="sd-col" id="mm-stack"></div>
+    <p class="msim-note" id="mm-note" aria-live="polite">Tick the registers you want to save, run the save, and watch them push onto the stack in descending order. The cost line tracks 8 + 8 per register live.</p>
+  </div>
+  <figcaption>MOVEM saves a chosen register list to the stack in descending order and restores it in reverse, for a cost that scales with the list (static fallback: saving d0/d1/d2/a0/a1 pushes a1 first and d0 last, leaving d0 on top, and costs 8 + 8 times 5 = 48 cycles; the matching restore pops d0 first and a1 last, each value back in its own register).</figcaption>
+  </figure>
   <p>Saving every register at the very top of the vertical interrupt handler, predecrementing onto
   the stack:</p>
   <pre>V_Int:
@@ -1015,14 +1111,14 @@ DrawNumber:
     <div class="stackdiag">
       <div class="sd-col">
         <span class="sd-title">movem.l d0-a6,-(sp) pushes</span>
-        <span class="sd-sp">low address</span>
+        <span class="sd-sp">high address</span>
         <div class="sd-cell sd-first"><span>a6</span><span class="sd-ord">pushed 1st</span></div>
         <div class="sd-cell"><span>a5</span><span class="sd-ord">2nd</span></div>
         <div class="sd-cell"><span>a4</span><span class="sd-ord">3rd</span></div>
         <div class="sd-cell"><span>&hellip;</span><span class="sd-ord">&hellip;</span></div>
         <div class="sd-cell"><span>d1</span><span class="sd-ord">14th</span></div>
         <div class="sd-cell sd-last"><span>d0</span><span class="sd-ord">pushed 15th</span></div>
-        <span class="sd-sp">high address &middot; sp ends up here, pointing at d0</span>
+        <span class="sd-sp">low address &middot; sp ends up here, pointing at d0</span>
       </div>
       <div class="sd-arrow">restore reverses it &rarr;</div>
       <div class="sd-col">
@@ -1098,6 +1194,32 @@ carry meaning, without touching memory at all.</p>
   does exactly that: whatever was there before is gone, replaced with 0. Resetting a timer,
   dropping a flag, stopping an object dead by zeroing its velocity: whenever a field needs to
   become 0 in one step, this is the tool.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="cl-instr">clr.b / clr.w / clr.l d0</code> <span>d0 is full of junk. Clear it at each size and watch which bytes go to zero and which stay dirty. Z lights every time, because the part you cleared really is zero.</span></div>
+    <div class="msim-ctrl">
+      <label for="cl-src">Junk value in d0 (hex, up to 8 digits)</label>
+      <input id="cl-src" type="text" value="DEADBEEF" maxlength="8" autocomplete="off" aria-describedby="cl-note">
+      <button type="button" id="cl-b">Run clr.b d0</button>
+      <button type="button" id="cl-w">Run clr.w d0</button>
+      <button type="button" id="cl-l">Run clr.l d0</button>
+      <button type="button" id="cl-reset">Reset d0</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="cl-d0">$DEADBEEF</span><span class="mr-tag">destination</span></span>
+    </div>
+    <div class="msim-fl" aria-label="Condition codes after the clear">
+      <span class="fl-label">Flags after</span>
+      <span class="sfchip" id="cl-fx">X unaff.</span>
+      <span class="sfchip forced" id="cl-fn">N 0</span>
+      <span class="sfchip" id="cl-fz">Z -</span>
+      <span class="sfchip forced" id="cl-fv">V 0</span>
+      <span class="sfchip forced" id="cl-fc">C 0</span>
+    </div>
+    <p class="msim-note" id="cl-note" aria-live="polite">clr.b zeroes only the low byte and leaves the top three bytes of junk; clr.w zeroes the low word and leaves the top half dirty; only clr.l wipes all 32 bits. Every clear sets Z, because whatever you cleared is now zero.</p>
+  </div>
+  <figcaption>CLR zeroes only the size you name and leaves the rest untouched (static fallback: from d0 = $DEADBEEF, clr.b d0 gives $DEADBE00, clr.w d0 gives $DEAD0000, clr.l d0 gives $00000000; all three set Z = 1 and clear N, V, and C, because the cleared portion is zero).</figcaption>
+  </figure>
   <p>Zeroing a flag byte before a batch of work runs:</p>
   <pre>loc_1072:
 	clr.b	(Do_Updates_in_H_int).w
@@ -1153,11 +1275,27 @@ carry meaning, without touching memory at all.</p>
   suffix; it always operates on the full 32-bit register, and it only ever targets a register,
   never memory. Its everyday job is values that are really two 16-bit halves glued together,
   which on the Genesis usually means one thing: VDP command words, built half by half.</p>
-  <div class="swapviz" aria-hidden="true">
-    <span class="swapreg"><span class="half hi">high 16</span><span class="half lo">low 16</span></span>
-    <span class="sw-arrow">SWAP&nbsp;&rarr;</span>
-    <span class="swapreg"><span class="half lo">low 16</span><span class="half hi">high 16</span></span>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="sw-instr">swap d0</code> <span>type a 32-bit value and swap it. The high word and low word trade places; both survive, nothing is lost.</span></div>
+    <div class="msim-ctrl">
+      <label for="sw-src">Value in d0 (hex, 8 digits)</label>
+      <input id="sw-src" type="text" value="12345678" maxlength="8" autocomplete="off" aria-describedby="sw-note">
+      <button type="button" id="sw-run">Run swap d0</button>
+      <button type="button" id="sw-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="sw-d0">$12345678</span><span class="mr-tag">destination</span></span>
+    </div>
+    <div class="swapviz" aria-hidden="true">
+      <span class="swapreg"><span class="half hi" id="sw-hi">1234</span><span class="half lo" id="sw-lo">5678</span></span>
+      <span class="sw-arrow">swap&nbsp;&rarr;</span>
+      <span class="swapreg"><span class="half lo" id="sw-lo2">5678</span><span class="half hi" id="sw-hi2">1234</span></span>
+    </div>
+    <p class="msim-note" id="sw-note" aria-live="polite">swap exchanges d0's high word and low word in place. Run it twice and you are back where you started, proof that nothing is thrown away.</p>
   </div>
+  <figcaption>SWAP trades a data register's two 16-bit halves in place (static fallback: swap d0 turns $12345678 into $56781234; the high word $1234 and low word $5678 exchange positions, and swapping again restores the original).</figcaption>
+  </figure>
   <p>Both real uses here build a <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could, while the CPU keeps working.">DMA</span> command word out of two 16-bit halves computed
   separately, which is exactly the situation SWAP is built for. First, shaping a VRAM destination
   address into the top half of a DMA command:</p>
@@ -1212,6 +1350,23 @@ carry meaning, without touching memory at all.</p>
   </div>
   <p>Exchanges the full 32-bit contents of two registers, in any mix of data and address registers.
   Always a full-long swap, regardless of the "logical" size of the values held.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="xg-instr">exg d0,d1</code> <span>two registers, two different values. exg trades them so both survive in each other's home. A plain move would have destroyed one of them.</span></div>
+    <div class="msim-ctrl">
+      <button type="button" id="xg-run">Run exg d0,d1</button>
+      <button type="button" id="xg-move">Run move.l d0,d1 instead</button>
+      <button type="button" id="xg-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="xg-d0">$0000AAAA</span><span class="mr-tag">operand</span></span>
+      <span class="mr-arrow" aria-hidden="true">trade</span>
+      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="xg-d1">$0000BBBB</span><span class="mr-tag">operand</span></span>
+    </div>
+    <p class="msim-note" id="xg-note" aria-live="polite">exg d0,d1 swaps the two registers' full 32-bit contents: $AAAA and $BBBB change homes and both live on. Try the move.l instead and watch d0's value overwrite d1, gone for good. exg touches no flags.</p>
+  </div>
+  <figcaption>EXG is a trade, not a copy: both registers keep their value in the other's home (static fallback: with d0 = $0000AAAA and d1 = $0000BBBB, exg d0,d1 gives d0 = $0000BBBB and d1 = $0000AAAA; by contrast move.l d0,d1 would copy d0 over d1, destroying the $BBBB that was there).</figcaption>
+  </figure>
   <p>EXG is genuinely uncommon in hand-written 68000 game code. Most register swaps go through a
   spare register and a couple of MOVEs instead, since EXG doesn't obviously save time or registers
   in most contexts; across the entire 91,000-line Sonic 2 disassembly it appears only a handful of
@@ -1523,6 +1678,185 @@ function expandAll(btn){
     chip.addEventListener('click',function(){ (cur===chip&&pop.style.display==='block')?hide():show(chip); });
   });
   addEventListener('keydown',function(e){ if(e.key==='Escape') hide(); });
+})();
+
+/* MOVEQ toy: the -128 to 127 range wall and the always-full-long write */
+(function(){
+  var src=document.getElementById('mq-src'); if(!src) return;
+  var d0e=document.getElementById('mq-d0'), run=document.getElementById('mq-run');
+  var note=document.getElementById('mq-note'), instr=document.getElementById('mq-instr');
+  var d0=0xFFFFFFFF;
+  function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
+  function parse(){ var v=(src.value||'').replace(/[^0-9-]/g,''); if(v.lastIndexOf('-')>0) v=v.replace(/-/g,''); src.value=v; return v; }
+  function sync(){ var v=parse(); instr.textContent='moveq #'+(v===''||v==='-'?'n':v)+',d0'; }
+  src.addEventListener('input',sync);
+  run.addEventListener('click',function(){
+    var v=parse(); var n=parseInt(v||'0',10); if(isNaN(n)) return;
+    instr.textContent='moveq #'+v+',d0';
+    if(n<-128||n>127){
+      note.textContent='#'+n+' is outside the signed 8-bit field (-128 to 127), so the assembler rejects moveq #'+n+',d0 at build time. No instruction is generated at all, and d0 is not touched, because this line never becomes code. A constant this size needs a plain move.';
+      return;
+    }
+    var prev=d0; d0=(n<0?(0x100000000+n):n)>>>0;
+    paint(d0e,d0,prev);
+    note.textContent='moveq #'+n+',d0 wrote the whole 32-bit register: '+hx(d0)+' hex, '+n+' signed. The 8-bit '+(n<0?'negative ':'')+'immediate was sign-extended to fill all 32 bits, which is why moveq #0 is the standard way to zero a register.';
+  });
+  sync();
+})();
+
+/* MOVEA toy: silent sign extension into an address register, and no flags to branch on */
+(function(){
+  var src=document.getElementById('ma-src'); if(!src) return;
+  var a0e=document.getElementById('ma-a0'), run=document.getElementById('ma-run');
+  var note=document.getElementById('ma-note'), instr=document.getElementById('ma-instr');
+  var a0=0x00000000;
+  function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
+  function word(){ var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); src.value=v; return parseInt(v||'0',16)&0xFFFF; }
+  function sync(){ instr.textContent='movea.w #$'+((src.value||'').toUpperCase()||'0')+',a0'; }
+  src.addEventListener('input',sync);
+  run.addEventListener('click',function(){
+    var w=word(); var prev=a0;
+    a0=((w&0x8000)?(0xFFFF0000|w):w)>>>0;
+    paint(a0e,a0,prev);
+    var sv=(w&0x8000)?w-0x10000:w;
+    note.textContent='movea.w #$'+hx(w).slice(4)+',a0 put '+hx(a0)+' into a0: the word was sign-extended to 32 bits ('+((w&0x8000)?'top bit set, so $FFFF filled the high half, '+sv+' signed':'top bit clear, high half zero, '+sv)+'). The flags above did not move, because MOVEA writes none. A bne right here would test whatever was set before.';
+  });
+  sync();
+})();
+
+/* LEA toy: where a value lives vs what lives there */
+(function(){
+  var src=document.getElementById('le-src'); if(!src) return;
+  var cell=document.getElementById('le-cell'), a0e=document.getElementById('le-a0'), d0e=document.getElementById('le-d0');
+  var blea=document.getElementById('le-lea'), bmv=document.getElementById('le-move'), brs=document.getElementById('le-reset'), note=document.getElementById('le-note');
+  var ADDR=0x00FF1000, a0=0, d0=0;
+  function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
+  function cont(){ var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); src.value=v; return parseInt(v||'0',16)&0xFFFF; }
+  function w4(n){ return (n&0xFFFF).toString(16).toUpperCase().padStart(4,'0'); }
+  function showCell(){ cell.textContent='$'+w4(cont()); }
+  src.addEventListener('input',showCell);
+  blea.addEventListener('click',function(){ var p=a0; a0=ADDR>>>0; paint(a0e,a0,p); note.textContent='lea Score,a0 wrote the address itself, $00FF1000, into a0. It never read the cell, so changing the contents would not change this at all: lea gives the house number, not what is inside.'; });
+  bmv.addEventListener('click',function(){ var c=cont(); var p=d0; d0=(((d0&0xFFFF0000)>>>0)|c)>>>0; paint(d0e,d0,p); note.textContent='move.w Score,d0 walked into the cell and copied what is inside, $'+w4(c)+' ('+c+'), into d0. That is the value, not the address: run lea and move.w side by side and watch them land different numbers.'; });
+  brs.addEventListener('click',function(){ a0=0; d0=0; a0e.textContent='$00000000'; d0e.textContent='$00000000'; note.textContent='Reset. Score still lives at $00FF1000. Run lea for the address, move.w for the contents.'; });
+  showCell();
+})();
+
+/* PEA toy: the stack is just memory, and rts follows whatever is on top */
+(function(){
+  var pea=document.getElementById('pe-pea'); if(!pea) return;
+  var rts=document.getElementById('pe-rts'), rst=document.getElementById('pe-reset');
+  var spe=document.getElementById('pe-sp'), pce=document.getElementById('pe-pc'), col=document.getElementById('pe-stack'), note=document.getElementById('pe-note');
+  var RET=0x00020010, OLD=0x0001A0C4, TOP=0x00FFFF00, RUN=0x00020000;
+  var pushed=false, sp=TOP, pc=RUN;
+  function hx(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function render(){
+    var html='';
+    if(pushed){ html+='<div class="sd-cell sd-first"><span>'+hx(sp)+'</span><span class="sd-ord">'+hx(RET)+' &middot; pushed by pea</span></div>'; }
+    html+='<div class="sd-cell'+(pushed?'':' sd-first')+'"><span>'+hx(TOP)+'</span><span class="sd-ord">'+hx(OLD)+' &middot; older data</span></div>';
+    col.innerHTML=html; spe.textContent=hx(sp); pce.textContent=hx(pc);
+  }
+  pea.addEventListener('click',function(){
+    if(pushed){ note.textContent='The address is already on the stack. Press Run rts to see it consumed.'; return; }
+    pushed=true; sp=(TOP-4)>>>0; render();
+    note.textContent='pea Return_Here(pc) computed the address $00020010 and wrote it to the stack. sp fell by 4, from $00FFFF00 to $00FFFEFC. Nothing was copied but that one address; it now sits on top as a plain number, waiting.';
+  });
+  rts.addEventListener('click',function(){
+    if(pushed){ pc=RET>>>0; pushed=false; sp=TOP; render();
+      note.textContent='rts lifted the top 4 bytes, $00020010, off the stack and jumped the PC straight there. sp rose back to $00FFFF00. rts has no memory of who pushed that address: pea steered it exactly as a real call would.';
+    } else {
+      note.textContent='Nothing you pushed is on top. rts does not check: it would take the older data $0001A0C4 sitting there and jump the PC into it, a crash. That danger is the flip side of the trick. Run pea first and rts lands somewhere real.';
+    }
+  });
+  rst.addEventListener('click',function(){ pushed=false; sp=TOP; pc=RUN; render(); note.textContent='Reset. The stack holds only older data. pea pushes an address; rts pops whatever is on top and jumps there.'; });
+  render();
+})();
+
+/* MOVEM toy: descending push order and cost that scales with the register list */
+(function(){
+  var save=document.getElementById('mm-save'); if(!save) return;
+  var restore=document.getElementById('mm-restore'), rst=document.getElementById('mm-reset');
+  var instr=document.getElementById('mm-instr'), cost=document.getElementById('mm-cost'), col=document.getElementById('mm-stack'), note=document.getElementById('mm-note');
+  var cbs=Array.prototype.slice.call(document.querySelectorAll('.mm-cb'));
+  var ORD={d0:0,d1:1,d2:2,a0:8,a1:9};
+  var DOT='·', TIMES='×', saved=false;
+  function chosen(){ return cbs.filter(function(c){return c.checked;}).map(function(c){return c.value;}).sort(function(a,b){return ORD[a]-ORD[b];}); }
+  function ordinal(k){ return k===1?'1st':k===2?'2nd':k===3?'3rd':k+'th'; }
+  function sync(){
+    var regs=chosen(), n=regs.length, list=n?regs.join('/'):'(none)';
+    instr.textContent='movem.l '+list+',-(sp)';
+    cost.textContent='movem.l '+list+',-(sp) '+DOT+' 8 + 8'+TIMES+n+' = '+(8+8*n)+' cycles '+DOT+' saving '+n+' register'+(n===1?'':'s');
+  }
+  cbs.forEach(function(c){ c.addEventListener('change',function(){ if(saved){ saved=false; col.innerHTML=''; } sync(); }); });
+  save.addEventListener('click',function(){
+    var regs=chosen(), n=regs.length;
+    if(!n){ note.textContent='Pick at least one register first.'; return; }
+    if(saved){ note.textContent='Already saved. Run the restore to pop them home.'; return; }
+    var html='';
+    for(var i=0;i<n;i++){ var k=n-i; html+='<div class="sd-cell'+(i===0?' sd-first':'')+(i===n-1?' sd-last':'')+'"><span>'+regs[i]+'</span><span class="sd-ord">pushed '+ordinal(k)+'</span></div>'; }
+    col.innerHTML=html; saved=true;
+    cost.textContent='movem.l '+regs.join('/')+',-(sp) '+DOT+' 8 + 8'+TIMES+n+' = '+(8+8*n)+' cycles '+DOT+' register to memory save';
+    note.textContent='Saved '+n+' registers in one instruction for '+(8+8*n)+' cycles (8 + 8 per register). They pushed in descending order, so '+regs[n-1]+' went down first and '+regs[0]+' last, leaving '+regs[0]+' on top. That order is exactly what lets a matching pop land each one home.';
+  });
+  restore.addEventListener('click',function(){
+    var regs=chosen(), n=regs.length;
+    if(!saved){ note.textContent='Nothing on the stack yet. Run the save first.'; return; }
+    col.innerHTML=''; saved=false;
+    cost.textContent='movem.l (sp)+,'+regs.join('/')+' '+DOT+' 12 + 8'+TIMES+n+' = '+(12+8*n)+' cycles '+DOT+' memory to register restore';
+    note.textContent='Restored in the opposite order: '+regs[0]+' popped off the top first, then upward, '+regs[n-1]+' last, each value back in its own register. A restore costs 12 + 8 per register, '+(12+8*n)+' cycles here.';
+  });
+  rst.addEventListener('click',function(){ saved=false; col.innerHTML=''; cbs.forEach(function(c){c.checked=true;}); sync(); note.textContent='Reset. Tick the registers you want, save them to the stack, then restore them home.'; });
+  sync();
+})();
+
+/* CLR toy: a partial clear leaves the top of the register dirty; Z lights either way */
+(function(){
+  var src=document.getElementById('cl-src'); if(!src) return;
+  var d0e=document.getElementById('cl-d0'), bb=document.getElementById('cl-b'), bw=document.getElementById('cl-w'), bl=document.getElementById('cl-l'), brs=document.getElementById('cl-reset');
+  var note=document.getElementById('cl-note'), instr=document.getElementById('cl-instr'), fz=document.getElementById('cl-fz');
+  var start=0xDEADBEEF, d0=start;
+  function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
+  function read(){ var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,8).toUpperCase(); src.value=v; start=parseInt(v||'0',16)>>>0; return start; }
+  function zlight(){ fz.textContent='Z 1'; fz.className='sfchip on'; }
+  src.addEventListener('input',function(){ read(); d0=start; d0e.textContent='$'+hx(d0); fz.textContent='Z -'; fz.className='sfchip'; });
+  bb.addEventListener('click',function(){ instr.textContent='clr.b d0'; var p=d0; d0=(d0&0xFFFFFF00)>>>0; paint(d0e,d0,p); zlight(); note.textContent='clr.b zeroed only the low byte. d0 is now '+hx(d0)+': the top three bytes survived untouched. Z is set because that byte really is zero, but the register as a whole is not.'; });
+  bw.addEventListener('click',function(){ instr.textContent='clr.w d0'; var p=d0; d0=(d0&0xFFFF0000)>>>0; paint(d0e,d0,p); zlight(); note.textContent='clr.w zeroed the low word and left the top half alone: d0 is now '+hx(d0)+'. This is the classic trap, clr.w on a register you thought you had cleared leaves the high 16 bits as they were.'; });
+  bl.addEventListener('click',function(){ instr.textContent='clr.l d0'; var p=d0; d0=0; paint(d0e,d0,p); zlight(); note.textContent='clr.l wiped all 32 bits: d0 is $00000000. Only the long clear zeroes the whole register; on a register, moveq #0 does the same in fewer cycles.'; });
+  brs.addEventListener('click',function(){ read(); d0=start; d0e.textContent='$'+hx(d0); fz.textContent='Z -'; fz.className='sfchip'; note.textContent='d0 reloaded with your value. Clear it at each size and watch which bytes survive.'; });
+  read(); d0=start;
+})();
+
+/* SWAP toy: the two halves trade in place, nothing is lost */
+(function(){
+  var src=document.getElementById('sw-src'); if(!src) return;
+  var d0e=document.getElementById('sw-d0'), run=document.getElementById('sw-run'), rst=document.getElementById('sw-reset'), note=document.getElementById('sw-note');
+  var hi=document.getElementById('sw-hi'), lo=document.getElementById('sw-lo'), hi2=document.getElementById('sw-hi2'), lo2=document.getElementById('sw-lo2');
+  var d0=0x12345678;
+  function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function w4(n){ return (n&0xFFFF).toString(16).toUpperCase().padStart(4,'0'); }
+  function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
+  function halves(){ var h=(d0>>>16)&0xFFFF, l=d0&0xFFFF; hi.textContent=w4(h); lo.textContent=w4(l); hi2.textContent=w4(h); lo2.textContent=w4(l); }
+  function read(){ var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,8).toUpperCase(); src.value=v; d0=parseInt(v||'0',16)>>>0; }
+  src.addEventListener('input',function(){ read(); d0e.textContent='$'+hx(d0); halves(); });
+  run.addEventListener('click',function(){ var p=d0; var h=(d0>>>16)&0xFFFF, l=d0&0xFFFF; d0=(((l<<16)>>>0)|h)>>>0; paint(d0e,d0,p); halves(); note.textContent='swap traded the halves of d0: high word $'+w4(p>>>16)+' and low word $'+w4(p)+' changed places, giving '+hx(d0)+'. Nothing was lost, run it again and you are back to '+hx(p)+'.'; });
+  rst.addEventListener('click',function(){ d0=0x12345678; src.value='12345678'; d0e.textContent='$'+hx(d0); halves(); note.textContent='Reset to $12345678. Swap trades the high and low 16-bit halves in place.'; });
+  read(); d0e.textContent='$'+hx(d0); halves();
+})();
+
+/* EXG toy: a trade, not a copy */
+(function(){
+  var run=document.getElementById('xg-run'); if(!run) return;
+  var mv=document.getElementById('xg-move'), rst=document.getElementById('xg-reset');
+  var d0e=document.getElementById('xg-d0'), d1e=document.getElementById('xg-d1'), note=document.getElementById('xg-note');
+  var D0=0x0000AAAA, D1=0x0000BBBB, d0=D0, d1=D1;
+  function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
+  run.addEventListener('click',function(){ var p0=d0, p1=d1; var t=d0; d0=d1; d1=t; paint(d0e,d0,p0); paint(d1e,d1,p1); note.textContent='exg d0,d1 traded the two registers: d0 now holds '+hx(d0)+' and d1 holds '+hx(p0)+'. Both values survived, just in each other\'s home. No flag moved. Press reset, then try move.l to see the difference.'; });
+  mv.addEventListener('click',function(){ var p1=d1; d1=d0; paint(d1e,d1,p1); note.textContent='move.l d0,d1 copied d0 over d1. The '+hx(p1)+' that was in d1 is gone for good, overwritten, not swapped. That is the whole difference: exg trades, move copies and destroys.'; });
+  rst.addEventListener('click',function(){ d0=D0; d1=D1; d0e.textContent='$'+hx(d0); d1e.textContent='$'+hx(d1); note.textContent='Reset: d0 = $0000AAAA, d1 = $0000BBBB. Run exg to trade them, or move.l to copy one over the other.'; });
 })();
 </script>
 
