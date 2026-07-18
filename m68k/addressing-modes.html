@@ -1097,8 +1097,8 @@ variables, bakes in constants, and finds its own tables.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$0140</code></span>
   </div>
-  <div class="rf-legend"><span class="lead">given</span> <span>Vint_SwitchTbl = <code>$000A00</code></span> <span>d0 = <code>$0004</code></span> <span>$000A00 + $4 = <code>$000A04</code></span> <span>(<code>$000A04</code>) = <code class="v">$0140</code></span></div>
-  <p class="rf-note"><code>d0</code> is routine 2 pre-doubled; the word picked, <code class="v">$0140</code>, is the offset the following <code>jsr</code> jumps through. PC-relative keeps the handler relocatable.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>PC = <code>$0009F8</code></span> <span>d8 = <code>$08</code></span> <span>PC + d8 = <code>$000A00</code> (Vint_SwitchTbl)</span> <span>d0 = <code>$0004</code></span> <span>$000A00 + $4 = <code>$000A04</code></span> <span>(<code>$000A04</code>) = <code class="v">$0140</code></span></div>
+  <p class="rf-note"><code>d0</code> is routine 2 pre-doubled; the word picked, <code class="v">$0140</code>, is the offset the following <code>jsr</code> jumps through. The displacement here is only 8 bits (<code>d8</code>, here <code>$08</code>) rather than the <code>d16</code> of plain <code>d(PC)</code>, because the index register uses up the rest of the extension word. PC-relative keeps the handler relocatable.</p></div>
 </div>
 
 <!-- ================================================================ -->
