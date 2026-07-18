@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>68000: Addressing Modes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🧭%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+/* ============================================================
+   Page-specific styles: Addressing Modes
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+details.refbox summary::-webkit-details-marker{display:none;}
+
+/* mini-index: chip row of the 12 modes */
+nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
+nav.mini a{font-family:var(--mono); font-size:.76rem; letter-spacing:.02em;
+  color:var(--ink); text-decoration:none; border:1px solid var(--accent);
+  border-radius:3px; padding:.22rem .55rem; background:rgba(68,102,238,.1);}
+nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outline:none;}
+
+/* one mode entry */
+.mode{margin:2.1rem 0 0; padding-top:.2rem;}
+.mode h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.4rem;}
+.mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
+.syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+.mmeta{margin:.3rem 0 .6rem; max-width:42rem;}
+.mmeta .row{display:flex; gap:.6rem; margin:.22rem 0; align-items:baseline;}
+.mmeta .lbl{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); min-width:5.4rem; flex:none;}
+.mmeta .val{font-size:.9rem;}
+.mmeta .val code{font-variant-numeric:tabular-nums;}
+
+/* gotcha note */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* collapsible reference box (reused for the count breakdown) */
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* the addressing-mode explorer + the postincrement toy */
+.exp{display:flex; flex-direction:column; gap:.8rem;}
+.exp-instr{font-family:var(--mono); display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;}
+.exp-instr code{font-size:1rem; color:var(--gold); background:var(--code-bg);
+  border:1px solid var(--line); border-radius:3px; padding:.2rem .55rem;}
+.exp-instr span{font-size:.72rem; color:var(--dim); max-width:32rem;}
+.exp-modes{display:flex; flex-wrap:wrap; gap:.3rem;}
+.exp-btn{font-family:var(--mono); font-size:.72rem; padding:.25rem .5rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.exp-btn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.exp-btn:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.exp-reset{font-family:var(--mono); font-size:.72rem; padding:.25rem .55rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.exp-reset:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.exp-regs{display:flex; flex-wrap:wrap; align-items:center; gap:1rem;}
+.ereg{display:inline-flex; flex-direction:column; gap:.2rem; align-items:center; border:1px solid var(--line);
+  border-radius:4px; padding:.5rem .8rem; background:var(--panel2); min-width:6rem;}
+.ereg .er-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
+.ereg .er-val{font-family:var(--mono); font-size:1.05rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.ereg .er-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.exp-memtitle{font-family:var(--mono); font-size:.66rem; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--dim); margin:.2rem 0 0;}
+.exp-mem{display:flex; flex-direction:column; gap:.25rem;}
+.ecell{font-family:var(--mono); font-size:.72rem; display:flex; justify-content:space-between; gap:1rem;
+  border:1px solid var(--line); border-radius:3px; padding:.22rem .55rem; min-width:15rem; max-width:22rem;}
+.ecell .ec-world{color:var(--dim); font-size:.62rem;}
+.ecell.a0here{border-color:var(--accent); background:rgba(68,102,238,.14);}
+.ecell.hit{border-color:var(--gold); background:rgba(238,170,0,.16);}
+.exp-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:3em; max-width:38rem;}
+
+/* this page's fallback captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / 68000 ASSEMBLY / ADDRESSING MODES</p>
+  <p class="eyebrow">68000 Assembly</p>
+  <h1>Addressing Modes</h1>
+  <p class="sub">Every instruction has to say where its operand lives. The 68000 gives you a small
+  grammar for that: fourteen ways to name a value, from a plain register to a memory cell computed
+  from a base, an index, and an offset. This page lists all of them, shows exactly what each one
+  computes and what it costs in cycles and bytes, and is where every instruction page's timing note
+  points when it says "plus the price of the addressing mode." Every example is real, pulled from the
+  Sonic 2 disassembly and re-verified line by line.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>How an instruction names its operand</a>
+  <a href="#s2"><span class="n">2</span>The price list</a>
+  <a href="#s3"><span class="n">3</span>Register and register-indirect modes</a>
+  <a href="#s4"><span class="n">4</span>Absolute, immediate, and PC-relative modes</a>
+  <a href="#s5"><span class="n">5</span>PC-relative versus absolute: the choice</a>
+</nav>
+
+<nav class="mini" aria-label="Mini-index of the addressing modes">
+  <a href="#mode-dn">Dn</a>
+  <a href="#mode-an">An</a>
+  <a href="#mode-anind">(An)</a>
+  <a href="#mode-postinc">(An)+</a>
+  <a href="#mode-predec">-(An)</a>
+  <a href="#mode-disp">d(An)</a>
+  <a href="#mode-index">d(An,Xn)</a>
+  <a href="#mode-absw">(xx).w</a>
+  <a href="#mode-absl">(xx).l</a>
+  <a href="#mode-imm">#n</a>
+  <a href="#mode-pcdisp">d(PC)</a>
+  <a href="#mode-pcindex">d(PC,Xn)</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
+instruction rather than a mode? The full instruction index (Programming Model page, coming) lists
+every 68000 mnemonic with a one-line gloss and a direct link.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; How an instruction names its operand</h2>
+
+<p>An instruction like <code>move.w &lt;source&gt;,&lt;dest&gt;</code> is two questions and a verb:
+copy a word, from <em>where</em>, to <em>where</em>. Each of those two "wheres" is an
+<strong>effective address</strong>: a small field inside the instruction that spells out how to find
+the operand. It might be a <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span> (the value is right there), a plain memory address, or an
+address the CPU has to build on the spot by adding a base and an offset together. An addressing mode
+is one recipe for answering "where."</p>
+
+<details class="explain" id="ea">
+  <summary>New here? &middot; What is an effective address, really?</summary>
+  <div class="x-body">
+    <p>Think of the instruction as a sentence and the effective address as its noun phrase. "Copy a
+    word" needs a noun: copy a word <em>from what?</em> The 68000 does not force you to write out a
+    full 32-bit memory address every time; that would be slow and huge. Instead it lets you pick a
+    short recipe. "The value in register d0." "The 16 bits that a0 is pointing at." "The 16 bits
+    eight bytes past where a0 points." Each recipe is an <strong>addressing mode</strong>, and the
+    actual number it works out to, the real memory address, is the <strong>effective address</strong>
+    the mode produces.</p>
+    <p>The key idea, and the one thing this whole page is about: some recipes are just a register (no
+    address at all, the value is already in the CPU), some name a fixed address, and some
+    <em>compute</em> an address by adding pieces together at the moment the instruction runs. The
+    computing ones are what make loops and object code compact: point a register at a thing once, then
+    reach every field of it with a small offset. That is why the same three instructions show up over
+    and over in real code with different modes hanging off them.</p>
+  </div>
+</details>
+
+<h3>The additive rule (the one thing to carry away)</h3>
+
+<p>Here is the single fact every instruction page leans on. The time an instruction takes is not one
+number; it is a sum:</p>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<p>Total cycles = the instruction's base cost + the price of reaching the source operand + the price
+of reaching the destination operand. Each addressing mode has a fixed price, and that price is the
+same table no matter which instruction it hangs off.</p>
+<p>Take <code>move.w</code>, whose base is 4 cycles. Reaching a data register is free (0). Reaching
+a word in memory through <code>(a0)</code> costs 4. So:</p>
+<pre>	move.w	d0,d1        <span class="c">= 4  +  0 (source d0)  +  0 (dest d1)</span>
+	move.w	(a0),d1      <span class="c">= 4  +  4 (source (a0)) +  0 (dest d1) = 8</span>
+	move.w	(a0),(a1)    <span class="c">= 4  +  4 (source (a0)) +  4 (dest (a1)) = 12</span></pre>
+<p>Nothing here is special to MOVE. Swap in any instruction's base, add the same two mode prices
+from the table below, and you have its cost. That is why the instruction pages do not each reprint a
+giant timing matrix: they state a base, then point here for the per-mode add-ons.</p>
+</div>
+
+<p>The same addition governs SIZE. The opcode itself is one 16-bit word. A mode that needs extra
+information, a displacement, an absolute address, an immediate constant, tacks on
+<strong>extension words</strong> after the opcode, and those are the only reason an instruction grows
+past two bytes.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why does the same value cost different amounts depending on where it lives?</summary>
+  <div class="x-body">
+    <p>Because "reaching" an operand can mean very different amounts of actual work. If the value is
+    already in a register, the CPU has it: zero extra bus activity. If the value is in memory, the CPU
+    has to run a bus cycle to go fetch it, and a bus cycle on the 68000 moves 16 bits and takes about
+    4 clock periods. So a word in memory costs roughly 4, and a longword costs about 8, because it is
+    two 16-bit trips.</p>
+    <p>Modes that first have to <em>compute</em> the address add a little more on top for the internal
+    arithmetic: a displacement mode has to read the displacement and add it; an indexed mode also has
+    to pull in the index register. That is the whole shape of the cost table: registers are free,
+    memory is a few cycles per 16 bits, and computing the address adds a small, fixed surcharge.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; What is an extension word?</summary>
+  <div class="x-body">
+    <p>An instruction starts as one 16-bit opcode word. That word has room to name a mode and a
+    register number, but not room for a whole 32-bit address or a 16-bit displacement. When a mode
+    needs one of those, the assembler puts it in the words <em>right after</em> the opcode, and the
+    CPU reads them as part of decoding the instruction. Those trailing words are extension words.</p>
+    <p>So <code>move.w d0,d1</code> is 2 bytes (opcode only), <code>move.w 8(a0),d1</code> is 4 bytes
+    (opcode plus one extension word holding the displacement 8), and
+    <code>move.w ($00FF0000).l,d1</code> is 6 bytes (opcode plus two extension words holding the
+    32-bit address). Reading each extension word is also a bus cycle, which is exactly why the modes
+    that use them cost more time as well as more space. Space and time move together here.</p>
+  </div>
+</details>
+
+<h3>So how many modes are there?</h3>
+
+<p>You will see the 68000 credited with both twelve and fourteen addressing modes, and both numbers
+are correct once you know what each is counting. The Motorola manual groups its modes into six
+categories and totals them at fourteen. Twelve of those fourteen are the general
+<em>effective-address</em> forms, the ones that fit in the 6-bit address field an instruction carries
+for each operand, so they can appear in most operand slots. This page's chip key and price list cover
+exactly those twelve. The remaining two are special cases that are not written as a free-standing
+operand you pick, so they never appear in the grid.</p>
+
+<details class="refbox">
+  <summary>The full fourteen, and where the extra two come from</summary>
+  <div class="enc-body">
+  <p>Motorola's six categories (M68000 Programmer's Reference Manual, addressing-mode table):</p>
+  <div class="tbl"><table>
+    <tr><th>Category</th><th>Modes</th><th>Count</th></tr>
+    <tr><td>Register direct</td><td><code>Dn</code>, <code>An</code></td><td>2</td></tr>
+    <tr><td>Register indirect</td><td><code>(An)</code>, <code>(An)+</code>, <code>-(An)</code>, <code>d(An)</code>, <code>d(An,Xn)</code></td><td>5</td></tr>
+    <tr><td>Absolute data</td><td><code>(xx).w</code>, <code>(xx).l</code></td><td>2</td></tr>
+    <tr><td>Program counter relative</td><td><code>d(PC)</code>, <code>d(PC,Xn)</code></td><td>2</td></tr>
+    <tr><td>Immediate</td><td><code>#n</code>, plus quick immediate</td><td>2</td></tr>
+    <tr><td>Implied</td><td>the register named inside a mnemonic (SR, USP, SP, PC)</td><td>1</td></tr>
+  </table></div>
+  <p class="enc-note">That is 2 + 5 + 2 + 2 + 2 + 1 = 14. The first four rows are the twelve
+  effective-address forms this page prices. The two extras are: <strong>quick immediate</strong>, the
+  tiny constant baked into a handful of instructions (<code>moveq #n,Dn</code> carries a signed 8-bit
+  value, <code>addq</code>/<code>subq</code> carry a 1-to-8 value) rather than passed as a normal
+  operand; and <strong>implied</strong>, where the instruction names its register itself
+  (<code>rts</code> uses SP and PC, <code>move usp,An</code> names USP) so there is no operand to
+  choose a mode for. Neither can be written in a general <code>&lt;ea&gt;</code> slot, which is why the
+  count of forms you can actually pick from is twelve.</p>
+  <p class="enc-note">Verified against the Motorola M68000 Programmer's Reference Manual
+  addressing-mode categories, cross-checked with a second reference (thedigitalcatonline's 68000
+  addressing-modes writeup), which lists the same six categories and the same fourteen total.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; The price list</h2>
+
+<p>This is the one true per-mode cost table. Every timing note on the instruction pages that says
+"plus the addressing-mode price" is adding the number from one of these rows. Read it together with
+the additive rule above: pick the mode's row, take the column for your operation size, add it to the
+instruction's base for the source, and again for a memory destination.</p>
+
+<div class="tbl"><table id="price">
+  <tr><th>Mode</th><th>Computes</th><th>Cycles .b/.w</th><th>Cycles .l</th><th>Ext. bytes</th></tr>
+  <tr id="price-dn"><td><code>Dn</code></td><td>the data register itself</td><td>0</td><td>0</td><td>0</td></tr>
+  <tr id="price-an"><td><code>An</code></td><td>the address register itself</td><td>0</td><td>0</td><td>0</td></tr>
+  <tr id="price-anind"><td><code>(An)</code></td><td>address held in An</td><td>4</td><td>8</td><td>0</td></tr>
+  <tr id="price-postinc"><td><code>(An)+</code></td><td>address in An, then An += size</td><td>4</td><td>8</td><td>0</td></tr>
+  <tr id="price-predec"><td><code>-(An)</code></td><td>An -= size, then that address</td><td>6</td><td>10</td><td>0</td></tr>
+  <tr id="price-disp"><td><code>d(An)</code></td><td>An + a 16-bit signed offset</td><td>8</td><td>12</td><td>2</td></tr>
+  <tr id="price-index"><td><code>d(An,Xn)</code></td><td>An + Xn + an 8-bit signed offset</td><td>10</td><td>14</td><td>2</td></tr>
+  <tr id="price-absw"><td><code>(xx).w</code></td><td>a 16-bit address, sign-extended to 32</td><td>8</td><td>12</td><td>2</td></tr>
+  <tr id="price-absl"><td><code>(xx).l</code></td><td>a full 32-bit address</td><td>12</td><td>16</td><td>4</td></tr>
+  <tr id="price-imm"><td><code>#n</code></td><td>the constant inside the instruction</td><td>4</td><td>8</td><td>2 / 4</td></tr>
+  <tr id="price-pcdisp"><td><code>d(PC)</code></td><td>PC + a 16-bit signed offset</td><td>8</td><td>12</td><td>2</td></tr>
+  <tr id="price-pcindex"><td><code>d(PC,Xn)</code></td><td>PC + Xn + an 8-bit signed offset</td><td>10</td><td>14</td><td>2</td></tr>
+</table></div>
+
+<p style="font-size:.82rem; color:var(--dim); max-width:42rem;">Cycles are the effective-address
+calculation times from the Motorola MC68000 User's Manual: the clocks spent computing and reaching
+the operand, added on top of the instruction's own base. They are core-CPU figures; a real Genesis
+access to ROM or the <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> adds wait states beyond these. The <code>.b/.w</code> column
+covers byte and word (a byte still moves in one 16-bit bus cycle); the <code>.l</code> column doubles
+the memory trips. Extension bytes are per operand: <code>#n</code> is 2 bytes for a byte or word
+immediate and 4 for a long. Registers cost nothing and add nothing; every step down the table is the
+CPU doing more work to find the value.</p>
+
+<p style="font-size:.82rem; color:var(--dim); max-width:42rem;">One footnoted exception, worth
+knowing because MOVE is everywhere: as a <em>MOVE destination</em>, <code>-(An)</code> costs the
+same as <code>(An)</code> (4/8, not 6/10), because MOVE overlaps the decrement with its own work. So
+<code>move.w d0,-(a0)</code> is 8 cycles, not 10. The 6/10 row applies everywhere else: as a source
+for any instruction, and as the destination of read-modify-write instructions like
+<code>add.w d0,-(a0)</code>.</p>
+
+<div class="decision"><span class="d-tag">Hardware choice &middot; the 6-bit address field</span>
+The reason there are exactly these forms, and exactly this many, is that each operand's mode is
+encoded in only 6 bits of the opcode: 3 bits for the mode and 3 bits for a register number. Seven of
+the eight mode values name a register-based form (<code>Dn</code> through <code>d(An,Xn)</code>), one
+per register. The eighth mode value, <code>111</code>, has no register to name, so its 3 register
+bits are reused to select among the five "special" forms instead: <code>(xx).w</code>,
+<code>(xx).l</code>, <code>d(PC)</code>, <code>d(PC,Xn)</code>, and <code>#n</code>. That single
+design decision, pack the whole "where" into 6 bits, is what fixes the menu at twelve
+effective-address forms and gives absolute, PC-relative, and immediate their slightly cramped,
+tacked-on feel.</div>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; Register and register-indirect modes</h2>
+
+<p>These seven modes all answer "where" with a register: either the value is the register, or the
+register holds the address, possibly with an offset or an auto-step. They are the workhorses of
+object code, because a single address register can point at an object and every field of it is one
+cheap offset away.</p>
+
+<details class="explain">
+  <summary>New here? &middot; How can one register reach every field of an object?</summary>
+  <div class="x-body">
+    <p>A Sonic object is just a block of memory: 64 bytes, with the x position at a known spot inside
+    it, the y velocity at another, the collision radius at another. Those "known spots" are fixed
+    offsets from the start of the block: x position at 0, y velocity at some byte further in, and so
+    on. They are the same for every object because every object uses the same layout.</p>
+    <p>So the routine that runs an object is handed one thing: the address of that object's block, kept
+    in an address register (a0, by convention). From there it never needs another full address. The x
+    position is <code>x_pos(a0)</code>, the y velocity is <code>y_vel(a0)</code>, each a tiny fixed
+    offset off the one pointer. You might expect each field to need its own address loaded; it does
+    not, and that is the payoff of the displacement mode. Point once, then reach the whole structure
+    for the price of a small constant. This is why <code>d(An)</code> is the single most common
+    addressing mode in game code, and why so much of it threads a0 from routine to routine.</p>
+  </div>
+</details>
+
+<figure class="diagram">
+<div class="exp">
+  <div class="exp-instr"><code id="exp-instr">move.w (a0),d0</code> <span>Pick a mode and watch the CPU work out the effective address from the register values on the left, then fetch a word into d0. These are real assembler operands, the same forms used in the excerpts below.</span></div>
+  <div class="exp-modes" role="group" aria-label="Pick an addressing mode">
+    <button type="button" class="exp-btn" data-m="dn">Dn</button>
+    <button type="button" class="exp-btn" data-m="an">An</button>
+    <button type="button" class="exp-btn" data-m="anind" aria-pressed="true">(An)</button>
+    <button type="button" class="exp-btn" data-m="postinc">(An)+</button>
+    <button type="button" class="exp-btn" data-m="predec">-(An)</button>
+    <button type="button" class="exp-btn" data-m="disp">d(An)</button>
+    <button type="button" class="exp-btn" data-m="index">d(An,Xn)</button>
+    <button type="button" class="exp-btn" data-m="absw">(xx).w</button>
+    <button type="button" class="exp-btn" data-m="absl">(xx).l</button>
+    <button type="button" class="exp-btn" data-m="imm">#n</button>
+    <button type="button" class="exp-btn" data-m="pcdisp">d(PC)</button>
+    <button type="button" class="exp-btn" data-m="pcindex">d(PC,Xn)</button>
+    <button type="button" class="exp-reset" id="exp-reset">Reset a0</button>
+  </div>
+  <div class="exp-regs">
+    <span class="ereg"><span class="er-name">a0</span><span class="er-val" id="exp-a0">$00FF0004</span><span class="er-tag">base pointer</span></span>
+    <span class="ereg"><span class="er-name">d1 (index)</span><span class="er-val">$00000004</span><span class="er-tag">Xn, used as d1.w</span></span>
+    <span class="ereg"><span class="er-name">pc</span><span class="er-val">$00020100</span><span class="er-tag">for the d(PC) modes</span></span>
+    <span class="ereg"><span class="er-name">d0</span><span class="er-val" id="exp-d0">$FFFFFFFF</span><span class="er-tag">destination</span></span>
+  </div>
+  <p class="exp-memtitle">Memory: address on the left, the word stored there on the right. The two worlds are kept apart, work RAM up high and ROM down low; a register holds an address, a memory cell holds data.</p>
+  <div class="exp-mem" id="exp-mem"></div>
+  <p class="exp-note" id="exp-note" aria-live="polite">Mode (An): the effective address is simply whatever a0 holds, $00FF0004. The CPU reads the word there, $C000, into d0's low half. No offset, no arithmetic, one memory trip.</p>
+</div>
+<figcaption>The addressing-mode explorer: choose a mode, see its effective address built from the visible register values, then watch move.w fetch the word at that address into d0 (static fallback: with a0 = $00FF0004, mode (a0) reads the word at $00FF0004; mode 4(a0) adds the displacement to reach $00FF0008; mode 4(a0,d1.w) also adds the index register to reach $00FF000C; mode (a0)+ reads $00FF0004 and then bumps a0 to $00FF0006; the register modes Dn and An copy the register itself with no address at all).</figcaption>
+</figure>
+
+<div class="mode" id="mode-dn">
+  <h3><span class="mn">Dn</span> <span class="syn">Data register direct</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">Nothing to compute: the operand <em>is</em> the data register d0 through d7.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-dn">0 cycles, 0 extension bytes</a>. The cheapest possible operand.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Anything already in hand: a counter, an intermediate result, a value you are about to combine with another. Most arithmetic keeps both operands in data registers precisely because it is free.</span></div>
+  </div>
+  <p>Here a decoded code value in d0 is doubled to turn it into a word-sized table index, then used
+  to index that table. Both operands of the add are data registers, named directly:</p>
+  <pre>	move.b	(a0)+,d0	<span class="c">; get code</span>
+	add.w	d0,d0	<span class="c">; each code gets a word-sized entry in the table</span>
+	move.w	d7,(a1,d0.w)	<span class="c">; store the entry for the code</span></pre>
+  <span class="src">s2disasm/s2.asm:2010-2012 (NemDecPrepare, the Nemesis art decompressor setup)</span>
+  <p><code>add.w d0,d0</code> reads d0, adds it to d0, writes d0: three uses of the register-direct
+  mode, zero memory traffic. The very next line consumes the doubled value as the index in
+  <code>(a1,d0.w)</code>, which is the indexed mode further down this page.</p>
+</div>
+
+<div class="mode" id="mode-an">
+  <h3><span class="mn">An</span> <span class="syn">Address register direct</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">Nothing: the operand is the address register a0 through a7 itself, its 32-bit contents used as a value.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-an">0 cycles, 0 extension bytes</a>, same as a data register.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Comparing or copying pointers: testing whether a scan pointer has reached an end pointer, moving one address register into another. Note this uses the register's <em>value</em>, not the memory it points at.</span></div>
+  </div>
+  <p>The boot checksum walks a0 through the ROM and stops when it passes the end address, which it
+  keeps in d0. The comparison names a0 directly, using the running pointer as a plain number:</p>
+  <pre>ChecksumLoop:
+	add.w	(a0)+,d1
+	cmp.l	a0,d0
+	bhs.s	ChecksumLoop</pre>
+  <span class="src">s2disasm/s2.asm:387-390 (ChecksumLoop)</span>
+  <p><code>cmp.l a0,d0</code> compares the address <em>in</em> a0 against the end address in d0; the
+  <code>bhs</code> right after reads that comparison and loops until a0 has walked past the end. The
+  address register is the operand here, not a doorway to memory.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  There is no byte size for an address register. <code>move.b a0,d0</code> will not assemble: An can
+  only be read or written as a word or a long, because a byte cannot meaningfully hold an address.
+  Also, a word write to An sign-extends to the full 32 bits (that is the
+  <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#movea">MOVEA</a>
+  behaviour on the Moving Data page), and operations on An do not set the condition flags, so you
+  cannot branch on the result of moving one.</div>
+</div>
+
+<div class="mode" id="mode-anind">
+  <h3><span class="mn">(An)</span> <span class="syn">Address register indirect</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">The effective address is exactly the address held in An. The operand is the memory it points at.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-anind">4 cycles for a byte or word, 8 for a long, 0 extension bytes</a>.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Dereferencing a pointer you already hold: read or write the thing an address register points at, especially a hardware port or the current element of a structure.</span></div>
+  </div>
+  <p>The joypad reader holds the controller's data-port address in a1 and reads the current button
+  byte straight through it:</p>
+  <pre>	move.b	(a1),d0	<span class="c">; Get controller port data (start/A)</span>
+	lsl.b	<span class="n">#2</span>,d0
+	andi.b	<span class="n">#$C0</span>,d0</pre>
+  <span class="src">s2disasm/s2.asm:1372-1374 (Joypad_Read)</span>
+  <p><code>(a1)</code> is "the byte at the address a1 holds": no offset, the pointer <em>is</em> the
+  address. The two lines after shift and mask that freshly-read byte into the Start and A bits, so the
+  value the mode fetched is consumed immediately.</p>
+</div>
+
+<div class="mode" id="mode-postinc">
+  <h3><span class="mn">(An)+</span> <span class="syn">Address register indirect with postincrement</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">The effective address is the address in An; then An is bumped forward by the operand size (1, 2, or 4). Access first, step after.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-postinc">4 cycles for a byte or word, 8 for a long, 0 extension bytes</a>. The auto-step is free.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Streaming through memory: reading a list, copying a buffer, pulling successive entries from a queue. One instruction reads and advances, so the loop body stays tiny.</span></div>
+  </div>
+  <details class="explain">
+    <summary>New here? &middot; Postincrement and predecrement: what moves the pointer, and when?</summary>
+    <div class="x-body">
+      <p>Both of these modes do two things in one instruction: they access memory, and they nudge the
+      address register. The only difference is the order, and the order is the whole story.</p>
+      <p><code>(a0)+</code> accesses first, then steps a0 <em>forward</em>: read the value here, then
+      move to the next slot, ready for the next read. That is how you walk a list start to end.
+      <code>-(a0)</code> steps a0 <em>backward</em> first, then accesses: move back one slot, then
+      write there. Run a few of each in the toy below and the asymmetry is visible: post-increment
+      leaves a0 pointing just past what it touched, pre-decrement pointing right at it. That mirror is
+      not an accident. It is exactly what makes a stack work: push with <code>-(sp)</code> (make room,
+      then store) and pop with <code>(sp)+</code> (read, then reclaim the room), and every push is
+      undone by a matching pop. Neither step ever touches the condition flags, so the value you branch
+      on afterward is the one you moved, never the pointer.</p>
+    </div>
+  </details>
+  <p>ProcessDMAQueue walks a1 through the queued video-transfer commands, reading one word and
+  advancing with each access:</p>
+  <pre>	move.w	(a1)+,d0
+	beq.s	.done	<span class="c">; branch if we reached a stop token</span>
+	<span class="c">; issue a set of VDP commands...</span>
+	move.w	d0,(a5)		<span class="c">; transfer length</span>
+	move.w	(a1)+,(a5)	<span class="c">; transfer length</span>
+	move.w	(a1)+,(a5)	<span class="c">; source address</span></pre>
+  <span class="src">s2disasm/s2.asm:1775-1780 (ProcessDMAQueue)</span>
+  <p>Each <code>(a1)+</code> reads a word and steps a1 two bytes onward, so the run of them marches
+  through the command block without any separate "add 2 to a1" instruction. The <code>beq</code>
+  consumes the first read: a zero word is the end marker, and the loop stops.</p>
+
+  <figure class="diagram">
+  <div class="exp">
+    <div class="exp-instr"><code id="pi-instr">move.w (a0)+,d0</code> <span>Run the same instruction at each size and watch how far a0 steps. The step is the operand size, not a fixed amount, which is the whole surprise of this mode.</span></div>
+    <div class="exp-modes">
+      <button type="button" class="exp-btn" id="pi-b">Run move.b (a0)+,d0</button>
+      <button type="button" class="exp-btn" id="pi-w">Run move.w (a0)+,d0</button>
+      <button type="button" class="exp-btn" id="pi-l">Run move.l (a0)+,d0</button>
+      <button type="button" class="exp-reset" id="pi-reset">Reset a0</button>
+    </div>
+    <div class="exp-regs">
+      <span class="ereg"><span class="er-name">a0</span><span class="er-val" id="pi-a0">$00FF0000</span><span class="er-tag">pointer</span></span>
+      <span class="ereg"><span class="er-name">d0</span><span class="er-val" id="pi-d0">$FFFFFFFF</span><span class="er-tag">destination</span></span>
+    </div>
+    <p class="exp-memtitle">A byte array in work RAM: address on the left, the byte stored there on the right.</p>
+    <div class="exp-mem" id="pi-mem"></div>
+    <p class="exp-note" id="pi-note" aria-live="polite">a0 points at $00FF0000. Run a byte move and a0 steps by 1; a word move steps by 2; a long move steps by 4. Run several and watch it walk the array.</p>
+  </div>
+  <figcaption>Postincrement steps by the size of the operand, not by a fixed amount (static fallback: with a0 = $00FF0000, move.b (a0)+,d0 reads one byte and leaves a0 = $00FF0001; move.w (a0)+,d0 reads two bytes and leaves a0 = $00FF0002; move.l (a0)+,d0 reads four bytes and leaves a0 = $00FF0004).</figcaption>
+  </figure>
+
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  With the stack pointer a7 specifically, a <em>byte</em> access through <code>(a7)+</code> or
+  <code>-(a7)</code> steps by 2, not 1, so the stack pointer always stays even. Every other address
+  register steps by the true operand size. And the step is invisible to the flags: <code>(a0)+</code>
+  changes a0 as a side effect, but that change never sets a condition code, so the value you branch on
+  is the one you read, not the pointer you moved.</div>
+</div>
+
+<div class="mode" id="mode-predec">
+  <h3><span class="mn">-(An)</span> <span class="syn">Address register indirect with predecrement</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">An is first stepped back by the operand size, then that new address is the effective address. Step before, access after: the mirror image of postincrement.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-predec">6 cycles for a byte or word, 10 for a long, 0 extension bytes</a>: 2 more than postincrement, for the internal decrement.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Pushing onto the stack, and building a buffer backwards. <code>-(sp)</code> is how a value gets pushed; paired with a later <code>(sp)+</code> it round-trips exactly.</span></div>
+  </div>
+  <p>The checksum-error handler needs d1 to survive a subroutine call, so it pushes it with a
+  predecrement and pops it back afterward with a postincrement:</p>
+  <pre>ChecksumError:
+	move.l	d1,-(sp)
+	bsr.w	VDPSetupGame
+	move.l	(sp)+,d1</pre>
+  <span class="src">s2disasm/s2.asm:446-449 (ChecksumError)</span>
+  <p><code>-(sp)</code> steps sp back 4 bytes and stores d1 there; the call runs and is free to
+  clobber d1; then <code>(sp)+</code> reads the value back and steps sp forward again. The pop is the
+  consumer, and the pairing is exact: predecrement to push, postincrement to pop.</p>
+
+  <figure class="diagram">
+    <figcaption style="margin:0 0 .6rem; text-transform:none; letter-spacing:.02em;">Why the pair
+    round-trips: predecrement adjusts <em>before</em> the access, postincrement <em>after</em>, so a
+    push and a matching pop touch the same slot in opposite order.</figcaption>
+    <div class="tbl"><table>
+      <tr><th>Step</th><th>What the CPU does</th><th>sp after</th></tr>
+      <tr><td><code>move.l d1,-(sp)</code></td><td>sp -= 4 first, then store d1 at the new sp</td><td>lower by 4</td></tr>
+      <tr><td>the value now sits at (sp)</td><td>waiting, a plain 4 bytes in RAM</td><td>unchanged</td></tr>
+      <tr><td><code>move.l (sp)+,d1</code></td><td>read from sp first, then sp += 4</td><td>back to the start</td></tr>
+    </table></div>
+  </figure>
+</div>
+
+<div class="mode" id="mode-disp">
+  <h3><span class="mn">d(An)</span> <span class="syn">Address register indirect with displacement</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">An plus a 16-bit signed displacement baked into the instruction. Effective address = An + d16.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-disp">8 cycles for a byte or word, 12 for a long, 2 extension bytes</a> for the displacement word.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Reaching a named field of a structure. This is <em>the</em> object-code mode: point a0 at an object once, then <code>x_pos(a0)</code>, <code>y_vel(a0)</code>, <code>y_radius(a0)</code> each name a field by its fixed offset.</span></div>
+  </div>
+  <p>An object reads its own collision half-height out of the <code>y_radius</code> field, offset from
+  the object pointer a0, then works with it:</p>
+  <pre>	moveq	<span class="n">#0</span>,d3
+	move.b	y_radius(a0),d3
+	addq.b	<span class="n">#1</span>,d3</pre>
+  <span class="src">s2disasm/s2.asm:22532-22534 (Obj15_State2)</span>
+  <p><code>y_radius(a0)</code> is "the byte at a0 plus the fixed offset of the y_radius field": the
+  assembler turns the field name into a small constant displacement. The <code>addq</code> right after
+  is the consumer, adjusting the value the mode just fetched. Clearing d3 first with
+  <code>moveq #0</code> is the usual guard so the byte read lands in a clean register.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  The displacement is 16 bits <em>signed</em>, so it reaches from 32768 bytes before An to 32767
+  bytes after. That is plenty for a struct field but not for indexing a large table; when the offset
+  itself is a computed value rather than a constant, you want the indexed mode below instead, which
+  puts the variable part in a register.</div>
+</div>
+
+<div class="mode" id="mode-index">
+  <h3><span class="mn">d(An,Xn)</span> <span class="syn">Address register indirect with index</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">An, plus an index register Xn (any data or address register, used as a word or long), plus an 8-bit signed displacement. Effective address = An + Xn + d8.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-index">10 cycles for a byte or word, 14 for a long, 2 extension bytes</a> for the index-and-displacement word.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Indexing a table by a value computed at runtime: sound-queue slot number, animation frame, tile id. The base names the table, the index picks the entry.</span></div>
+  </div>
+  <details class="explain">
+    <summary>New here? &middot; What does "base plus index plus displacement" actually compute?</summary>
+    <div class="x-body">
+      <p>Picture a table in memory: a row of entries, one after another, starting at some address. To
+      read the entry you want, you need three facts. Where does the table start? That is the
+      <strong>base</strong>, held in an address register. How far into the table is your entry? That
+      is the <strong>index</strong>, a number in a register that changes at runtime (slot 3, frame 7,
+      whatever). And is there a fixed step from the register to the actual first entry, a header to
+      skip or a named field the table sits inside? That is the <strong>displacement</strong>, a small
+      constant the assembler bakes in.</p>
+      <p>The mode adds all three and reads there: address = base + index + displacement. The reason it
+      is one instruction instead of an add-then-read is that indexing a table is so common the CPU
+      does the arithmetic for free as it computes the address. One caution that trips people: on the
+      plain 68000 the index is not scaled, so if each entry is a word (2 bytes), the index has to
+      already be doubled. That is exactly the <code>add.w d0,d0</code> you saw in the very first
+      example, turning a slot number into a byte offset before it is used as an index.</p>
+    </div>
+  </details>
+  <p>The sound-driver feed reads one slot of a queue, where the table base is a field
+  (<code>SoundQueue.SFX0</code> off a0) and the slot number lives in d1:</p>
+  <pre>	move.b	SoundQueue.SFX0(a0,d1.w),d0
+	beq.s	.skip</pre>
+  <span class="src">s2disasm/s2.asm:1319-1320 (sndDriverInput)</span>
+  <p>All three parts show at once: the base a0, the runtime index <code>d1.w</code>, and the fixed
+  field displacement <code>SoundQueue.SFX0</code>, summed into one address. The <code>beq</code> is the
+  consumer, skipping the slot when the byte fetched is zero (nothing queued).</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Two size traps live in this mode. The displacement is only 8 bits signed (-128 to 127), far
+  smaller than the plain <code>d(An)</code> mode's 16, so a large constant offset does not fit here.
+  And the index register can be taken as a word or a long: <code>d1.w</code> uses the low 16 bits
+  <em>sign-extended</em>, so a "negative" index reaches backward, while <code>d1.l</code> uses all 32
+  bits. Picking <code>.w</code> when the value can exceed a signed 16-bit range is a classic
+  off-into-the-weeds bug. There is no automatic scaling of the index on the 68000: the register value
+  is added as-is, so a table of word entries needs the index pre-doubled, exactly what the
+  <a href="#mode-dn">Dn</a> example above was doing with <code>add.w d0,d0</code>.</div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s4">4 &middot; Absolute, immediate, and PC-relative modes</h2>
+
+<p>The remaining five modes are the "mode 111" family: they do not hang off an address register at
+all. Two name a fixed memory address, one carries a constant, and two measure from the program
+counter (the CPU's running address of the next instruction; the pocket version is below and the full
+story is on the <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#pc">Moving Data page</a>). They are how code reaches named
+variables, bakes in constants, and finds its own tables.</p>
+
+<details class="explain">
+  <summary>New here? &middot; A quick reminder: labels, the PC, and the # sign</summary>
+  <div class="x-body">
+    <p>Three things this section leans on are taught in full on the <a href="moving-data.html">Moving Data page</a>; the pocket versions:</p>
+    <p>A <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#labels">label</a>
+    like <code>Vint_routine</code> is just a name for an address; the assembler works out the number
+    at build time from where the label sits, and you never type the number yourself. The
+    <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#pc">program counter</a>
+    is the CPU's finger on the page, the address of the instruction it is fetching; the PC-relative
+    modes measure an offset from it. And a leading <code>#</code> means "the constant itself," not "the
+    memory at this address": <code>#4</code> is the number 4, while a bare <code>4</code> would mean the
+    bytes at address 4.</p>
+  </div>
+</details>
+
+<div class="mode" id="mode-absw">
+  <h3><span class="mn">(xx).w</span> <span class="syn">Absolute short</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">A single 16-bit address stored in the instruction, sign-extended to 32 bits. Effective address = that fixed number.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-absw">8 cycles for a byte or word, 12 for a long, 2 extension bytes</a> for the one address word.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Named variables in <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span> and hardware in the low addresses. Because it sign-extends, a 2-byte address reaches the whole top 32KB of the map, which is exactly where the Genesis puts its RAM.</span></div>
+  </div>
+  <p>The vertical <span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupt</span> handler reads a RAM flag that selects which routine to run, and
+  branches on it:</p>
+  <pre>	tst.b	(Vint_routine).w
+	beq.w	Vint_Lag</pre>
+  <span class="src">s2disasm/s2.asm:483-484 (V_Int)</span>
+  <p><code>(Vint_routine).w</code> names a work-RAM byte by a 16-bit absolute address; the
+  <code>beq</code> reads the test and, if the flag is zero, jumps to the lag path. One address word,
+  no register needed.</p>
+  <div class="decision"><span class="d-tag">Hardware choice &middot; why the short form sign-extends</span>
+  A 16-bit address by itself can only name the bottom 64KB of memory. The 68000 instead treats the
+  stored 16 bits as <em>signed</em> and extends the top bit across the upper half, so an address like
+  <code>$FF00</code> becomes <code>$FFFFFF00</code>, not <code>$0000FF00</code>. That splits the short
+  form's reach into two 32KB windows: the very bottom of the map ($00000000 up) and the very top
+  ($FFFF8000 up). The Genesis wires its work RAM and I/O into that top window on purpose, so nearly
+  every RAM variable and hardware register is reachable in the cheap 2-byte form. The tradeoff is the
+  hole in the middle: anything from $00008000 to $FFFF7FFF needs the full 4-byte absolute long.</div>
+</div>
+
+<div class="mode" id="mode-absl">
+  <h3><span class="mn">(xx).l</span> <span class="syn">Absolute long</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">A full 32-bit address stored in the instruction. Effective address = that fixed number, no extension or arithmetic.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-absl">12 cycles for a byte or word, 16 for a long, 4 extension bytes</a> for the two address words. The priciest way to name a memory operand.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Any address the short form cannot reach: far-off ROM data, a hardware register outside the two short windows. Real code prefers a register (<code>lea</code> once, then <code>(An)</code>) when it touches the same place repeatedly, because absolute long is expensive per use.</span></div>
+  </div>
+  <p>The boot-time region check reads the console's hardware-version register, which lives in the
+  I/O range and needs a full address, then keeps only the region bits:</p>
+  <pre>	move.b	(HW_Version).l,d0
+	andi.b	<span class="n">#$C0</span>,d0
+	move.b	d0,(Graphics_Flags).w</pre>
+  <span class="src">s2disasm/s2.asm:404-406 (boot-time region detect)</span>
+  <p><code>(HW_Version).l</code> spells out the register's full 32-bit address in two extension words.
+  The next two lines are the consumer: mask off everything but the region bits and stash them in a
+  RAM flag, which is itself named by the cheaper short form <code>(Graphics_Flags).w</code>. One read
+  from far-off hardware, one write to nearby RAM, and you can see the cost difference in the byte
+  counts.</p>
+</div>
+
+<div class="mode" id="mode-imm">
+  <h3><span class="mn">#n</span> <span class="syn">Immediate</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">Nothing to fetch from memory: the constant is stored in the instruction's own extension words. The operand is that number.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-imm">4 cycles for a byte or word, 8 for a long; 2 extension bytes for a byte or word constant, 4 for a long</a>.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Loading a literal value: a timer count, a velocity, a bit mask, a state number. Any time the number is known when you write the code, not read from somewhere at runtime.</span></div>
+  </div>
+  <p>The retracting-spikes object arms its countdown by moving a literal 60 into the timer field:</p>
+  <pre>	move.w	<span class="n">#60</span>,spikes_retract_timer(a0)	<span class="c">; reset timer</span></pre>
+  <span class="src">s2disasm/s2.asm:29357 (MoveSpikes_ChkDir)</span>
+  <p>The <code>#60</code> is the immediate: the number 60 sits in the instruction's extension word,
+  and the mode simply hands it over. It lands in <code>spikes_retract_timer(a0)</code>, a struct
+  field reached by the displacement mode; the object counts that timer down over the following frames
+  and snaps the spikes out when it hits zero.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  This is <em>plain</em> immediate. The small constant inside <code>moveq</code>,
+  <code>addq</code>, and <code>subq</code> is a different animal, the "quick immediate" mode, packed
+  right into the opcode word with no extension at all (and limited: signed 8-bit for
+  <code>moveq</code>, 1 to 8 for <code>addq</code>/<code>subq</code>). That is one of the two modes
+  that push Motorola's count from twelve to fourteen. When a constant fits, the quick forms are
+  smaller and faster than a plain <code>#n</code>; when it does not, you fall back to this mode.</div>
+</div>
+
+<div class="mode" id="mode-pcdisp">
+  <h3><span class="mn">d(PC)</span> <span class="syn">Program counter with displacement</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">The program counter plus a 16-bit signed displacement. Effective address = PC + d16, so it names a spot a fixed distance from the instruction itself.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-pcdisp">8 cycles for a byte or word, 12 for a long, 2 extension bytes</a>, the same as <code>d(An)</code>.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Position-independent access to nearby code-space data: a lookup table, a setup array, a string that sits right next to the code that uses it. Reaches it "this far from me" so the block keeps working if it is relocated in ROM.</span></div>
+  </div>
+  <p>Reset loads the address of a nearby setup-values table relative to the PC, then streams through
+  it:</p>
+  <pre>	lea	SetupValues(pc),a5	<span class="c">; Load setup values array address.</span>
+	movem.w	(a5)+,d5-d7
+	movem.l	(a5)+,a0-a4</pre>
+  <span class="src">s2disasm/s2.asm:206-208 (PortA_Ok)</span>
+  <p><code>SetupValues(pc)</code> tells the assembler to encode the table's location as a distance
+  from the PC rather than as its absolute address; <code>lea</code> works that distance out into a5.
+  The two <code>movem</code> lines are the consumer, reading the table through a5. Because the
+  reference is a distance, this whole block would still find its table if it were moved elsewhere in
+  ROM.</p>
+</div>
+
+<div class="mode" id="mode-pcindex">
+  <h3><span class="mn">d(PC,Xn)</span> <span class="syn">Program counter with index</span></h3>
+  <div class="mmeta">
+    <div class="row"><span class="lbl">Computes</span><span class="val">The program counter, plus an index register Xn, plus an 8-bit signed displacement. Effective address = PC + Xn + d8.</span></div>
+    <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-pcindex">10 cycles for a byte or word, 14 for a long, 2 extension bytes</a>, the same as <code>d(An,Xn)</code>.</span></div>
+    <div class="row"><span class="lbl">Reach for</span><span class="val">Position-independent jump and lookup tables: pick an entry of a code-space table by a runtime index without pinning the table to a fixed address. The classic dispatch idiom.</span></div>
+  </div>
+  <p>The vertical interrupt dispatches to one of several routines through a PC-relative jump table,
+  indexed by a routine number in d0:</p>
+  <pre>	move.w	Vint_SwitchTbl(pc,d0.w),d0
+	jsr	Vint_SwitchTbl(pc,d0.w)</pre>
+  <span class="src">s2disasm/s2.asm:504-505 (V_Int)</span>
+  <p>The table base <code>Vint_SwitchTbl</code> is measured from the PC, the index <code>d0.w</code>
+  picks the entry, and the 8-bit displacement is zero here. The <code>jsr</code> on the next line is
+  the consumer: it uses the same computed address to call the chosen routine. Reaching the table
+  PC-relative keeps the interrupt handler relocatable.</p>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s5">5 &middot; PC-relative versus absolute: the choice</h2>
+
+<p>Whenever code wants to reach a fixed location, it faces a fork: name it by its absolute address
+(<code>(xx).w</code> or <code>(xx).l</code>), or name it as a distance from the program counter
+(<code>d(PC)</code>). Both can reach the same spot; they differ in cost, in whether the code survives
+being moved, and in one hard limit that decides the matter for RAM.</p>
+
+<p><strong>Cost.</strong> For a nearby target the PC-relative form is the cheaper of the honest
+options. <code>lea Table(pc),a0</code> spends one extension word (4 bytes, and the LEA runs in 8
+cycles); the absolute-long equivalent <code>lea (Table).l,a0</code> spends two extension words (6
+bytes, 12 cycles). Over a whole ROM those saved words add up, which is why Sonic-era source reaches
+for <code>(pc)</code> so often.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What does "position-independent" mean, and why would code ever move?</summary>
+  <div class="x-body">
+    <p>Position-independent code is code that works no matter what address it is loaded at, because it
+    never hard-codes where it is. Instead of "jump to address $001234," it says "jump 40 bytes ahead
+    of me"; instead of "read the table at $002000," it says "read the table 12 bytes past me." Every
+    reference is relative to the code's own position, so you can pick up the whole block and drop it
+    somewhere else and every distance still lands where it should.</p>
+    <p>Why would code move? Because ROM layout shifts constantly during development: add a routine
+    above this one, or the assembler packs things differently, and every fixed address below it slides
+    to a new spot. Code written with PC-relative references does not care; code that baked in absolute
+    addresses to its own nearby tables would now point at the wrong place. That is the deeper reason
+    Sonic-era source reaches for <code>(pc)</code> whenever it addresses a table that travels with the
+    code: not just to save a couple of bytes, but so the block stays correct when everything around it
+    moves.</p>
+  </div>
+</details>
+
+<p><strong>Relocatability.</strong> An absolute reference bakes in a fixed number: move the code and
+the reference still points at the old spot, now wrong. A PC-relative reference says "this far from
+me," so if the whole block is relocated in ROM, the distance to a table that moved with it is
+unchanged and the code still works. That is what "position-independent" means, and it is the deeper
+reason to prefer <code>(pc)</code> for code-space data.</p>
+
+<p><strong>The 32KB reach limit.</strong> The catch is that the PC-relative displacement is 16 bits
+<em>signed</em>, so <code>d(PC)</code> can only name a target within 32KB of the instruction. Reach
+farther and it will not assemble; you must fall back to an absolute address. So PC-relative is the
+tool for <em>near</em> data, and absolute long is the tool for anything far.</p>
+
+<p><strong>Why RAM can never be PC-relative.</strong> Put those two facts together and a rule drops
+out. Code lives in ROM at the bottom of the map; work RAM lives at the top, at $FFxxxx, megabytes
+away. No PC-relative displacement can span that gap, so a RAM variable is <em>never</em> reachable as
+<code>d(PC)</code>. RAM is always named by an absolute address, and because it sits in the top
+window, the cheap <code>(xx).w</code> short form reaches it.</p>
+
+<p>The result is a house pattern you will see everywhere in real 68000 source, three modes sorted by
+what they are naming:</p>
+
+<div class="tbl"><table>
+  <tr><th>Target</th><th>Mode</th><th>Why</th></tr>
+  <tr><td>Nearby code-space data (tables, setup arrays)</td><td><code>Label(pc)</code></td><td>Cheapest and relocatable, within 32KB</td></tr>
+  <tr><td>Work RAM variables and low hardware</td><td><code>(Label).w</code></td><td>Absolute is mandatory for RAM; the short form reaches the top window in 2 bytes</td></tr>
+  <tr><td>Far-off ROM data, out-of-window hardware</td><td><code>(Label).l</code></td><td>Only the full 32-bit address reaches it</td></tr>
+</table></div>
+
+<div class="decision"><span class="d-tag">Hardware choice &middot; PC-relative is read-only</span>
+You can read through <code>d(PC)</code> and <code>d(PC,Xn)</code>, but you cannot write through them:
+the 68000 leaves both PC-relative modes out of the destinations any instruction will accept, so
+<code>move.w d0,Table(pc)</code> is refused at assembly time. The reasoning is that PC-relative
+addressing exists to fetch constants and tables that sit next to the code, in ROM, which is not
+writable anyway; a writable position-independent reference would have to survive relocation while
+pointing at mutable data, which the simple "distance from PC" scheme cannot promise. So writes always
+go to an absolute address or through an address register, and PC-relative stays a read-only,
+fetch-from-my-neighborhood tool.</div>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-18 &middot; <a href="../index.html">Back to hub</a><br>
+Previous: The Programming Model (coming) &middot; Next: <a href="moving-data.html">Moving Data</a></footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+
+/* addressing-mode explorer: build the effective address from visible register values */
+(function(){
+  var instr = document.getElementById('exp-instr');
+  if(!instr) return;
+  var a0e = document.getElementById('exp-a0'), d0e = document.getElementById('exp-d0');
+  var memc = document.getElementById('exp-mem'), note = document.getElementById('exp-note');
+  var reset = document.getElementById('exp-reset');
+  var A0_START = 0x00FF0004, IDX = 0x0004, D16 = 0x0004, D8 = 0x0004;
+  var a0 = A0_START, d0 = 0xFFFFFFFF, mode = 'anind';
+  /* the two worlds: registers hold addresses, these cells hold data */
+  var CELLS = [
+    {a:0x00FF0000, v:0xA000, w:'work RAM'},
+    {a:0x00FF0002, v:0xB000, w:'work RAM'},
+    {a:0x00FF0004, v:0xC000, w:'work RAM'},
+    {a:0x00FF0006, v:0xD000, w:'work RAM'},
+    {a:0x00FF0008, v:0xE000, w:'work RAM'},
+    {a:0x00FF000A, v:0xF000, w:'work RAM'},
+    {a:0x00FF000C, v:0x1100, w:'work RAM'},
+    {a:0xFFFFFF06, v:0x5A5A, w:'work RAM (high)'},
+    {a:0x00020104, v:0x6B6B, w:'ROM'},
+    {a:0x00020108, v:0x7C7C, w:'ROM'}
+  ];
+  function hx8(n){ return '$' + (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function hx4(n){ return '$' + (n & 0xFFFF).toString(16).toUpperCase().padStart(4,'0'); }
+  function memAt(addr){
+    for(var i=0;i<CELLS.length;i++){ if(CELLS[i].a === (addr>>>0)) return CELLS[i].v; }
+    return null;
+  }
+  var SYN = {
+    dn:'d1', an:'a0', anind:'(a0)', postinc:'(a0)+', predec:'-(a0)', disp:'4(a0)',
+    index:'4(a0,d1.w)', absw:'($FF06).w', absl:'($00FF0008).l', imm:'#$1234',
+    pcdisp:'4(pc)', pcindex:'4(pc,d1.w)'
+  };
+  function render(hitAddr){
+    var html = '';
+    for(var i=0;i<CELLS.length;i++){
+      var c = CELLS[i];
+      var cls = 'ecell';
+      if(c.a === (a0>>>0)) cls += ' a0here';
+      if(hitAddr !== null && c.a === (hitAddr>>>0)) cls += ' hit';
+      html += '<div class="' + cls + '"><span>' + hx8(c.a) + (c.a === (a0>>>0) ? ' &larr; a0' : '')
+            + '</span><span>' + hx4(c.v) + ' <span class="ec-world">' + c.w + '</span></span></div>';
+    }
+    memc.innerHTML = html;
+    a0e.textContent = hx8(a0);
+    d0e.textContent = hx8(d0);
+    instr.textContent = 'move.w ' + SYN[mode] + ',d0';
+  }
+  function fetchWord(operand){
+    if(operand === null) return; /* leave d0 unchanged if the address is outside the shown cells */
+    d0 = (((d0 & 0xFFFF0000) >>> 0) | (operand & 0xFFFF)) >>> 0;
+  }
+  function run(m){
+    mode = m;
+    var ea = null, operand = null, msg = '';
+    if(m === 'dn'){
+      operand = IDX & 0xFFFF;
+      fetchWord(operand);
+      msg = 'Mode Dn: no address is computed at all. The operand is the data register itself; move.w d1,d0 copies d1’s low word ' + hx4(operand) + ' straight into d0. Registers cost 0 cycles.';
+    } else if(m === 'an'){
+      operand = a0 & 0xFFFF;
+      fetchWord(operand);
+      msg = 'Mode An: again no memory address. The operand is a0 itself, used as a value: move.w a0,d0 copies a0’s low word ' + hx4(operand) + ' into d0. Compare with (a0) next door, which reads the memory AT that address; this mode reads the address itself.';
+    } else if(m === 'anind'){
+      ea = a0; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode (a0): the effective address is simply whatever a0 holds, ' + hx8(ea) + '. The CPU reads the word there, ' + (operand === null ? 'outside the cells shown' : hx4(operand)) + ', into d0. No offset, one memory trip.';
+    } else if(m === 'postinc'){
+      ea = a0; operand = memAt(ea); fetchWord(operand);
+      a0 = (a0 + 2) >>> 0;
+      msg = 'Mode (a0)+: read first, step after. The address is ' + hx8(ea) + '; the CPU fetches ' + (operand === null ? 'the word there (outside the cells shown)' : hx4(operand)) + ', then bumps a0 forward by 2 (the word size) to ' + hx8(a0) + '. Run it again to keep walking.';
+    } else if(m === 'predec'){
+      a0 = (a0 - 2) >>> 0;
+      ea = a0; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode -(a0): step first, read after. a0 drops by 2 (the word size) to ' + hx8(a0) + ', and THAT becomes the address; the CPU then reads ' + (operand === null ? 'the word there' : hx4(operand)) + '. This is the mirror of postincrement.';
+    } else if(m === 'disp'){
+      ea = (a0 + D16) >>> 0; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode 4(a0): effective address = a0 (' + hx8(a0) + ') + the 16-bit displacement 4 = ' + hx8(ea) + '. The CPU reads ' + (operand === null ? 'the word there' : hx4(operand)) + '. This is the struct-field mode.';
+    } else if(m === 'index'){
+      ea = (a0 + IDX + D8) >>> 0; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode 4(a0,d1.w): effective address = a0 (' + hx8(a0) + ') + index d1 (' + hx8(IDX) + ') + the 8-bit displacement 4 = ' + hx8(ea) + '. The CPU reads ' + (operand === null ? 'the word there' : hx4(operand)) + '. Base plus index plus offset, all summed.';
+    } else if(m === 'absw'){
+      ea = 0xFFFFFF06; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode ($FF06).w: the stored 16-bit address $FF06 is sign-extended (top bit set) to ' + hx8(ea) + ', up in the high work-RAM window. The CPU reads ' + hx4(operand) + '. That sign extension is how a 2-byte address reaches the top of the map.';
+    } else if(m === 'absl'){
+      ea = 0x00FF0008; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode ($00FF0008).l: the full 32-bit address ' + hx8(ea) + ' is stored outright in two extension words, no arithmetic. The CPU reads ' + hx4(operand) + '. This reaches anywhere, at the highest byte cost.';
+    } else if(m === 'imm'){
+      operand = 0x1234; fetchWord(operand);
+      msg = 'Mode #$1234: no memory is touched. The constant $1234 is baked into the instruction, and move.w #$1234,d0 loads it straight into d0. The operand is the number itself.';
+    } else if(m === 'pcdisp'){
+      ea = (0x00020100 + D16) >>> 0; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode 4(pc): effective address = the PC (here $00020100) + the 16-bit displacement 4 = ' + hx8(ea) + ', a spot in ROM near the instruction. The CPU reads ' + hx4(operand) + '. Measured as a distance, so it survives relocation.';
+    } else if(m === 'pcindex'){
+      ea = (0x00020100 + IDX + D8) >>> 0; operand = memAt(ea); fetchWord(operand);
+      msg = 'Mode 4(pc,d1.w): effective address = the PC ($00020100) + index d1 (' + hx8(IDX) + ') + the 8-bit displacement 4 = ' + hx8(ea) + '. The CPU reads ' + hx4(operand) + '. A relocatable indexed table lookup.';
+    }
+    setPressed(m);
+    render(ea);
+    note.textContent = msg;
+  }
+  function setPressed(m){
+    var btns = document.querySelectorAll('.exp-modes .exp-btn');
+    Array.prototype.forEach.call(btns, function(b){
+      b.setAttribute('aria-pressed', b.dataset.m === m ? 'true' : 'false');
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.exp-modes .exp-btn'), function(b){
+    b.addEventListener('click', function(){ run(b.dataset.m); });
+  });
+  reset.addEventListener('click', function(){
+    a0 = A0_START; d0 = 0xFFFFFFFF;
+    render(null);
+    note.textContent = 'Reset: a0 back to ' + hx8(A0_START) + ', d0 wiped to $FFFFFFFF. Pick a mode to watch its effective address get built.';
+  });
+  run('anind');
+})();
+
+/* postincrement toy: the pointer steps by the operand size, not a fixed amount */
+(function(){
+  var a0e = document.getElementById('pi-a0');
+  if(!a0e) return;
+  var d0e = document.getElementById('pi-d0'), memc = document.getElementById('pi-mem'), note = document.getElementById('pi-note');
+  var BASE = 0x00FF0000;
+  var BYTES = [0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88];
+  var a0 = BASE, d0 = 0xFFFFFFFF;
+  function hx8(n){ return '$' + (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function b2(n){ return (n & 0xFF).toString(16).toUpperCase().padStart(2,'0'); }
+  function render(){
+    var html = '';
+    for(var i=0;i<BYTES.length;i++){
+      var addr = BASE + i;
+      var cls = 'ecell' + (addr === (a0>>>0) ? ' a0here' : '');
+      html += '<div class="' + cls + '"><span>' + hx8(addr) + (addr === (a0>>>0) ? ' &larr; a0' : '')
+            + '</span><span>$' + b2(BYTES[i]) + '</span></div>';
+    }
+    memc.innerHTML = html;
+    a0e.textContent = hx8(a0);
+    d0e.textContent = hx8(d0);
+  }
+  function readAt(addr, size){
+    var val = 0;
+    for(var i=0;i<size;i++){
+      var idx = (addr + i) - BASE;
+      var b = (idx >= 0 && idx < BYTES.length) ? BYTES[idx] : 0;
+      val = ((val << 8) >>> 0) | b;
+    }
+    return val >>> 0;
+  }
+  function step(size, label){
+    var start = a0;
+    var got = readAt(a0, size);
+    if(size === 1){ d0 = (((d0 & 0xFFFFFF00) >>> 0) | (got & 0xFF)) >>> 0; }
+    else if(size === 2){ d0 = (((d0 & 0xFFFF0000) >>> 0) | (got & 0xFFFF)) >>> 0; }
+    else { d0 = got >>> 0; }
+    a0 = (a0 + size) >>> 0;
+    render();
+    note.textContent = label + ' read ' + size + ' byte' + (size === 1 ? '' : 's') + ' at ' + hx8(start)
+      + ', then stepped a0 forward by ' + size + ' to ' + hx8(a0) + '. The step is the operand size: a byte moves 1, a word 2, a long 4.';
+  }
+  document.getElementById('pi-b').addEventListener('click', function(){ step(1, 'move.b (a0)+,d0'); });
+  document.getElementById('pi-w').addEventListener('click', function(){ step(2, 'move.w (a0)+,d0'); });
+  document.getElementById('pi-l').addEventListener('click', function(){ step(4, 'move.l (a0)+,d0'); });
+  document.getElementById('pi-reset').addEventListener('click', function(){
+    a0 = BASE; d0 = 0xFFFFFFFF; render();
+    note.textContent = 'Reset: a0 back to ' + hx8(BASE) + '. Run a byte, word, or long move and watch a0 step by 1, 2, or 4.';
+  });
+  render();
+})();
+</script>
+
+</body>
+</html>
