@@ -653,8 +653,9 @@ into registers, working on them there, and writing results back out.</p>
       <tr><td><code>movea (An),An</code></td><td>8c, 2b</td><td>12c, 2b</td></tr>
       <tr><td><code>movea (xx).l,An</code></td><td>16c, 6b</td><td>20c, 6b</td></tr>
     </table></div>
-    <p class="enc-note">Same price list as MOVE: 4 cycles base plus the cost of fetching the
-    source. The destination is always a register, so only the source side ever varies.</p>
+    <p class="enc-note">Representative forms, same price list as MOVE: 4 cycles base plus the cost
+    of fetching the source. The destination is always a register, so only the source side ever
+    varies, and the priciest form is <code>movea.l (xx).l,An</code> at 20 cycles, 6 bytes.</p>
     </div>
   </details>
   <div class="operands">
@@ -1058,16 +1059,18 @@ carry meaning, without touching memory at all.</p>
     <span class="cctx">best case: clearing a register in .b or .w. The .l form and memory pay more:</span>
   </div>
   <details class="refbox">
-    <summary>Full timing and size (4 to 24 cycles, 2 to 4 bytes)</summary>
+    <summary>Full timing and size (4 to 28 cycles, 2 to 6 bytes)</summary>
     <div class="enc-body">
     <div class="tbl"><table>
       <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
       <tr><td><code>clr Dn</code></td><td>4c, 2b</td><td>6c, 2b</td></tr>
       <tr><td><code>clr (An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
       <tr><td><code>clr (xx).w</code></td><td>16c, 4b</td><td>24c, 4b</td></tr>
+      <tr><td><code>clr (xx).l</code></td><td>20c, 6b</td><td>28c, 6b</td></tr>
     </table></div>
-    <p class="enc-note">Memory forms cost more than the equivalent MOVE of a zero would suggest,
-    because of the extra read described in the gotcha below.</p>
+    <p class="enc-note">Representative forms; the dearest, <code>clr.l</code> to an absolute long
+    address, runs 28 cycles in 6 bytes. Memory forms cost more than the equivalent MOVE of a zero
+    would suggest, because of the extra read described in the gotcha below.</p>
     </div>
   </details>
   <div class="operands">
@@ -1228,7 +1231,7 @@ loc_1ECD4:
   swaps, the winner lands in d1, and every caller stays oblivious. That is EXG's whole niche: two
   code paths converging on one register contract.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  Three more near-identical <code>exg d1,d2</code> call sites exist elsewhere in the same
+  Four more near-identical <code>exg d1,d2</code> call sites exist elsewhere in the same
   disassembly, at lines 47667, 47692, 54498, and 54548, all the same register-swap idiom in
   different physics routines. That rarity is itself a useful signal: reach for a temp-register
   MOVE first, and treat EXG as a specialist tool for the rare spot where swapping two full
