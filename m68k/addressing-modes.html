@@ -212,6 +212,11 @@ code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em
 .rf-sub{font-family:var(--mono); font-size:.66rem; color:var(--dim); margin-top:.05rem;}
 .rf-arrow{color:var(--dim); font-size:.95rem;}
 .rf-note{font-size:.86rem; line-height:1.5; margin:.1rem 0 0; color:var(--ink); max-width:40rem;}
+/* the legend/key: every ingredient's value and the arithmetic that yields the address */
+.rf-legend{font-family:var(--mono); font-size:.72rem; color:var(--dim); line-height:1.75;
+  margin:.05rem 0 .35rem; display:flex; flex-wrap:wrap; align-items:baseline; gap:.1rem .85rem;}
+.rf-legend code{font-size:.95em; font-variant-numeric:tabular-nums;}
+.rf-legend .lead{letter-spacing:.12em; text-transform:uppercase; font-size:.86em;}
 
 /* gotcha note */
 .gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
@@ -726,7 +731,8 @@ cheap offset away.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$7F</code></span>
   </div>
-  <p class="rf-note"><code>a1</code> holds the controller port <code>$A10003</code>; the byte read there, <code class="v">$7F</code>, is what the next two lines shift and mask into the Start and A bits.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>a1 = <code>$A10003</code></span> <span>(<code>$A10003</code>) = <code class="v">$7F</code></span></div>
+  <p class="rf-note"><code>a1</code> is the controller data port; the two lines after shift and mask the byte it reads into the Start and A bits.</p></div>
 </div>
 
 <div class="mode" id="mode-postinc">
@@ -771,7 +777,8 @@ cheap offset away.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$9340</code></span>
   </div>
-  <p class="rf-note">Reads the word <code class="v">$9340</code>, then steps <code>a1</code> to <code>$FFFFDC02</code> for the next one, so the run marches through the block with no separate "add 2." A zero word is the end marker the <code>beq</code> stops on.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>a1 = <code>$FFFFDC00</code></span> <span>(<code>$FFFFDC00</code>) = <code class="v">$9340</code></span> <span>then a1 &rarr; <code>$FFFFDC02</code></span></div>
+  <p class="rf-note">The run marches through the block with no separate "add 2"; a zero word is the end marker the <code>beq</code> stops on.</p></div>
 
   <figure class="diagram">
   <div class="exp">
@@ -825,7 +832,8 @@ cheap offset away.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$0000ABCD</code></span>
   </div>
-  <p class="rf-note"><code>sp</code> drops 4 to <code>$FFFFFEFC</code> <em>first</em>, then <code>d1</code>'s <code class="v">$0000ABCD</code> is stored there: a push. The later <code>(sp)+</code> reads it back and lifts <code>sp</code> again, so the pair round-trips exactly.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>sp = <code>$FFFFFF00</code></span> <span>sp - 4 = <code>$FFFFFEFC</code></span> <span>d1 = <code class="v">$0000ABCD</code></span> <span>(<code>$FFFFFEFC</code>) &larr; <code class="v">$0000ABCD</code></span></div>
+  <p class="rf-note">A push: sp steps back first, then d1 is stored there. The later <code>(sp)+</code> reads it back and lifts <code>sp</code> again, so the pair round-trips exactly.</p></div>
 
   <figure class="diagram">
     <figcaption style="margin:0 0 .6rem; text-transform:none; letter-spacing:.02em;">Why the pair
@@ -863,7 +871,8 @@ cheap offset away.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$13</code></span>
   </div>
-  <p class="rf-note">Say <code>a0</code> points at an object at <code>$FFFFB000</code>; the <code>y_radius</code> field is <code>$16</code> in, so the byte at <code>$FFFFB016</code>, <code class="v">$13</code>, is a 19-pixel half-height. The <code>moveq #0</code> first clears d3 so it lands in a clean register.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>a0 = <code>$FFFFB000</code></span> <span>y_radius = <code>$16</code></span> <span>a0 + $16 = <code>$FFFFB016</code></span> <span>(<code>$FFFFB016</code>) = <code class="v">$13</code></span></div>
+  <p class="rf-note"><code class="v">$13</code> is a 19-pixel half-height. The <code>moveq #0</code> first clears d3 so the byte lands in a clean register.</p></div>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   The displacement is 16 bits <em>signed</em>, so it reaches from 32768 bytes before An to 32767
   bytes after. That is plenty for a struct field but not for indexing a large table; when the offset
@@ -911,7 +920,8 @@ cheap offset away.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$81</code></span>
   </div>
-  <p class="rf-note">Base <code>a0</code> (say the queue at <code>$FFFFF0A0</code>) + index <code>d1</code> (slot 2) + the <code>SFX0</code> field (<code>+$1</code>) = <code>$FFFFF0A3</code>; the byte there, <code class="v">$81</code>, is a queued sound id, and the <code>beq</code> skips the slot when it reads zero.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>a0 = <code>$FFFFF0A0</code></span> <span>d1 = <code>$0002</code></span> <span>SFX0 = <code>$1</code></span> <span>a0 + $2 + $1 = <code>$FFFFF0A3</code></span> <span>(<code>$FFFFF0A3</code>) = <code class="v">$81</code></span></div>
+  <p class="rf-note"><code class="v">$81</code> is a queued sound id: the base names the table, the index picks the entry, and the <code>beq</code> skips the slot when it reads zero.</p></div>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   Two size traps live in this mode. The displacement is only 8 bits signed (-128 to 127), far
   smaller than the plain <code>d(An)</code> mode's 16, so a large constant offset does not fit here.
@@ -969,7 +979,8 @@ variables, bakes in constants, and finds its own tables.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$06</code></span>
   </div>
-  <p class="rf-note"><code>Vint_routine</code> names the work-RAM byte <code>$FFFFF62A</code>; <code>tst.b</code> tests the value there, <code class="v">$06</code>, and the <code>beq</code> jumps to the lag path if it is zero. The <code>.w</code> is the address size; the byte is what gets tested.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>Vint_routine = <code>$FFFFF62A</code></span> <span>(<code>$FFFFF62A</code>) = <code class="v">$06</code></span></div>
+  <p class="rf-note"><code>tst.b</code> tests the value there and the <code>beq</code> jumps to the lag path if it is zero. The <code>.w</code> is the address size; the byte is what gets tested.</p></div>
   <div class="decision"><span class="d-tag">Hardware choice &middot; why the short form sign-extends</span>
   A 16-bit address by itself can only name the bottom 64KB of memory. The 68000 instead treats the
   stored 16 bits as <em>signed</em> and extends the top bit across the upper half, so an address like
@@ -1003,7 +1014,8 @@ variables, bakes in constants, and finds its own tables.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$A0</code></span>
   </div>
-  <p class="rf-note">The fixed hardware byte <code>$A10001</code> reads <code class="v">$A0</code>; <code>andi.b #$C0</code> keeps the region bits, then stashes them in RAM named by the cheaper <code>(Graphics_Flags).w</code>. One far read in 4 address bytes, one near write in 2: the cost gap shows in the byte counts.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>HW_Version = <code>$A10001</code></span> <span>(<code>$A10001</code>) = <code class="v">$A0</code></span></div>
+  <p class="rf-note"><code>andi.b #$C0</code> keeps the region bits, then stashes them in RAM via the cheaper <code>(Graphics_Flags).w</code>. One far read in 4 address bytes, one near write in 2: the cost gap shows in the byte counts.</p></div>
 </div>
 
 <div class="mode" id="mode-imm">
@@ -1054,7 +1066,8 @@ variables, bakes in constants, and finds its own tables.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code>$000796</code></span>
   </div>
-  <p class="rf-note">With <code>lea</code> the operand you work with is the <em>address</em> itself, <code>$000796</code>, loaded into <code>a5</code> (not the bytes there); the <code>movem</code> lines then read the table through a5. Being a distance from the PC, the block still finds its table if it moves in ROM.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>PC + d16 = <code>$000796</code></span> <span>a5 &larr; <code>$000796</code> (the address, via lea)</span></div>
+  <p class="rf-note">With <code>lea</code> the operand is the <em>address</em> itself, not the bytes there; the <code>movem</code> lines then read the table through a5. Being a distance from the PC, the block still finds its table if it moves in ROM.</p></div>
 </div>
 
 <div class="mode" id="mode-pcindex">
@@ -1079,7 +1092,8 @@ variables, bakes in constants, and finds its own tables.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">$0140</code></span>
   </div>
-  <p class="rf-note">Say the table lands at <code>$000A00</code>; <code>d0</code> (routine 2, pre-doubled) picks the entry at <code>$000A04</code>, whose word <code class="v">$0140</code> is the offset the following <code>jsr</code> jumps through. PC-relative keeps the handler relocatable.</p></div>
+  <div class="rf-legend"><span class="lead">given</span> <span>Vint_SwitchTbl = <code>$000A00</code></span> <span>d0 = <code>$0004</code></span> <span>$000A00 + $4 = <code>$000A04</code></span> <span>(<code>$000A04</code>) = <code class="v">$0140</code></span></div>
+  <p class="rf-note"><code>d0</code> is routine 2 pre-doubled; the word picked, <code class="v">$0140</code>, is the offset the following <code>jsr</code> jumps through. PC-relative keeps the handler relocatable.</p></div>
 </div>
 
 <!-- ================================================================ -->
