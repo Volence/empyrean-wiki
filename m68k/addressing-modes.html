@@ -98,6 +98,10 @@ th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
   text-transform:uppercase; color:var(--dim); background:var(--panel2);}
 td code{font-variant-numeric:tabular-nums;}
 tr.hi td{background:rgba(68,102,238,.12);}
+/* reference matrix tables (mode/register encoding + capability categories) */
+table.mx td:not(:first-child),table.mx th:not(:first-child){text-align:center; vertical-align:middle;}
+table.mx .y{color:var(--learn); font-weight:700;}
+table.mx .no{color:var(--line);}
 
 /* figures / diagrams */
 figure.diagram{border:1px solid var(--line); border-radius:5px;
@@ -205,6 +209,7 @@ code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em
   border-radius:4px; padding:.3rem .55rem; background:var(--panel2);}
 .rf-k{font-family:var(--mono); font-size:.54rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
 .rf-cell code{font-size:.86rem;}
+.rf-sub{font-family:var(--mono); font-size:.66rem; color:var(--dim); margin-top:.05rem;}
 .rf-arrow{color:var(--dim); font-size:.95rem;}
 .rf-note{font-size:.86rem; line-height:1.5; margin:.1rem 0 0; color:var(--ink); max-width:40rem;}
 
@@ -496,6 +501,81 @@ design decision, pack the whole "where" into 6 bits, is what fixes the menu at t
 effective-address forms and gives absolute, PC-relative, and immediate their slightly cramped,
 tacked-on feel.</div>
 
+<details class="refbox">
+  <summary>Reference &middot; the exact 6-bit encoding (mode field + register field)</summary>
+  <div class="enc-body">
+  <p>Every effective address is six bits: a 3-bit <strong>mode</strong> field and a 3-bit
+  <strong>register</strong> field. Mode values <code>000</code> through <code>110</code> each name a
+  register-based form, and their register field carries the register number <em>n</em> (0 to 7). Mode
+  <code>111</code> has no register to name, so its register field sub-selects one of the special forms.</p>
+  <div class="tbl"><table class="mx">
+    <tr><th style="text-align:left;">Mode</th><th>Mode field</th><th>Register field</th></tr>
+    <tr><td><code>Dn</code></td><td><code>000</code></td><td><code>n</code></td></tr>
+    <tr><td><code>An</code></td><td><code>001</code></td><td><code>n</code></td></tr>
+    <tr><td><code>(An)</code></td><td><code>010</code></td><td><code>n</code></td></tr>
+    <tr><td><code>(An)+</code></td><td><code>011</code></td><td><code>n</code></td></tr>
+    <tr><td><code>-(An)</code></td><td><code>100</code></td><td><code>n</code></td></tr>
+    <tr><td><code>d16(An)</code></td><td><code>101</code></td><td><code>n</code></td></tr>
+    <tr><td><code>d8(An,Xn)</code></td><td><code>110</code></td><td><code>n</code></td></tr>
+    <tr><td><code>(xxx).w</code></td><td><code>111</code></td><td><code>000</code></td></tr>
+    <tr><td><code>(xxx).l</code></td><td><code>111</code></td><td><code>001</code></td></tr>
+    <tr><td><code>d16(PC)</code></td><td><code>111</code></td><td><code>010</code></td></tr>
+    <tr><td><code>d8(PC,Xn)</code></td><td><code>111</code></td><td><code>011</code></td></tr>
+    <tr><td><code>#imm</code></td><td><code>111</code></td><td><code>100</code></td></tr>
+  </table></div>
+  <p class="enc-note">Register-field values <code>101</code>, <code>110</code>, and <code>111</code>
+  under mode <code>111</code> are unused on the 68000 (they name modes the later 68020 added). In the
+  opcode word the field order is mode in bits 5 to 3, register in bits 2 to 0, for most
+  instructions. <code>MOVE</code> is the exception: it encodes its <em>destination</em> with the two
+  fields swapped, register in bits 11 to 9 and mode in bits 8 to 6, which is why a MOVE opcode
+  reads its two operands in mirror order.</p>
+  <p class="enc-note">Verified against the M68000 Programmer's Reference Manual effective-address
+  encoding tables, cross-checked with the Motorola MC68000 User's Manual.</p>
+  </div>
+</details>
+
+<details class="refbox">
+  <summary>Reference &middot; which modes each instruction accepts (data / memory / control / alterable)</summary>
+  <div class="enc-body">
+  <p>Instructions do not accept every mode. Motorola sorts the modes into four capability classes, and
+  each instruction's operand is specified as one of them (or a combination). The four:</p>
+  <ul style="margin:.3rem 0 .6rem; padding-left:1.1rem; font-size:.9rem;">
+    <li><strong>Data</strong>: the operand carries data. Everything except <code>An</code> (an address
+    register is not a data source).</li>
+    <li><strong>Memory</strong>: the operand lives in memory, not a register. Everything except
+    <code>Dn</code> and <code>An</code>.</li>
+    <li><strong>Control</strong>: a plain memory address with no size or auto-step implied. This is what
+    <code>jmp</code>, <code>jsr</code>, <code>lea</code>, and <code>pea</code> require, which is why you
+    cannot <code>jmp (a0)+</code> or <code>lea d0,a1</code>.</li>
+    <li><strong>Alterable</strong>: the operand can be written. Everything except the two read-only
+    PC-relative modes and the immediate constant.</li>
+  </ul>
+  <div class="tbl"><table class="mx">
+    <tr><th style="text-align:left;">Mode</th><th>Data</th><th>Memory</th><th>Control</th><th>Alterable</th></tr>
+    <tr><td><code>Dn</code></td><td class="y">&check;</td><td class="no">&middot;</td><td class="no">&middot;</td><td class="y">&check;</td></tr>
+    <tr><td><code>An</code></td><td class="no">&middot;</td><td class="no">&middot;</td><td class="no">&middot;</td><td class="y">&check;</td></tr>
+    <tr><td><code>(An)</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td></tr>
+    <tr><td><code>(An)+</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="no">&middot;</td><td class="y">&check;</td></tr>
+    <tr><td><code>-(An)</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="no">&middot;</td><td class="y">&check;</td></tr>
+    <tr><td><code>d16(An)</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td></tr>
+    <tr><td><code>d8(An,Xn)</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td></tr>
+    <tr><td><code>(xxx).w</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td></tr>
+    <tr><td><code>(xxx).l</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td></tr>
+    <tr><td><code>d16(PC)</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td><td class="no">&middot;</td></tr>
+    <tr><td><code>d8(PC,Xn)</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="y">&check;</td><td class="no">&middot;</td></tr>
+    <tr><td><code>#imm</code></td><td class="y">&check;</td><td class="y">&check;</td><td class="no">&middot;</td><td class="no">&middot;</td></tr>
+  </table></div>
+  <p class="enc-note">&check; = in that class. This is the table behind the scattered rules on this
+  page: <code>An</code> being barred as a byte or data operand, <code>#n</code> and PC-relative never
+  being a destination (not alterable), and <code>jmp</code>/<code>lea</code> refusing <code>Dn</code>,
+  <code>(An)+</code>, or <code>-(An)</code> (not control). Instructions combine the classes: a
+  <code>clr</code> destination is <em>data alterable</em>, a <code>lea</code> source is
+  <em>control</em>.</p>
+  <p class="enc-note">Categories per the M68000 Programmer's Reference Manual effective-address mode
+  category table (Table 2-4), cross-checked with the Motorola MC68000 User's Manual.</p>
+  </div>
+</details>
+
 <!-- ================================================================ -->
 <h2 id="s3">3 &middot; Register and register-indirect modes</h2>
 
@@ -569,7 +649,7 @@ cheap offset away.</p>
   <span class="src">s2disasm/s2.asm:2010-2012 (NemDecPrepare, the Nemesis art decompressor setup)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   <div class="rflow">
-    <span class="rf-cell"><span class="rf-k">you write</span><code>d0</code></span>
+    <span class="rf-cell"><span class="rf-k">you write</span><code>d0</code><span class="rf-sub">holds <code class="v">$0004</code></span></span>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">under the hood</span><code>no address</code></span>
     <span class="rf-arrow">&rarr;</span>
@@ -597,7 +677,7 @@ cheap offset away.</p>
   <span class="src">s2disasm/s2.asm:387-390 (ChecksumLoop)</span>
   <div class="resolved"><span class="r-tag">The same line, resolved</span>
   <div class="rflow">
-    <span class="rf-cell"><span class="rf-k">you write</span><code>a0</code></span>
+    <span class="rf-cell"><span class="rf-k">you write</span><code>a0</code><span class="rf-sub">holds <code class="v">$00000300</code></span></span>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">under the hood</span><code>no address</code></span>
     <span class="rf-arrow">&rarr;</span>
