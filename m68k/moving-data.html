@@ -474,6 +474,12 @@ into registers, working on them there, and writing results back out.</p>
     <div class="og-row"><span class="og-side">Destination</span>
       <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
+    <p class="og-note">Chip key (used by every grid on this page): <code>Dn</code> and
+    <code>An</code> are the registers themselves; <code>(An)</code> is the memory An points at,
+    not the register; <code>(An)+</code> and <code>-(An)</code> step the pointer as they go;
+    <code>d(An)</code> and <code>d(An,Xn)</code> add an offset first; <code>(xx)</code> is a fixed
+    address; <code>#n</code> is a constant baked into the instruction; <code>d(PC)</code> is
+    relative to the program counter.</p>
     <p class="og-note">&#8224; legal except in <code>.b</code>: a byte cannot come from an address register.
     The crossed-out chips are the "why will this not assemble" answers. An address-register
     destination is really <a href="#movea">MOVEA</a>, and the assembler quietly swaps it in for you.
@@ -995,7 +1001,11 @@ DrawNumber:
   <code>-(An)</code> than they do for every other addressing mode, which surprises anyone reading
   raw opcode bytes expecting one consistent bit order. Separately, a <code>.w</code> load into a
   register sign-extends each 16-bit value to fill the full 32 bits, not zero-extends, a classic
-  bug source when the intent was an unsigned word.</div>
+  bug source when the intent was an unsigned word. And the most practical MOVEM bug of all: a
+  routine with an early-exit path that branches past the restoring MOVEM straight to the
+  <code>rts</code>. The pushes and pops no longer balance, so the rts pops a saved register's
+  value instead of the return address and the CPU jumps into it. When a routine has more than one
+  way out, check that every path restores exactly what the entry saved.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Saving just one register? <code>move.l d0,-(sp)</code> is 12 cycles against MOVEM's 16, and two
   plain MOVEs still tie a two-register MOVEM. The crossover is three registers; below that, reach
