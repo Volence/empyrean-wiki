@@ -341,7 +341,7 @@ send the CPU to fetch what lives there. That one difference is the whole of this
 
 <p style="color:var(--dim); font-size:.9rem; max-width:42rem;">Real Sonic code writes a <em>name</em>
 <code>(Vint_routine).w</code>, instead of the raw <code>($FFFFF000).w</code>. A
-<a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#labels">label</a>
+<a href="moving-data.html#labels">label</a>
 is just a readable alias the assembler swaps for the address at build time; the machine sees the same
 number either way. The examples below use the real names, with the raw address worked out beside each.</p>
 
@@ -703,7 +703,7 @@ cheap offset away.</p>
   There is no byte size for an address register. <code>move.b a0,d0</code> will not assemble: An can
   only be read or written as a word or a long, because a byte cannot meaningfully hold an address.
   Also, a word write to An sign-extends to the full 32 bits (that is the
-  <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#movea">MOVEA</a>
+  <a href="moving-data.html#movea">MOVEA</a>
   behaviour on the Moving Data page), and operations on An do not set the condition flags, so you
   cannot branch on the result of moving one.</div>
 </div>
@@ -939,17 +939,17 @@ cheap offset away.</p>
 <p>The remaining five modes are the "mode 111" family: they do not hang off an address register at
 all. Two name a fixed memory address, one carries a constant, and two measure from the program
 counter (the CPU's running address of the next instruction; the pocket version is below and the full
-story is on the <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#pc">Moving Data page</a>). They are how code reaches named
+story is on the <a href="moving-data.html#pc">Moving Data page</a>). They are how code reaches named
 variables, bakes in constants, and finds its own tables.</p>
 
 <details class="explain">
   <summary>New here? &middot; A quick reminder: labels, the PC, and the # sign</summary>
   <div class="x-body">
     <p>Three things this section leans on are taught in full on the <a href="moving-data.html">Moving Data page</a>; the pocket versions:</p>
-    <p>A <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#labels">label</a>
+    <p>A <a href="moving-data.html#labels">label</a>
     like <code>Vint_routine</code> is just a name for an address; the assembler works out the number
     at build time from where the label sits, and you never type the number yourself. The
-    <a href="https://claude.ai/code/artifact/d11e1ea2-acb6-4253-9efe-371d9f8d49dc#pc">program counter</a>
+    <a href="moving-data.html#pc">program counter</a>
     is the CPU's finger on the page, the address of the instruction it is fetching; the PC-relative
     modes measure an offset from it. And a leading <code>#</code> means "the constant itself," not "the
     memory at this address": <code>#4</code> is the number 4, while a bare <code>4</code> would mean the
@@ -1030,10 +1030,15 @@ variables, bakes in constants, and finds its own tables.</p>
   <p>The retracting-spikes object arms its countdown by moving a literal 60 into the timer field:</p>
   <pre>	move.w	<span class="n">#60</span>,spikes_retract_timer(a0)	<span class="c">; reset timer</span></pre>
   <span class="src">s2disasm/s2.asm:29357 (MoveSpikes_ChkDir)</span>
-  <p>The <code>#60</code> is the immediate: the number 60 sits in the instruction's extension word,
-  and the mode simply hands it over. It lands in <code>spikes_retract_timer(a0)</code>, a struct
-  field reached by the displacement mode; the object counts that timer down over the following frames
-  and snaps the spikes out when it hits zero.</p>
+  <div class="resolved"><span class="r-tag">The same line, resolved</span>
+  <div class="rflow">
+    <span class="rf-cell"><span class="rf-k">you write</span><code>#60</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">under the hood</span><code>no address</code></span>
+    <span class="rf-arrow">&rarr;</span>
+    <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">60</code></span>
+  </div>
+  <p class="rf-note">The constant lives in the instruction's own extension word, so there is nothing to fetch and no address to compute. It lands in the <code>spikes_retract_timer</code> field, which the object counts down, snapping the spikes out at zero.</p></div>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   This is <em>plain</em> immediate. The small constant inside <code>moveq</code>,
   <code>addq</code>, and <code>subq</code> is a different animal, the "quick immediate" mode, packed
