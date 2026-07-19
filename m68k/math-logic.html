@@ -402,15 +402,15 @@ all five flags update, with the note spelling out both readings of the result.</
   </div>
   <div class="msim-ctrl">
     <label for="fs-dst">d0 (dest, hex)</label>
-    <input id="fs-dst" type="text" value="0064" maxlength="8" autocomplete="off" aria-describedby="fs-note">
+    <input id="fs-dst" type="text" value="FFFF" maxlength="8" autocomplete="off" aria-describedby="fs-note">
     <label for="fs-src" id="fs-srclab">d1 (source, hex)</label>
-    <input id="fs-src" type="text" value="0032" maxlength="8" autocomplete="off" aria-describedby="fs-note">
+    <input id="fs-src" type="text" value="0001" maxlength="8" autocomplete="off" aria-describedby="fs-note">
     <button type="button" id="fs-run">Run</button>
     <button type="button" id="fs-reset">Reset</button>
   </div>
   <div class="msim-regs">
-    <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="fs-d0">$00000064</span><span class="mr-tag">destination</span></span>
-    <span class="mreg" id="fs-srcreg"><span class="mr-name">d1</span><span class="mr-val" id="fs-d1">$00000032</span><span class="mr-tag">source</span></span>
+    <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="fs-d0">$0000FFFF</span><span class="mr-tag">destination</span></span>
+    <span class="mreg" id="fs-srcreg"><span class="mr-name">d1</span><span class="mr-val" id="fs-d1">$00000001</span><span class="mr-tag">source</span></span>
   </div>
   <div class="msim-fl" aria-label="Condition codes after the operation">
     <span class="fl-label">Flags after</span>
@@ -420,13 +420,13 @@ all five flags update, with the note spelling out both readings of the result.</
     <span class="sfchip" id="fs-fv">V -</span>
     <span class="sfchip" id="fs-fc">C -</span>
   </div>
-  <p class="msim-note" id="fs-note" aria-live="polite">add.w d1,d0 computes d0 + d1 into d0's low word and sets the flags from the 16-bit result. Try 8000 + 8000 (signed overflow, V lights) or FFFF + 0001 (unsigned carry, C lights).</p>
+  <p class="msim-note" id="fs-note" aria-live="polite">Press Run. add.w d1,d0 adds d1 into d0's low word and recomputes the flags from the result. With d0 = $FFFF and d1 = $0001 the sum wraps to $0000, so Z lights (the result is zero) and C and X light (it carried out of the top). Then try d0 = $0064, d1 = $0032: 150 is a plain positive result, so every flag stays 0. Flags describe the result, they do not just react to the act of adding.</p>
 </div>
 <figcaption>The shared flags demo: every instruction on this page whose lesson is "how it sets the
-flags" links here rather than repeating a flags readout. Static fallback: add.w with d0 = $0064 and
-d1 = $0032 gives d0 = $00000096, all flags clear; sub.w of the same gives $00000032; cmp.w leaves d0
-alone but sets the flags as if it had subtracted; and.w gives $00000020. Value versus flags, before
-and after, for one instruction at a time.</figcaption>
+flags" links here rather than repeating a flags readout. Static fallback: add.w with d0 = $FFFF and
+d1 = $0001 wraps d0 to $00000000 and lights Z, C, and X; the same add with d0 = $0064 and d1 = $0032
+gives $00000096 with every flag clear, because 150 is an unremarkable positive result. Flags describe
+the result, not the act of adding. Value versus flags, before and after, one instruction at a time.</figcaption>
 </figure>
 
 <p>With that model in hand, the rest of the page is the instructions themselves, grouped by what they
@@ -2188,7 +2188,7 @@ function expandAll(btn){
   var run=document.getElementById('fs-run'), reset=document.getElementById('fs-reset');
   var fx=document.getElementById('fs-fx'), fn=document.getElementById('fs-fn'), fz=document.getElementById('fs-fz'),
       fv=document.getElementById('fs-fv'), fc=document.getElementById('fs-fc');
-  var d0=0x00000064, d1=0x00000032, op='add';
+  var d0=0x0000FFFF, d1=0x00000001, op='add';
   var BIN={add:1,sub:1,cmp:1,and:1,or:1,eor:1};   // two-operand ops
   var SYN={add:'add.w d1,d0',sub:'sub.w d1,d0',cmp:'cmp.w d1,d0',and:'and.w d1,d0',or:'or.w d1,d0',
            eor:'eor.w d1,d0',not:'not.w d0',neg:'neg.w d0',tst:'tst.w d0'};
@@ -2273,12 +2273,12 @@ function expandAll(btn){
   src.addEventListener('input',function(){ d1=readIn(src); d1e.textContent=hex8(d1); });
   run.addEventListener('click',run1);
   reset.addEventListener('click',function(){
-    d0=0x00000064; d1=0x00000032; dst.value='0064'; src.value='0032';
+    d0=0x0000FFFF; d1=0x00000001; dst.value='FFFF'; src.value='0001';
     setFlag(fx,'X','unaff');
     fn.textContent='N -'; fz.textContent='Z -'; fv.textContent='V -'; fc.textContent='C -';
     fn.className=fz.className=fv.className=fc.className='sfchip';
     sync();
-    note.textContent='Reset. Pick an instruction and run it.';
+    note.textContent='Reset to d0 = $FFFF, d1 = $0001. Press Run to add them (they wrap to 0 and light Z, C, X), or type your own values.';
   });
   sync();
 })();
