@@ -184,6 +184,7 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
 .mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
 .syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+.mnx{font-size:.82rem; color:var(--ink); font-style:italic; font-weight:normal;}
 
 /* flags indicator */
 .flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
@@ -459,7 +460,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </details>
 
 <div class="instr" id="add">
-  <h3><span class="mn">ADD</span> <span class="syn">ADD.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; ADD.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">ADD</span> <span class="mnx">Add</span> <span class="syn">ADD.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; ADD.b/.w/.l Dn,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by ADD">
     <span class="fl-label">Flags</span>
     <span class="fchip f-set" aria-label="X set from carry"><span class="fl-name">X</span><span class="fl-state">set</span></span>
@@ -550,7 +551,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="adda">
-  <h3><span class="mn">ADDA</span> <span class="syn">ADDA.w/.l &lt;ea&gt;,An</span></h3>
+  <h3><span class="mn">ADDA</span> <span class="mnx">Add Address</span> <span class="syn">ADDA.w/.l &lt;ea&gt;,An</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by ADDA">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -647,7 +648,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="addi">
-  <h3><span class="mn">ADDI</span> <span class="syn">ADDI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">ADDI</span> <span class="mnx">Add Immediate</span> <span class="syn">ADDI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by ADDI">
     <span class="fl-label">Flags</span>
     <span class="fchip f-set" aria-label="X set from carry"><span class="fl-name">X</span><span class="fl-state">set</span></span>
@@ -687,12 +688,15 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
     or memory, never an address register. <code>addi.w #4,a0</code> is refused, that is <a href="#adda">ADDA</a>'s
     job (<code>adda.w #4,a0</code>).</p>
   </div>
-  <p>ADDI adds an immediate constant to a data register or straight to memory, setting all the flags
-  like ADD. Its niche is narrow, because a constant of 1 to 8 should be <a href="#addq">ADDQ</a> (half
-  the size) and a value you already have in a register is plain <a href="#add">ADD</a>. ADDI earns its
-  place when the constant is larger than 8 and you want to add it directly to a memory location or a
-  register without loading it first. In real code it is genuinely uncommon; the friction routine below
-  is one of the cleaner sites.</p>
+  <p>ADDI adds a compile-time constant straight to a destination, and it earns its place by doing the
+  one thing plain <a href="#add">ADD</a> cannot: adding an immediate directly to MEMORY. ADD's
+  memory-writing form (<code>add Dn,&lt;ea&gt;</code>) requires its source to be a register, so there is
+  simply no <code>add #n,(memory)</code> instruction; ADDI is how you bump a RAM variable by a constant
+  without first loading it into a register. Its only real competition is <a href="#addq">ADDQ</a>, which
+  is smaller but caps at 8, so ADDI takes over for any constant of 9 or more. (Adding a constant into a
+  data register can go through either ADD or ADDI; the memory case is where ADDI is the <em>only</em>
+  option.) The oil-slide friction routine below is a textbook use: the constant <code>$40</code> is well
+  past ADDQ's range, and the destination is a field in RAM.</p>
   <p>From the oil-slide friction code: a guarded nudge that only fires when the object is not yet at
   its target speed.</p>
   <pre>	cmp.b	d0,d1
@@ -721,7 +725,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="addq">
-  <h3><span class="mn">ADDQ</span> <span class="syn">ADDQ.b/.w/.l #&lt;1-8&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">ADDQ</span> <span class="mnx">Add Quick</span> <span class="syn">ADDQ.b/.w/.l #&lt;1-8&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by ADDQ">
     <span class="fl-label">Flags</span>
     <span class="fchip f-set" aria-label="X set from carry"><span class="fl-name">X</span><span class="fl-state">set</span></span>
@@ -815,7 +819,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="sub">
-  <h3><span class="mn">SUB</span> <span class="syn">SUB.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; SUB.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">SUB</span> <span class="mnx">Subtract</span> <span class="syn">SUB.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; SUB.b/.w/.l Dn,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by SUB">
     <span class="fl-label">Flags</span>
     <span class="fchip f-set" aria-label="X set from borrow"><span class="fl-name">X</span><span class="fl-state">set</span></span>
@@ -894,7 +898,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="suba">
-  <h3><span class="mn">SUBA</span> <span class="syn">SUBA.w/.l &lt;ea&gt;,An</span></h3>
+  <h3><span class="mn">SUBA</span> <span class="mnx">Subtract Address</span> <span class="syn">SUBA.w/.l &lt;ea&gt;,An</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by SUBA">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -949,7 +953,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="subi">
-  <h3><span class="mn">SUBI</span> <span class="syn">SUBI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">SUBI</span> <span class="mnx">Subtract Immediate</span> <span class="syn">SUBI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by SUBI">
     <span class="fl-label">Flags</span>
     <span class="fchip f-set"><span class="fl-name">X</span><span class="fl-state">set</span></span>
@@ -975,10 +979,11 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
     <p class="og-note">Immediate source, data-or-memory destination, never an An (use <a href="#suba">SUBA</a>).
     Same niche as <a href="#addi">ADDI</a> and just as uncommon.</p>
   </div>
-  <p>SUBI subtracts an immediate constant, setting the flags. As with ADDI, a constant of 1 to 8 should
-  be <a href="#subq">SUBQ</a>, so SUBI only earns its place for larger constants applied directly to a
-  register or memory. The oil-slide friction routine uses it as the exact mirror of its ADDI: nudge the
-  inertia down toward the target when it is currently too high.</p>
+  <p>SUBI subtracts a compile-time constant, and it exists for the same reason as <a href="#addi">ADDI</a>:
+  it is the only way to subtract an immediate directly from MEMORY, since plain <a href="#sub">SUB</a>'s
+  memory-writing form needs a register source. Constants of 1 to 8 go to the smaller <a href="#subq">SUBQ</a>,
+  so SUBI covers 9 and up. The oil-slide friction routine uses it as the exact mirror of its ADDI: nudge
+  the inertia down toward the target when it is currently too high.</p>
   <pre>	cmp.b	d0,d1
 	ble.s	++
 	subi.w	<span class="n">#$40</span>,inertia(a1)</pre>
@@ -999,7 +1004,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="subq">
-  <h3><span class="mn">SUBQ</span> <span class="syn">SUBQ.b/.w/.l #&lt;1-8&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">SUBQ</span> <span class="mnx">Subtract Quick</span> <span class="syn">SUBQ.b/.w/.l #&lt;1-8&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by SUBQ">
     <span class="fl-label">Flags</span>
     <span class="fchip f-set"><span class="fl-name">X</span><span class="fl-state">set</span></span>
@@ -1052,7 +1057,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
 </div>
 
 <div class="instr" id="neg">
-  <h3><span class="mn">NEG</span> <span class="syn">NEG.b/.w/.l &lt;ea&gt;</span></h3>
+  <h3><span class="mn">NEG</span> <span class="mnx">Negate</span> <span class="syn">NEG.b/.w/.l &lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by NEG">
     <span class="fl-label">Flags</span>
     <span class="fchip f-set" aria-label="X set unless result is zero"><span class="fl-name">X</span><span class="fl-state">set</span></span>
@@ -1176,7 +1181,7 @@ setup half of nearly every <code>if</code> and every loop in the engine.</p>
 </details>
 
 <div class="instr" id="cmp">
-  <h3><span class="mn">CMP</span> <span class="syn">CMP.b/.w/.l &lt;ea&gt;,Dn</span></h3>
+  <h3><span class="mn">CMP</span> <span class="mnx">Compare</span> <span class="syn">CMP.b/.w/.l &lt;ea&gt;,Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by CMP">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1239,7 +1244,7 @@ setup half of nearly every <code>if</code> and every loop in the engine.</p>
 </div>
 
 <div class="instr" id="cmpa">
-  <h3><span class="mn">CMPA</span> <span class="syn">CMPA.w/.l &lt;ea&gt;,An</span></h3>
+  <h3><span class="mn">CMPA</span> <span class="mnx">Compare Address</span> <span class="syn">CMPA.w/.l &lt;ea&gt;,An</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by CMPA">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1287,7 +1292,7 @@ setup half of nearly every <code>if</code> and every loop in the engine.</p>
 </div>
 
 <div class="instr" id="cmpi">
-  <h3><span class="mn">CMPI</span> <span class="syn">CMPI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">CMPI</span> <span class="mnx">Compare Immediate</span> <span class="syn">CMPI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by CMPI">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1340,7 +1345,7 @@ setup half of nearly every <code>if</code> and every loop in the engine.</p>
 </div>
 
 <div class="instr" id="tst">
-  <h3><span class="mn">TST</span> <span class="syn">TST.b/.w/.l &lt;ea&gt;</span></h3>
+  <h3><span class="mn">TST</span> <span class="mnx">Test</span> <span class="syn">TST.b/.w/.l &lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by TST">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1433,7 +1438,7 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
 </details>
 
 <div class="instr" id="mulu">
-  <h3><span class="mn">MULU</span> <span class="syn">MULU.w &lt;ea&gt;,Dn</span></h3>
+  <h3><span class="mn">MULU</span> <span class="mnx">Multiply Unsigned</span> <span class="syn">MULU.w &lt;ea&gt;,Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by MULU">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1522,7 +1527,7 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
 </div>
 
 <div class="instr" id="muls">
-  <h3><span class="mn">MULS</span> <span class="syn">MULS.w &lt;ea&gt;,Dn</span></h3>
+  <h3><span class="mn">MULS</span> <span class="mnx">Multiply Signed</span> <span class="syn">MULS.w &lt;ea&gt;,Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by MULS">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1578,7 +1583,7 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
 </div>
 
 <div class="instr" id="divu">
-  <h3><span class="mn">DIVU</span> <span class="syn">DIVU.w &lt;ea&gt;,Dn</span></h3>
+  <h3><span class="mn">DIVU</span> <span class="mnx">Divide Unsigned</span> <span class="syn">DIVU.w &lt;ea&gt;,Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by DIVU">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1665,7 +1670,7 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
 </div>
 
 <div class="instr" id="divs">
-  <h3><span class="mn">DIVS</span> <span class="syn">DIVS.w &lt;ea&gt;,Dn</span></h3>
+  <h3><span class="mn">DIVS</span> <span class="mnx">Divide Signed</span> <span class="syn">DIVS.w &lt;ea&gt;,Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by DIVS">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1796,7 +1801,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </figure>
 
 <div class="instr" id="and">
-  <h3><span class="mn">AND</span> <span class="syn">AND.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; AND.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">AND</span> <span class="mnx">Logical AND</span> <span class="syn">AND.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; AND.b/.w/.l Dn,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by AND">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1853,7 +1858,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </div>
 
 <div class="instr" id="andi">
-  <h3><span class="mn">ANDI</span> <span class="syn">ANDI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">ANDI</span> <span class="mnx">AND Immediate</span> <span class="syn">ANDI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by ANDI">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1898,7 +1903,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </div>
 
 <div class="instr" id="or">
-  <h3><span class="mn">OR</span> <span class="syn">OR.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; OR.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">OR</span> <span class="mnx">Logical OR</span> <span class="syn">OR.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; OR.b/.w/.l Dn,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by OR">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1946,7 +1951,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </div>
 
 <div class="instr" id="ori">
-  <h3><span class="mn">ORI</span> <span class="syn">ORI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">ORI</span> <span class="mnx">OR Immediate</span> <span class="syn">ORI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by ORI">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1988,7 +1993,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </div>
 
 <div class="instr" id="eor">
-  <h3><span class="mn">EOR</span> <span class="syn">EOR.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">EOR</span> <span class="mnx">Exclusive OR</span> <span class="syn">EOR.b/.w/.l Dn,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by EOR">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -2047,7 +2052,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </div>
 
 <div class="instr" id="eori">
-  <h3><span class="mn">EORI</span> <span class="syn">EORI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">EORI</span> <span class="mnx">Exclusive OR Immediate</span> <span class="syn">EORI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by EORI">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -2089,7 +2094,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </div>
 
 <div class="instr" id="not">
-  <h3><span class="mn">NOT</span> <span class="syn">NOT.b/.w/.l &lt;ea&gt;</span></h3>
+  <h3><span class="mn">NOT</span> <span class="mnx">Logical Complement</span> <span class="syn">NOT.b/.w/.l &lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by NOT">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>

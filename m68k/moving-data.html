@@ -181,6 +181,7 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
 .mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
 .syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+.mnx{font-size:.82rem; color:var(--ink); font-style:italic; font-weight:normal;}
 
 /* flags indicator */
 .flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
@@ -475,7 +476,7 @@ into registers, working on them there, and writing results back out.</p>
 </details>
 
 <div class="instr" id="move">
-  <h3><span class="mn">MOVE</span> <span class="syn">MOVE.b/.w/.l &lt;ea&gt;,&lt;ea&gt;</span></h3>
+  <h3><span class="mn">MOVE</span> <span class="mnx">Move</span> <span class="syn">MOVE.b/.w/.l &lt;ea&gt;,&lt;ea&gt;</span></h3>
 
   <div class="flags" role="group" aria-label="Condition codes affected by MOVE">
     <span class="fl-label">Flags</span>
@@ -629,7 +630,7 @@ into registers, working on them there, and writing results back out.</p>
 </div>
 
 <div class="instr" id="moveq">
-  <h3><span class="mn">MOVEQ</span> <span class="syn">MOVEQ #&lt;data&gt;,Dn</span></h3>
+  <h3><span class="mn">MOVEQ</span> <span class="mnx">Move Quick</span> <span class="syn">MOVEQ #&lt;data&gt;,Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by MOVEQ">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -698,7 +699,7 @@ into registers, working on them there, and writing results back out.</p>
 </div>
 
 <div class="instr" id="movea">
-  <h3><span class="mn">MOVEA</span> <span class="syn">MOVEA.w/.l &lt;ea&gt;,An</span></h3>
+  <h3><span class="mn">MOVEA</span> <span class="mnx">Move Address</span> <span class="syn">MOVEA.w/.l &lt;ea&gt;,An</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by MOVEA">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -842,7 +843,7 @@ as it was.</p>
 </details>
 
 <div class="instr" id="lea">
-  <h3><span class="mn">LEA</span> <span class="syn">LEA &lt;ea&gt;,An</span></h3>
+  <h3><span class="mn">LEA</span> <span class="mnx">Load Effective Address</span> <span class="syn">LEA &lt;ea&gt;,An</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by LEA">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -940,7 +941,7 @@ as it was.</p>
 </div>
 
 <div class="instr" id="pea">
-  <h3><span class="mn">PEA</span> <span class="syn">PEA &lt;ea&gt;</span></h3>
+  <h3><span class="mn">PEA</span> <span class="mnx">Push Effective Address</span> <span class="syn">PEA &lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by PEA">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1054,7 +1055,7 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
 </div>
 
 <div class="instr" id="movem">
-  <h3><span class="mn">MOVEM</span> <span class="syn">MOVEM.w/.l &lt;register list&gt;,&lt;ea&gt; &nbsp;|&nbsp; MOVEM.w/.l &lt;ea&gt;,&lt;register list&gt;</span></h3>
+  <h3><span class="mn">MOVEM</span> <span class="mnx">Move Multiple Registers</span> <span class="syn">MOVEM.w/.l &lt;register list&gt;,&lt;ea&gt; &nbsp;|&nbsp; MOVEM.w/.l &lt;ea&gt;,&lt;register list&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by MOVEM">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1204,7 +1205,7 @@ rearrange bits or whole registers in place, and EXT changes how many bits of a r
 carry meaning, without touching memory at all.</p>
 
 <div class="instr" id="clr">
-  <h3><span class="mn">CLR</span> <span class="syn">CLR.b/.w/.l &lt;ea&gt;</span></h3>
+  <h3><span class="mn">CLR</span> <span class="mnx">Clear</span> <span class="syn">CLR.b/.w/.l &lt;ea&gt;</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by CLR">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1302,7 +1303,7 @@ carry meaning, without touching memory at all.</p>
 </div>
 
 <div class="instr" id="swap">
-  <h3><span class="mn">SWAP</span> <span class="syn">SWAP Dn</span></h3>
+  <h3><span class="mn">SWAP</span> <span class="mnx">Swap Register Halves</span> <span class="syn">SWAP Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by SWAP">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1379,7 +1380,7 @@ carry meaning, without touching memory at all.</p>
 </div>
 
 <div class="instr" id="exg">
-  <h3><span class="mn">EXG</span> <span class="syn">EXG Dn,Dn &nbsp;|&nbsp; EXG An,An &nbsp;|&nbsp; EXG Dn,An</span></h3>
+  <h3><span class="mn">EXG</span> <span class="mnx">Exchange Registers</span> <span class="syn">EXG Dn,Dn &nbsp;|&nbsp; EXG An,An &nbsp;|&nbsp; EXG Dn,An</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by EXG">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -1460,7 +1461,7 @@ loc_1ECD4:
 </div>
 
 <div class="instr" id="ext">
-  <h3><span class="mn">EXT</span> <span class="syn">EXT.w Dn &nbsp;(byte&rarr;word)&nbsp; &nbsp;|&nbsp; EXT.l Dn &nbsp;(word&rarr;long)</span></h3>
+  <h3><span class="mn">EXT</span> <span class="mnx">Sign Extend</span> <span class="syn">EXT.w Dn &nbsp;(byte&rarr;word)&nbsp; &nbsp;|&nbsp; EXT.l Dn &nbsp;(word&rarr;long)</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by EXT">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
