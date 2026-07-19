@@ -1,0 +1,2438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>68000: Math &amp; Logic</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🧮%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+/* ============================================================
+   Page-specific styles: Instructions - Math & Logic
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+details.refbox summary::-webkit-details-marker{display:none;}
+
+/* mini-index: chip row of this page's mnemonics */
+nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
+nav.mini a{font-family:var(--mono); font-size:.76rem; letter-spacing:.02em;
+  color:var(--ink); text-decoration:none; border:1px solid var(--accent);
+  border-radius:3px; padding:.22rem .55rem; background:rgba(68,102,238,.1);}
+nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outline:none;}
+.mini-h{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); width:100%; margin:.5rem 0 -.1rem;}
+
+/* instruction entry header: mnemonic + syntax */
+.instr{margin:2.2rem 0 0; padding-top:.2rem;}
+.instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
+.mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
+.syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+
+/* flags indicator */
+.flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
+.flags .fl-label{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin-right:.3rem;}
+.flags .fchip{display:flex; flex-direction:column; align-items:center; gap:.15rem;
+  width:2.1rem; padding:.25rem 0; border-radius:3px; border:1px solid var(--line);
+  font-family:var(--mono); font-size:.7rem; cursor:help;}
+.flags .fchip:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.flags .fchip .fl-name{font-weight:bold;}
+.flags .fchip .fl-state{font-size:.55rem; letter-spacing:.05em; color:var(--dim);
+  text-transform:uppercase;}
+.flags .fchip.f-set{border-color:var(--gold); background:rgba(238,170,0,.14); color:var(--gold);}
+.flags .fchip.f-set .fl-state{color:var(--gold);}
+.flags .fchip.f-clear{border-color:#CC66AA; background:rgba(204,102,170,.12); color:#CC66AA;}
+.flags .fchip.f-clear .fl-state{color:#CC66AA;}
+.flags .fchip.f-none{border-color:var(--line); color:var(--dim); opacity:.6;}
+.flags .fl-caption{font-family:var(--mono); font-size:.68rem; color:var(--dim);
+  margin-left:.3rem;}
+
+/* gotcha note */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* instruction cost, operands, encoding */
+.cost,.operands{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:.6rem 0; max-width:42rem;}
+.cost .cchip{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent);
+  color:var(--ink); background:rgba(68,102,238,.14); border-radius:3px; padding:.1rem .45rem;
+  font-variant-numeric:tabular-nums;}
+.cost .cnote,.operands .onote{font-size:.8rem; color:var(--dim); max-width:38rem;}
+.cost .cctx{font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.03em;}
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* operand legality grid: which addressing modes each side accepts */
+.opgrid{margin:.6rem 0 .2rem; max-width:42rem;}
+.og-row{display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; margin:.3rem 0;}
+.og-side{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); min-width:6.4rem;}
+.og{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent); border-radius:3px;
+  padding:.12rem .45rem; background:rgba(68,102,238,.14); color:var(--ink);}
+.og.no{border-color:var(--line); background:transparent; color:var(--dim); opacity:.55;
+  text-decoration:line-through;}
+.og-note{font-size:.78rem; color:var(--dim); max-width:40rem; margin:.35rem 0 .6rem;}
+
+/* cheaper cousins: the see-also that names the better tool */
+.kin{border-left:3px solid var(--accent); background:rgba(68,102,238,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.kin .k-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.2rem;}
+
+/* a data VALUE (contents of a register/memory) vs a bare address */
+code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em; font-weight:600;}
+
+/* before/after simulator shell (shared by the flags demo and the per-instruction toys) */
+.movesim{display:flex; flex-direction:column; gap:.8rem;}
+.msim-instr{font-family:var(--mono); display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;}
+.msim-instr code{font-size:1rem; color:var(--gold); background:var(--code-bg);
+  border:1px solid var(--line); border-radius:3px; padding:.2rem .55rem;}
+.msim-instr span{font-size:.72rem; color:var(--dim); max-width:32rem;}
+.msim-ctrl{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.75rem;}
+.msim-ctrl label{color:var(--dim);}
+.msim-ctrl input{font-family:var(--mono); font-size:.85rem; width:4.5rem; background:var(--panel);
+  color:var(--gold); border:1px solid var(--line); border-radius:3px; padding:.25rem .4rem; text-transform:uppercase;}
+.msim-ctrl input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-ctrl button{font-family:var(--mono); font-size:.72rem; padding:.3rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.msim-ctrl button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-regs{display:flex; flex-wrap:wrap; align-items:center; gap:1rem;}
+.mreg{display:inline-flex; flex-direction:column; gap:.2rem; align-items:center; border:1px solid var(--line);
+  border-radius:4px; padding:.5rem .8rem; background:var(--panel2); min-width:5.5rem;}
+.mr-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
+.mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.mr-val b{color:#CC66AA; font-weight:normal;}
+.mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
+.msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
+.mr-flash{background:transparent;}
+@media (prefers-reduced-motion: no-preference){
+  .mr-flash{animation:mrflash .5s ease;}
+  @keyframes mrflash{from{background:rgba(68,102,238,.4);}to{background:transparent;}}
+}
+
+/* live flag readout inside a simulator */
+.msim-fl{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; font-family:var(--mono); font-size:.72rem;}
+.sfchip{border:1px solid var(--line); border-radius:3px; padding:.15rem .5rem; color:var(--dim);}
+.sfchip.on{border-color:var(--gold); color:var(--gold); background:rgba(238,170,0,.14);}
+.sfchip.forced{border-color:#CC66AA; color:#CC66AA;}
+.sfchip.unaff{opacity:.55;}
+.msim-cost{font-family:var(--mono); font-size:.72rem; color:var(--dim); margin:0; max-width:38rem;}
+
+/* size + instruction pickers (reused button-group look) */
+.szgrp{display:inline-flex; gap:.25rem; flex-wrap:wrap;}
+.msim-ctrl .szbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick{display:flex; flex-wrap:wrap; gap:.3rem; margin:.1rem 0;}
+.fpick button{font-family:var(--mono); font-size:.74rem; padding:.25rem .55rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.fpick button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+/* this page's fallback captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / 68000 ASSEMBLY / MATH &amp; LOGIC</p>
+  <p class="eyebrow">68000 Assembly</p>
+  <h1>Instructions: Math &amp; Logic</h1>
+  <p class="sub">This is where the CPU actually computes: adding and subtracting, multiplying and
+  dividing, comparing, and working on bits with AND, OR, and their kin. Almost every one of these
+  instructions does two jobs at once, it produces a value AND it reports on that value through the
+  condition codes, which is how the very next branch decides where to go. This page covers the
+  arithmetic, compare, and logic families; the shifts, rotates, and single-bit instructions live on
+  the next page. Every example is real, pulled from the Sonic 2 disassembly and re-verified line by
+  line.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>How instructions set the flags</a>
+  <a href="#s2"><span class="n">2</span>Adding and subtracting</a>
+  <a href="#s3"><span class="n">3</span>Comparing and testing</a>
+  <a href="#s4"><span class="n">4</span>Multiplying and dividing</a>
+  <a href="#s5"><span class="n">5</span>Bitwise logic</a>
+</nav>
+
+<nav class="mini" aria-label="Mini-index of this page's instructions">
+  <span class="mini-h">Add / subtract</span>
+  <a href="#add">ADD</a><a href="#adda">ADDA</a><a href="#addi">ADDI</a><a href="#addq">ADDQ</a>
+  <a href="#sub">SUB</a><a href="#suba">SUBA</a><a href="#subi">SUBI</a><a href="#subq">SUBQ</a>
+  <a href="#neg">NEG</a>
+  <span class="mini-h">Compare / test</span>
+  <a href="#cmp">CMP</a><a href="#cmpa">CMPA</a><a href="#cmpi">CMPI</a><a href="#tst">TST</a>
+  <span class="mini-h">Multiply / divide</span>
+  <a href="#mulu">MULU</a><a href="#muls">MULS</a><a href="#divu">DIVU</a><a href="#divs">DIVS</a>
+  <span class="mini-h">Logic</span>
+  <a href="#and">AND</a><a href="#andi">ANDI</a><a href="#or">OR</a><a href="#ori">ORI</a>
+  <a href="#eor">EOR</a><a href="#eori">EORI</a><a href="#not">NOT</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
+instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
+on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; How instructions set the flags</h2>
+
+<p>Before any single instruction, one idea ties this whole page together. Nearly every arithmetic and
+logic instruction here does its computation AND, as a side effect, updates the five
+<span class="term" data-def="The value an instruction works on. Most 68000 instructions take a source operand (read from) and a destination operand (written to); an addressing mode is how each one says where its value lives.">operand</span> condition codes, X N Z V C, to describe the result it just produced. On their own those
+flags do nothing. Their entire purpose is that the very next instruction, usually a conditional
+branch, reads them and decides what to do. So on the 68000 you rarely test a value with a separate
+step: you add, subtract, or compare, and the flags already say whether the result was zero, negative,
+or overflowed.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What are the X N Z V C flags?</summary>
+  <div class="x-body">
+    <p>The CPU keeps five status bits called the condition codes, or flags, packed into the low byte of
+    the status register. Most instructions overwrite them as a side effect of whatever they just
+    computed: <b>N</b> (the result was negative, its top bit set), <b>Z</b> (the result was zero),
+    <b>V</b> (a signed overflow happened, the sign came out wrong), <b>C</b> (an unsigned carry or
+    borrow out of the top bit), and <b>X</b> (the extend bit, a saved copy of the carry that
+    multi-precision math reuses). The <a href="programming-model.html#s2">Programming
+    Model page</a> covers the status register in full; here what matters is the pattern below.</p>
+    <p>Each instruction's Flags row shows which bits it touches: <b>set</b> means updated from the
+    result, <b>clear</b> means forced to zero, <b>unaff.</b> means left exactly as it was. Watch for
+    the instructions that touch NO flags at all (ADDA, SUBA, and the quick forms into an address
+    register): a branch after one of those is reading whatever the last real flag-setter left behind,
+    which is a classic bug.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; Signed or unsigned: which flag do I read?</summary>
+  <div class="x-body">
+    <p>The hardware sets all five flags mechanically from the bits; it has no idea whether you meant a
+    number to be signed or unsigned. Your choice of branch decides which flags to believe. If you are
+    treating values as <em>unsigned</em> (0 and up, like a ring count or an address), you branch on the
+    carry: <code>bcc</code> / <code>bcs</code>, <code>bhi</code> / <code>bls</code>. If you are treating
+    them as <em>signed</em> (negatives allowed, like a velocity), you branch on the N and V pair:
+    <code>bpl</code> / <code>bmi</code>, <code>bgt</code> / <code>blt</code>. Same instruction, same
+    flags, two readings. This is why the demo below shows both the unsigned and the signed value of
+    every result.</p>
+  </div>
+</details>
+
+<p>Play with it. Pick an instruction, set the two operands, and run it: the destination register and
+all five flags update, with the note spelling out both readings of the result.</p>
+
+<figure class="diagram">
+<div class="movesim" id="fsim">
+  <div class="msim-instr"><code id="fs-instr">add.w d1,d0</code> <span>the operation runs on the low word (.w) of each register. d0 is the destination; d1 is the source. Watch which flags light and read the note for what they mean.</span></div>
+  <div class="fpick" role="group" aria-label="Pick an instruction">
+    <button type="button" class="fs-op" data-op="add" aria-pressed="true">add</button>
+    <button type="button" class="fs-op" data-op="sub" aria-pressed="false">sub</button>
+    <button type="button" class="fs-op" data-op="cmp" aria-pressed="false">cmp</button>
+    <button type="button" class="fs-op" data-op="and" aria-pressed="false">and</button>
+    <button type="button" class="fs-op" data-op="or" aria-pressed="false">or</button>
+    <button type="button" class="fs-op" data-op="eor" aria-pressed="false">eor</button>
+    <button type="button" class="fs-op" data-op="not" aria-pressed="false">not</button>
+    <button type="button" class="fs-op" data-op="neg" aria-pressed="false">neg</button>
+    <button type="button" class="fs-op" data-op="tst" aria-pressed="false">tst</button>
+  </div>
+  <div class="msim-ctrl">
+    <label for="fs-dst">d0 (dest, hex)</label>
+    <input id="fs-dst" type="text" value="0064" maxlength="8" autocomplete="off" aria-describedby="fs-note">
+    <label for="fs-src" id="fs-srclab">d1 (source, hex)</label>
+    <input id="fs-src" type="text" value="0032" maxlength="8" autocomplete="off" aria-describedby="fs-note">
+    <button type="button" id="fs-run">Run</button>
+    <button type="button" id="fs-reset">Reset</button>
+  </div>
+  <div class="msim-regs">
+    <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="fs-d0">$00000064</span><span class="mr-tag">destination</span></span>
+    <span class="mreg" id="fs-srcreg"><span class="mr-name">d1</span><span class="mr-val" id="fs-d1">$00000032</span><span class="mr-tag">source</span></span>
+  </div>
+  <div class="msim-fl" aria-label="Condition codes after the operation">
+    <span class="fl-label">Flags after</span>
+    <span class="sfchip" id="fs-fx">X -</span>
+    <span class="sfchip" id="fs-fn">N -</span>
+    <span class="sfchip" id="fs-fz">Z -</span>
+    <span class="sfchip" id="fs-fv">V -</span>
+    <span class="sfchip" id="fs-fc">C -</span>
+  </div>
+  <p class="msim-note" id="fs-note" aria-live="polite">add.w d1,d0 computes d0 + d1 into d0's low word and sets the flags from the 16-bit result. Try 8000 + 8000 (signed overflow, V lights) or FFFF + 0001 (unsigned carry, C lights).</p>
+</div>
+<figcaption>The shared flags demo: every instruction on this page whose lesson is "how it sets the
+flags" links here rather than repeating a flags readout. Static fallback: add.w with d0 = $0064 and
+d1 = $0032 gives d0 = $00000096, all flags clear; sub.w of the same gives $00000032; cmp.w leaves d0
+alone but sets the flags as if it had subtracted; and.w gives $00000020. Value versus flags, before
+and after, for one instruction at a time.</figcaption>
+</figure>
+
+<p>With that model in hand, the rest of the page is the instructions themselves, grouped by what they
+do. Each entry gives its exact flag behavior, its cost, which operands it accepts, a real Sonic
+example, and, where the lesson is something other than the flags, its own small toy.</p>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; Adding and subtracting</h2>
+
+<p>The bread and butter. Every frame, positions gain velocities, timers count down, scores climb, and
+pointers step through tables, and nearly all of it is ADD and SUB. The family looks large because the
+68000 gives each job a specialized, cheaper form: a quick version for tiny constants (ADDQ), an
+immediate version for larger ones (ADDI), and an address-register version that stays out of the way
+of the flags (ADDA). Learn the plain ADD once and the rest are variations on when to reach for which.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why are there four different ways to add?</summary>
+  <div class="x-body">
+    <p>It looks redundant, but each form is a specialization that saves space or stays out of the
+    flags' way. Plain <a href="#add">ADD</a> is the general case: add any value to a data register.
+    <a href="#addq">ADDQ</a> is a shortcut for tiny constants (1 to 8) that packs the whole instruction
+    into one word. <a href="#addi">ADDI</a> is for larger constants added in place. And <a href="#adda">ADDA</a>
+    adds to an ADDRESS register, which the CPU deliberately treats differently: no flags, no byte size.</p>
+    <p>The good news is you rarely choose consciously. Write <code>add.w d0,a1</code> and the assembler
+    quietly encodes ADDA because the destination is an address register; write a 1-to-8 constant and a
+    good assembler reaches for ADDQ. The forms exist so the machine has a cheap encoding for each common
+    shape; knowing they are all "add" is enough to read the code. The same story repeats for subtract
+    (SUB, SUBQ, SUBI, SUBA).</p>
+  </div>
+</details>
+
+<div class="instr" id="add">
+  <h3><span class="mn">ADD</span> <span class="syn">ADD.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; ADD.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ADD">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from carry"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="V set on signed overflow"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="C set on carry"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ADD">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">best case: <code>add Dn,Dn</code>, byte or word. Longs, memory, and immediates cost more:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (4 to 28 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
+      <tr><td><code>add Dn,Dn</code></td><td>4c, 2b</td><td>8c, 2b</td></tr>
+      <tr><td><code>add #n,Dn</code></td><td>8c, 4b</td><td>16c, 6b</td></tr>
+      <tr><td><code>add (An),Dn</code></td><td>8c, 2b</td><td>14c, 2b</td></tr>
+      <tr><td><code>add Dn,(An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
+      <tr><td><code>add d(An),Dn</code></td><td>12c, 4b</td><td>18c, 4b</td></tr>
+    </table></div>
+    <p class="enc-note">Representative forms, not the full menu. The rule is the same additive one as
+    everywhere: 4 cycles base plus the price of reaching each operand. Writing the result back to
+    memory (the <code>Dn,&lt;ea&gt;</code> direction) costs more than landing it in a register, because
+    it is a read-modify-write. The <a href="addressing-modes.html#price">Addressing
+    Modes price list</a> holds the per-mode figures. c = CPU cycles, b = bytes; Genesis memory adds
+    wait states on top.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for ADD">
+    <div class="og-row"><span class="og-side">Source &rarr; Dn</span>
+      <span class="og">Dn</span><span class="og">An&#8224;</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest &larr; Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">ADD always has one data register as an operand; the grid shows what the OTHER
+    operand (the effective address) may be, in each of the two directions. &#8224; an address register
+    source is fine in <code>.w</code>/<code>.l</code> but not <code>.b</code> (a byte cannot come from
+    an An). Adding into an address register (<code>add.w d0,a0</code>) is really <a href="#adda">ADDA</a>,
+    which the assembler swaps in for you; a constant or PC-relative location is not writable, so
+    <code>add.w d0,#5</code> is refused.</p>
+  </div>
+  <p>ADD adds a value to a data register (or a register's value into memory) and reports fully on the
+  result through all five flags. It is the workhorse of the page: how a position gains a velocity, a
+  counter climbs, an index advances. Because it sets N, Z, V, and C from the sum, you can branch on
+  the result immediately, no separate compare needed. Reach for plain ADD when the amount is a runtime
+  value in a register or memory; when it is a small constant, its cheaper cousins below win.</p>
+  <p>This is the exact position-plus-velocity step, from Obj5F (a moving object), and it shows the
+  reason ADD sets flags: the very next lines branch on the new position to delete the object once it
+  drifts off screen.</p>
+  <pre>	add.w	d1,x_pos(a0)
+	add.w	d0,y_pos(a0)
+	cmpi.w	<span class="n">#0</span>,x_pos(a0)
+	blt.w	JmpTo_DeleteObject</pre>
+  <span class="src">s2disasm/s2.asm:9641-9644 (Obj5F, a moving object)</span>
+  <p>The two ADDs move the object; the <code>cmpi</code>/<code>blt</code> that follows reacts to where
+  it landed. To watch ADD set the flags for yourself, run it in the <a href="#s1">flags demo</a> at the
+  top: try <code>$8000 + $8000</code> and see V light (two negatives summing to a positive), or
+  <code>$FFFF + $0001</code> and see C light (unsigned carry off the top).</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Size matters for the flags. <code>add.w</code> sets N, Z, V, and C from the 16-bit result and leaves
+  the upper half of the destination alone, so a carry out of bit 15 sets C even though the full 32-bit
+  register did not overflow. If you mean 32-bit math, use <code>add.l</code>. And remember ADD into an
+  <em>address</em> register is silently ADDA, which sets no flags at all.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Adding a small constant (1 to 8) to a data register or memory? <a href="#addq">ADDQ</a> does it in
+  one word (4c vs ADDI's 8c). A larger constant is <a href="#addi">ADDI</a>. Advancing an address
+  register is <a href="#adda">ADDA</a>, and if the offset is fixed and you want the flags left alone,
+  <a href="moving-data.html#lea">LEA</a>
+  (<code>lea 4(a0),a0</code>) does the same bump flag-free.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>ADD is <code>1101 rrr ooo mmm rrr</code>: bits 15-12 are <code>1101</code>, bits 11-9 the data
+    register, bits 8-6 the opmode (which also picks the direction, <code>000</code>/<code>001</code>/<code>010</code>
+    = <code>&lt;ea&gt;+Dn&rarr;Dn</code> for byte/word/long, <code>100</code>/<code>101</code>/<code>110</code>
+    = <code>Dn+&lt;ea&gt;&rarr;&lt;ea&gt;</code>), and bits 5-0 the effective address.</p>
+    <p><code>add.w d0,d1</code> assembles to <code>$D240</code>: register d1 (<code>001</code>), opmode
+    word-into-Dn (<code>001</code>), source d0 (mode <code>000</code>, register <code>000</code>).</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="adda">
+  <h3><span class="mn">ADDA</span> <span class="syn">ADDA.w/.l &lt;ea&gt;,An</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ADDA">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags; you cannot branch on an ADDA</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ADDA">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">register or address-register source, either size. Memory and immediates add more:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (8 to 22 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.w</th><th>.l</th></tr>
+      <tr><td><code>adda Dn/An,An</code></td><td>8c, 2b</td><td>8c, 2b</td></tr>
+      <tr><td><code>adda #n,An</code></td><td>12c, 4b</td><td>16c, 6b</td></tr>
+      <tr><td><code>adda (An),An</code></td><td>12c, 2b</td><td>18c, 2b</td></tr>
+      <tr><td><code>adda d(An),An</code></td><td>16c, 4b</td><td>22c, 4b</td></tr>
+    </table></div>
+    <p class="enc-note">No byte form exists. A word source is sign-extended to 32 bits before the add
+    (see the toy). c = CPU cycles, b = bytes; Genesis memory adds wait states.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for ADDA">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">Dn</span><span class="og">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og no">Dn</span><span class="og">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The destination is always an address register; the source may be anything. ADDA is
+    what the assembler quietly uses whenever you write an ADD whose destination is an An, which is why
+    you rarely type <code>adda</code> yourself but see its behavior constantly.</p>
+  </div>
+  <p>ADDA advances an address register by a value, and unlike ADD it changes NO condition codes. That
+  is the whole reason it exists as a separate instruction: you routinely need to step a pointer in the
+  middle of a comparison, and you do not want that step to disturb the flags the next branch is going
+  to read. Reach for ADDA (or let the assembler reach for it) to move a pointer by a runtime amount;
+  for a fixed offset, <a href="moving-data.html#lea">LEA</a>
+  reads cleaner and is equally flag-free.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code>adda.w d0,a0</code> <span>add a word value to an address register. Two surprises hide here: the flags never move, and a word source is sign-extended first.</span></div>
+    <div class="msim-ctrl">
+      <label for="aa-src">Word to add to a0 (hex)</label>
+      <input id="aa-src" type="text" value="0010" maxlength="4" autocomplete="off" aria-describedby="aa-note">
+      <button type="button" id="aa-run">Run adda.w d0,a0</button>
+      <button type="button" id="aa-reset">Reset a0</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">a0</span><span class="mr-val" id="aa-a0">$00FF0000</span><span class="mr-tag">pointer</span></span>
+    </div>
+    <div class="msim-fl" aria-label="Condition codes after ADDA">
+      <span class="fl-label">Flags after</span>
+      <span class="sfchip unaff">X unaff.</span><span class="sfchip unaff">N unaff.</span><span class="sfchip unaff">Z unaff.</span>
+      <span class="sfchip unaff">V unaff.</span><span class="sfchip unaff">C unaff.</span>
+    </div>
+    <p class="msim-note" id="aa-note" aria-live="polite">a0 holds a pointer. Add $0010 and it moves to $00FF0010. Now try $FFFF: because the word is sign-extended to $FFFFFFFF (which is -1), adding it moves a0 BACKWARD by one, it does not add 65535.</p>
+  </div>
+  <figcaption>ADDA never touches the flags (all five stay as they were), and ADDA.w sign-extends its
+  16-bit source to 32 bits before adding. Static fallback: adda.w #$10,a0 with a0 = $00FF0000 gives
+  $00FF0010; adda.w #$FFFF,a0 gives $00FEFFFF, because $FFFF sign-extends to -1 and subtracts one.</figcaption>
+  </figure>
+  <p>A real double-indexed pointer walk, from the special-stage track renderer: two ADDAs in a row
+  advance <code>a1</code> to the exact animation frame, and neither disturbs the flags around them.</p>
+  <pre>	adda.w	(a1,d3.w),a1	<span class="c">; Add offset so a1 points to animation data</span>
+	adda.w	d2,a1	<span class="c">; Offset into current animation frame</span></pre>
+  <span class="src">s2disasm/s2.asm:7045-7046 (SSTrack_Draw)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Two silent traps in one instruction. First, ADDA sets no flags, so a <code>beq</code> right after it
+  reads a stale result. Second, <code>adda.w</code> sign-extends its word source to 32 bits, so adding
+  <code>#$8000</code> does not add 32768, it adds -32768 and moves the pointer backward. When in doubt
+  about the high bits, use <code>adda.l</code>.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Bumping a pointer by a <em>fixed</em> compile-time offset?
+  <a href="moving-data.html#lea">LEA</a>
+  (<code>lea 4(a0),a0</code>) is the same 8 cycles, reads more clearly, and is equally flag-free. ADDA
+  wins when the amount is a runtime value in a register or memory.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>ADDA is <code>1101 rrr ooo mmm rrr</code>, sharing ADD's <code>1101</code> prefix; the opmode
+    bits <code>011</code> (word) and <code>111</code> (long) mark the address-register destination in
+    bits 11-9. <code>adda.w a0,a1</code> = <code>$D2C8</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="addi">
+  <h3><span class="mn">ADDI</span> <span class="syn">ADDI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ADDI">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from carry"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="V set on signed overflow"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="C set on carry"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ADDI">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">into a data register, byte or word. Longs and memory destinations cost more:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (8 to 36 cycles, 4 to 10 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
+      <tr><td><code>addi #n,Dn</code></td><td>8c, 4b</td><td>16c, 6b</td></tr>
+      <tr><td><code>addi #n,(An)</code></td><td>16c, 4b</td><td>28c, 6b</td></tr>
+      <tr><td><code>addi #n,d(An)</code></td><td>20c, 6b</td><td>32c, 8b</td></tr>
+    </table></div>
+    <p class="enc-note">The immediate itself is the reason for the extra bytes: 2 for a byte or word,
+    4 for a long, on top of the opcode and any destination extension words. c = CPU cycles, b = bytes.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for ADDI">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The source is always the immediate constant; the destination is a data register
+    or memory, never an address register. <code>addi.w #4,a0</code> is refused, that is <a href="#adda">ADDA</a>'s
+    job (<code>adda.w #4,a0</code>).</p>
+  </div>
+  <p>ADDI adds an immediate constant to a data register or straight to memory, setting all the flags
+  like ADD. Its niche is narrow, because a constant of 1 to 8 should be <a href="#addq">ADDQ</a> (half
+  the size) and a value you already have in a register is plain <a href="#add">ADD</a>. ADDI earns its
+  place when the constant is larger than 8 and you want to add it directly to a memory location or a
+  register without loading it first. In real code it is genuinely uncommon; the friction routine below
+  is one of the cleaner sites.</p>
+  <p>From the oil-slide friction code: a guarded nudge that only fires when the object is not yet at
+  its target speed.</p>
+  <pre>	cmp.b	d0,d1
+	bge.s	+
+	addi.w	<span class="n">#$40</span>,inertia(a1)</pre>
+  <span class="src">s2disasm/s2.asm:5579-5581 (the oil-slide friction routine)</span>
+  <p>The <code>cmp</code>/<code>bge</code> gate decides whether to nudge; the ADDI adds <code>$40</code>
+  to the object's inertia field in RAM. To watch ADDI set flags, use the <a href="#s1">flags demo</a>
+  (pick <code>add</code>; an immediate adds the same way a register value does).</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  If your constant is 1 to 8 and the destination is data-alterable, writing ADDI wastes a word and a
+  couple of cycles versus <a href="#addq">ADDQ</a>; most assemblers will NOT silently switch it for
+  you the way they switch ADD to ADDA, so the wasteful encoding is exactly what you asked for.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Constant of 1 to 8 into a data-alterable destination? <a href="#addq">ADDQ</a>, always (2 bytes and
+  4 cycles versus 4 bytes and 8). Value already in a register? plain <a href="#add">ADD</a>. Targeting
+  an address register? <a href="#adda">ADDA</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>ADDI is <code>0000 0110 ss mmm rrr</code> followed by the immediate word(s): bits 7-6 are the
+    size, bits 5-0 the destination effective address. <code>addi.w #$40,d1</code> = <code>$0641</code>
+    then the immediate word <code>$0040</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="addq">
+  <h3><span class="mn">ADDQ</span> <span class="syn">ADDQ.b/.w/.l #&lt;1-8&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ADDQ">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from carry"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="V set on signed overflow"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="C set on carry"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">except into an An: then no flags change</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ADDQ">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">into a data register, byte or word. Into an An it is 8 cycles; memory more:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (4 to 28 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
+      <tr><td><code>addq #n,Dn</code></td><td>4c, 2b</td><td>8c, 2b</td></tr>
+      <tr><td><code>addq #n,An</code></td><td>8c, 2b</td><td>8c, 2b</td></tr>
+      <tr><td><code>addq #n,(An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
+    </table></div>
+    <p class="enc-note">The <code>#n,An</code> row is the surprise: bumping an address register by a
+    small constant costs 8 cycles, not 4, and touches no flags, and the whole An is updated even in
+    <code>.w</code> (byte-size to an An is not allowed). c = CPU cycles, b = bytes.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for ADDQ">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og">#1-8</span><span class="og no">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og">Dn</span><span class="og">An&#8224;</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The source is a tiny quick constant, 1 to 8 only, encoded in three bits of the
+    opcode itself (which is why there is no extension word). &#8224; an An destination is legal in
+    <code>.w</code>/<code>.l</code> only, sets no flags, and updates the whole register. Ask for
+    <code>#9</code> or more and the assembler cannot encode ADDQ, so it falls back to <a href="#addi">ADDI</a>.</p>
+  </div>
+  <p>ADDQ adds a constant from 1 to 8 in a single opcode word, no extension needed, making it the
+  cheapest way on the chip to nudge a value up by a little. This is the everyday increment: bump a
+  counter, step an index, advance a pointer by a few bytes. If the amount fits in 1 to 8, ADDQ is
+  what you want; the only catch is the range wall.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code id="aq-instr">addq.w #1,d0</code> <span>type an amount from 1 to 8 and run it. In range it adds in one word; out of range, watch the assembler refuse to encode ADDQ and reach for ADDI instead.</span></div>
+    <div class="msim-ctrl">
+      <label for="aq-n">Amount #n (decimal)</label>
+      <input id="aq-n" type="text" value="1" maxlength="3" autocomplete="off" aria-describedby="aq-note">
+      <button type="button" id="aq-run">Run addq.w #n,d0</button>
+      <button type="button" id="aq-reset">Reset d0</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="aq-d0">$00000032</span><span class="mr-tag">destination</span></span>
+    </div>
+    <p class="msim-note" id="aq-note" aria-live="polite">d0 holds $0032 (50). Add 1 through 8 and it climbs in a single-word instruction. Type 9 and the line will not assemble as ADDQ at all, the quick field only reaches 8; the assembler needs ADDI for anything bigger.</p>
+  </div>
+  <figcaption>ADDQ carries its constant, 1 to 8, inside the opcode word itself, so it is 2 bytes with
+  no extension. Static fallback: addq.w #1,d0 with d0 = $0032 gives $0033; addq.w #8,d0 gives $003A;
+  addq.w #9,d0 does not assemble as ADDQ, since the quick field stops at 8.</figcaption>
+  </figure>
+  <p>The classic guarded increment, from ring collection: bump the ring count by one, but only if it
+  is below the 999 cap.</p>
+  <pre>	cmpi.w	<span class="n">#999</span>,(Ring_count).w	<span class="c">; does the player 1 have 999 or more rings?</span>
+	bhs.s	+			<span class="c">; if yes, skip the increment</span>
+	addq.w	<span class="n">#1</span>,(Ring_count).w	<span class="c">; add 1 to the ring count</span></pre>
+  <span class="src">s2disasm/s2.asm:24894-24896 (CollectRing)</span>
+  <p>The <code>cmpi</code>/<code>bhs</code> is the guard; the ADDQ is the increment. This exact shape,
+  compare against a cap, branch away if reached, otherwise ADDQ, is everywhere in the engine.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Two surprises. The amount is 1 to 8, full stop; <code>addq #9</code> is not an ADDQ and the assembler
+  will quietly encode <a href="#addi">ADDI</a> instead (bigger and slower). And <code>addq #n,An</code>
+  costs 8 cycles, not 4, and sets NO flags, one of several places where an address-register operation
+  behaves differently from the data-register one right next to it.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  ADDQ is the floor for adding 1 to 8; nothing beats it. Going the other way: 9 or more is <a href="#addi">ADDI</a>,
+  and a value already in a register is plain <a href="#add">ADD</a>. Note <code>addq #4,An</code> is a
+  common flag-preserving pointer bump, its selling point over <code>add</code>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>ADDQ is <code>0101 ddd 0 ss mmm rrr</code>: bits 11-9 are the data field (<code>001</code>-<code>111</code>
+    = 1 to 7, <code>000</code> = 8), bit 8 is 0 (marking ADDQ, not SUBQ), bits 7-6 the size, bits 5-0
+    the destination. <code>addq.w #1,d0</code> = <code>$5240</code>; <code>addq.w #8,d0</code> =
+    <code>$5040</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="sub">
+  <h3><span class="mn">SUB</span> <span class="syn">SUB.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; SUB.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by SUB">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from borrow"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="V set on signed overflow"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="C set on borrow"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of SUB">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">best case: <code>sub Dn,Dn</code>, byte or word. Same cost model as ADD:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (4 to 28 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
+      <tr><td><code>sub Dn,Dn</code></td><td>4c, 2b</td><td>8c, 2b</td></tr>
+      <tr><td><code>sub #n,Dn</code></td><td>8c, 4b</td><td>16c, 6b</td></tr>
+      <tr><td><code>sub (An),Dn</code></td><td>8c, 2b</td><td>14c, 2b</td></tr>
+      <tr><td><code>sub Dn,(An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
+    </table></div>
+    <p class="enc-note">Identical shape to ADD: 4 cycles base plus each operand's price, memory
+    destinations cost extra for the read-modify-write. c = CPU cycles, b = bytes.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for SUB">
+    <div class="og-row"><span class="og-side">Source &rarr; Dn</span>
+      <span class="og">Dn</span><span class="og">An&#8224;</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest &larr; Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Same as ADD: one operand is a data register, the grid is the other. &#8224; An
+    source is legal except in <code>.b</code>. Subtracting into an address register is <a href="#suba">SUBA</a>.</p>
+  </div>
+  <p>SUB subtracts and sets all the flags, and the one thing to fix in your head is the direction:
+  <code>sub.w &lt;ea&gt;,Dn</code> computes <code>Dn - &lt;ea&gt;</code>, so the source is the amount taken
+  away, not the thing being reduced. Read left to right it looks backward. Its most common job is
+  computing a gap, "how far is this from that", and then branching on the sign of the result to pick a
+  direction. Reach for plain SUB with a runtime value; small constants go to <a href="#subq">SUBQ</a>.</p>
+  <p>This single block from the water-level animation shows SUB, NEG, and ADD working together, and it
+  is the clearest "compute a gap, branch on its sign" example in the game:</p>
+  <pre>	move.w	(Water_Level_3).w,d0
+	sub.w	(Water_Level_2).w,d0
+	beq.s	++	<span class="c">; rts</span>
+	bcc.s	+
+	neg.w	d1
++	add.w	d1,(Water_Level_2).w</pre>
+  <span class="src">s2disasm/s2.asm:5356-5362 (DynamicWater)</span>
+  <p>SUB computes the gap and sets the flags; <code>beq</code> handles "already there", <code>bcc</code>
+  reads the sign to decide which way to move, <a href="#neg">NEG</a> flips the step when needed, and
+  <a href="#add">ADD</a> applies it. Run SUB in the <a href="#s1">flags demo</a> to watch a borrow set
+  C: try <code>$0000 - $0001</code>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  The operand order is the reverse of how you might say it out loud. <code>sub.w a,b</code> is
+  <code>b - a</code>, not <code>a - b</code>. Get it backward and the sign of every branch that follows
+  is inverted. When you only want the flags and not the difference, that is <a href="#cmp">CMP</a>.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Subtracting 1 to 8 from a data-alterable destination? <a href="#subq">SUBQ</a> (4c vs 8c). From an
+  address register? <a href="#suba">SUBA</a> (or a negative-offset
+  <a href="moving-data.html#lea">LEA</a>). Only
+  need the flags, not the result? <a href="#cmp">CMP</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>SUB is <code>1001 rrr ooo mmm rrr</code>, the same layout as ADD with prefix <code>1001</code>.
+    Opmode <code>000</code>/<code>001</code>/<code>010</code> = <code>Dn-&lt;ea&gt;&rarr;Dn</code> (b/w/l),
+    <code>100</code>/<code>101</code>/<code>110</code> = the memory direction. <code>sub.w d0,d1</code>
+    = <code>$9240</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="suba">
+  <h3><span class="mn">SUBA</span> <span class="syn">SUBA.w/.l &lt;ea&gt;,An</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by SUBA">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">no flags, exactly like ADDA</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of SUBA">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">register source, either size; the same table as <a href="#adda">ADDA</a> (8 to 22 cycles).</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for SUBA">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">Dn</span><span class="og">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og no">Dn</span><span class="og">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The mirror of <a href="#adda">ADDA</a>: destination always an An, no flags, no
+    byte size, word source sign-extended to 32 bits.</p>
+  </div>
+  <p>SUBA subtracts a value from an address register and, like ADDA, leaves every flag untouched. It
+  is how you rewind a pointer by a runtime amount without disturbing a comparison in progress. Same two
+  traps as ADDA apply, so it shares that entry's toy.</p>
+  <p>From the collision-array builder: rewind <code>a1</code> to the start of the current block, then
+  loop. The matching forward step in the same routine is an <a href="#adda">ADDA</a>, so one routine
+  shows both directions.</p>
+  <pre>	move.w	d4,(a2)+	<span class="c">; Store column of collision bits</span>
+	suba.w	<span class="n">#2*16</span>,a1	<span class="c">; Back to the start of the block</span>
+	subq.w	<span class="n">#1</span>,d5		<span class="c">; Get next bit in the row</span>
+	dbf	d2,.columnLoop	<span class="c">; Loop for each column of pixels in a block</span></pre>
+  <span class="src">s2disasm/s2.asm:43391-43394 (ConvertCollisionArray)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Identical to ADDA: no flags, and <code>suba.w</code> sign-extends its 16-bit source before
+  subtracting. See the <a href="#adda">ADDA toy</a> to watch both behaviors.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Rewinding a pointer by a fixed amount?
+  <a href="moving-data.html#lea">LEA</a>
+  (<code>lea -32(a0),a0</code>), flag-free and clear. SUBA wins for a runtime addend.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>SUBA is <code>1001 rrr ooo mmm rrr</code> with opmode <code>011</code> (word) or <code>111</code>
+    (long) marking the address-register destination. <code>suba.w a0,a1</code> = <code>$92C8</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="subi">
+  <h3><span class="mn">SUBI</span> <span class="syn">SUBI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by SUBI">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of SUBI">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">into a data register, byte or word; the same table as <a href="#addi">ADDI</a> (8 to 36 cycles).</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for SUBI">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Immediate source, data-or-memory destination, never an An (use <a href="#suba">SUBA</a>).
+    Same niche as <a href="#addi">ADDI</a> and just as uncommon.</p>
+  </div>
+  <p>SUBI subtracts an immediate constant, setting the flags. As with ADDI, a constant of 1 to 8 should
+  be <a href="#subq">SUBQ</a>, so SUBI only earns its place for larger constants applied directly to a
+  register or memory. The oil-slide friction routine uses it as the exact mirror of its ADDI: nudge the
+  inertia down toward the target when it is currently too high.</p>
+  <pre>	cmp.b	d0,d1
+	ble.s	++
+	subi.w	<span class="n">#$40</span>,inertia(a1)</pre>
+  <span class="src">s2disasm/s2.asm:5573-5575 (the oil-slide friction routine)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Same as ADDI: a 1-to-8 constant here wastes space over <a href="#subq">SUBQ</a>, and the assembler
+  will encode exactly the SUBI you wrote rather than optimize it down.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  1 to 8 into a data-alterable destination? <a href="#subq">SUBQ</a>. Value in a register? plain
+  <a href="#sub">SUB</a>. Address register? <a href="#suba">SUBA</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>SUBI is <code>0000 0100 ss mmm rrr</code> plus the immediate word(s). <code>subi.w #$40,d1</code>
+    = <code>$0441</code> then <code>$0040</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="subq">
+  <h3><span class="mn">SUBQ</span> <span class="syn">SUBQ.b/.w/.l #&lt;1-8&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by SUBQ">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">except into an An: then no flags change</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of SUBQ">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">into a data register; into an An it is 8 cycles and flag-free. Same table as <a href="#addq">ADDQ</a>.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for SUBQ">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og">#1-8</span><span class="og no">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og">Dn</span><span class="og">An&#8224;</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The mirror of <a href="#addq">ADDQ</a>: quick constant 1 to 8, same 1-8 range
+    wall, same &#8224; no-flags-into-An quirk (and the 8-cycle cost there).</p>
+  </div>
+  <p>SUBQ subtracts 1 to 8 in a single word, the cheapest decrement on the chip. The everyday
+  countdown: a timer ticking toward zero, a counter winding down. Its toy is <a href="#addq">ADDQ</a>'s
+  (the same 1-to-8 range wall, in the other direction).</p>
+  <p>The guarded countdown, mirror of ADDQ's guarded count-up: tick the demo timer down, but only while
+  time remains.</p>
+  <pre>	tst.w	(Demo_Time_left).w	<span class="c">; is there time left on the demo?</span>
+	beq.w	+			<span class="c">; if not, return</span>
+	subq.w	<span class="n">#1</span>,(Demo_Time_left).w	<span class="c">; subtract 1 from time left in demo</span></pre>
+  <span class="src">s2disasm/s2.asm:653-655 (the demo-mode timer)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Same wall as ADDQ: 1 to 8 only, and <code>subq #n,An</code> is 8 cycles with no flags. A decrement
+  that needs to notice hitting zero must read Z from the SUBQ itself, which works for a Dn or memory
+  destination but NOT for an An (which sets no flags).</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  SUBQ is the floor for subtracting 1 to 8; larger is <a href="#subi">SUBI</a>, a register value is
+  <a href="#sub">SUB</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>SUBQ is <code>0101 ddd 1 ss mmm rrr</code>, identical to ADDQ but with bit 8 = 1. <code>subq.w #1,d0</code>
+    = <code>$5340</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="neg">
+  <h3><span class="mn">NEG</span> <span class="syn">NEG.b/.w/.l &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by NEG">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set unless result is zero"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="C set unless result is zero"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of NEG">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">on a data register, byte or word (<code>.l</code> is 6c). Memory destinations cost more:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size (4 to 28 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>.b / .w</th><th>.l</th></tr>
+      <tr><td><code>neg Dn</code></td><td>4c, 2b</td><td>6c, 2b</td></tr>
+      <tr><td><code>neg (An)</code></td><td>12c, 2b</td><td>20c, 2b</td></tr>
+      <tr><td><code>neg d(An)</code></td><td>16c, 4b</td><td>24c, 4b</td></tr>
+    </table></div>
+    <p class="enc-note">c = CPU cycles, b = bytes. The memory forms are read-modify-write, hence the
+    jump in cost.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for NEG">
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">A single operand, the thing to negate, which must be data-alterable. You cannot
+    NEG an address register; move it into a data register first, or subtract it from zero another way.</p>
+  </div>
+  <p>NEG replaces a value with its two's-complement negative: <code>0 - value</code>, flipping the sign.
+  It is how a positive speed becomes a leftward one, a downward step becomes an upward one. Unlike CLR
+  or MOVE, NEG sets the carry and extend for any nonzero input, which matters if it is part of a
+  multi-word negate; and negating the most-negative value (<code>$8000</code> as a word) sets V, because
+  its positive counterpart does not fit.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code>neg.w d0</code> <span>type a value and negate it. Watch the two's-complement flip, and watch X and C light for any nonzero input, while V lights only for $8000.</span></div>
+    <div class="msim-ctrl">
+      <label for="ng-src">Value in d0 (hex)</label>
+      <input id="ng-src" type="text" value="0005" maxlength="4" autocomplete="off" aria-describedby="ng-note">
+      <button type="button" id="ng-run">Run neg.w d0</button>
+      <button type="button" id="ng-reset">Reset d0</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="ng-d0">$00000005</span><span class="mr-tag">destination</span></span>
+    </div>
+    <div class="msim-fl" aria-label="Condition codes after NEG">
+      <span class="fl-label">Flags after</span>
+      <span class="sfchip" id="ng-fx">X -</span><span class="sfchip" id="ng-fn">N -</span><span class="sfchip" id="ng-fz">Z -</span>
+      <span class="sfchip" id="ng-fv">V -</span><span class="sfchip" id="ng-fc">C -</span>
+    </div>
+    <p class="msim-note" id="ng-note" aria-live="polite">d0 holds $0005 (5). Negate it and the low word becomes $FFFB, which is -5 as a signed word; X and C light because the input was nonzero. Try $8000 and watch V light too; try $0000 and watch everything stay clear.</p>
+  </div>
+  <figcaption>NEG is 0 minus the value: the two's-complement flip. Static fallback: neg.w d0 with d0 =
+  $0005 gives $FFFB (-5) with X, N, C set; neg.w on $8000 gives $8000 back with V set (its positive does
+  not fit a signed word); neg.w on $0000 leaves 0 with X and C clear.</figcaption>
+  </figure>
+  <p>A real sign-flip, from the Buzzer badnik's main routine: reverse the horizontal velocity and mirror
+  the sprite at the same moment, so it turns around.</p>
+  <pre>	neg.w	x_vel(a0)
+	bchg	<span class="n">#render_flags.x_flip</span>,render_flags(a0)</pre>
+  <span class="src">s2disasm/s2.asm:24527-24528 (Obj28, the Buzzer badnik)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  NEG is arithmetic (two's complement), not <a href="#not">NOT</a> (one's complement): negating
+  <code>$0005</code> gives <code>$FFFB</code> (-5), while NOT gives <code>$FFFA</code>. And negating the
+  most-negative value returns it unchanged with V set, the one input NEG cannot actually flip.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  If the value came out of a subtraction, reordering the operands of that <a href="#sub">SUB</a> often
+  avoids the NEG entirely (compute the gap the other way round). To flip every bit rather than the sign,
+  that is <a href="#not">NOT</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>NEG is <code>0100 0100 ss mmm rrr</code>: bits 7-6 the size, bits 5-0 the destination.
+    <code>neg.w d0</code> = <code>$4440</code>, <code>neg.l d0</code> = <code>$4480</code>.</p>
+    </div>
+  </details>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; Comparing and testing</h2>
+
+<p>These four instructions exist to set the flags and nothing else. A compare is a subtraction that
+throws its result away and keeps only the condition codes, so the branch on the next line can act on
+"were these equal / which was bigger / is this zero" without disturbing either value. They are the
+setup half of nearly every <code>if</code> and every loop in the engine.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why subtract if you throw the answer away?</summary>
+  <div class="x-body">
+    <p>Because subtraction is exactly the operation whose flags answer "how do these two compare." If
+    <code>a - b</code> comes out zero, they were equal (Z set). If it borrowed, <code>a</code> was
+    smaller (C set, for unsigned). Its sign tells you which was bigger for signed values (N and V). So
+    the CPU does not need a separate "compare" circuit: it runs a subtract, sets the flags from it, and
+    simply does not store the difference. That is all CMP is. TST is the same idea against a fixed zero.</p>
+    <p>The payoff is that you keep both operands intact. <code>cmp.w d1,d0</code> tells you how
+    <code>d0</code> relates to <code>d1</code> and leaves both untouched, so the following code can still
+    use them. If you actually wanted the difference, you would use <a href="#sub">SUB</a> instead.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; CMP, CMPA, CMPI, TST: which one do I use?</summary>
+  <div class="x-body">
+    <p>They are one idea (subtract, keep only the flags) aimed at different operands, and the suffix
+    tells you which. <a href="#cmp">CMP</a> compares against a DATA register. <a href="#cmpa">CMPA</a>
+    compares against an ADDRESS register (the <code>A</code>). <a href="#cmpi">CMPI</a> compares against
+    an IMMEDIATE constant (the <code>I</code>), and can reach a value in memory directly.
+    <a href="#tst">TST</a> is the special case of comparing against zero, the most common test of all, so
+    it gets its own tiny instruction.</p>
+    <p>Mostly the assembler picks for you from what you wrote: <code>cmp #5,d0</code> becomes CMPI because
+    the source is a constant, and comparing against an An becomes CMPA. The one you reach for on purpose
+    is TST, whenever the question is simply "is this zero or negative."</p>
+  </div>
+</details>
+
+<div class="instr" id="cmp">
+  <h3><span class="mn">CMP</span> <span class="syn">CMP.b/.w/.l &lt;ea&gt;,Dn</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by CMP">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">sets N Z V C from the comparison; leaves X alone</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of CMP">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">byte or word register source; <code>.l</code> is 6 cycles, memory sources add their price.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for CMP">
+    <div class="og-row"><span class="og-side">Source (vs Dn)</span>
+      <span class="og">Dn</span><span class="og">An&#8224;</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">CMP computes <code>Dn - source</code> and keeps only the flags; the destination is
+    always the data register being compared. &#8224; an An source is allowed in <code>.w</code>/<code>.l</code>
+    but not <code>.b</code>. An immediate source is <a href="#cmpi">CMPI</a>, not CMP, and comparing
+    against an address register is <a href="#cmpa">CMPA</a>.</p>
+  </div>
+  <p>CMP compares a value against a data register by subtracting and keeping only the flags. It is the
+  most common flag-setter on the chip, the front half of nearly every conditional branch. The boot
+  ROM's checksum routine uses two of them back to back, one to end a loop and one to gate the result:</p>
+  <pre>ChecksumLoop:
+	add.w	(a0)+,d1
+	cmp.l	a0,d0
+	bhs.s	ChecksumLoop
+	movea.l	<span class="n">#Checksum</span>,a1	<span class="c">; read the checksum</span>
+	cmp.w	(a1),d1		<span class="c">; compare correct checksum to the one in ROM</span>
+	bne.w	ChecksumError	<span class="c">; if they don't match, branch</span></pre>
+  <span class="src">s2disasm/s2.asm:387-393 (the boot-time checksum check)</span>
+  <p>The first CMP plus <code>bhs</code> is the loop terminator (compare the pointer against the end
+  address); the second CMP plus <code>bne</code> decides pass or fail. Run <code>cmp</code> in the
+  <a href="#s1">flags demo</a> to see it set the flags exactly as a subtract would while leaving both
+  operands alone.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  The comparison direction follows the operands: <code>cmp.w src,Dn</code> sets flags for
+  <code>Dn - src</code>, so <code>bcs</code> after it means "Dn was below src" (unsigned) and
+  <code>blt</code> means "Dn was less than src" (signed). Reading the branch condition against the wrong
+  operand order is a classic off-by-a-direction bug. And CMP does not touch X, so a following
+  multi-precision step still sees the old extend bit.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Comparing against zero? <a href="#tst">TST</a> (4 cycles and no immediate word, versus
+  <code>cmpi #0</code>'s 8). Comparing against an immediate? <a href="#cmpi">CMPI</a>. Against an address
+  register? <a href="#cmpa">CMPA</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>CMP is <code>1011 rrr ooo mmm rrr</code>: bits 11-9 the data register, bits 8-6 the size
+    (<code>000</code>/<code>001</code>/<code>010</code> = b/w/l), bits 5-0 the source. <code>cmp.w (a1),d1</code>
+    = <code>$B251</code>. (The other opmodes of the <code>1011</code> prefix are <a href="#eor">EOR</a>
+    and <a href="#cmpa">CMPA</a>.)</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="cmpa">
+  <h3><span class="mn">CMPA</span> <span class="syn">CMPA.w/.l &lt;ea&gt;,An</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by CMPA">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of CMPA">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">both word and long; memory sources add their price. No byte form.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for CMPA">
+    <div class="og-row"><span class="og-side">Source (vs An)</span>
+      <span class="og">Dn</span><span class="og">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">Compares against an address register (computes <code>An - source</code>). Any source
+    mode is legal, but there is no byte size, and a word source is sign-extended to 32 bits before the
+    compare, so it always compares the full pointer.</p>
+  </div>
+  <p>CMPA compares a value against an address register. You need it because plain CMP only compares
+  against a data register, and <a href="#tst">TST</a> cannot take an An on the plain 68000, so testing a
+  pointer against zero or a bound goes through CMPA. From the loop that draws the special-stage track,
+  a pointer-vs-zero test that ends the loop:</p>
+  <pre>	cmpa.w	<span class="n">#0</span>,a5	<span class="c">; Have all 7 lines been drawn?</span></pre>
+  <span class="src">s2disasm/s2.asm:7115 (the special-stage line renderer)</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  The sign-extension bites here. <code>cmpa.w #$8000,a0</code> compares <code>a0</code> against
+  <code>$FFFF8000</code> (the word sign-extended), not <code>$00008000</code>. When comparing a pointer
+  against a high address, use <code>.l</code> or make sure the sign extension lands where you mean.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  If the pointer is already sitting in a data register, plain <a href="#cmp">CMP</a> is a cycle cheaper.
+  But to test an An directly, CMPA is the tool (TST cannot).</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>CMPA shares CMP's <code>1011</code> prefix; opmode <code>011</code> (word) or <code>111</code>
+    (long) selects the address-register form. <code>cmpa.w #0,a5</code> = <code>$BAFC</code> then the
+    immediate word <code>$0000</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="cmpi">
+  <h3><span class="mn">CMPI</span> <span class="syn">CMPI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by CMPI">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of CMPI">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">immediate against a data register, byte or word; longs and memory cost more.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for CMPI">
+    <div class="og-row"><span class="og-side">Dest (vs #n)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Compares an immediate against a data register or memory (computes
+    <code>dest - #n</code>). Not against an address register (use <a href="#cmpa">CMPA</a>). Its real
+    strength is reaching a struct field in memory directly, no load first.</p>
+  </div>
+  <p>CMPI compares an immediate constant against a register or, usefully, straight against a memory
+  field. That is its edge over CMP: you can test an object's field in place. From the same moving object
+  as the ADD example, a two-sided bounds check that deletes the object when it leaves the screen:</p>
+  <pre>	cmpi.w	<span class="n">#0</span>,x_pos(a0)
+	blt.w	JmpTo_DeleteObject
+	cmpi.w	<span class="n">#$100</span>,x_pos(a0)
+	bgt.w	JmpTo_DeleteObject</pre>
+  <span class="src">s2disasm/s2.asm:9643-9646 (Obj5F)</span>
+  <p>Each CMPI reads the position field and each branch reacts. Note the first line, <code>cmpi.w #0</code>,
+  is exactly the case that should be <a href="#tst">TST</a>, cheaper and no immediate word; real code is
+  full of this small missed optimization.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  <code>cmpi.w #0,&lt;ea&gt;</code> works but wastes 4 cycles and an immediate word over <a href="#tst">TST</a>,
+  which does the same "compare to zero" for free by comparison. Reach for TST whenever the constant is
+  zero.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Against zero, always <a href="#tst">TST</a>. If the value is already in a register and you are
+  comparing two live values, <a href="#cmp">CMP</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>CMPI is <code>0000 1100 ss mmm rrr</code> plus the immediate word(s): bits 7-6 the size, bits 5-0
+    the destination. <code>cmpi.w #0,x_pos(a0)</code> = <code>$0C68</code>, then <code>$0000</code>, then
+    the displacement word for <code>x_pos(a0)</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="tst">
+  <h3><span class="mn">TST</span> <span class="syn">TST.b/.w/.l &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by TST">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of TST">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">register or <code>(An)</code>, any size; other memory modes add their price.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for TST">
+    <div class="og-row"><span class="og-side">Operand</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">One operand, compared against zero. An address-register operand is NOT legal on
+    the plain 68000 (only on the 68020 and later), so <code>tst.w a0</code> is refused, use
+    <code>cmpa.w #0,a0</code>. Testing a constant is pointless and illegal.</p>
+  </div>
+  <p>TST compares an operand against zero in a single step, setting N (is it negative?) and Z (is it
+  zero?), and forcing V and C to zero. It is the cheapest way to ask "is this zero or negative", and it
+  is everywhere, guarding routines that should only run when a flag byte is set or a timer still has
+  time on it:</p>
+  <pre>	tst.b	(Water_flag).w
+	beq.w	Vint0_noWater</pre>
+  <span class="src">s2disasm/s2.asm:548-549 (the V-blank handler)</span>
+  <p>The TST reads the flag byte and sets Z; the <code>beq</code> skips the water handling when it is
+  zero. To see how it differs from a compare, pick <code>tst</code> in the <a href="#s1">flags demo</a>:
+  it needs no second operand and always clears V and C.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  TST cannot take an address register on the 68000, a real trap if you learned on a later chip where it
+  can. To test a pointer for zero, use <a href="#cmpa">CMPA</a> <code>#0,An</code>. Also note TST clears
+  V and C (unlike CMP, which sets them), so code that expected a carry from a "comparison" will be
+  surprised.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  TST is already the floor for "compare to zero"; it is what <a href="#cmpi">CMPI</a> <code>#0</code>
+  should have been. Nothing is cheaper. For an address register, its stand-in is <a href="#cmpa">CMPA</a>
+  <code>#0,An</code>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>TST is <code>0100 1010 ss mmm rrr</code>: bits 7-6 the size, bits 5-0 the operand.
+    <code>tst.w (Demo_Time_left).w</code> = <code>$4A78</code> then the absolute-short address word.</p>
+    </div>
+  </details>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s4">4 &middot; Multiplying and dividing</h2>
+
+<p>The 68000 can multiply and divide in hardware, which was a real luxury in 1988, but the operations
+are slow and full of sharp edges. A multiply takes tens of cycles; a divide well over a hundred, the
+most expensive instructions on the whole chip. Both work on 16-bit operands and produce a wider result,
+and divide has two ways to go wrong that you must guard against yourself.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why are these so much slower than add?</summary>
+  <div class="x-body">
+    <p>Because the CPU has no single-step multiply or divide circuit; it works them out the long way,
+    one bit at a time, the same way you would do long multiplication or long division on paper. A 16-bit
+    multiply is up to sixteen add-and-shift steps, so it lands around 40 to 70 cycles depending on the
+    number's bit pattern. A divide is even more work: DIVU runs up to about 140 cycles and DIVS, the
+    signed version, up to about 158, making it the single slowest instruction the 68000 has.</p>
+    <p>The timing is <em>data-dependent</em>, which is unusual: the exact cycle count depends on the
+    values, not just the instruction. This is why performance-sensitive code avoids these when it can,
+    reaching for a shift when it only needs to multiply or divide by a power of two (that is the cheaper
+    cousin on every entry here). When you genuinely need a general multiply or divide, they are there,
+    just budget for the cost.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; What does "16 by 16 into 32" mean, and what is signed vs unsigned here?</summary>
+  <div class="x-body">
+    <p>Two 16-bit numbers can multiply to almost 32 bits (two values near 65535 multiply to over four
+    billion), so the product needs the WHOLE register, not just its low half. That is why MULU and MULS
+    write all 32 bits of the destination and you read the answer as a long. Divide runs the other way: it
+    takes a 32-bit number and a 16-bit one and hands back a 16-bit quotient plus a 16-bit remainder,
+    packed together into the one register.</p>
+    <p>The U and S endings pick how the bits are read. <a href="#mulu">MULU</a> and <a href="#divu">DIVU</a>
+    are UNSIGNED (every value is zero or positive); <a href="#muls">MULS</a> and <a href="#divs">DIVS</a>
+    are SIGNED (a top bit set means negative). They give different answers the moment a top bit is
+    involved, so you use the pair that matches how you mean the numbers: unsigned for counts and sizes,
+    signed for anything that can go negative, like a velocity.</p>
+  </div>
+</details>
+
+<div class="instr" id="mulu">
+  <h3><span class="mn">MULU</span> <span class="syn">MULU.w &lt;ea&gt;,Dn</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by MULU">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+    <span class="fl-caption">N and Z from the 32-bit product; V and C forced to 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of MULU">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">38 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">and up: the count is 38 + 2 per 1-bit in the source, so it grows with the value:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing (38 to 70 cycles, data-dependent)</summary>
+    <div class="enc-body">
+    <p>MULU takes <code>38 + 2n</code> cycles, where n is the number of 1-bits in the 16-bit source. A
+    source of 0 is the cheapest at 38; a source of <code>$FFFF</code> (sixteen 1-bits) is the dearest at
+    <code>38 + 32 = 70</code>. Add the addressing-mode price for a memory source. The opcode is 2 bytes;
+    an immediate source adds a word (4 bytes total). These are core-CPU cycles; Genesis memory adds wait
+    states. Verified against the MC68000 User's Manual timing formula.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for MULU">
+    <div class="og-row"><span class="og-side">Source (x Dn)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">The source is a 16-bit word (any data addressing mode, but not an An); the
+    destination is always a data register, whose low word is the other factor and which receives the
+    full 32-bit product. <code>mulu.w a1,d0</code> is refused (An is not a data mode); move it to a Dn
+    first.</p>
+  </div>
+  <p>MULU multiplies two unsigned 16-bit words and writes the full 32-bit product back into the data
+  register. The important word is <em>full</em>: two 16-bit values can multiply up to nearly 32 bits, so
+  the result uses the whole register, and the upper half, previously ignored, now holds real data. Its
+  classic job is turning an object's index into a RAM offset by scaling it up by the object size:</p>
+  <pre>	mulu.w	<span class="n">#object_size</span>,d0
+	addi.l	<span class="n">#Object_RAM</span>,d0
+	movea.l	d0,a1 <span class="c">; a1=object</span></pre>
+  <span class="src">s2disasm/s2.asm:23059, 23061-23062 (object-slot address math)</span>
+  <p>The MULU scales the index; the <code>addi.l</code> adds the base of the object RAM; the
+  <code>movea.l</code> turns the result into a live pointer. The whole 32-bit product matters here,
+  which the toy makes visible.</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code>mulu.w d1,d0</code> <span>multiply d0's low word by d1's low word. Watch the product spread across all 32 bits of d0, not just the low 16.</span></div>
+    <div class="msim-ctrl">
+      <label for="mu-a">d0 low word (hex)</label>
+      <input id="mu-a" type="text" value="0140" maxlength="4" autocomplete="off" aria-describedby="mu-note">
+      <label for="mu-b">d1 low word (hex)</label>
+      <input id="mu-b" type="text" value="0040" maxlength="4" autocomplete="off" aria-describedby="mu-note">
+      <button type="button" id="mu-run">Run mulu.w d1,d0</button>
+      <button type="button" id="mu-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="mu-d0">$00000140</span><span class="mr-tag">factor / product</span></span>
+      <span class="mr-arrow" aria-hidden="true">x d1</span>
+      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="mu-d1">$00000040</span><span class="mr-tag">factor</span></span>
+    </div>
+    <p class="msim-note" id="mu-note" aria-live="polite">$0140 x $0040 = $00005000, which still fits the low word. Now try $FFFF x $FFFF: the product $FFFE0001 fills the ENTIRE register, and if you read only d0's low word afterward you would see $0001 and lose the rest.</p>
+  </div>
+  <figcaption>MULU writes a 32-bit product into the whole register. Static fallback: mulu.w of $0140 and
+  $0040 gives d0 = $00005000; mulu.w of $FFFF and $FFFF gives d0 = $FFFE0001, using all 32 bits, so the
+  result must be read as a long.</figcaption>
+  </figure>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  The product is 32 bits and lands in the whole register, so after a MULU you read the destination as a
+  long (or shift the piece you want down). Code that keeps treating it as a word silently drops the top
+  half. Also: only the low word of the destination is used as the input factor; whatever was in its high
+  word is overwritten by the result.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Multiplying by a power of two? A left shift is far cheaper, roughly 6 to 8 cycles against MULU's 38 to
+  70. Sonic's own code branches on exactly this: it uses <code>lsl</code> when the object size is a power
+  of two and MULU otherwise. Shifts live on the Shifts &amp; Bits page (coming).</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>MULU is <code>1100 rrr 011 mmm rrr</code>: bits 11-9 the destination Dn, bits 8-6 <code>011</code>
+    (the MULU word opmode), bits 5-0 the source. <code>mulu.w #$50,d0</code> = <code>$C0FC</code> then
+    the immediate word <code>$0050</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="muls">
+  <h3><span class="mn">MULS</span> <span class="syn">MULS.w &lt;ea&gt;,Dn</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by MULS">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of MULS">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">38 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">and up to 70, by the same data-dependent rule as MULU (counting bit-pair transitions).</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for MULS">
+    <div class="og-row"><span class="og-side">Source (x Dn)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">Identical shape to MULU: 16-bit data source, full 32-bit product into Dn. The only
+    difference is signed interpretation, source words <code>$8000</code>-<code>$FFFF</code> count as
+    negative.</p>
+  </div>
+  <p>MULS is the signed multiply: same mechanics as MULU, but each 16-bit factor is read as a signed
+  number, so the product carries the right sign. It is the heart of trigonometry-driven motion. This is
+  the textbook idiom, from a spinning object that moves along its facing angle:</p>
+  <pre>	move.b	angle(a0),d0
+	bsr.w	CalcSine
+	muls.w	objoff_14(a0),d0
+	muls.w	objoff_14(a0),d1
+	asr.w	<span class="n">#8</span>,d0
+	asr.w	<span class="n">#8</span>,d1
+	add.w	d1,x_pos(a0)
+	add.w	d0,y_pos(a0)</pre>
+  <span class="src">s2disasm/s2.asm:9635-9642 (Obj5F, moving along its angle)</span>
+  <p>Sine and cosine come back as signed fractions; MULS scales each by the speed; the <code>asr #8</code>
+  shifts the fractional part away; the ADDs apply the result to the position. MULS is what makes the sign
+  come out right when the object faces left or up.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  MULU and MULS give different products the moment a factor's top bit is set. <code>$FF80</code> is 65408
+  to MULU but -128 to MULS, so the products differ in both value and sign. Pick the one that matches how
+  you mean the numbers; mixing them up is a silent, hard-to-spot bug.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Signed multiply by a power of two is an arithmetic left shift (<code>asl</code>), which preserves the
+  sign and costs a fraction of MULS. See the MULU toy above for the widening behavior they share.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>MULS is <code>1100 rrr 111 mmm rrr</code>: opmode <code>111</code> (versus MULU's <code>011</code>)
+    is the only difference. <code>muls.w d2,d1</code> = <code>$C3C2</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="divu">
+  <h3><span class="mn">DIVU</span> <span class="syn">DIVU.w &lt;ea&gt;,Dn</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by DIVU">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="V set on overflow"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+    <span class="fl-caption">N and Z from the quotient; V set if the quotient overflows 16 bits</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of DIVU">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">~140 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">data-dependent, but always huge; the overflow early-out is far cheaper (~10 cycles).</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing (up to ~140 cycles)</summary>
+    <div class="enc-body">
+    <p>DIVU runs up to about 140 cycles, with less than 10% spread between the fastest and slowest real
+    divides, so budget for roughly 130 to 140. The two failure paths are quick: dividing by zero takes
+    the exception almost immediately, and the overflow case exits in around 10 cycles. Add the
+    addressing-mode price for a memory divisor. Core-CPU cycles; Genesis memory adds wait states.
+    Verified against the MC68000 User's Manual.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for DIVU">
+    <div class="og-row"><span class="og-side">Source (divisor)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">The source is the 16-bit divisor; the destination Dn holds the 32-bit dividend and
+    receives the result. If your dividend is really only 16 bits, zero the high word of Dn first
+    (<code>moveq #0,d0</code> before loading the word), or the extra bits corrupt the division.</p>
+  </div>
+  <p>DIVU divides a 32-bit dividend by a 16-bit divisor and packs both answers into the destination: the
+  quotient in the low word, the remainder in the high word. It is the inverse of the MULU scaling above,
+  turning a RAM offset back into an index, and it appears wherever a ratio is needed:</p>
+  <pre>	divu.w	<span class="n">#object_size</span>,d0
+	andi.w	<span class="n">#$7F</span>,d0</pre>
+  <span class="src">s2disasm/s2.asm:22771, 22773 (offset back to slot number)</span>
+  <p>The DIVU produces the index as its low-word quotient; the <code>andi</code> masks off to just that
+  quotient. But DIVU has two ways to blow up, and the toy shows both:</p>
+  <figure class="diagram">
+  <div class="movesim">
+    <div class="msim-instr"><code>divu.w d1,d0</code> <span>divide the 32-bit d0 by the 16-bit d1. The quotient lands in d0's low word, the remainder in its high word. Watch the two ways it can fail.</span></div>
+    <div class="msim-ctrl">
+      <label for="dv-a">d0 dividend (hex, 32-bit)</label>
+      <input id="dv-a" type="text" value="00000064" maxlength="8" autocomplete="off" aria-describedby="dv-note">
+      <label for="dv-b">d1 divisor (hex, 16-bit)</label>
+      <input id="dv-b" type="text" value="0006" maxlength="4" autocomplete="off" aria-describedby="dv-note">
+      <button type="button" id="dv-run">Run divu.w d1,d0</button>
+      <button type="button" id="dv-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="dv-d0">$00000064</span><span class="mr-tag">dividend / result</span></span>
+      <span class="mr-arrow" aria-hidden="true">/ d1</span>
+      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="dv-d1">$00000006</span><span class="mr-tag">divisor</span></span>
+    </div>
+    <p class="msim-note" id="dv-note" aria-live="polite">100 / 6 = 16 remainder 4, so d0 becomes $0004 0010: remainder $0004 in the high word, quotient $0010 in the low word. Try divisor 0 (divide-by-zero exception) or a dividend like $00200000 with divisor 1 (quotient too big, overflow).</p>
+  </div>
+  <figcaption>DIVU packs quotient (low word) and remainder (high word) into one register, and has two
+  failure modes. Static fallback: $00000064 / $0006 gives d0 = $00040010 (quotient 16, remainder 4);
+  divisor $0000 raises the zero-divide exception; a quotient over $FFFF sets V and leaves d0 unchanged.</figcaption>
+  </figure>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Two traps, and neither sets a flag you would naturally check. Dividing by zero does not set a flag at
+  all: it takes the <strong>zero-divide exception</strong> (vector 5), jumping to the error handler
+  mid-instruction. And if the quotient will not fit 16 bits (the dividend's high word is at least the
+  divisor), DIVU sets <strong>V</strong>, leaves the destination completely unchanged, and does NOT trap,
+  so you must test V yourself or silently use a stale value. Guard the divisor against zero, and check V
+  when the dividend could be large.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Dividing by a power of two? A right shift (<code>lsr</code>) is around 8 cycles against DIVU's ~140,
+  and cannot divide by zero or overflow. Sonic uses <code>lsr</code> for power-of-two sizes and DIVU
+  only otherwise. Shifts are on the Shifts &amp; Bits page (coming).</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>DIVU is <code>1000 rrr 011 mmm rrr</code>: bits 11-9 the destination Dn, bits 8-6 <code>011</code>
+    (DIVU word), bits 5-0 the source. <code>divu.w #6,d0</code> = <code>$80FC</code> then <code>$0006</code>.
+    (The <code>1000</code> prefix is shared with <a href="#or">OR</a>.)</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="divs">
+  <h3><span class="mn">DIVS</span> <span class="syn">DIVS.w &lt;ea&gt;,Dn</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by DIVS">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of DIVS">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">~158 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">the single slowest instruction on the 68000. Same two failure modes as DIVU.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for DIVS">
+    <div class="og-row"><span class="og-side">Source (divisor)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">Signed version of DIVU: same quotient-low, remainder-high packing, same two
+    failure modes, but the operands and quotient are signed and the remainder takes the sign of the
+    dividend.</p>
+  </div>
+  <p>DIVS is the signed divide, for when the dividend can be negative. It shares everything with DIVU
+  except the sign handling, and it is even slower. A real fractional scale, dividing by a compile-time
+  ratio the assembler works out:</p>
+  <pre>	divs.w	<span class="n">#256*44/100</span>,d0 <span class="c">; Divide by 112, which is 44% of 256</span></pre>
+  <span class="src">s2disasm/s2.asm:15839 (a background-scaling calculation)</span>
+  <p>The divisor <code>256*44/100</code> is computed at assembly time to 112; DIVS divides <code>d0</code>
+  by it. Its toy is the DIVU toy above (same quotient / remainder packing and the same two traps).</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Same divide-by-zero and overflow traps as DIVU, plus a subtlety: DIVS truncates toward zero while an
+  arithmetic shift (<code>asr</code>) rounds toward negative infinity, so <code>divs #2</code> and
+  <code>asr #1</code> give different answers on negative numbers. They are not interchangeable for signed
+  division by two.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Signed divide by a power of two is <code>asr</code>, vastly cheaper, but mind the rounding difference
+  in the gotcha above. Shifts are on the Shifts &amp; Bits page (coming).</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>DIVS is <code>1000 rrr 111 mmm rrr</code>: opmode <code>111</code> (versus DIVU's <code>011</code>).
+    <code>divs.w #$30,d0</code> = <code>$81FC</code> then <code>$0030</code>.</p>
+    </div>
+  </details>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s5">5 &middot; Bitwise logic</h2>
+
+<p>The last family works on individual bits rather than on numbers as a whole. AND, OR, and EOR combine
+two bit patterns bit by bit; NOT flips every bit of one. This is how you pack several yes/no flags into
+a single byte and then read or change them: mask bits off with AND, switch them on with OR, flip them
+with EOR. Every one of these also sets N and Z from the result and forces V and C to zero, so you can
+branch on whether the outcome was zero.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is a bit mask, and why pack flags into one byte?</summary>
+  <div class="x-body">
+    <p>Registers and memory are precious, and most game state is yes/no: on the ground or not, facing
+    left or right, invincible or not. Rather than spend a whole byte on each, the engine packs eight of
+    these into the eight bits of a single "flag byte." Each bit is one flag.</p>
+    <p>A <strong>mask</strong> is a second bit pattern that says which bits you care about. Pair a mask
+    with the right logic instruction and you edit just those bits: AND with a mask clears the bits that
+    are 0 in it, OR sets the bits that are 1, EOR flips them, and the bits you did not name are left
+    exactly alone. That is why these three show up constantly on status bytes, hardware registers, and
+    the art-tile words that carry flip and palette flags.</p>
+  </div>
+</details>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; a flag byte and its three edits</span>
+<p>Toy bits, to make masking concrete. Say a status byte packs three flags, and right now the player is
+on the ground, not jumping, not invincible:</p>
+<pre>	status = <span class="n">%00000001</span>	<span class="c">; bit 0 = on-ground, bit 1 = jumping, bit 2 = invincible</span></pre>
+<p>Three edits, each touching only the bit its mask names:</p>
+<div style="font-size:.92rem; line-height:1.95; margin:.2rem 0;">
+  <div><code>or.b #%00000010,status</code> &nbsp;sets jumping on&nbsp; &rarr; <code class="v">%00000011</code></div>
+  <div><code>and.b #%11111011,status</code> &nbsp;clears invincible (already 0 here)&nbsp; &rarr; <code class="v">%00000011</code></div>
+  <div><code>eor.b #%00000100,status</code> &nbsp;toggles invincible on&nbsp; &rarr; <code class="v">%00000111</code></div>
+</div>
+<p>Every other bit is left as it was. That is the whole point of masking: change the bits you name, keep
+the rest. (The <code>%</code> prefix is real assembler syntax for a binary constant, the way <code>$</code>
+marks hex.)</p>
+</div>
+
+<p>One real routine shows nearly the whole family working together. This is the joypad reader, building
+the "pressed this frame" byte from the raw controller state, and it uses AND, ANDI, OR, EOR, and NOT in
+a tight sequence:</p>
+<pre>	or.b	d1,d0	<span class="c">; Fuse them into one controller bit array</span>
+	not.b	d0
+	move.b	(a0),d1	<span class="c">; Get button press data</span>
+	eor.b	d0,d1	<span class="c">; Toggle off held buttons</span>
+	move.b	d0,(a0)+	<span class="c">; Store raw controller input for held button data</span>
+	and.b	d0,d1
+	move.b	d1,(a0)+	<span class="c">; Store pressed controller input</span></pre>
+<span class="src">s2disasm/s2.asm:1380-1386 (Joypad_Read)</span>
+<p>OR merges, NOT inverts the pad's inverted logic, EOR finds what changed since last frame, and AND
+keeps just the new presses. The result is the byte every object reads to see which buttons were tapped.
+Play with each operation in the bitwise visualizer, which shows the bits themselves:</p>
+
+<figure class="diagram">
+<div class="movesim" id="bitsim">
+  <div class="msim-instr"><code id="bt-instr">and.b d1,d0</code> <span>pick an operation and watch it work bit by bit on a byte. AND masks bits OFF, OR switches them ON, EOR flips them, NOT inverts all of them.</span></div>
+  <div class="fpick" role="group" aria-label="Pick a logic operation">
+    <button type="button" class="bt-op" data-op="and" aria-pressed="true">and</button>
+    <button type="button" class="bt-op" data-op="or" aria-pressed="false">or</button>
+    <button type="button" class="bt-op" data-op="eor" aria-pressed="false">eor</button>
+    <button type="button" class="bt-op" data-op="not" aria-pressed="false">not</button>
+  </div>
+  <div class="msim-ctrl">
+    <label for="bt-val">d0 value (hex byte)</label>
+    <input id="bt-val" type="text" value="6C" maxlength="2" autocomplete="off" aria-describedby="bt-note">
+    <label for="bt-mask" id="bt-masklab">d1 mask (hex byte)</label>
+    <input id="bt-mask" type="text" value="3F" maxlength="2" autocomplete="off" aria-describedby="bt-note">
+    <button type="button" id="bt-run">Run</button>
+    <button type="button" id="bt-reset">Reset</button>
+  </div>
+  <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
+    <div>value&nbsp; <span class="mr-val" id="bt-vb" style="font-size:.95rem;">0110 1100</span></div>
+    <div id="bt-maskrow">mask&nbsp;&nbsp; <span class="mr-val" id="bt-mb" style="font-size:.95rem;">0011 1111</span></div>
+    <div>result <span class="mr-val" id="bt-rb" style="font-size:.95rem;">0010 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="bt-rh">$2C</span></div>
+  </div>
+  <p class="msim-note" id="bt-note" aria-live="polite">and.b $3F,$6C: the mask $3F is 0011 1111, so AND keeps the low six bits and forces the top two to 0. Result $2C. Switch to OR (turns bits on where the mask is 1), EOR (flips them), or NOT (inverts every bit, no mask).</p>
+</div>
+<figcaption>The four bitwise operations, shown on the actual bits. Static fallback: AND with mask $3F
+clears the top two bits of a byte; OR with $C0 sets the top two; EOR with $FF flips all eight (same as
+NOT); NOT inverts every bit with no mask at all.</figcaption>
+</figure>
+
+<div class="instr" id="and">
+  <h3><span class="mn">AND</span> <span class="syn">AND.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; AND.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by AND">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of AND">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">best case: <code>and Dn,Dn</code>, byte or word. Memory destinations cost more (read-modify-write).</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for AND">
+    <div class="og-row"><span class="og-side">Source &rarr; Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest &larr; Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Like ADD, AND has two directions and one operand is always a data register. Note An
+    is never legal (you cannot AND an address register), and an immediate source is <a href="#andi">ANDI</a>.
+    <code>and.w d0,a1</code> is refused; mask in a data register instead.</p>
+  </div>
+  <p>AND keeps a result bit set only where BOTH inputs have it set, which makes it the tool for masking
+  bits OFF: put 0 in the mask everywhere you want cleared, 1 everywhere you want kept. The common idiom is
+  clearing selected status bits with an inverted mask, here from the code that suffocates a drowning
+  player:</p>
+  <pre>	not.b	d1
+	and.b	d1,status(a0)</pre>
+  <span class="src">s2disasm/s2.asm:49716-49717 (Obj07, drowning)</span>
+  <p><a href="#not">NOT</a> flips the mask so the bits to remove become 0, then AND clears them and
+  leaves every other status bit untouched. See it on the bits in the <a href="#bitsim">bitwise
+  visualizer</a> (pick <code>and</code>), and see it set N and Z in the <a href="#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Masking a register all the way to zero with <code>and #0</code> works but wastes space and cycles;
+  <code>moveq #0,Dn</code> is smaller and clearer. And unlike the arithmetic instructions, AND always
+  clears V and C, so do not expect a carry out of it.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Clearing or testing a SINGLE bit? <code>BCLR</code> and <code>BTST</code> (on the Shifts &amp; Bits
+  page, coming) say it in one instruction. Zeroing a whole register
+  is <code>moveq #0</code>, not <code>and #0</code>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>AND is <code>1100 rrr ooo mmm rrr</code>: bits 11-9 the data register, bits 8-6 the opmode and
+    direction (<code>000</code>/<code>001</code>/<code>010</code> = <code>&lt;ea&gt;,Dn</code> b/w/l,
+    <code>100</code>/<code>101</code>/<code>110</code> = <code>Dn,&lt;ea&gt;</code>), bits 5-0 the effective
+    address. <code>and.b d1,d0</code> = <code>$C001</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="andi">
+  <h3><span class="mn">ANDI</span> <span class="syn">ANDI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ANDI">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ANDI">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">immediate mask into a data register; memory destinations cost more.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for ANDI">
+    <div class="og-row"><span class="og-side">Dest (with #n)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The immediate form of AND: mask a constant against a register or memory. It is what
+    the assembler uses when you write <code>and #n,&lt;ea&gt;</code>. (Privileged <code>andi #n,SR</code>
+    and <code>andi #n,CCR</code> forms exist too, but those belong to the Flow &amp; System page.)</p>
+  </div>
+  <p>ANDI applies a constant mask, the everyday way to clear specific bits of a flag byte or hardware
+  register in place. From the sprite code, clearing both flip bits of an object's render flags before
+  setting the correct ones:</p>
+  <pre>	andi.b	<span class="n">#~(1&lt;&lt;render_flags.x_flip|1&lt;&lt;render_flags.y_flip)</span>,render_flags(a0)</pre>
+  <span class="src">s2disasm/s2.asm:38091 (the sprite render-flag update)</span>
+  <p>The <code>~(...)</code> builds the inverted mask at assembly time (zeros where the flip bits are),
+  so ANDI clears exactly those two bits and leaves the rest of the render flags alone.</p>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  A single bit is <code>BCLR</code>
+  (Shifts &amp; Bits page); the whole register to zero is <code>moveq #0</code> or
+  <a href="moving-data.html#clr">CLR</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>ANDI is <code>0000 0010 ss mmm rrr</code> plus the immediate word(s). <code>andi.b #$C0,d0</code>
+    = <code>$0200</code> then the immediate <code>$00C0</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="or">
+  <h3><span class="mn">OR</span> <span class="syn">OR.b/.w/.l &lt;ea&gt;,Dn &nbsp;|&nbsp; OR.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by OR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of OR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">same cost model as AND; memory destinations cost more.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for OR">
+    <div class="og-row"><span class="og-side">Source &rarr; Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og">#n</span><span class="og">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest &larr; Dn</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Same shape as AND. Immediate source is <a href="#ori">ORI</a>; no address-register
+    operand.</p>
+  </div>
+  <p>OR sets a result bit wherever EITHER input has it set, so it switches bits ON while leaving the
+  others alone, the complement of AND's clearing. In the joypad reader it merges the two separately-read
+  halves of the controller state into one byte:</p>
+  <pre>	move.b	(a1),d1	<span class="c">; Get controller port data (B/C/Dpad)</span>
+	andi.b	<span class="n">#$3F</span>,d1
+	or.b	d1,d0	<span class="c">; Fuse them into one controller bit array</span></pre>
+  <span class="src">s2disasm/s2.asm:1378-1380 (Joypad_Read)</span>
+  <p>OR combines the two halves so <code>d0</code> ends up with every button's bit. Try it in the
+  <a href="#bitsim">bitwise visualizer</a> (pick <code>or</code>) to watch bits switch on.</p>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Setting a SINGLE bit is <code>BSET</code>
+  (Shifts &amp; Bits page), one instruction with no mask to build.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>OR is <code>1000 rrr ooo mmm rrr</code>, the same layout as AND with prefix <code>1000</code> (the
+    prefix it shares with <a href="#divu">DIVU</a>). <code>or.b d1,d0</code> = <code>$8001</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="ori">
+  <h3><span class="mn">ORI</span> <span class="syn">ORI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ORI">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ORI">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">immediate into a data register; memory destinations cost more.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for ORI">
+    <div class="og-row"><span class="og-side">Dest (with #n)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The immediate form of OR: set named bits on. Very common on status bytes and
+    art-tile flag words. (Privileged <code>ori #n,SR</code>/<code>CCR</code> forms are Flow &amp; System.)</p>
+  </div>
+  <p>ORI sets specific bits with a constant mask. Two everyday uses: marking a state flag on a player,
+  and setting the flip bits of an art-tile word before it goes to the sprite table.</p>
+  <pre>	ori.b	<span class="n">#1&lt;&lt;status_secondary.sliding</span>,status_secondary(a1)</pre>
+  <span class="src">s2disasm/s2.asm:5589 (the oil-slide state)</span>
+  <p>The single named bit is turned on in the status byte; the rest of the byte is untouched, and later
+  code <code>btst</code>s that bit to see whether the player is sliding.</p>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  For one bit, <code>BSET</code>
+  (Shifts &amp; Bits page) is the clearer single-instruction tool.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>ORI is <code>0000 0000 ss mmm rrr</code> plus the immediate. <code>ori.b #$40,d0</code> =
+    <code>$0000</code> then <code>$0040</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="eor">
+  <h3><span class="mn">EOR</span> <span class="syn">EOR.b/.w/.l Dn,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by EOR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of EOR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">register to register, byte or word; memory destinations cost more.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for EOR">
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">The key asymmetry on this page: EOR's SOURCE must be a data register, only. Unlike
+    AND and OR, you cannot EOR a memory value or an immediate into a register. <code>eor.w (a0),d0</code>
+    is refused (move it to a Dn first); <code>eor.w #$FF,d0</code> is refused (that is <a href="#eori">EORI</a>).</p>
+  </div>
+  <p>EOR (exclusive-OR) sets a result bit wherever the two inputs DIFFER, which means a 1 in the mask
+  toggles the matching destination bit and a 0 leaves it alone. Two uses fall out of that: flipping
+  chosen bits, and finding which bits changed between two values. The joypad reader uses the second, to
+  detect new presses:</p>
+  <pre>	move.b	(a0),d1	<span class="c">; Get button press data</span>
+	eor.b	d0,d1	<span class="c">; Toggle off held buttons</span>
+	move.b	d0,(a0)+	<span class="c">; Store raw controller input for held button data</span>
+	and.b	d0,d1</pre>
+  <span class="src">s2disasm/s2.asm:1382-1385 (Joypad_Read)</span>
+  <p>EOR of this frame against last frame yields exactly the bits that changed; the following AND narrows
+  that to the buttons that went from up to down. See <code>eor</code> in the <a href="#bitsim">bitwise
+  visualizer</a> to watch bits toggle.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  EOR is the one logic instruction whose source cannot be memory or an immediate: it must be a data
+  register. Reach for a memory or constant operand and you need <a href="#eori">EORI</a> or a load first.
+  (One neat trick this enables: <code>eor.w d0,d0</code>, a register against itself, drives every bit to
+  0, though <code>moveq #0</code> is the cheaper way to zero a register.)</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Flipping a SINGLE bit is <code>BCHG</code>
+  (Shifts &amp; Bits page). Zeroing a register is <code>moveq #0</code>, not a self-EOR.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>EOR is <code>1011 rrr ooo mmm rrr</code>: it shares the <code>1011</code> prefix with
+    <a href="#cmp">CMP</a>, but uses only the <code>100</code>/<code>101</code>/<code>110</code> opmodes
+    (the <code>Dn,&lt;ea&gt;</code> direction), which is exactly why EOR has no memory-source form, those
+    opcodes are CMP. <code>eor.b d0,d1</code> = <code>$B101</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="eori">
+  <h3><span class="mn">EORI</span> <span class="syn">EORI.b/.w/.l #&lt;data&gt;,&lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by EORI">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of EORI">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 cycles</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">immediate into a data register; memory destinations cost more.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for EORI">
+    <div class="og-row"><span class="og-side">Dest (with #n)</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Unlike plain EOR, the immediate form CAN target memory directly, so it is how you
+    toggle bits with a constant mask against a register or a RAM byte.</p>
+  </div>
+  <p>EORI toggles bits with a constant mask, and it reaches memory that plain EOR cannot. A clean example
+  flips a one-bit page flag in RAM every pass, alternating between two buffers:</p>
+  <pre>	eori.b	<span class="n">#1</span>,(SS_Alternate_PNT).w	<span class="c">; Toggle flag</span></pre>
+  <span class="src">s2disasm/s2.asm:897 (special-stage double buffering)</span>
+  <p>Each pass flips the low bit of the flag, so it reads 0, 1, 0, 1..., which the next pass tests to
+  pick the other buffer. One instruction, no load, straight to RAM.</p>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  A single bit is <code>BCHG</code>
+  (Shifts &amp; Bits page), the clearer one-instruction toggle.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>EORI is <code>0000 1010 ss mmm rrr</code> plus the immediate. <code>eori.b #1,d0</code> =
+    <code>$0A00</code> then <code>$0001</code>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="not">
+  <h3><span class="mn">NOT</span> <span class="syn">NOT.b/.w/.l &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by NOT">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of NOT">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">on a data register, byte or word (<code>.l</code> is 6c). Memory destinations cost more.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal addressing modes for NOT">
+    <div class="og-row"><span class="og-side">Dest</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">A single operand, data-alterable. No address register, no immediate.</p>
+  </div>
+  <p>NOT flips every bit of its operand, the one's complement. Its two everyday uses appear right next to
+  each other in the code: building an inverted mask for a following AND (as in the AND entry), and
+  correcting the joypad's inverted logic. The pad reports 0 for a pressed button, so NOT turns the whole
+  byte around to the more natural 1-means-held:</p>
+  <pre>	or.b	d1,d0	<span class="c">; Fuse them into one controller bit array</span>
+	not.b	d0</pre>
+  <span class="src">s2disasm/s2.asm:1380-1381 (Joypad_Read)</span>
+  <p>After the NOT, a set bit means "this button is down", which the rest of the reader can work with
+  directly. See <code>not</code> in the <a href="#bitsim">bitwise visualizer</a> to watch all eight bits
+  invert at once.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  NOT is one's complement (flip every bit), not <a href="#neg">NEG</a>'s two's complement (arithmetic
+  negate). <code>not.b</code> on <code>$05</code> gives <code>$FA</code>; <code>neg.b</code> gives
+  <code>$FB</code>. They differ by one, and confusing them corrupts any signed arithmetic that follows.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Flipping a SINGLE bit is <code>BCHG</code>
+  (Shifts &amp; Bits page). To negate arithmetically, use <a href="#neg">NEG</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>NOT is <code>0100 0110 ss mmm rrr</code>: bits 7-6 the size, bits 5-0 the operand. <code>not.b d0</code>
+    = <code>$4600</code>.</p>
+    </div>
+  </details>
+</div>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-19 &middot; <a href="../index.html">Back to hub</a><br>
+Previous: <a href="moving-data.html">Moving Data</a> &middot; Next: Shifts &amp; Bits (coming)</footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+
+/* ---- shared flags demo: pick an instruction, run it on 16-bit operands, watch X N Z V C ---- */
+(function(){
+  var dst=document.getElementById('fs-dst'), src=document.getElementById('fs-src');
+  if(!dst) return;
+  var d0e=document.getElementById('fs-d0'), d1e=document.getElementById('fs-d1');
+  var instr=document.getElementById('fs-instr'), note=document.getElementById('fs-note');
+  var srcreg=document.getElementById('fs-srcreg'), srclab=document.getElementById('fs-srclab');
+  var run=document.getElementById('fs-run'), reset=document.getElementById('fs-reset');
+  var fx=document.getElementById('fs-fx'), fn=document.getElementById('fs-fn'), fz=document.getElementById('fs-fz'),
+      fv=document.getElementById('fs-fv'), fc=document.getElementById('fs-fc');
+  var d0=0x00000064, d1=0x00000032, op='add';
+  var BIN={add:1,sub:1,cmp:1,and:1,or:1,eor:1};   // two-operand ops
+  var SYN={add:'add.w d1,d0',sub:'sub.w d1,d0',cmp:'cmp.w d1,d0',and:'and.w d1,d0',or:'or.w d1,d0',
+           eor:'eor.w d1,d0',not:'not.w d0',neg:'neg.w d0',tst:'tst.w d0'};
+  function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function s16(w){ w&=0xFFFF; return w>=0x8000 ? w-0x10000 : w; }
+  function setFlag(el,letter,state,val){
+    // state: 'unaff' | 'forced0' | number(0/1)
+    if(state==='unaff'){ el.textContent=letter+' unaff.'; el.className='sfchip unaff'; }
+    else if(state==='forced0'){ el.textContent=letter+' 0'; el.className='sfchip forced'; }
+    else { el.textContent=letter+' '+(val?'1':'0'); el.className='sfchip'+(val?' on':''); }
+  }
+  function readIn(el){
+    var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,8).toUpperCase();
+    el.value=v; return parseInt(v||'0',16)>>>0;
+  }
+  function isBin(){ return !!BIN[op]; }
+  function sync(){
+    instr.textContent=SYN[op];
+    run.textContent='Run '+SYN[op];
+    srcreg.style.display = isBin() ? '' : 'none';
+    srclab.style.display = isBin() ? '' : 'none';
+    src.style.display = isBin() ? '' : 'none';
+    d0e.textContent=hex8(d0); d1e.textContent=hex8(d1);
+  }
+  function run1(){
+    d0=readIn(dst); if(isBin()) d1=readIn(src);
+    var a=d0&0xFFFF, b=d1&0xFFFF, res=a, wrote=true;
+    var N,Z,V,C,X=null,touchX=true;
+    if(op==='add'){ var r=a+b; res=r&0xFFFF; C=(r>0xFFFF); V=((~(a^b)&(a^res)&0x8000)!==0); }
+    else if(op==='sub'){ var r=a-b; res=r&0xFFFF; C=(r<0); V=(((a^b)&(a^res)&0x8000)!==0); }
+    else if(op==='cmp'){ var r=a-b; res=a; wrote=false; C=(r<0); V=(((a^b)&(a^(r&0xFFFF))&0x8000)!==0); touchX=false; }
+    else if(op==='and'){ res=a&b; C=false; V=false; touchX=false; }
+    else if(op==='or'){ res=a|b; C=false; V=false; touchX=false; }
+    else if(op==='eor'){ res=a^b; C=false; V=false; touchX=false; }
+    else if(op==='not'){ res=(~a)&0xFFFF; wrote=true; C=false; V=false; touchX=false; }
+    else if(op==='neg'){ var r=(0-a)&0xFFFF; res=r; C=(a!==0); V=(a===0x8000); }
+    else if(op==='tst'){ res=a; wrote=false; C=false; V=false; touchX=false; }
+    var out=res&0xFFFF;
+    var nz=(op==='cmp')?((a-b)&0xFFFF):out;   // cmp sets N/Z from the discarded difference, not the untouched dest
+    N=((nz&0x8000)!==0); Z=(nz===0);
+    if(wrote){ d0=((d0&0xFFFF0000)>>>0 | out)>>>0; }
+    d0e.textContent=hex8(d0);
+    d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+    // flags display
+    if(touchX){ setFlag(fx,'X',null,C?1:0); } else { setFlag(fx,'X','unaff'); }
+    setFlag(fn,'N',null,N?1:0); setFlag(fz,'Z',null,Z?1:0);
+    if(op==='and'||op==='or'||op==='eor'||op==='not'||op==='tst'){ setFlag(fv,'V','forced0'); setFlag(fc,'C','forced0'); }
+    else { setFlag(fv,'V',null,V?1:0); setFlag(fc,'C',null,C?1:0); }
+    // note
+    var msg='';
+    var uns=out, sgn=s16(out);
+    if(op==='cmp'){
+      msg='cmp.w d1,d0 computes d0 - d1 = $'+(a-b&0xFFFF).toString(16).toUpperCase().padStart(4,'0')
+        +' but THROWS THE RESULT AWAY (d0 unchanged). It only sets the flags: Z='+(Z?1:0)+' (equal), '
+        +'C='+(C?1:0)+' (unsigned d0<d1), N/V for the signed comparison. The next branch reads these.';
+    } else if(op==='tst'){
+      msg='tst.w d0 compares d0 against zero without changing it: Z='+(Z?1:0)+' (is it zero?), N='
+        +(N?1:0)+' (top bit set, reads as negative). V and C are forced to 0. One step, no operand to load.';
+    } else if(op==='and'||op==='or'||op==='eor'){
+      msg=op+'.w d1,d0 = $'+out.toString(16).toUpperCase().padStart(4,'0')+' into d0. Logic ops set N and Z '
+        +'from the result and FORCE V and C to 0; X is untouched. N='+(N?1:0)+', Z='+(Z?1:0)+'.';
+    } else if(op==='not'){
+      msg='not.w d0 flips every bit of the low word to $'+out.toString(16).toUpperCase().padStart(4,'0')
+        +'. N='+(N?1:0)+', Z='+(Z?1:0)+', V and C forced to 0, X untouched.';
+    } else if(op==='neg'){
+      msg='neg.w d0 = 0 - d0 = $'+out.toString(16).toUpperCase().padStart(4,'0')+' ('+sgn+' signed). '
+        +'C and X are set for any nonzero input (C='+(C?1:0)+'); V='+(V?1:0)+(V?' because negating $8000 overflows.':'.');
+    } else { // add / sub
+      msg=op+'.w d1,d0 = $'+out.toString(16).toUpperCase().padStart(4,'0')+'  ('+uns+' unsigned, '+sgn+' signed). '
+        +'N='+(N?1:0)+', Z='+(Z?1:0)+', V='+(V?1:0)+' (signed overflow), C='+(C?1:0)+' ('+(op==='add'?'unsigned carry':'unsigned borrow')+'), X copies C.';
+    }
+    note.textContent=msg;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.fs-op'),function(b){
+    b.addEventListener('click',function(){
+      op=b.dataset.op;
+      Array.prototype.forEach.call(document.querySelectorAll('.fs-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
+      sync();
+    });
+  });
+  dst.addEventListener('input',function(){ d0=readIn(dst); d0e.textContent=hex8(d0); });
+  src.addEventListener('input',function(){ d1=readIn(src); d1e.textContent=hex8(d1); });
+  run.addEventListener('click',run1);
+  reset.addEventListener('click',function(){
+    d0=0x00000064; d1=0x00000032; dst.value='0064'; src.value='0032';
+    setFlag(fx,'X','unaff');
+    fn.textContent='N -'; fz.textContent='Z -'; fv.textContent='V -'; fc.textContent='C -';
+    fn.className=fz.className=fv.className=fc.className='sfchip';
+    sync();
+    note.textContent='Reset. Pick an instruction and run it.';
+  });
+  sync();
+})();
+
+/* ---- per-instruction toys (added with their sections) ---- */
+
+/* ADDA toy: no flags + word sign-extension */
+(function(){
+  var src=document.getElementById('aa-src'); if(!src) return;
+  var a0e=document.getElementById('aa-a0'), run=document.getElementById('aa-run'), reset=document.getElementById('aa-reset'), note=document.getElementById('aa-note');
+  var A0=0x00FF0000, a0=A0;
+  function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function readW(){ var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); src.value=v; return parseInt(v||'0',16)&0xFFFF; }
+  run.addEventListener('click',function(){
+    var w=readW(), sx = w>=0x8000 ? w-0x10000 : w;
+    a0=(a0+sx)>>>0;
+    a0e.textContent=hex8(a0); a0e.classList.remove('mr-flash'); void a0e.offsetWidth; a0e.classList.add('mr-flash');
+    note.textContent = w>=0x8000
+      ? 'adda.w #$'+w.toString(16).toUpperCase().padStart(4,'0')+',a0: the word has its top bit set, so it sign-extends to $'+((sx>>>0).toString(16).toUpperCase().padStart(8,'0'))+' ('+sx+'), and a0 moves BACKWARD to '+hex8(a0)+'. No flag moved.'
+      : 'adda.w #$'+w.toString(16).toUpperCase().padStart(4,'0')+',a0: a0 advances to '+hex8(a0)+'. No flag moved (that is ADDA’s whole point). Try a value $8000 or higher to see the sign-extension trap.';
+  });
+  reset.addEventListener('click',function(){ a0=A0; src.value='0010'; a0e.textContent=hex8(a0); note.textContent='Reset. a0 = $00FF0000. Add $0010, or try $FFFF to watch it move backward.'; });
+})();
+
+/* ADDQ toy: the 1-to-8 range wall */
+(function(){
+  var inp=document.getElementById('aq-n'); if(!inp) return;
+  var d0e=document.getElementById('aq-d0'), run=document.getElementById('aq-run'), reset=document.getElementById('aq-reset'), note=document.getElementById('aq-note'), instr=document.getElementById('aq-instr');
+  var D0=0x00000032, d0=D0;
+  function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  inp.addEventListener('input',function(){ var t=(inp.value||'').replace(/[^0-9]/g,''); instr.textContent='addq.w #'+(t||'?')+',d0'; });
+  run.addEventListener('click',function(){
+    var n=parseInt((inp.value||'').replace(/[^0-9]/g,'')||'0',10);
+    if(n>=1 && n<=8){
+      var lo=((d0&0xFFFF)+n)&0xFFFF; d0=((d0&0xFFFF0000)>>>0 | lo)>>>0;
+      d0e.textContent=hex8(d0); d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+      note.textContent='addq.w #'+n+',d0 added '+n+' in a single 2-byte opcode. d0’s low word is now $'+lo.toString(16).toUpperCase().padStart(4,'0')+'.';
+    } else {
+      note.textContent='#'+(isNaN(n)?'?':n)+' is outside the quick range 1 to 8, so this cannot be an ADDQ at all. The assembler falls back to ADDI (4 bytes, 8 cycles). The quick field stops at 8.';
+    }
+  });
+  reset.addEventListener('click',function(){ d0=D0; inp.value='1'; instr.textContent='addq.w #1,d0'; d0e.textContent=hex8(d0); note.textContent='Reset. d0 = $0032 (50). Add 1 to 8, or try 9 to hit the range wall.'; });
+})();
+
+/* NEG toy: two's-complement flip, X/C for nonzero, V for $8000 */
+(function(){
+  var src=document.getElementById('ng-src'); if(!src) return;
+  var d0e=document.getElementById('ng-d0'), run=document.getElementById('ng-run'), reset=document.getElementById('ng-reset'), note=document.getElementById('ng-note');
+  var fx=document.getElementById('ng-fx'), fn=document.getElementById('ng-fn'), fz=document.getElementById('ng-fz'), fv=document.getElementById('ng-fv'), fc=document.getElementById('ng-fc');
+  var D0=0x00000005, d0=D0;
+  function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function sf(el,l,v){ el.textContent=l+' '+(v?'1':'0'); el.className='sfchip'+(v?' on':''); }
+  function readW(){ var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); src.value=v; return parseInt(v||'0',16)&0xFFFF; }
+  run.addEventListener('click',function(){
+    var a=readW(), res=(0-a)&0xFFFF;
+    d0=((d0&0xFFFF0000)>>>0 | res)>>>0;
+    d0e.textContent=hex8(d0); d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+    var N=(res&0x8000)!==0, Z=res===0, V=a===0x8000, C=a!==0;
+    sf(fx,'X',C); sf(fn,'N',N); sf(fz,'Z',Z); sf(fv,'V',V); sf(fc,'C',C);
+    var sgn=res>=0x8000?res-0x10000:res;
+    note.textContent='neg.w d0: 0 - $'+a.toString(16).toUpperCase().padStart(4,'0')+' = $'+res.toString(16).toUpperCase().padStart(4,'0')+' ('+sgn+' signed). '
+      +(C?'X and C set (input nonzero). ':'X and C clear (input was zero). ')+(V?'V set: negating $8000 overflows a signed word.':'');
+  });
+  reset.addEventListener('click',function(){ d0=D0; src.value='0005'; d0e.textContent=hex8(d0);
+    [['ng-fx','X'],['ng-fn','N'],['ng-fz','Z'],['ng-fv','V'],['ng-fc','C']].forEach(function(p){ var e=document.getElementById(p[0]); e.textContent=p[1]+' -'; e.className='sfchip'; });
+    note.textContent='Reset. d0 = $0005 (5). Negate it, then try $8000 and $0000.'; });
+})();
+
+/* MULU toy: 16x16 fills the whole 32-bit register */
+(function(){
+  var ai=document.getElementById('mu-a'); if(!ai) return;
+  var bi=document.getElementById('mu-b'), d0e=document.getElementById('mu-d0'), d1e=document.getElementById('mu-d1'),
+      run=document.getElementById('mu-run'), reset=document.getElementById('mu-reset'), note=document.getElementById('mu-note');
+  function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function rd(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); el.value=v; return parseInt(v||'0',16)&0xFFFF; }
+  run.addEventListener('click',function(){
+    var a=rd(ai), b=rd(bi), p=(a*b)>>>0;
+    d0e.textContent=hex8(p); d1e.textContent=hex8(b);
+    d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+    note.textContent='mulu.w d1,d0: $'+a.toString(16).toUpperCase().padStart(4,'0')+' x $'+b.toString(16).toUpperCase().padStart(4,'0')+' = '+hex8(p)+' ('+p+'). '
+      +(p>0xFFFF?'The product needs more than 16 bits, so it fills the WHOLE register; read d0 as a long or you lose the top half.':'This one happens to fit the low word, but many products do not, which is why the destination is a full long.');
+  });
+  reset.addEventListener('click',function(){ ai.value='0140'; bi.value='0040'; d0e.textContent='$00000140'; d1e.textContent='$00000040'; note.textContent='Reset. Try $FFFF x $FFFF to watch the product fill all 32 bits.'; });
+})();
+
+/* DIVU toy: quotient low / remainder high, plus the divide-by-zero and overflow traps */
+(function(){
+  var ai=document.getElementById('dv-a'); if(!ai) return;
+  var bi=document.getElementById('dv-b'), d0e=document.getElementById('dv-d0'), d1e=document.getElementById('dv-d1'),
+      run=document.getElementById('dv-run'), reset=document.getElementById('dv-reset'), note=document.getElementById('dv-note');
+  function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
+  function rdL(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,8).toUpperCase(); el.value=v; return parseInt(v||'0',16)>>>0; }
+  function rdW(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); el.value=v; return parseInt(v||'0',16)&0xFFFF; }
+  run.addEventListener('click',function(){
+    var a=rdL(ai), b=rdW(bi); d1e.textContent=hex8(b);
+    if(b===0){ note.textContent='divu.w d1,d0 with a zero divisor does not set a flag: it takes the ZERO-DIVIDE EXCEPTION (vector 5) and jumps to the error handler mid-instruction. Guard the divisor against zero before dividing.'; return; }
+    var q=Math.floor(a/b), r=a%b;
+    if(q>0xFFFF){ note.textContent='divu.w: the quotient '+q+' ($'+q.toString(16).toUpperCase()+') will not fit 16 bits, so DIVU sets V, leaves d0 UNCHANGED at '+hex8(a)+', and does NOT trap. You have to test V yourself or you will use a stale value.'; return; }
+    var res=(((r&0xFFFF)<<16)>>>0 | (q&0xFFFF))>>>0;
+    d0e.textContent=hex8(res); d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+    note.textContent='divu.w d1,d0: '+a+' / '+b+' = '+q+' remainder '+r+'. d0 becomes '+hex8(res)+': remainder $'+(r&0xFFFF).toString(16).toUpperCase().padStart(4,'0')+' in the high word, quotient $'+(q&0xFFFF).toString(16).toUpperCase().padStart(4,'0')+' in the low word.';
+  });
+  reset.addEventListener('click',function(){ ai.value='00000064'; bi.value='0006'; d0e.textContent='$00000064'; d1e.textContent='$00000006'; note.textContent='Reset. 100 / 6. Try divisor 0 for the exception, or dividend $00200000 with divisor 1 for overflow.'; });
+})();
+
+/* Bitwise visualizer: AND / OR / EOR / NOT shown on the actual bits */
+(function(){
+  var val=document.getElementById('bt-val'); if(!val) return;
+  var mask=document.getElementById('bt-mask'), instr=document.getElementById('bt-instr'), note=document.getElementById('bt-note'),
+      vb=document.getElementById('bt-vb'), mb=document.getElementById('bt-mb'), rb=document.getElementById('bt-rb'), rh=document.getElementById('bt-rh'),
+      run=document.getElementById('bt-run'), reset=document.getElementById('bt-reset'),
+      maskrow=document.getElementById('bt-maskrow'), masklab=document.getElementById('bt-masklab');
+  var op='and';
+  var SYN={and:'and.b d1,d0',or:'or.b d1,d0',eor:'eor.b d1,d0',not:'not.b d0'};
+  function bin8(n){ n&=0xFF; var s=n.toString(2).padStart(8,'0'); return s.slice(0,4)+' '+s.slice(4); }
+  function bin8hl(n,ref){ n&=0xFF; ref&=0xFF; var o=''; for(var i=7;i>=0;i--){ if(i===3) o+=' '; var b=(n>>i)&1, r=(ref>>i)&1; o += (b!==r)?('<b>'+b+'</b>'):(''+b); } return o; }
+  function rd(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase(); el.value=v; return parseInt(v||'0',16)&0xFF; }
+  function usesMask(){ return op!=='not'; }
+  function sync(){
+    instr.textContent=SYN[op]; run.textContent='Run '+SYN[op];
+    maskrow.style.display = usesMask() ? '' : 'none';
+    masklab.style.display = usesMask() ? '' : 'none';
+    mask.style.display = usesMask() ? '' : 'none';
+    vb.textContent=bin8(rd(val)); if(usesMask()) mb.textContent=bin8(rd(mask));
+  }
+  function run1(){
+    var a=rd(val), m=usesMask()?rd(mask):0, res;
+    if(op==='and') res=a&m; else if(op==='or') res=a|m; else if(op==='eor') res=a^m; else res=(~a)&0xFF;
+    vb.textContent=bin8(a); if(usesMask()) mb.textContent=bin8(m);
+    rb.innerHTML=bin8hl(res,a); rh.textContent='$'+res.toString(16).toUpperCase().padStart(2,'0');
+    rb.classList.remove('mr-flash'); void rb.offsetWidth; rb.classList.add('mr-flash');
+    var msg;
+    if(op==='and') msg='and.b: a result bit stays set only where BOTH value and mask are 1, so the 0s in the mask force those bits off (highlighted). ';
+    else if(op==='or') msg='or.b: a result bit is set where EITHER is 1, so the 1s in the mask switch those bits on and the rest are untouched. ';
+    else if(op==='eor') msg='eor.b: the result differs from the value exactly where the mask is 1, so those bits toggle (highlighted) and the rest stay put. ';
+    else msg='not.b: every bit flips, no mask involved. ';
+    note.textContent=msg+'Result $'+res.toString(16).toUpperCase().padStart(2,'0')+'. N and Z come from it; V and C are forced to 0.';
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.bt-op'),function(b){
+    b.addEventListener('click',function(){ op=b.dataset.op;
+      Array.prototype.forEach.call(document.querySelectorAll('.bt-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
+      sync(); });
+  });
+  val.addEventListener('input',function(){ vb.textContent=bin8(rd(val)); });
+  mask.addEventListener('input',function(){ mb.textContent=bin8(rd(mask)); });
+  run.addEventListener('click',run1);
+  reset.addEventListener('click',function(){ val.value='6C'; mask.value='3F'; op='and';
+    Array.prototype.forEach.call(document.querySelectorAll('.bt-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='and'?'true':'false'); });
+    sync(); rb.textContent='0010 1100'; rh.textContent='$2C';
+    note.textContent='Reset. Value $6C, mask $3F. Pick an operation and run it.'; });
+  sync();
+})();
+
+</script>
+
+</body>
+</html>
