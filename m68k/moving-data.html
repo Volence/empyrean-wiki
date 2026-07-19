@@ -345,8 +345,8 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 </nav>
 
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
-instruction and you don't know which page it lives on? The full instruction index (Programming
-Model page) lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
+on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; The MOVE family</h2>
@@ -468,8 +468,9 @@ into registers, working on them there, and writing results back out.</p>
     PC," and rts is "pop 4 bytes into the PC."</p>
     <p>The PC also moonlights as an addressing base: a <code>d(PC)</code> operand like
     <code>SetupValues(pc)</code> means "this far from where the PC is right now," which is what
-    lets code find its own tables no matter where in ROM it ends up. The Programming Model page
-    (coming) covers the full register set.</p>
+    lets code find its own tables no matter where in ROM it ends up. The
+    <a href="programming-model.html">Programming Model page</a>
+    covers the full register set.</p>
   </div>
 </details>
 
@@ -552,8 +553,9 @@ into registers, working on them there, and writing results back out.</p>
   Z" means that right after a MOVE you can branch on whether the value was negative or zero without
   a separate compare, which is exactly what the read-and-branch example below does. The Flags row on each
   instruction shows which bits it touches: <b>set</b> means updated from the result, <b>clear</b>
-  means forced to zero, <b>unaff.</b> means left exactly as it was. The Programming Model page (coming)
-  will cover the status register in full.</div>
+  means forced to zero, <b>unaff.</b> means left exactly as it was. The
+  <a href="programming-model.html#s2">Programming Model page</a>
+  covers the status register in full.</div>
   </details>
   <figure class="diagram">
   <div class="movesim">
