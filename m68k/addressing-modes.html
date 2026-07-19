@@ -98,10 +98,6 @@ th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
   text-transform:uppercase; color:var(--dim); background:var(--panel2);}
 td code{font-variant-numeric:tabular-nums;}
 tr.hi td{background:rgba(68,102,238,.12);}
-/* reference matrix tables (mode/register encoding + capability categories) */
-table.mx td:not(:first-child),table.mx th:not(:first-child){text-align:center; vertical-align:middle;}
-table.mx .y{color:var(--learn); font-weight:700;}
-table.mx .no{color:var(--line);}
 
 /* figures / diagrams */
 figure.diagram{border:1px solid var(--line); border-radius:5px;
@@ -173,6 +169,11 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
 /* Safari draws its own disclosure marker on top of ours - hide it */
 details.explain summary::-webkit-details-marker{display:none;}
 details.refbox summary::-webkit-details-marker{display:none;}
+
+/* reference matrix tables (mode/register encoding + capability categories) */
+table.mx td:not(:first-child),table.mx th:not(:first-child){text-align:center; vertical-align:middle;}
+table.mx .y{color:var(--learn); font-weight:700;}
+table.mx .no{color:var(--line);}
 
 /* mini-index: chip row of the 12 modes */
 nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
@@ -462,6 +463,21 @@ operand you pick, so they never appear in the grid.</p>
 "plus the addressing-mode price" is adding the number from one of these rows. Read it together with
 the additive rule above: pick the mode's row, take the column for your operation size, add it to the
 instruction's base for the source, and again for a memory destination.</p>
+
+<h3>Reading the notation</h3>
+<p>The table below, and the whole page, uses a compact shorthand for the parts of an address. It is
+worth decoding once, because the notation reuses the letter <code>n</code> for two different things:
+inside a register name it is a register number, but in <code>#n</code> it is a constant value.</p>
+<div class="tbl"><table>
+  <tr><th>Symbol</th><th>What it stands for</th></tr>
+  <tr><td><code>Dn</code>, <code>An</code></td><td>A data or address register. The <code>n</code> is its NUMBER, 0 to 7, so <code>Dn</code> is any one of d0 through d7 and <code>An</code> any of a0 through a7.</td></tr>
+  <tr><td><code>Xn</code></td><td>An index register: any register (d0-d7 or a0-a7) used as a second, variable part of the address, added on at run time.</td></tr>
+  <tr><td><code>d</code></td><td>A displacement: a fixed signed constant, built into the instruction, added in to reach the final address (for example the <code>8</code> in <code>8(a0)</code>).</td></tr>
+  <tr><td><code>(xx)</code></td><td>An absolute address: one fixed location, written as a raw number or, in real code, a label that stands for that number.</td></tr>
+  <tr><td><code>#n</code></td><td>An immediate: a literal constant VALUE, like <code>#$40</code> or <code>#100</code>. Here the <code>n</code> is a number, NOT a register, and the leading <code>#</code> is what marks it as a plain value rather than an address.</td></tr>
+  <tr><td><code>(&nbsp;)</code></td><td>Parentheses mean "the memory AT this address," a dereference. Drop them and you have the address or register itself, not what it points at (this is the address-versus-value distinction from section 1).</td></tr>
+  <tr><td><code>.b</code> <code>.w</code> <code>.l</code></td><td>The operation size: byte (8 bits), word (16 bits), long (32 bits).</td></tr>
+</table></div>
 
 <div class="tbl"><table id="price">
   <tr><th>Mode</th><th>Computes</th><th>Cycles .b/.w</th><th>Cycles .l</th><th>Ext. bytes</th></tr>
