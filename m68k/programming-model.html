@@ -203,8 +203,8 @@ code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em
 .rm-reg[aria-pressed="true"]{border-color:var(--accent); background:rgba(68,102,238,.2);}
 .rm-reg[aria-pressed="true"] .rm-nm{color:var(--ink);}
 .rm-reg:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
-.rm-reg.sp{border-color:var(--learn);}
-.rm-reg.sp .rm-nm{color:var(--learn);}
+/* a7 is not loudly tinted; the "a7 / sp" label carries that it doubles as the stack pointer */
+.rm-reg.sp .rm-nm{color:var(--dim);}
 /* the status register laid out as its bit fields */
 .rm-sr{display:flex; flex-direction:column; gap:.3rem;}
 .rm-srrow{display:flex; flex-wrap:wrap; gap:.25rem; align-items:stretch;}
@@ -382,36 +382,37 @@ what that part is for.</p>
 
 <figure class="diagram">
 <div class="regmodel">
-  <div class="rm-egbanner"><em>Example contents.</em> Every value shown is one thing a slot <em>could</em>
-  hold, not a fixed value; the lesson is what each slot is <em>for</em>. The slots are inside the CPU and
-  have no memory address of their own. For an address register, the value it holds <em>is</em> an address,
-  a pointer into work RAM, ROM, or a hardware port.</div>
+  <div class="rm-egbanner"><em>The programmer-visible state.</em> These are the slots the CPU works in.
+  They live inside the CPU and have no memory address of their own: you <em>name</em> a register, you do
+  not point at it. Click any slot to read what it is for. Data registers hold any value; address registers
+  hold a pointer (into work RAM, ROM, or a hardware port). The status register below is shown as one
+  example bit pattern.</div>
   <div class="rm-banks">
     <div class="rm-bank">
       <div class="rm-btitle">Data registers (values)</div>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d0"><span class="rm-nm">d0</span><span class="rm-v">$00001234</span></button>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d1"><span class="rm-nm">d1</span><span class="rm-v">$0000000A</span></button>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d2"><span class="rm-nm">d2</span><span class="rm-v">$FFFF8000</span></button>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d3"><span class="rm-nm">d3</span><span class="rm-v">$00000013</span></button>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d4"><span class="rm-nm">d4</span><span class="rm-v">$00000000</span></button>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d5"><span class="rm-nm">d5</span><span class="rm-v">$000000FF</span></button>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d6"><span class="rm-nm">d6</span><span class="rm-v">$00000017</span></button>
-      <button type="button" class="rm-reg" data-part="d" data-nm="d7"><span class="rm-nm">d7</span><span class="rm-v">$0000FFFF</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d0"><span class="rm-nm">d0</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d1"><span class="rm-nm">d1</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d2"><span class="rm-nm">d2</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d3"><span class="rm-nm">d3</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d4"><span class="rm-nm">d4</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d5"><span class="rm-nm">d5</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d6"><span class="rm-nm">d6</span></button>
+      <button type="button" class="rm-reg" data-part="d" data-nm="d7"><span class="rm-nm">d7</span></button>
     </div>
     <div class="rm-bank">
       <div class="rm-btitle">Address registers (pointers)</div>
-      <button type="button" class="rm-reg" data-part="a" data-nm="a0"><span class="rm-nm">a0</span><span class="rm-v">$FFFFB000</span></button>
-      <button type="button" class="rm-reg" data-part="a" data-nm="a1"><span class="rm-nm">a1</span><span class="rm-v">$FFFFF800</span></button>
-      <button type="button" class="rm-reg" data-part="a" data-nm="a2"><span class="rm-nm">a2</span><span class="rm-v">$00C00000</span></button>
-      <button type="button" class="rm-reg" data-part="a" data-nm="a3"><span class="rm-nm">a3</span><span class="rm-v">$00002E1C</span></button>
-      <button type="button" class="rm-reg" data-part="a" data-nm="a4"><span class="rm-nm">a4</span><span class="rm-v">$00C00004</span></button>
-      <button type="button" class="rm-reg" data-part="a" data-nm="a5"><span class="rm-nm">a5</span><span class="rm-v">$FFFFFC00</span></button>
-      <button type="button" class="rm-reg" data-part="a" data-nm="a6"><span class="rm-nm">a6</span><span class="rm-v">$00000000</span></button>
-      <button type="button" class="rm-reg sp" data-part="sp" data-nm="a7"><span class="rm-nm">a7 / sp</span><span class="rm-v">$FFFFFF00</span></button>
+      <button type="button" class="rm-reg" data-part="a" data-nm="a0"><span class="rm-nm">a0</span></button>
+      <button type="button" class="rm-reg" data-part="a" data-nm="a1"><span class="rm-nm">a1</span></button>
+      <button type="button" class="rm-reg" data-part="a" data-nm="a2"><span class="rm-nm">a2</span></button>
+      <button type="button" class="rm-reg" data-part="a" data-nm="a3"><span class="rm-nm">a3</span></button>
+      <button type="button" class="rm-reg" data-part="a" data-nm="a4"><span class="rm-nm">a4</span></button>
+      <button type="button" class="rm-reg" data-part="a" data-nm="a5"><span class="rm-nm">a5</span></button>
+      <button type="button" class="rm-reg" data-part="a" data-nm="a6"><span class="rm-nm">a6</span></button>
+      <button type="button" class="rm-reg sp" data-part="sp" data-nm="a7"><span class="rm-nm">a7 / sp</span></button>
     </div>
     <div class="rm-bank">
       <div class="rm-btitle">Program counter</div>
-      <button type="button" class="rm-reg" data-part="pc" data-nm="pc"><span class="rm-nm">pc</span><span class="rm-v">$00000206</span></button>
+      <button type="button" class="rm-reg" data-part="pc" data-nm="pc"><span class="rm-nm">pc</span></button>
     </div>
   </div>
   <div class="rm-srfull">
@@ -440,15 +441,16 @@ what that part is for.</p>
   </div>
   <div class="rm-ctrl">
     <button type="button" class="rm-reset" id="rm-reset">Reset to d0</button>
-    <span class="rm-hint">Click or tab to any register or flag. The values shown are example contents, not fixed: the lesson is what each slot is <em>for</em>. a7 is tinted green to mark that it doubles as the stack pointer.</span>
+    <span class="rm-hint">Click or tab to any register or flag to read what it is for. a7 reads "a7 / sp" because it doubles as the stack pointer.</span>
   </div>
   <p class="rm-cap" id="rm-cap" aria-live="polite">This is the entire programmer-visible state of the 68000. <b>d0</b> is one of eight general-purpose data registers, 32 bits wide, holding a value the code is working on. All eight data registers are interchangeable; nothing about d0 makes it special. Pick any part above to read its job.</p>
 </div>
 <figcaption>The 68000 register model: eight data registers for values, eight address registers for
 pointers (a7 doubling as the stack pointer), the program counter, and the status register drawn as its
-full 16-bit ruler (a privileged system byte, the five CCR flags, and six unused bits that always read 0).
-Every value shown is an example, and the slots live inside the CPU with no memory address of their own.
-Static fallback: selecting each part names its width and role; a7 is the stack pointer, the pc is written
+full 16-bit ruler (a privileged system byte, the five CCR flags, and six unused bits that always read 0)
+for an example value $2704. The register slots show names only: click each to read its role. Every slot
+lives inside the CPU with no memory address of its own. Static fallback: selecting each part names its
+width and role; a7 is the stack pointer, the pc is written
 only by jumps and returns, and the five CCR flags X N Z V C are the CPU's record of how the last
 operation came out.</figcaption>
 </figure>
@@ -1108,7 +1110,7 @@ function expandAll(btn){
   var regs = Array.prototype.slice.call(document.querySelectorAll('.rm-reg, .rm-rc'));
   var CAP = {
     d:  '<b>%NM%</b> is one of the eight general-purpose data registers, 32 bits wide, holding a value the code is working on: a count, a coordinate, a byte of flags. All eight are interchangeable, and arithmetic, logic, shifts, and comparisons all operate on them. A .b or .w operation touches only the low 8 or 16 bits and leaves the rest alone.',
-    a:  '<b>%NM%</b> is one of the address registers, 32 bits wide, holding a pointer: the address of an object, a table, a buffer. It feeds the register-indirect modes like (%NM%) and x_pos(%NM%). A word written to it is sign-extended to all 32 bits, and address-register math sets no condition codes. The value shown is one example address; where it points (work RAM, ROM, or a hardware port like the VDP at $C00000) is decided by the memory map, not by the register.',
+    a:  '<b>%NM%</b> is one of the address registers, 32 bits wide, holding a pointer: the address of an object, a table, a buffer. It feeds the register-indirect modes like (%NM%) and x_pos(%NM%). A word written to it is sign-extended to all 32 bits, and address-register math sets no condition codes. Whatever address it holds points into some world (work RAM, ROM, or a hardware port like the VDP at $C00000), decided by the memory map, not by the register.',
     sp: '<b>a7 is the stack pointer (sp)</b>, an address register the CPU also uses on its own: calls push the return address here, rts pops it, and -(sp) / (sp)+ are how you push and pop. It grows downward, from high addresses toward low. There are really two of it, a supervisor and a user stack pointer, chosen by the S bit; the Genesis always uses the supervisor one.',
     pc: '<b>pc is the program counter</b>: the address of the next instruction to fetch. It is not one of d0-d7 / a0-a7 and you cannot MOVE into it. Only branches, jumps, calls (bsr/jsr) and returns (rts/rte) write it. Fetch, advance, repeat, that loop is the whole of a running program.',
     'sr-t': '<b>T, the trace bit</b> (system byte, privileged). When set, the CPU takes a trace exception after every single instruction, which is how a debugger single-steps code. It is not a side effect of anything you compute: ordinary instructions leave it alone, and you set it by writing the SR. Sonic leaves it 0.',
