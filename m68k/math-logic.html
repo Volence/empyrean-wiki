@@ -1515,7 +1515,7 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Multiplying by a power of two? A left shift is far cheaper, roughly 6 to 8 cycles against MULU's 38 to
   70. Sonic's own code branches on exactly this: it uses <code>lsl</code> when the object size is a power
-  of two and MULU otherwise. Shifts live on the Shifts &amp; Bits page (coming).</div>
+  of two and MULU otherwise. Shifts live on the <a href="shifts-bits.html">Shifts &amp; Bits</a> page.</div>
   <details class="refbox">
     <summary>Encoding</summary>
     <div class="enc-body">
@@ -1658,7 +1658,7 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Dividing by a power of two? A right shift (<code>lsr</code>) is around 8 cycles against DIVU's ~140,
   and cannot divide by zero or overflow. Sonic uses <code>lsr</code> for power-of-two sizes and DIVU
-  only otherwise. Shifts are on the Shifts &amp; Bits page (coming).</div>
+  only otherwise. Shifts are on the <a href="shifts-bits.html">Shifts &amp; Bits</a> page.</div>
   <details class="refbox">
     <summary>Encoding</summary>
     <div class="enc-body">
@@ -1708,7 +1708,7 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
   division by two.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Signed divide by a power of two is <code>asr</code>, vastly cheaper, but mind the rounding difference
-  in the gotcha above. Shifts are on the Shifts &amp; Bits page (coming).</div>
+  in the gotcha above. Shifts are on the <a href="shifts-bits.html">Shifts &amp; Bits</a> page.</div>
   <details class="refbox">
     <summary>Encoding</summary>
     <div class="enc-body">
@@ -1843,8 +1843,8 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   <code>moveq #0,Dn</code> is smaller and clearer. And unlike the arithmetic instructions, AND always
   clears V and C, so do not expect a carry out of it.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
-  Clearing or testing a SINGLE bit? <code>BCLR</code> and <code>BTST</code> (on the Shifts &amp; Bits
-  page, coming) say it in one instruction. Zeroing a whole register
+  Clearing or testing a SINGLE bit? <a href="shifts-bits.html#bclr"><code>BCLR</code></a> and <a href="shifts-bits.html#btst"><code>BTST</code></a> (on the Shifts &amp; Bits
+  page) say it in one instruction. Zeroing a whole register
   is <code>moveq #0</code>, not <code>and #0</code>.</div>
   <details class="refbox">
     <summary>Encoding</summary>
@@ -1890,7 +1890,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   <p>The <code>~(...)</code> builds the inverted mask at assembly time (zeros where the flip bits are),
   so ANDI clears exactly those two bits and leaves the rest of the render flags alone.</p>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
-  A single bit is <code>BCLR</code>
+  A single bit is <a href="shifts-bits.html#bclr"><code>BCLR</code></a>
   (Shifts &amp; Bits page); the whole register to zero is <code>moveq #0</code> or
   <a href="moving-data.html#clr">CLR</a>.</div>
   <details class="refbox">
@@ -1939,7 +1939,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   <p>OR combines the two halves so <code>d0</code> ends up with every button's bit. Try it in the
   <a href="#bitsim">bitwise visualizer</a> (pick <code>or</code>) to watch bits switch on.</p>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
-  Setting a SINGLE bit is <code>BSET</code>
+  Setting a SINGLE bit is <a href="shifts-bits.html#bset"><code>BSET</code></a>
   (Shifts &amp; Bits page), one instruction with no mask to build.</div>
   <details class="refbox">
     <summary>Encoding</summary>
@@ -1981,7 +1981,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   <p>The single named bit is turned on in the status byte; the rest of the byte is untouched, and later
   code <code>btst</code>s that bit to see whether the player is sliding.</p>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
-  For one bit, <code>BSET</code>
+  For one bit, <a href="shifts-bits.html#bset"><code>BSET</code></a>
   (Shifts &amp; Bits page) is the clearer single-instruction tool.</div>
   <details class="refbox">
     <summary>Encoding</summary>
@@ -2038,7 +2038,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   (One neat trick this enables: <code>eor.w d0,d0</code>, a register against itself, drives every bit to
   0, though <code>moveq #0</code> is the cheaper way to zero a register.)</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
-  Flipping a SINGLE bit is <code>BCHG</code>
+  Flipping a SINGLE bit is <a href="shifts-bits.html#bchg"><code>BCHG</code></a>
   (Shifts &amp; Bits page). Zeroing a register is <code>moveq #0</code>, not a self-EOR.</div>
   <details class="refbox">
     <summary>Encoding</summary>
@@ -2082,7 +2082,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   <p>Each pass flips the low bit of the flag, so it reads 0, 1, 0, 1..., which the next pass tests to
   pick the other buffer. One instruction, no load, straight to RAM.</p>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
-  A single bit is <code>BCHG</code>
+  A single bit is <a href="shifts-bits.html#bchg"><code>BCHG</code></a>
   (Shifts &amp; Bits page), the clearer one-instruction toggle.</div>
   <details class="refbox">
     <summary>Encoding</summary>
@@ -2131,7 +2131,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   negate). <code>not.b</code> on <code>$05</code> gives <code>$FA</code>; <code>neg.b</code> gives
   <code>$FB</code>. They differ by one, and confusing them corrupts any signed arithmetic that follows.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
-  Flipping a SINGLE bit is <code>BCHG</code>
+  Flipping a SINGLE bit is <a href="shifts-bits.html#bchg"><code>BCHG</code></a>
   (Shifts &amp; Bits page). To negate arithmetically, use <a href="#neg">NEG</a>.</div>
   <details class="refbox">
     <summary>Encoding</summary>
@@ -2143,7 +2143,7 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
 </div>
 
 <footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-19 &middot; <a href="../index.html">Back to hub</a><br>
-Previous: <a href="moving-data.html">Moving Data</a> &middot; Next: Shifts &amp; Bits (coming)</footer>
+Previous: <a href="moving-data.html">Moving Data</a> &middot; Next: <a href="shifts-bits.html">Shifts &amp; Bits</a></footer>
 
 </div>
 

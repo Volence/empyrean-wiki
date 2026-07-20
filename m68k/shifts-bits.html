@@ -1,0 +1,1578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>68000: Shifts &amp; Bits</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🔀%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+/* ============================================================
+   Page-specific styles: Instructions - Math & Logic
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+details.refbox summary::-webkit-details-marker{display:none;}
+
+/* mini-index: chip row of this page's mnemonics */
+nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
+nav.mini a{font-family:var(--mono); font-size:.76rem; letter-spacing:.02em;
+  color:var(--ink); text-decoration:none; border:1px solid var(--accent);
+  border-radius:3px; padding:.22rem .55rem; background:rgba(68,102,238,.1);}
+nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outline:none;}
+.mini-h{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); width:100%; margin:.5rem 0 -.1rem;}
+
+/* instruction entry header: mnemonic + syntax */
+.instr{margin:2.2rem 0 0; padding-top:.2rem;}
+.instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
+.mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
+.syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+.mnx{font-size:.82rem; color:var(--ink); font-style:italic; font-weight:normal;}
+
+/* flags indicator */
+.flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
+.flags .fl-label{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin-right:.3rem;}
+.flags .fchip{display:flex; flex-direction:column; align-items:center; gap:.15rem;
+  width:2.1rem; padding:.25rem 0; border-radius:3px; border:1px solid var(--line);
+  font-family:var(--mono); font-size:.7rem; cursor:help;}
+.flags .fchip:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.flags .fchip .fl-name{font-weight:bold;}
+.flags .fchip .fl-state{font-size:.55rem; letter-spacing:.05em; color:var(--dim);
+  text-transform:uppercase;}
+.flags .fchip.f-set{border-color:var(--gold); background:rgba(238,170,0,.14); color:var(--gold);}
+.flags .fchip.f-set .fl-state{color:var(--gold);}
+.flags .fchip.f-clear{border-color:#CC66AA; background:rgba(204,102,170,.12); color:#CC66AA;}
+.flags .fchip.f-clear .fl-state{color:#CC66AA;}
+.flags .fchip.f-none{border-color:var(--line); color:var(--dim); opacity:.6;}
+.flags .fl-caption{font-family:var(--mono); font-size:.68rem; color:var(--dim);
+  margin-left:.3rem;}
+
+/* gotcha note */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* instruction cost, operands, encoding */
+.cost,.operands{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:.6rem 0; max-width:42rem;}
+.cost .cchip{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent);
+  color:var(--ink); background:rgba(68,102,238,.14); border-radius:3px; padding:.1rem .45rem;
+  font-variant-numeric:tabular-nums;}
+.cost .cnote,.operands .onote{font-size:.8rem; color:var(--dim); max-width:38rem;}
+.cost .cctx{font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.03em;}
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* operand legality grid: which addressing modes each side accepts */
+.opgrid{margin:.6rem 0 .2rem; max-width:42rem;}
+.og-row{display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; margin:.3rem 0;}
+.og-side{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); min-width:6.4rem;}
+.og{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent); border-radius:3px;
+  padding:.12rem .45rem; background:rgba(68,102,238,.14); color:var(--ink);}
+.og.no{border-color:var(--line); background:transparent; color:var(--dim); opacity:.55;
+  text-decoration:line-through;}
+.og-note{font-size:.78rem; color:var(--dim); max-width:40rem; margin:.35rem 0 .6rem;}
+
+/* cheaper cousins: the see-also that names the better tool */
+.kin{border-left:3px solid var(--accent); background:rgba(68,102,238,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.kin .k-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.2rem;}
+
+/* a data VALUE (contents of a register/memory) vs a bare address */
+code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em; font-weight:600;}
+
+/* before/after simulator shell (shared by the flags demo and the per-instruction toys) */
+.movesim{display:flex; flex-direction:column; gap:.8rem;}
+.msim-instr{font-family:var(--mono); display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;}
+.msim-instr code{font-size:1rem; color:var(--gold); background:var(--code-bg);
+  border:1px solid var(--line); border-radius:3px; padding:.2rem .55rem;}
+.msim-instr span{font-size:.72rem; color:var(--dim); max-width:32rem;}
+.msim-ctrl{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.75rem;}
+.msim-ctrl label{color:var(--dim);}
+.msim-ctrl input{font-family:var(--mono); font-size:.85rem; width:4.5rem; background:var(--panel);
+  color:var(--gold); border:1px solid var(--line); border-radius:3px; padding:.25rem .4rem; text-transform:uppercase;}
+.msim-ctrl input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-ctrl button{font-family:var(--mono); font-size:.72rem; padding:.3rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.msim-ctrl button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-regs{display:flex; flex-wrap:wrap; align-items:center; gap:1rem;}
+.mreg{display:inline-flex; flex-direction:column; gap:.2rem; align-items:center; border:1px solid var(--line);
+  border-radius:4px; padding:.5rem .8rem; background:var(--panel2); min-width:5.5rem;}
+.mr-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
+.mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.mr-val b{color:#CC66AA; font-weight:normal;}
+.mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
+.msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
+.mr-flash{background:transparent;}
+@media (prefers-reduced-motion: no-preference){
+  .mr-flash{animation:mrflash .5s ease;}
+  @keyframes mrflash{from{background:rgba(68,102,238,.4);}to{background:transparent;}}
+}
+
+/* live flag readout inside a simulator */
+.msim-fl{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; font-family:var(--mono); font-size:.72rem;}
+.sfchip{border:1px solid var(--line); border-radius:3px; padding:.15rem .5rem; color:var(--dim);}
+.sfchip.on{border-color:var(--gold); color:var(--gold); background:rgba(238,170,0,.14);}
+.sfchip.forced{border-color:#CC66AA; color:#CC66AA;}
+.sfchip.unaff{opacity:.55;}
+.msim-cost{font-family:var(--mono); font-size:.72rem; color:var(--dim); margin:0; max-width:38rem;}
+
+/* size + instruction pickers (reused button-group look) */
+.szgrp{display:inline-flex; gap:.25rem; flex-wrap:wrap;}
+.msim-ctrl .szbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick{display:flex; flex-wrap:wrap; gap:.3rem; margin:.1rem 0;}
+.fpick button{font-family:var(--mono); font-size:.74rem; padding:.25rem .55rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.fpick button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+/* this page's fallback captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / 68000 ASSEMBLY / SHIFTS &amp; BITS</p>
+  <p class="eyebrow">68000 Assembly</p>
+  <h1>Instructions: Shifts &amp; Bits</h1>
+  <p class="sub">This is where the CPU works at the level of individual bits: sliding a register's bits
+  sideways to multiply or divide by powers of two, wrapping them around in a circle, and reaching in to
+  test or flip a single bit by number. The shift and rotate instructions double as fast arithmetic; the
+  single-bit instructions are how flags in a byte get read and set one at a time. This page covers the
+  shift, rotate, and single-bit families; the flow and branch instructions that act on their results
+  live on another page. Every example is real, pulled from the Sonic 2 disassembly and re-verified line
+  by line.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>Shifts</a>
+  <a href="#s2"><span class="n">2</span>Rotates</a>
+  <a href="#s3"><span class="n">3</span>Single-bit operations</a>
+</nav>
+
+<nav class="mini" aria-label="Mini-index of this page's instructions">
+  <span class="mini-h">Shifts</span>
+  <a href="#asl">ASL</a><a href="#asr">ASR</a><a href="#lsl">LSL</a><a href="#lsr">LSR</a>
+  <span class="mini-h">Rotates</span>
+  <a href="#rol">ROL</a><a href="#ror">ROR</a><a href="#roxl">ROXL</a><a href="#roxr">ROXR</a>
+  <span class="mini-h">Single-bit</span>
+  <a href="#btst">BTST</a><a href="#bset">BSET</a><a href="#bclr">BCLR</a><a href="#bchg">BCHG</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
+instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
+on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; Shifts</h2>
+
+<p>A shift moves every bit of a value sideways by a fixed number of places. Each step, the bit pushed off
+one end lands in the carry (C) and, for the shift instructions, also in the extend bit (X); the far end
+fills back in with a new bit. That fill is the whole difference between the four instructions: the logical
+shifts (LSL, LSR) and the left arithmetic shift (ASL) fill the vacated end with 0, while the right
+arithmetic shift (ASR) copies the sign bit (the top bit) back in so a negative number stays negative.</p>
+
+<p>The reason to reach for a shift is that it is a cheap multiply or divide by a power of two. <code>LSL #n</code>
+multiplies by 2^n (every bit steps toward the high end, a 0 enters at the bottom, so the value doubles per
+step). <code>LSR #n</code> divides an UNSIGNED value by 2^n (bits step down, a 0 enters at the top).
+<code>ASR #n</code> divides a SIGNED value by 2^n: it is the sign copy that makes this correct, because a
+negative number must keep its top bits set as it shrinks. That is why Sonic's signed position and velocity
+math uses <code>asr</code> where address arithmetic uses <code>lsr</code>: the same halving, but one preserves
+the sign and the other does not.</p>
+
+<p>ASL and LSL are the odd pair: they move the bits identically (left, 0 into the bottom, top bit out into
+C and X) and produce the same result and the same N, Z, and C. The ONLY difference is V. LSL always clears
+V; ASL sets V if the sign bit changed at any point during the shift, which is exactly the signed-overflow
+condition (the number doubled past what a signed value of that size can hold). So use ASL when you are doing
+signed arithmetic and want the overflow flagged, and LSL when you just want to move bits and do not care
+about sign.</p>
+
+<details class="explain">
+  <summary>New here? &middot; A shift is a cheap multiply or divide by a power of two</summary>
+  <div class="x-body">
+    <p>In decimal, sliding all the digits of 45 one place left gives 450, ten times bigger, and sliding them
+    right gives 4 (with the 5 falling off), a divide by ten. Binary works the same way, except each place is
+    worth 2 instead of 10. So sliding a binary number one place left DOUBLES it, and one place right HALVES
+    it. Shift by n places and you multiply or divide by 2^n: <code>lsl.b #3,d0</code> multiplies by 8,
+    <code>lsr.w #6,d0</code> divides by 64.</p>
+    <p>This matters because a real multiply (<a href="math-logic.html#mulu">MULU</a>)
+    costs around 70 cycles while a shift costs a handful, so whenever the factor is a power of two the code
+    shifts instead. The one catch is division of NEGATIVE numbers: a plain <code>lsr</code> pulls a 0 into
+    the top and turns a negative into a large positive, which is wrong. <code>asr</code> exists for exactly
+    that case: it copies the sign bit back in so a negative value halves correctly. Pick <code>lsr</code> for
+    unsigned values (counts, addresses) and <code>asr</code> for signed ones (positions, velocities).</p>
+  </div>
+</details>
+
+<p>Play with all four below. Pick an op, set a byte and a shift count, and run it: the toy shows the byte
+before and after, which bit fell out into C and X, and what filled the vacated end.</p>
+
+<figure class="diagram">
+<div class="movesim" id="shiftsim">
+  <div class="msim-instr"><code id="sh-instr">lsl.b #1,d0</code> <span>pick a shift and a count and watch it move the bits of a byte. The bit that falls off the end goes into C and X; the far end fills with 0, except ASR copies the sign bit.</span></div>
+  <div class="fpick" role="group" aria-label="Pick a shift operation">
+    <button type="button" class="sh-op" data-op="lsl" aria-pressed="true">lsl</button>
+    <button type="button" class="sh-op" data-op="lsr" aria-pressed="false">lsr</button>
+    <button type="button" class="sh-op" data-op="asl" aria-pressed="false">asl</button>
+    <button type="button" class="sh-op" data-op="asr" aria-pressed="false">asr</button>
+  </div>
+  <div class="msim-ctrl">
+    <label for="sh-val">d0 value (hex byte)</label>
+    <input id="sh-val" type="text" value="6C" maxlength="2" autocomplete="off" aria-describedby="sh-note">
+    <label for="sh-cnt">count (1 to 8)</label>
+    <input id="sh-cnt" type="text" value="1" maxlength="1" autocomplete="off" aria-describedby="sh-note">
+    <button type="button" id="sh-run">Run</button>
+    <button type="button" id="sh-reset">Reset</button>
+  </div>
+  <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
+    <div>before <span class="mr-val" id="sh-vb" style="font-size:.95rem;">0110 1100</span></div>
+    <div>after&nbsp; <span class="mr-val" id="sh-rb" style="font-size:.95rem;">1101 1000</span> &nbsp;=&nbsp; <span class="mr-val" id="sh-rh">$D8</span></div>
+    <div>C <span class="mr-val" id="sh-c" style="font-size:.95rem;">0</span> &nbsp; X <span class="mr-val" id="sh-x" style="font-size:.95rem;">0</span> &nbsp;<span style="color:var(--dim);">(last bit shifted out)</span></div>
+  </div>
+  <p class="msim-note" id="sh-note" aria-live="polite">lsl.b #1,$6C: every bit steps left, a 0 enters at the bottom, and the old top bit 0 falls into C and X. $6C becomes $D8 (108 doubled is 216). lsl by n multiplies by 2^n; switch to lsr (unsigned divide by 2^n), asr (signed divide, copies the sign into the top), or asl (like lsl but sets V on signed overflow).</p>
+</div>
+<figcaption>The four shifts, shown on the actual bits. Static fallback: lsl.b #1 doubles a byte (a 0 enters
+at the bottom, the top bit exits into C and X); lsr.b #1 halves it as an unsigned value (a 0 enters at the
+top); asr.b #1 halves it as a signed value by copying the sign bit back into the top; asl matches lsl but
+also sets the V flag when the sign changes (a signed overflow). The bit that falls off the end always lands
+in both C and X.</figcaption>
+</figure>
+
+<div class="instr" id="lsl">
+  <h3><span class="mn">LSL</span> <span class="mnx">Logical Shift Left</span> <span class="syn">LSL.b/.w/.l #n,Dn &nbsp;|&nbsp; LSL.b/.w/.l Dn,Dn &nbsp;|&nbsp; LSL.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by LSL">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from the last bit shifted out"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V always cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="C set from the last bit shifted out"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">C and X both take the last bit shifted out; V is always 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of LSL">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">register shift by n (.b/.w); a memory word shift-by-1 is 8c. Longs add 2 to the base:</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>cycles</th><th>bytes</th></tr>
+      <tr><td><code>lsl.b/.w #n,Dn</code></td><td>6 + 2n</td><td>2</td></tr>
+      <tr><td><code>lsl.l #n,Dn</code></td><td>8 + 2n</td><td>2</td></tr>
+      <tr><td><code>lsl.b/.w Dn,Dn</code></td><td>6 + 2n</td><td>2</td></tr>
+      <tr><td><code>lsl.w &lt;ea&gt;</code> (memory, by 1)</td><td>8+</td><td>2+</td></tr>
+    </table></div>
+    <p class="enc-note">n is the shift count, so a longer shift genuinely costs more (2 cycles per place),
+    which is why code shifts by the smallest count it can. The memory form shifts a word by exactly 1.
+    c = CPU cycles, b = bytes; Genesis memory adds wait states.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for LSL">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (taken mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">Two shapes: shift a data register by an immediate (1 to 8) or by a count in another
+    data register, OR shift a WORD in memory by exactly 1 (<code>lsl.w (a0)</code>). There is no byte or
+    long memory shift and no immediate destination. The destination of the register form is always a data
+    register; you cannot shift an address register.</p>
+  </div>
+  <p>LSL slides the bits left, dropping a 0 into the bottom each step and pushing the top bit out into C
+  and X. That is a multiply by 2^n, the everyday way to scale an index into a byte offset. This one, from
+  the Enigma decompressor, multiplies a count by 8 to turn it into a table stride:</p>
+  <pre>	lsl.b	#3,d4		<span class="c">; multiply by 8</span></pre>
+  <span class="src">s2disasm/s2.asm:2337 (EniDec, the Enigma decompressor)</span>
+  <p>See it move the bits in the <a href="#shiftsim">shift visualizer</a> (pick <code>lsl</code>), and see
+  it set N, Z, C, and X in the <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  The size sets the boundary the top bit exits from. <code>lsl.b</code> pushes bit 7 out, <code>lsl.w</code>
+  bit 15, <code>lsl.l</code> bit 31, and only the chosen field moves (a <code>.b</code> shift leaves the rest
+  of the register alone). If the value could grow past the size you picked, the high bits just fall off into
+  C and are gone, so shift in the size you actually mean.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Need signed-overflow flagging on the same left shift? That is <a href="#asl">ASL</a>: identical bit
+  movement, but it also sets V when the sign changes. For an unsigned scale where overflow does not matter,
+  LSL is the plain choice. To divide instead of multiply, shift the other way with <a href="#lsr">LSR</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc d ss i 01 rrr</code>: bits 11-9 the count or count-register,
+    bit 8 the direction (<code>1</code> = left), bits 7-6 the size, bit 5 immediate-vs-register count, bits
+    2-0 the data register. A count field of 0 means 8. The memory form is <code>1110 001 d 11 mmm rrr</code>
+    and always shifts by one.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="lsr">
+  <h3><span class="mn">LSR</span> <span class="mnx">Logical Shift Right</span> <span class="syn">LSR.b/.w/.l #n,Dn &nbsp;|&nbsp; LSR.b/.w/.l Dn,Dn &nbsp;|&nbsp; LSR.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by LSR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from the last bit shifted out"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result (always 0 for LSR, top bit becomes 0)"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V always cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="C set from the last bit shifted out"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">C and X take the last bit shifted out; N is always 0 (a 0 fills the top)</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of LSR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">same timing as LSL: 6 + 2n for a register shift, 8+ for a memory word shift-by-1.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for LSR">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">Same two shapes as LSL: a register shifted by an immediate or a register count, or a
+    word in memory shifted by 1. Address registers and immediates are never the destination.</p>
+  </div>
+  <p>LSR slides the bits right, dropping a 0 into the top each step and pushing the bottom bit out into C
+  and X. That is an UNSIGNED divide by 2^n: it treats the value as a plain nonnegative number, which is why
+  it suits counts and addresses but not signed positions. This one converts a byte offset into an object
+  slot index by dividing by $40 (64 bytes per object):</p>
+  <pre>	lsr.w	#6,d5			<span class="c">; divide by $40</span></pre>
+  <span class="src">s2disasm/s2.asm:9471 (SSAllocateObjectAfterCurrent)</span>
+  <p>Shift right by 6 is a divide by 64, turning the distance in bytes into a count of objects. Watch it in
+  the <a href="#shiftsim">shift visualizer</a> (pick <code>lsr</code>) and see it set the flags in the
+  <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  LSR is for UNSIGNED values only. Because it feeds 0 into the top, a negative number (top bit set) becomes
+  a large positive one: <code>lsr.b #1</code> of $FE (-2 signed) gives $7F (127), not -1. To halve a signed
+  value use <a href="#asr">ASR</a>, which copies the sign bit back in. This mix-up is a classic
+  position-math bug.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Dividing a SIGNED value? Use <a href="#asr">ASR</a> instead: same rightward movement, but it fills the top
+  with a copy of the sign bit so negatives halve correctly. The difference between LSR and ASR is entirely
+  in that fill bit. To multiply, shift left with <a href="#lsl">LSL</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc 0 ss i 01 rrr</code>, the same as LSL but with the direction bit
+    (bit 8) cleared to <code>0</code> for right. The memory form is <code>1110 001 0 11 mmm rrr</code>,
+    shifting a word by one. A count field of 0 means 8.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="asl">
+  <h3><span class="mn">ASL</span> <span class="mnx">Arithmetic Shift Left</span> <span class="syn">ASL.b/.w/.l #n,Dn &nbsp;|&nbsp; ASL.b/.w/.l Dn,Dn &nbsp;|&nbsp; ASL.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ASL">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from the last bit shifted out"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="V set if the sign bit changed during the shift"><span class="fl-name">V</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="C set from the last bit shifted out"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">the only shift that sets V: 1 if the sign bit changed at any point</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ASL">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">same as LSL; the extra V-computation is free. Memory word shift-by-1 is 8+.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for ASL">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">Identical operand shapes to LSL. ASL and LSL even produce the same result bits; they
+    differ only in the V flag, so the assembler keeps them as separate mnemonics.</p>
+  </div>
+  <p>ASL moves the bits exactly as <a href="#lsl">LSL</a> does (left, 0 into the bottom, top bit out into C
+  and X), and produces the same result. The one thing it adds is V: it sets the overflow flag if the sign
+  bit changed at any point during the shift, which is precisely a signed overflow (the value doubled past
+  what a signed number of that size can hold). It is the shift to use in signed arithmetic when you need to
+  know the result overflowed. This one, from the pseudo-random number generator, multiplies the RNG state
+  by 5 using a shift-and-add (<code>x*4 + x</code>):</p>
+  <pre>	asl.l	#2,d1
+	add.l	d0,d1
+	asl.l	#3,d1</pre>
+  <span class="src">s2disasm/s2.asm:3980-3982 (the RNG, multiply by 41 via shift-and-add)</span>
+  <p>Each <code>asl.l</code> is a multiply by a power of two; the interleaved adds build the odd factor. See
+  it in the <a href="#shiftsim">shift visualizer</a> (pick <code>asl</code> and watch V light when the top
+  bit flips), and see V set in the <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  ASL and LSL are NOT interchangeable just because they move bits the same way. If you shift a value that
+  overflows its signed range, ASL sets V and LSL does not, so signed code that branches on V must use ASL.
+  For pure bit packing where sign is meaningless, LSL is the honest choice and reads as "not arithmetic".</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Do not need the V overflow flag? <a href="#lsl">LSL</a> is the same speed and same result, just without the
+  signed-overflow detection. The right-shift signed divide is <a href="#asr">ASR</a>. Note the asymmetry:
+  ASL and ASR are NOT mirror images (ASL sets V, ASR clears it, and their fills differ).</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc 1 ss i 00 rrr</code>: like LSL but with the type field (bits 4-3)
+    <code>00</code> instead of <code>01</code>, which is what tells the CPU to compute V. Direction bit 8 is
+    <code>1</code> for left. The memory form is <code>1110 000 1 11 mmm rrr</code>, a word by one.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="asr">
+  <h3><span class="mn">ASR</span> <span class="mnx">Arithmetic Shift Right</span> <span class="syn">ASR.b/.w/.l #n,Dn &nbsp;|&nbsp; ASR.b/.w/.l Dn,Dn &nbsp;|&nbsp; ASR.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ASR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X set from the last bit shifted out"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V always cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="C set from the last bit shifted out"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">fills the top with a copy of the sign bit, so a negative stays negative; V is 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ASR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">same timing as the other shifts; a memory word shift-by-1 is 8+.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for ASR">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">Same operand shapes as the other shifts. ASR is the right shift used for signed
+    division; its distinguishing behavior is the fill bit, not the operand set.</p>
+  </div>
+  <p>ASR slides the bits right and, instead of a 0, copies the SIGN bit (the top bit) back into the top each
+  step. That keeps a negative number negative, so ASR is a correct SIGNED divide by 2^n. It is the shift for
+  signed position and velocity math, where a plain <a href="#lsr">LSR</a> would turn a small negative into a
+  huge positive. This one halves a signed delta, and the disassembly even labels it:</p>
+  <pre>	asr.w	#1,d0 <span class="c">; Divide d0 by 2</span></pre>
+  <span class="src">s2disasm/s2.asm:15826 (the cloud-layer scroll math)</span>
+  <p>Because <code>d0</code> here is a signed delta between camera and cloud positions, <code>asr</code> (not
+  <code>lsr</code>) is what keeps a leftward delta leftward. See the sign copy fill the top in the
+  <a href="#shiftsim">shift visualizer</a> (pick <code>asr</code>, try a byte like $FE) and the flags in the
+  <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  ASR rounds toward negative infinity, not toward zero, which surprises people used to C integer division.
+  <code>asr.w #1</code> of -3 ($FFFD) gives -2 ($FFFE), not -1: the halving floors. If you need round-toward-zero
+  behavior you must adjust before shifting. Also, do not reach for ASR on unsigned data (the sign copy would
+  be wrong); that is <a href="#lsr">LSR</a>'s job.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Dividing an UNSIGNED value? Use <a href="#lsr">LSR</a>, which pulls in 0 at the top instead of the sign
+  bit. The two right shifts, ASR and LSR, differ ONLY in that fill: sign copy versus 0. To multiply a signed
+  value, shift left with <a href="#asl">ASL</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc 0 ss i 00 rrr</code>: type field <code>00</code> (arithmetic),
+    direction bit 8 <code>0</code> (right). It shares ASL's <code>00</code> type but the direction bit
+    picks the sign-extending right shift. The memory form is <code>1110 000 0 11 mmm rrr</code>, a word by
+    one.</p>
+    </div>
+  </details>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; Rotates</h2>
+
+<p>A rotate is a shift whose fallen-off bit reappears at the other end. A shift loses bits: the one pushed
+off the edge lands in the carry and the vacated end fills with something new (a 0, or the sign). A rotate
+loses nothing. The bit that leaves one end comes back in at the far end, so after a full trip around you
+have the exact same value you started with. Nothing is created, nothing is destroyed, the bits just orbit.</p>
+
+<p>There are two flavours, and the difference is the size of the ring. Plain rotate (ROL and ROR) turns a
+byte as an 8-bit ring: the bit that wraps is the one that reappears at the other end, and a COPY of it is
+also dropped into C so you can branch on it, but X is left completely alone. Rotate-with-extend (ROXL and
+ROXR) splices the X bit into the ring as a ninth cell: for a byte the ring is now 9 bits wide (8 data bits
+plus the X cell). The bit shoved out of the byte does not wrap straight back, it parks in X for one step,
+and the OLD contents of X enter the byte at the vacated end. C ends up equal to the new X.</p>
+
+<p>Why does rotate-with-extend exist at all? To chain a rotate across more than one word. The 68000 rotates
+a register at a time, but sometimes you want to rotate a value wider than one register. You rotate the low
+word first with a plain shift or ROXL, and its top bit exits into X. Then you ROXL the high word, and that
+parked X bit slides into the high word's bottom, threading the carry across the boundary. The Kosinski
+decompressor does exactly this: <code>lsr.w #1,d5</code> pushes a compression-stream bit into X, then
+<code>roxl.w #1,d3</code> pulls that same X bit into the bottom of the count being built. X is the bridge
+between the two operations.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What does "through the X bit" actually mean</summary>
+  <div class="x-body">
+    <p>The tempting wrong picture is that "through X" means the bit is copied into X and ALSO stays in the
+    byte, or that it is lost. Neither is true. Here is the dumb, literal mechanism for <code>roxl.b #1</code>:
+    line up nine cells in a row, the 8 bits of the byte plus the X cell parked at the low end. Everything
+    shifts one place to the left. The byte's top bit moves out into X. The old X value moves into the byte's
+    bottom bit. That is the whole operation: a nine-cell ring turned by one, done once per count.</p>
+    <p>So the bit that leaves the byte is not lost and not duplicated. It parks in X for exactly one step,
+    and on the NEXT rotate (or the next instruction that reads X, like ROXL on the high word) it re-enters
+    at the other end. C is just a readable copy of whatever X becomes, so a branch can look at it. Plain ROL
+    and ROR skip the X cell entirely: their ring is only 8 wide, the wrapped bit comes straight back around,
+    and X keeps whatever it held before.</p>
+  </div>
+</details>
+
+<p>Play with both kinds below. Pick a rotate, set a byte, a count, and an initial X, and run it: the toy
+draws the X cell next to the byte so you can watch a bit park in X and re-enter on the next run.</p>
+
+<figure class="diagram">
+<div class="movesim" id="rotsim">
+  <div class="msim-instr"><code id="ro-instr">roxl.b #1,d0</code> <span>pick a rotate and a count and watch the bits orbit. ROL/ROR wrap end to end (8-bit ring) and copy the wrapped bit to C. ROXL/ROXR splice the X cell into the ring (9-bit ring): the byte and X are held across runs so you can see the bit thread through.</span></div>
+  <div class="fpick" role="group" aria-label="Pick a rotate operation">
+    <button type="button" class="ro-op" data-op="rol" aria-pressed="false">rol</button>
+    <button type="button" class="ro-op" data-op="ror" aria-pressed="false">ror</button>
+    <button type="button" class="ro-op" data-op="roxl" aria-pressed="true">roxl</button>
+    <button type="button" class="ro-op" data-op="roxr" aria-pressed="false">roxr</button>
+  </div>
+  <div class="msim-ctrl">
+    <label for="ro-val">d0 value (hex byte)</label>
+    <input id="ro-val" type="text" value="B4" maxlength="2" autocomplete="off" aria-describedby="ro-note">
+    <label for="ro-cnt">count (1 to 8)</label>
+    <input id="ro-cnt" type="text" value="1" maxlength="1" autocomplete="off" aria-describedby="ro-note">
+    <label for="ro-x" id="ro-xlabel">initial X (0/1)</label>
+    <input id="ro-x" type="text" value="0" maxlength="1" autocomplete="off" aria-describedby="ro-note">
+    <button type="button" id="ro-run">Run</button>
+    <button type="button" id="ro-reset">Reset</button>
+  </div>
+  <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
+    <div id="ro-beforeline">before <span class="mr-val" id="ro-vb" style="font-size:.95rem;">1011 0100</span> <span class="v" id="ro-xb" style="margin-left:.4rem;">X 0</span></div>
+    <div id="ro-afterline">after&nbsp; <span class="mr-val" id="ro-rb" style="font-size:.95rem;">0110 1000</span> <span class="v" id="ro-xa" style="margin-left:.4rem;">X 1</span> &nbsp;=&nbsp; <span class="mr-val" id="ro-rh">$68</span></div>
+    <div>C <span class="mr-val" id="ro-c" style="font-size:.95rem;">1</span> &nbsp;<span style="color:var(--dim);">(wrapped bit for ROL/ROR, new X for ROXL/ROXR)</span></div>
+  </div>
+  <p class="msim-note" id="ro-note" aria-live="polite">roxl.b #1,$B4 with X=0: the top bit 1 moves into X, the old X 0 enters at the bottom. Byte becomes $68, X and C are now 1. Nine cells, one step around. Run it again and the new X threads back in.</p>
+</div>
+<figcaption>Plain rotate versus rotate-with-extend, shown on the actual bits. Static fallback: ROL wraps
+end to end (an 8-bit ring) and copies the wrapped bit to C, leaving X untouched; ROR does the same to the
+right. ROXL splices the X cell into the ring for a 9-bit rotate (byte's top bit parks in X, old X enters at
+the bottom, C equals the new X); ROXR does the same to the right. The X cell is drawn next to the byte so
+you can see a bit park there and re-enter on the next run, which is how a rotate chains across words.</figcaption>
+</figure>
+
+<div class="instr" id="rol">
+  <h3><span class="mn">ROL</span> <span class="mnx">Rotate Left</span> <span class="syn">ROL.b/.w/.l #n,Dn &nbsp;|&nbsp; ROL.b/.w/.l Dn,Dn &nbsp;|&nbsp; ROL.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ROL">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V always cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="C set to the bit that wrapped (old MSB)"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">C takes the bit that wrapped (the old top bit); X is UNAFFECTED; V is always 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ROL">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">register rotate by n; a memory word rotate-by-1 is 8+. Longs add 2 to the base.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for ROL">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (taken mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">The same two shapes as the shifts: rotate a data register by an immediate (1 to 8) or by
+    a register count, or rotate a WORD in memory by exactly 1. No byte or long memory form, no immediate
+    destination, and never an address register.</p>
+  </div>
+  <p>ROL slides the bits left; the top bit wraps around into the bottom instead of being lost, and a copy of
+  that wrapped bit lands in C. X is left alone. It is the tool for repacking bits: bring a field around to
+  where you can mask it off. This one, from the scattered-ring animation, rotates a running counter to derive
+  the current frame:</p>
+  <pre>	rol.w	#7,d0
+	andi.w	#3,d0</pre>
+  <span class="src">s2disasm/s2.asm:6105-6106 (ChangeRingFrame, the ring-spill animation)</span>
+  <p>The rotate brings the wanted bits down to the bottom, then <code>andi</code> keeps just those. Watch the
+  wrap in the <a href="#rotsim">rotate visualizer</a> (pick <code>rol</code>) and note X stays put; see N, Z,
+  and C in the <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  ROL does NOT touch X, unlike every shift (which copies the exiting bit into both C and X). If your code
+  relies on X for a following add-with-extend or a ROXL chain, a plain ROL will leave X holding whatever it
+  had before. Use <a href="#roxl">ROXL</a> when you actually want the exiting bit to feed X.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Want the exiting bit to thread through X (to chain across words, or feed add-with-extend)? That is
+  <a href="#roxl">ROXL</a>: a 9-bit rotate through the X cell. To rotate the other way, use <a href="#ror">ROR</a>.
+  If you just want to scale a value and do not need the bits to wrap, a shift (<a href="#lsl">LSL</a>) is the
+  usual choice.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc 1 ss i 11 rrr</code>: bits 11-9 the count or count-register, bit 8
+    the direction (<code>1</code> = left), bits 7-6 the size, bit 5 immediate-vs-register count, type field
+    (bits 4-3) <code>11</code> which selects rotate-without-extend, bits 2-0 the data register. A count field
+    of 0 means 8. The memory form is <code>1110 011 1 11 mmm rrr</code> and rotates a word by one.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="ror">
+  <h3><span class="mn">ROR</span> <span class="mnx">Rotate Right</span> <span class="syn">ROR.b/.w/.l #n,Dn &nbsp;|&nbsp; ROR.b/.w/.l Dn,Dn &nbsp;|&nbsp; ROR.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ROR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V always cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="C set to the bit that wrapped (old LSB)"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">C takes the bit that wrapped (the old bottom bit); X is UNAFFECTED; V is always 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ROR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">same timing as ROL: register rotate by n, memory word rotate-by-1 is 8+.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for ROR">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">Same two shapes as ROL: a data register rotated by an immediate or a register count, or
+    a word in memory rotated by 1. Address registers and immediates are never the destination.</p>
+  </div>
+  <p>ROR slides the bits right; the bottom bit wraps around into the top, and a copy of it lands in C. X is
+  left alone. Because a right rotate by k is the same as a left rotate by (width minus k), it is also a handy
+  way to reorder bytes within a long. This one, from the vertical-scroll math, reorders a computed longword
+  so the wanted word sits where a following <code>move.w</code> can grab it:</p>
+  <pre>	ror.l	#8,d3
+	move.w	d3,(a4)</pre>
+  <span class="src">s2disasm/s2.asm:18256-18257 (ScrollVerti, the vertical-scroll difference)</span>
+  <p>The <code>ror.l #8</code> spins the long around by a whole byte, no bits lost, so the byte-ordered
+  result lines up for the word store. Watch the wrap in the <a href="#rotsim">rotate visualizer</a> (pick
+  <code>ror</code>) and see the flags in the <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Like ROL, ROR leaves X UNAFFECTED. Only C receives the wrapped bit. If you need the exiting bit to enter X
+  (to chain into a high word), reach for <a href="#roxr">ROXR</a> instead. Also remember the count is mod 64
+  for a register count, so a rotate by a data register can wrap more than once around the value.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Need the exiting bit threaded through X for a multi-word chain? Use <a href="#roxr">ROXR</a>, the 9-bit
+  right rotate through the X cell. To rotate the other direction, use <a href="#rol">ROL</a>. For an unsigned
+  divide (bits fall off, do not wrap), the shift <a href="#lsr">LSR</a> is what you want.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc 0 ss i 11 rrr</code>, the same as ROL but with the direction bit
+    (bit 8) cleared to <code>0</code> for right; type field (bits 4-3) is <code>11</code> for rotate-without-extend.
+    The memory form is <code>1110 011 0 11 mmm rrr</code>, a word by one. A count field of 0 means 8.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="roxl">
+  <h3><span class="mn">ROXL</span> <span class="mnx">Rotate Left with Extend</span> <span class="syn">ROXL.b/.w/.l #n,Dn &nbsp;|&nbsp; ROXL.b/.w/.l Dn,Dn &nbsp;|&nbsp; ROXL.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ROXL">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X participates: reads old X, writes new X"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V always cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="C set to the new X"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">X PARTICIPATES: it is the ninth cell of the ring; C ends equal to the new X; V is 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ROXL">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">same timing as ROL/ROR; a memory word rotate-by-1 is 8+.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for ROXL">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">Same operand shapes as the other rotates. What sets ROXL apart is not its operands but the
+    ring: the X bit is spliced in as a ninth cell (for a byte), so it both reads and writes X.</p>
+  </div>
+  <p>ROXL slides the bits left through the X cell: the top bit of the operand moves into X, the OLD X moves
+  into the bottom, and C ends up equal to the new X. For a byte that is a 9-bit ring (8 data bits plus X).
+  The whole point is chaining a rotate across more than one register: rotate the low part, its top bit exits
+  into X, then ROXL the high part so that parked bit slides into its bottom. The Kosinski decompressor threads
+  a compression-stream bit exactly this way, feeding X from an <code>lsr</code> into a count being built:</p>
+  <pre>	lsr.w	#1,d5		<span class="c">; bit shifted out goes into X</span>
+	roxl.w	#1,d3		<span class="c">; get repeat count bit by shifting X in</span></pre>
+  <span class="src">s2disasm/s2.asm:2621,2629 (KosDec, the Kosinski decompressor)</span>
+  <p>The <code>lsr</code> pushes a bit into X, then <code>roxl</code> pulls that same X bit into the bottom of
+  <code>d3</code>: X is the bridge between the two instructions. See a bit park in X and re-enter in the
+  <a href="#rotsim">rotate visualizer</a> (pick <code>roxl</code> and watch the X cell across runs), and see
+  N, Z, C set in the <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  ROXL reads the CURRENT X, so whatever set X last (an add, a shift, an <code>lsr</code>, a previous ROXL)
+  decides the bit that enters at the bottom. Set X deliberately before the chain: to start a multi-word
+  rotate cleanly, clear X first (for instance with an <code>and</code> that clears C and X, or arrange the
+  feeding shift). A stale X quietly corrupts the low bit.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Do not need the bit to pass through X? Plain <a href="#rol">ROL</a> is a simpler 8-bit wrap that leaves X
+  alone and just copies to C. To thread through X in the other direction, use <a href="#roxr">ROXR</a>. If
+  you want the exiting bit in both C and X but not wrapped back in, that is a shift (<a href="#lsl">LSL</a>).</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc 1 ss i 10 rrr</code>: like ROL but with the type field (bits 4-3)
+    <code>10</code> instead of <code>11</code>, which selects rotate-WITH-extend (the X cell in the ring).
+    Direction bit 8 is <code>1</code> for left. The memory form is <code>1110 010 1 11 mmm rrr</code>, a word
+    by one. A count field of 0 means 8: for ROXL that special count-0 case sets C to the current X and leaves
+    the operand and X unchanged.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="roxr">
+  <h3><span class="mn">ROXR</span> <span class="mnx">Rotate Right with Extend</span> <span class="syn">ROXR.b/.w/.l #n,Dn &nbsp;|&nbsp; ROXR.b/.w/.l Dn,Dn &nbsp;|&nbsp; ROXR.w &lt;ea&gt;</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ROXR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set" aria-label="X participates: reads old X, writes new X"><span class="fl-name">X</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear" aria-label="V always cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" aria-label="C set to the new X"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">X PARTICIPATES: it is the ninth cell of the ring; C ends equal to the new X; V is 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of ROXR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">6 + 2n cycles</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">same timing as ROXL; a memory word rotate-by-1 is 8+.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for ROXR">
+    <div class="og-row"><span class="og-side">Register form</span>
+      <span class="og">#n,Dn</span><span class="og">Dn,Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">count is an immediate 1 to 8, or a data register (mod 64)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Memory form</span>
+      <span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">Dn</span><span class="og no">An</span><span class="og no">#n</span>
+    </div>
+    <p class="og-note">Same operand shapes as ROXL. It is the mirror of ROXL: the ninth cell (X) sits at the
+    top of the ring instead of the bottom, so it too reads and writes X.</p>
+  </div>
+  <p>ROXR is ROXL going the other way: the bottom bit of the operand moves into X, the OLD X moves into the
+  top, and C ends equal to the new X. For a byte that is the same 9-bit ring, just turned right. It chains a
+  rotate across words in the high-to-low direction: rotate the high word first, its bottom bit exits into X,
+  then ROXR the low word so that bit enters at the top, threading a 32-bit rotate through two 16-bit rotates.
+  No clean real example of ROXR appears in the Sonic 2 disassembly (its sibling ROXL is used for the same
+  chaining), so here is the two-word rotate-right idiom spelled out:</p>
+  <div class="teach"><span class="t-tag">Illustrative, not from the disassembly</span>
+<pre>	<span class="c">; rotate the 32-bit value in d0:d1 right by one, d0 high, d1 low</span>
+	lsr.w	#1,d0		<span class="c">; low bit of high word exits into X</span>
+	roxr.w	#1,d1		<span class="c">; that X bit enters the top of the low word</span>
+	<span class="c">; the low word's own bottom bit is now parked in X, ready to</span>
+	<span class="c">; wrap up into d0 if you complete the ring</span></pre>
+  </div>
+  <p>The pattern mirrors the real ROXL chain in the Kosinski decompressor above, just to the right. Watch a
+  bit park in X and re-enter in the <a href="#rotsim">rotate visualizer</a> (pick <code>roxr</code> and note
+  the X cell now sits at the top), and see N, Z, C in the
+  <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Like ROXL, ROXR reads the CURRENT X: the bit that enters at the top is whatever X held going in, set by the
+  previous instruction. Clear or set X deliberately before starting a chain. And count 0 (a register count of
+  exactly 0) does not rotate at all: it sets C to the current X and leaves the operand and X unchanged.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Do not need X in the ring? Plain <a href="#ror">ROR</a> is the simpler 8-bit right wrap that leaves X alone.
+  To thread through X in the other direction, use <a href="#roxl">ROXL</a>. To drop bits off the end instead
+  of wrapping them, a shift (<a href="#lsr">LSR</a> or <a href="#asr">ASR</a>) is the tool.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register form is <code>1110 ccc 0 ss i 10 rrr</code>: type field (bits 4-3) <code>10</code>
+    (rotate-with-extend), direction bit 8 <code>0</code> (right). The memory form is
+    <code>1110 010 0 11 mmm rrr</code>, a word by one. A count field of 0 means 8; a register count of exactly
+    0 sets C from the current X and leaves everything else alone.</p>
+    </div>
+  </details>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; Single-bit operations</h2>
+
+<p>These four instructions reach into ONE numbered bit and act on it by name, where the shifts and rotates
+move a whole register at once. You name a bit (bit 5 of a status byte, the priority bit of a render flag)
+and the CPU tests it, and then BSET sets it to 1, BCLR clears it to 0, BCHG flips it, or BTST stops after
+the test. All four do the test FIRST: before touching anything they read the current value of that bit and
+record it, which is how flag bytes get read one bit at a time. The single most useful fact about them is
+what they leave in Z.</p>
+
+<p>Z reports the OLD value of the tested bit, and it reports it INVERTED: Z=1 means the bit WAS clear (0),
+Z=0 means the bit WAS set (1). So <code>btst #n,x</code> then <code>beq</code> branches exactly when the
+bit was 0, and <code>bne</code> branches when it was 1. That is the everyday joypad test: <code>btst
+#button_A,(Ctrl_1_Press)</code> then <code>beq</code> skips ahead when A was NOT pressed. Contrast this with
+masking on the <a href="math-logic.html#s3">Math &amp; Logic page</a>:
+AND, OR, and EOR edit a WHOLE byte through a mask and set Z from the whole result; these name a single bit
+and additionally report that one bit's prior state. None of the four touch X, N, V, or C: only Z moves.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why is Z "backwards" (Z=1 when the bit was 0)</summary>
+  <div class="x-body">
+    <p>The intuitive guess is that Z copies the bit: bit set, so Z set. That guess is wrong and it will make
+    every branch you write go the wrong way. Throw it out. The rule is the opposite: <b>Z is the complement
+    of the tested bit's OLD value.</b> Z=1 when the bit was 0, Z=0 when the bit was 1.</p>
+    <p>The name Z stands for "zero", and it helps to read <code>btst #n,x</code> as "compute the value of
+    just bit n, was that ZERO?" If the bit was 0, the tested value is zero, so Z=1, and <code>beq</code>
+    (branch if equal, meaning branch if Z=1) fires. If the bit was 1, the value is nonzero, Z=0, and
+    <code>bne</code> fires. So the reliable reading is: <code>btst</code> then <code>beq</code> takes the
+    branch when the bit was CLEAR; <code>btst</code> then <code>bne</code> takes it when the bit was SET. The
+    op you pick after (set/clear/flip) does not change this: BSET, BCLR, and BCHG all set Z from the OLD bit
+    exactly as BTST does, THEN change the bit.</p>
+  </div>
+</details>
+
+<p>Play with all four below. Pick an op, set a byte and a bit number 0 to 7, and run it: the toy marks the
+selected bit, shows the byte after (the changed bit highlighted), and puts Z next to it so you can watch Z
+come out as the COMPLEMENT of the bit's old value. The byte is held across runs, so a <code>bset</code> then
+a later <code>bclr</code> both act on the current value.</p>
+
+<figure class="diagram">
+<div class="movesim" id="bitsim2">
+  <div class="msim-instr"><code id="bp-instr">btst #2,d0</code> <span>pick an op and a bit number and watch it act on one named bit. All four set Z from the bit's OLD value (Z=1 if it was clear); BTST stops there, BSET/BCLR/BCHG then set/clear/flip the bit. The byte is held across runs.</span></div>
+  <div class="fpick" role="group" aria-label="Pick a single-bit operation">
+    <button type="button" class="bp-op" data-op="btst" aria-pressed="true">btst</button>
+    <button type="button" class="bp-op" data-op="bset" aria-pressed="false">bset</button>
+    <button type="button" class="bp-op" data-op="bclr" aria-pressed="false">bclr</button>
+    <button type="button" class="bp-op" data-op="bchg" aria-pressed="false">bchg</button>
+  </div>
+  <div class="msim-ctrl">
+    <label for="bp-val">d0 value (hex byte)</label>
+    <input id="bp-val" type="text" value="6C" maxlength="2" autocomplete="off" aria-describedby="bp-note">
+    <label for="bp-num">bit number (0 to 7)</label>
+    <input id="bp-num" type="text" value="2" maxlength="1" autocomplete="off" aria-describedby="bp-note">
+    <button type="button" id="bp-run">Run</button>
+    <button type="button" id="bp-reset">Reset</button>
+  </div>
+  <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
+    <div>before <span class="mr-val" id="bp-vb" style="font-size:.95rem;">0110 1100</span></div>
+    <div style="padding-left:3.9rem;"><span class="mr-val" id="bp-mark" style="font-size:.95rem; color:var(--accent);">&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;^&nbsp;&nbsp;&nbsp;&nbsp;</span> <span style="color:var(--dim);">(selected bit)</span></div>
+    <div>after&nbsp; <span class="mr-val" id="bp-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="bp-rh">$6C</span></div>
+    <div>Z <span class="mr-val" id="bp-z" style="font-size:1.1rem;">0</span> &nbsp;<span style="color:var(--dim);">(the COMPLEMENT of the tested bit's OLD value: Z=1 iff the bit was clear)</span></div>
+  </div>
+  <p class="msim-note" id="bp-note" aria-live="polite">btst #2,d0: bit 2 of $6C is 1, so Z becomes 0 (the bit was set); the byte is unchanged because BTST only tests. After btst, beq branches when the bit was 0.</p>
+</div>
+<figcaption>The four single-bit ops, shown on the actual bits. Static fallback: all four set Z from the
+tested bit's OLD value (Z=1 if the bit was clear, Z=0 if it was set), so btst then beq branches when the bit
+was 0. BTST only tests and leaves the byte unchanged; BSET then sets the bit to 1, BCLR clears it to 0, and
+BCHG flips it. None of the four touch X, N, V, or C.</figcaption>
+</figure>
+
+<div class="instr" id="btst">
+  <h3><span class="mn">BTST</span> <span class="mnx">Test a Bit</span> <span class="syn">BTST #n,&lt;ea&gt; &nbsp;|&nbsp; BTST Dn,&lt;ea&gt; &nbsp;<span class="mnx">(byte in memory, or long in a Dn)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by BTST">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-set" aria-label="Z set from the OLD value of the tested bit: Z=1 if the bit was clear, Z=0 if it was set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff</span></span>
+    <span class="fl-caption">ONLY Z moves: Z = the complement of the tested bit's value (Z=1 if the bit was clear)</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of BTST">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 to 8 cycles</span>
+    <span class="cchip">2 to 4 bytes</span>
+    <span class="cctx">immediate bit number on a register is 6c/4b; on memory 4c/2b plus the operand fetch.</span>
+  </div>
+  <details class="refbox">
+    <summary>Full timing and size</summary>
+    <div class="enc-body">
+    <div class="tbl"><table>
+      <tr><th>Form</th><th>cycles</th><th>bytes</th></tr>
+      <tr><td><code>btst Dn,Dm</code> (register, long)</td><td>6</td><td>2</td></tr>
+      <tr><td><code>btst #n,Dn</code> (immediate, long)</td><td>10</td><td>4</td></tr>
+      <tr><td><code>btst Dn,&lt;ea&gt;</code> (memory byte)</td><td>4+</td><td>2+</td></tr>
+      <tr><td><code>btst #n,&lt;ea&gt;</code> (memory byte)</td><td>8+</td><td>4+</td></tr>
+    </table></div>
+    <p class="enc-note">BTST is the cheapest of the four because it never writes back. A register long-bit
+    test is 6c; a byte in memory adds the addressing-mode fetch. c = CPU cycles, b = bytes; Genesis memory
+    adds wait states.</p>
+    </div>
+  </details>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for BTST">
+    <div class="og-row"><span class="og-side">Bit number</span>
+      <span class="og">#n</span><span class="og">Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">immediate, or a data register; taken mod 8 for a byte operand, mod 32 for a Dn</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">An</span>
+    </div>
+    <p class="og-note">The bit number is either an immediate <code>#n</code> or a value in a data register
+    <code>Dn</code> (two encodings of the same instruction). The destination is a byte in memory OR a long in
+    a data register: a <code>Dn</code> destination tests one of its 32 bits (bit number mod 32), any memory
+    destination tests one of the 8 bits of a byte (bit number mod 8). You cannot BTST an address register.</p>
+  </div>
+  <p>BTST reads a named bit and sets Z from it, without changing anything: Z=1 if the bit was clear, Z=0 if it
+  was set, so a following <code>beq</code> branches when the bit was 0. This is the canonical joypad button
+  test, straight from the pause handler:</p>
+  <pre>	btst	#button_A,(Ctrl_1_Press).w	<span class="c">; is button A pressed?</span>
+	beq.s	Pause_ChkBC		<span class="c">; if not, branch</span></pre>
+  <span class="src">s2disasm/s2.asm:1600-1601 (the pause handler, slow-motion cheat)</span>
+  <p>The button-A bit of the freshly pressed controls is tested; <code>beq</code> takes the branch (skips the
+  A action) when the bit was 0, that is, when A was NOT pressed. Try it in the <a href="#bitsim2">bit-poke
+  toy</a> (pick <code>btst</code>) and watch Z come out as the complement of the bit; see how Z drives a branch
+  in the <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Z is INVERTED, and this is the classic bug. <code>btst</code> then <code>beq</code> branches when the bit
+  was CLEAR (0), not when it was set; <code>bne</code> branches when it was SET. If you read it as "Z equals
+  the bit" every branch inverts. Say it out loud: beq after btst means "the bit was zero".</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>Two forms. The register-bit-number form is <code>0000 rrr 100 mmm ddd</code>: bits 11-9 the data
+    register holding the bit number, bits 5-0 the destination effective address. The immediate form is
+    <code>0000 1000 00 mmm ddd</code> followed by an extension word whose low byte is the bit number. Bits
+    7-6 (<code>00</code>) select the "test" operation, distinguishing BTST from BCHG/BCLR/BSET.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="bset">
+  <h3><span class="mn">BSET</span> <span class="mnx">Test a Bit and Set</span> <span class="syn">BSET #n,&lt;ea&gt; &nbsp;|&nbsp; BSET Dn,&lt;ea&gt; &nbsp;<span class="mnx">(byte in memory, or long in a Dn)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by BSET">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-set" aria-label="Z set from the OLD value of the tested bit, BEFORE it is set: Z=1 if the bit was clear"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff</span></span>
+    <span class="fl-caption">ONLY Z moves: Z = the complement of the bit's PRIOR value (Z=1 if it was clear), then the bit is set to 1</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of BSET">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 to 12 cycles</span>
+    <span class="cchip">2 to 4 bytes</span>
+    <span class="cctx">register form 8c/2b (12c with an immediate bit number); memory adds the write-back and fetch.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for BSET">
+    <div class="og-row"><span class="og-side">Bit number</span>
+      <span class="og">#n</span><span class="og">Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">immediate, or a data register; mod 8 for a byte, mod 32 for a Dn</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">An</span>
+    </div>
+    <p class="og-note">Same shape as BTST, but the destination is now read AND written. A <code>Dn</code>
+    destination pokes one of 32 bits (mod 32); a memory destination pokes one of the 8 bits of a byte (mod 8).
+    No immediate destination, no address register.</p>
+  </div>
+  <p>BSET first tests the bit (setting Z from its OLD value, Z=1 if it was clear) and THEN forces it to 1. It
+  is how a status flag gets raised by name. This one raises the player's "in-air" bit at the top of a jump:</p>
+  <pre>	bset	#status.player.in_air,status(a1)	<span class="c">; set "in-air" bit</span></pre>
+  <span class="src">s2disasm/s2.asm:5496 (the jump routine, marking the player airborne)</span>
+  <p>The named bit of the status byte becomes 1 regardless of what it held; Z is left reflecting the old value
+  (usually ignored here, since the code just wants the bit set). Poke it in the <a href="#bitsim2">bit-poke
+  toy</a> (pick <code>bset</code>, note Z comes from the OLD bit while the byte changes), and see Z in the
+  <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Z reflects the bit's state BEFORE the set, not after. After <code>bset</code> the bit is always 1, but Z
+  tells you whether it had ALREADY been 1 (Z=0) or was newly raised (Z=1). That is genuinely useful for
+  test-and-set locks, but if you branch on Z expecting the new state you will be a step behind.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Setting SEVERAL bits of a byte at once? That is a whole-byte <a href="math-logic.html#or">OR</a>
+  with a mask on the Math &amp; Logic page: <code>ori.b #mask</code> raises every 1 in the mask in one
+  instruction. BSET is the single-named-bit tool that ALSO reports the old value in Z. To clear a bit instead
+  of setting it, use <a href="#bclr">BCLR</a>; to flip it, <a href="#bchg">BCHG</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register-bit-number form is <code>0000 rrr 111 mmm ddd</code>; the immediate form is
+    <code>0000 1000 11 mmm ddd</code> plus an extension word holding the bit number. Bits 7-6 (<code>11</code>)
+    select "set", the field that distinguishes BSET from BTST (<code>00</code>), BCHG (<code>01</code>), and
+    BCLR (<code>10</code>).</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="bclr">
+  <h3><span class="mn">BCLR</span> <span class="mnx">Test a Bit and Clear</span> <span class="syn">BCLR #n,&lt;ea&gt; &nbsp;|&nbsp; BCLR Dn,&lt;ea&gt; &nbsp;<span class="mnx">(byte in memory, or long in a Dn)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by BCLR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-set" aria-label="Z set from the OLD value of the tested bit, BEFORE it is cleared: Z=1 if the bit was clear"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff</span></span>
+    <span class="fl-caption">ONLY Z moves: Z = the complement of the bit's PRIOR value (Z=1 if it was already clear), then the bit is set to 0</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of BCLR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">10 to 14 cycles</span>
+    <span class="cchip">2 to 4 bytes</span>
+    <span class="cctx">register form 10c/2b (14c immediate); BCLR is 2c dearer than BSET on a register. Memory adds fetch + write.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for BCLR">
+    <div class="og-row"><span class="og-side">Bit number</span>
+      <span class="og">#n</span><span class="og">Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">immediate, or a data register; mod 8 for a byte, mod 32 for a Dn</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">An</span>
+    </div>
+    <p class="og-note">Same operands as BSET; the destination is read and written. <code>Dn</code> clears one of
+    32 bits (mod 32), memory one of a byte's 8 bits (mod 8). No immediate destination, no address register.</p>
+  </div>
+  <p>BCLR tests the bit (setting Z from its OLD value, Z=1 if it was already clear) and THEN forces it to 0.
+  It is how a flag gets lowered by name. This one clears the title-card bit out of the game mode as the level
+  proper begins:</p>
+  <pre>	bclr	#GameModeFlag_TitleCard,(Game_Mode).w <span class="c">; clear $80 from the game mode</span></pre>
+  <span class="src">s2disasm/s2.asm:5078 (Level_StartGame, leaving the title-card sequence)</span>
+  <p>The named bit of <code>Game_Mode</code> becomes 0, dropping the level out of its title-card phase; Z is
+  left reflecting the old bit. See it in the <a href="#bitsim2">bit-poke toy</a> (pick <code>bclr</code>) and
+  watch Z reflect the OLD bit while the byte drops that bit; check Z in the
+  <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Like BSET, Z is the bit's OLD value inverted, read BEFORE the clear: after <code>bclr</code> the bit is
+  always 0, but Z tells you whether it had been clear already (Z=1) or you actually just cleared a set bit
+  (Z=0). Also note BCLR must read-modify-write, so it is a touch slower than BTST and even BSET.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Clearing SEVERAL bits at once? That is a whole-byte <a href="math-logic.html#and">AND</a>
+  with an inverted mask on the Math &amp; Logic page: <code>andi.b #~mask</code> knocks out every named bit in
+  one go. BCLR is the single-named-bit tool that ALSO reports the old value in Z. To set a bit, use
+  <a href="#bset">BSET</a>; to flip it, <a href="#bchg">BCHG</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register-bit-number form is <code>0000 rrr 110 mmm ddd</code>; the immediate form is
+    <code>0000 1000 10 mmm ddd</code> plus an extension word with the bit number. Bits 7-6 (<code>10</code>)
+    select "clear". Clearing a bit is implemented as a read, an AND with the inverted bit mask, and a
+    write-back, which is why it costs a little more than BTST.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="bchg">
+  <h3><span class="mn">BCHG</span> <span class="mnx">Test a Bit and Change</span> <span class="syn">BCHG #n,&lt;ea&gt; &nbsp;|&nbsp; BCHG Dn,&lt;ea&gt; &nbsp;<span class="mnx">(byte in memory, or long in a Dn)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by BCHG">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="N unaffected"><span class="fl-name">N</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-set" aria-label="Z set from the OLD value of the tested bit, BEFORE it is flipped: Z=1 if the bit was clear"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none" aria-label="V unaffected"><span class="fl-name">V</span><span class="fl-state">unaff</span></span>
+    <span class="fchip f-none" aria-label="C unaffected"><span class="fl-name">C</span><span class="fl-state">unaff</span></span>
+    <span class="fl-caption">ONLY Z moves: Z = the complement of the bit's PRIOR value (Z=1 if it was clear), then the bit is flipped</span>
+  </div>
+  <div class="cost" role="group" aria-label="Timing and size of BCHG">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">8 to 12 cycles</span>
+    <span class="cchip">2 to 4 bytes</span>
+    <span class="cctx">register form 8c/2b (12c immediate), like BSET; memory adds the read-modify-write and fetch.</span>
+  </div>
+  <div class="operands"><span class="fl-label">Operands</span></div>
+  <div class="opgrid" role="group" aria-label="Legal operands for BCHG">
+    <div class="og-row"><span class="og-side">Bit number</span>
+      <span class="og">#n</span><span class="og">Dn</span>
+      <span class="onote" style="font-size:.78rem; color:var(--dim);">immediate, or a data register; mod 8 for a byte, mod 32 for a Dn</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">An</span>
+    </div>
+    <p class="og-note">Same operands as BSET and BCLR; read and written. <code>Dn</code> flips one of 32 bits (mod
+    32), memory one of a byte's 8 bits (mod 8). No immediate destination, no address register.</p>
+  </div>
+  <p>BCHG tests the bit (setting Z from its OLD value, Z=1 if it was clear) and THEN flips it: a 1 becomes 0,
+  a 0 becomes 1. It is the toggle, the one-instruction way to alternate a state each time through. This one
+  flips the region bit, swapping the console between Japanese and international:</p>
+  <pre>	bchg	#7,(Graphics_Flags).w</pre>
+  <span class="src">s2disasm/s2.asm:4644 (the region-toggle cheat, Japanese vs international)</span>
+  <p>Each time the code runs, bit 7 of <code>Graphics_Flags</code> flips to the other state, toggling the
+  trademark symbols and the Tails/Miles name; Z reflects the value before the flip. Try the toggle in the
+  <a href="#bitsim2">bit-poke toy</a> (pick <code>bchg</code> and run it twice to see the bit come back), and
+  see Z in the <a href="math-logic.html#s1">flags demo</a>.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  BCHG is the one whose result you genuinely cannot predict from the op alone: the bit ends up as the OPPOSITE
+  of whatever it was, so run it twice and you are back where you started. Z (the OLD value inverted) is
+  therefore the only way to know which way it just flipped. For a whole-byte toggle of several bits at once,
+  that is <a href="math-logic.html#eor">EOR</a> with a mask.</div>
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  Toggling SEVERAL bits at once? That is a whole-byte <a href="math-logic.html#eor">EOR</a>
+  with a mask on the Math &amp; Logic page: <code>eori.b #mask</code> flips every named bit in one instruction.
+  BCHG is the single-named-bit toggle that ALSO reports the old value in Z. To force a bit one way instead of
+  flipping, use <a href="#bset">BSET</a> (to 1) or <a href="#bclr">BCLR</a> (to 0).</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>The register-bit-number form is <code>0000 rrr 101 mmm ddd</code>; the immediate form is
+    <code>0000 1000 01 mmm ddd</code> plus an extension word with the bit number. Bits 7-6 (<code>01</code>)
+    select "change". Like BCLR and BSET it is a read-modify-write; the change is an EOR with the bit mask.</p>
+    </div>
+  </details>
+</div>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-19 &middot; <a href="../index.html">Back to hub</a><br>
+Previous: <a href="math-logic.html">Math &amp; Logic</a> &middot; Next: Flow &amp; System (coming)</footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+
+/* ---- shift visualizer: LSL / LSR / ASL / ASR shown on the actual bits ---- */
+(function(){
+  var val=document.getElementById('sh-val'); if(!val) return;
+  var cnt=document.getElementById('sh-cnt'), instr=document.getElementById('sh-instr'), note=document.getElementById('sh-note'),
+      vb=document.getElementById('sh-vb'), rb=document.getElementById('sh-rb'), rh=document.getElementById('sh-rh'),
+      ce=document.getElementById('sh-c'), xe=document.getElementById('sh-x'),
+      run=document.getElementById('sh-run'), reset=document.getElementById('sh-reset');
+  var op='lsl', byte=0x6C;              // byte held across runs; seeded from input only on edit/reset
+  var SYN={lsl:'lsl.b #1,d0',lsr:'lsr.b #1,d0',asl:'asl.b #1,d0',asr:'asr.b #1,d0'};
+  var NAME={lsl:'lsl',lsr:'lsr',asl:'asl',asr:'asr'};
+  function bin8(n){ n&=0xFF; var s=n.toString(2).padStart(8,'0'); return s.slice(0,4)+' '+s.slice(4); }
+  function bin8hl(n,ref){ n&=0xFF; ref&=0xFF; var o=''; for(var i=7;i>=0;i--){ if(i===3) o+=' '; var b=(n>>i)&1, r=(ref>>i)&1; o += (b!==r)?('<b>'+b+'</b>'):(''+b); } return o; }
+  function rdVal(){ var v=(val.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase(); val.value=v; return parseInt(v||'0',16)&0xFF; }
+  function rdCnt(){ var v=(cnt.value||'').replace(/[^0-9]/g,'').slice(0,1); cnt.value=v; var n=parseInt(v||'0',10); if(n<1) n=1; if(n>8) n=8; return n; }
+  function hex2(n){ return '$'+(n&0xFF).toString(16).toUpperCase().padStart(2,'0'); }
+  function s8(n){ n&=0xFF; return n>=0x80 ? n-0x100 : n; }
+  function curSyn(){ var n=rdCnt(); return NAME[op]+'.b #'+n+',d0'; }
+  function sync(){
+    instr.textContent=curSyn(); run.textContent='Run '+curSyn();
+    vb.textContent=bin8(byte);
+  }
+  // apply one shift op to `byte` by count n; return {res, last, vchanged}
+  // vchanged tracks (for ASL) whether the sign bit changed at ANY step, per the manual
+  function shift(a,n){
+    var res=a&0xFF, last=0, vchanged=false;
+    for(var i=0;i<n;i++){
+      var signBefore=(res>>7)&1;
+      if(op==='lsl'||op==='asl'){ last=(res>>7)&1; res=(res<<1)&0xFF; }             // 0 into LSB
+      else if(op==='lsr'){ last=res&1; res=(res>>1)&0xFF; }                          // 0 into MSB
+      else { last=res&1; var sign=(res>>7)&1; res=((res>>1)|(sign<<7))&0xFF; }       // ASR: copy sign into MSB
+      if(((res>>7)&1)!==signBefore) vchanged=true;
+    }
+    return {res:res,last:last,vchanged:vchanged};
+  }
+  function run1(){
+    var n=rdCnt();
+    var before=byte;
+    var r=shift(before,n);
+    byte=r.res;                          // hold the result across runs
+    vb.textContent=bin8(before);
+    rb.innerHTML=bin8hl(byte,before); rh.textContent=hex2(byte);
+    ce.textContent=r.last; xe.textContent=r.last;
+    ce.classList.remove('mr-flash'); void ce.offsetWidth; ce.classList.add('mr-flash');
+    rb.classList.remove('mr-flash'); void rb.offsetWidth; rb.classList.add('mr-flash');
+    var msg;
+    if(op==='lsl'){
+      msg='lsl.b #'+n+',d0: every bit steps left, a 0 enters at the bottom, and the top bit '+r.last+' falls into C and X. '
+        +hex2(before)+' becomes '+hex2(byte)+' ('+(before&0xFF)+' times 2^'+n+' = '+((before&0xFF)*Math.pow(2,n))+', kept to 8 bits). lsl multiplies by 2^n.';
+    } else if(op==='lsr'){
+      msg='lsr.b #'+n+',d0: every bit steps right, a 0 enters at the top, and the bottom bit '+r.last+' falls into C and X. '
+        +hex2(before)+' becomes '+hex2(byte)+' ('+(before&0xFF)+' divided by 2^'+n+' = '+Math.floor((before&0xFF)/Math.pow(2,n))+', unsigned). lsr is an UNSIGNED divide.';
+    } else if(op==='asr'){
+      msg='asr.b #'+n+',d0: every bit steps right, the SIGN bit is copied back into the top, and the bottom bit '+r.last+' falls into C and X. '
+        +hex2(before)+' ('+s8(before)+' signed) becomes '+hex2(byte)+' ('+s8(byte)+' signed = '+s8(before)+' divided by 2^'+n+', floored). asr is a SIGNED divide.';
+    } else {
+      msg='asl.b #'+n+',d0: identical to lsl (left, 0 in, top bit '+r.last+' out to C and X), result '+hex2(byte)+'. '
+        +'The one extra: V = '+(r.vchanged?'1 (the sign bit changed during the shift, a signed overflow)':'0 (the sign bit never changed)')+'. asl is lsl that flags signed overflow.';
+    }
+    note.textContent=msg;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.sh-op'),function(b){
+    b.addEventListener('click',function(){ op=b.dataset.op;
+      Array.prototype.forEach.call(document.querySelectorAll('.sh-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
+      sync(); });
+  });
+  val.addEventListener('input',function(){ byte=rdVal(); vb.textContent=bin8(byte); });   // edit seeds the byte
+  cnt.addEventListener('input',function(){ instr.textContent=curSyn(); run.textContent='Run '+curSyn(); });
+  run.addEventListener('click',run1);
+  reset.addEventListener('click',function(){
+    op='lsl'; byte=0x6C; val.value='6C'; cnt.value='1';
+    Array.prototype.forEach.call(document.querySelectorAll('.sh-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='lsl'?'true':'false'); });
+    sync();
+    rb.textContent='1101 1000'; rh.textContent='$D8'; ce.textContent='0'; xe.textContent='0';
+    note.textContent='Reset. Value $6C, count 1, lsl. Pick a shift and run it (the byte is held across runs, so each run shifts the current value).';
+  });
+  sync();
+})();
+
+/* ---- rotate visualizer: ROL / ROR / ROXL / ROXR, with the X cell drawn in the ring ---- */
+(function(){
+  var val=document.getElementById('ro-val'); if(!val) return;
+  var cnt=document.getElementById('ro-cnt'), xin=document.getElementById('ro-x'), xlabel=document.getElementById('ro-xlabel'),
+      instr=document.getElementById('ro-instr'), note=document.getElementById('ro-note'),
+      vb=document.getElementById('ro-vb'), rb=document.getElementById('ro-rb'), rh=document.getElementById('ro-rh'),
+      xb=document.getElementById('ro-xb'), xa=document.getElementById('ro-xa'),
+      ce=document.getElementById('ro-c'),
+      run=document.getElementById('ro-run'), reset=document.getElementById('ro-reset');
+  var op='roxl', byte=0xB4, X=0;          // BOTH byte and X held across runs; seeded from inputs only on edit/reset
+  var NAME={rol:'rol',ror:'ror',roxl:'roxl',roxr:'roxr'};
+  var USESX={rol:false,ror:false,roxl:true,roxr:true};
+  function bin8(n){ n&=0xFF; var s=n.toString(2).padStart(8,'0'); return s.slice(0,4)+' '+s.slice(4); }
+  function bin8hl(n,ref){ n&=0xFF; ref&=0xFF; var o=''; for(var i=7;i>=0;i--){ if(i===3) o+=' '; var b=(n>>i)&1, r=(ref>>i)&1; o += (b!==r)?('<b>'+b+'</b>'):(''+b); } return o; }
+  function rdVal(){ var v=(val.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase(); val.value=v; return parseInt(v||'0',16)&0xFF; }
+  function rdCnt(){ var v=(cnt.value||'').replace(/[^0-9]/g,'').slice(0,1); cnt.value=v; var n=parseInt(v||'0',10); if(n<1) n=1; if(n>8) n=8; return n; }
+  function rdX(){ var v=(xin.value||'').replace(/[^01]/g,'').slice(0,1); xin.value=v; return v==='1'?1:0; }
+  function hex2(n){ return '$'+(n&0xFF).toString(16).toUpperCase().padStart(2,'0'); }
+  function curSyn(){ var n=rdCnt(); return NAME[op]+'.b #'+n+',d0'; }
+  // apply one rotate op to `byte` (and X) by count n; returns {res, x, c}
+  // rol/ror: 8-bit ring, wrapped bit -> C, X untouched. roxl/roxr: 9-bit ring through X.
+  function rotate(a,x,n){
+    var res=a&0xFF, xx=x&1, c=0;
+    for(var i=0;i<n;i++){
+      if(op==='rol'){ var top=(res>>7)&1; res=((res<<1)|top)&0xFF; c=top; }
+      else if(op==='ror'){ var bot=res&1; res=((res>>1)|(bot<<7))&0xFF; c=bot; }
+      else if(op==='roxl'){ var t=(res>>7)&1; res=((res<<1)|xx)&0xFF; xx=t; c=t; }
+      else { var b=res&1; res=((res>>1)|(xx<<7))&0xFF; xx=b; c=b; }
+    }
+    // rol/ror leave X untouched entirely; roxl/roxr write the new X
+    return {res:res, x:(op==='rol'||op==='ror')?(x&1):xx, c:c};
+  }
+  function reflectX(){                     // enable/disable the X input per op
+    if(USESX[op]){ xin.disabled=false; xin.style.opacity='1'; xlabel.style.opacity='1'; xlabel.textContent='initial X (0/1)'; }
+    else { xin.disabled=true; xin.style.opacity='.4'; xlabel.style.opacity='.4'; xlabel.textContent='X (unused by ROL/ROR)'; }
+  }
+  function sync(){
+    instr.textContent=curSyn(); run.textContent='Run '+curSyn();
+    vb.textContent=bin8(byte);
+    xb.textContent='X '+(USESX[op]?X:'-'); xa.textContent='X '+(USESX[op]?X:'-');
+    xb.style.opacity=USESX[op]?'1':'.4'; xa.style.opacity=USESX[op]?'1':'.4';
+    reflectX();
+  }
+  function run1(){
+    var n=rdCnt();
+    var before=byte, xbefore=X;
+    var r=rotate(before,xbefore,n);
+    byte=r.res; X=r.x;                     // hold BOTH byte and X across runs (roxl/roxr thread X forward)
+    vb.textContent=bin8(before);
+    rb.innerHTML=bin8hl(byte,before); rh.textContent=hex2(byte);
+    xb.textContent='X '+(USESX[op]?xbefore:'-'); xa.textContent='X '+(USESX[op]?X:'-');
+    xb.style.opacity=USESX[op]?'1':'.4'; xa.style.opacity=USESX[op]?'1':'.4';
+    ce.textContent=r.c;
+    ce.classList.remove('mr-flash'); void ce.offsetWidth; ce.classList.add('mr-flash');
+    rb.classList.remove('mr-flash'); void rb.offsetWidth; rb.classList.add('mr-flash');
+    if(USESX[op]){ xa.classList.remove('mr-flash'); void xa.offsetWidth; xa.classList.add('mr-flash'); }
+    var msg;
+    if(op==='rol'){
+      msg='rol.b #'+n+',d0: every bit steps left, the top bit wraps around into the bottom (nothing lost). '
+        +hex2(before)+' becomes '+hex2(byte)+'. C is the last wrapped bit ('+r.c+'); X is untouched (still '+X+'). An 8-bit ring.';
+    } else if(op==='ror'){
+      msg='ror.b #'+n+',d0: every bit steps right, the bottom bit wraps around into the top (nothing lost). '
+        +hex2(before)+' becomes '+hex2(byte)+'. C is the last wrapped bit ('+r.c+'); X is untouched (still '+X+'). An 8-bit ring.';
+    } else if(op==='roxl'){
+      msg='roxl.b #'+n+',d0 with X='+xbefore+': the top bit moves into X, the old X '+xbefore+' enters at the bottom. '
+        +hex2(before)+' becomes '+hex2(byte)+', X and C are now '+X+'. Nine cells, '+n+' step(s) around. Run again and the new X threads back in.';
+    } else {
+      msg='roxr.b #'+n+',d0 with X='+xbefore+': the bottom bit moves into X, the old X '+xbefore+' enters at the top. '
+        +hex2(before)+' becomes '+hex2(byte)+', X and C are now '+X+'. Nine cells, '+n+' step(s) around. Run again and the new X threads back in.';
+    }
+    note.textContent=msg;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.ro-op'),function(b){
+    b.addEventListener('click',function(){ op=b.dataset.op;
+      Array.prototype.forEach.call(document.querySelectorAll('.ro-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
+      sync(); });
+  });
+  val.addEventListener('input',function(){ byte=rdVal(); vb.textContent=bin8(byte); });    // edit seeds the byte
+  cnt.addEventListener('input',function(){ instr.textContent=curSyn(); run.textContent='Run '+curSyn(); });
+  xin.addEventListener('input',function(){ X=rdX(); xb.textContent='X '+(USESX[op]?X:'-'); xa.textContent='X '+(USESX[op]?X:'-'); }); // edit seeds X
+  run.addEventListener('click',run1);
+  reset.addEventListener('click',function(){
+    op='roxl'; byte=0xB4; X=0; val.value='B4'; cnt.value='1'; xin.value='0';
+    Array.prototype.forEach.call(document.querySelectorAll('.ro-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='roxl'?'true':'false'); });
+    sync();
+    rb.textContent='0110 1000'; rh.textContent='$68'; ce.textContent='1';
+    note.textContent='Reset. Value $B4, count 1, X 0, roxl. Run it (the byte AND X are held across runs, so roxl/roxr thread X from the previous run).';
+  });
+  sync();
+})();
+
+/* ---- bit-poke toy: BTST / BSET / BCLR / BCHG on one named bit ---- */
+(function(){
+  var val=document.getElementById('bp-val'); if(!val) return;
+  var num=document.getElementById('bp-num'), instr=document.getElementById('bp-instr'), note=document.getElementById('bp-note'),
+      vb=document.getElementById('bp-vb'), mk=document.getElementById('bp-mark'), rb=document.getElementById('bp-rb'), rh=document.getElementById('bp-rh'),
+      ze=document.getElementById('bp-z'),
+      run=document.getElementById('bp-run'), reset=document.getElementById('bp-reset');
+  var op='btst', byte=0x6C;              // byte held across runs; seeded from input only on edit/reset
+  var NAME={btst:'btst',bset:'bset',bclr:'bclr',bchg:'bchg'};
+  function bin8(n){ n&=0xFF; var s=n.toString(2).padStart(8,'0'); return s.slice(0,4)+' '+s.slice(4); }
+  function bin8hl(n,ref){ n&=0xFF; ref&=0xFF; var o=''; for(var i=7;i>=0;i--){ if(i===3) o+=' '; var b=(n>>i)&1, r=(ref>>i)&1; o += (b!==r)?('<b>'+b+'</b>'):(''+b); } return o; }
+  // caret row under the byte, marking the selected bit n (0 = rightmost)
+  function markRow(n){ var o=''; for(var i=7;i>=0;i--){ if(i===3) o+=' '; o += (i===n)?'^':'&nbsp;'; } return o; }
+  function rdVal(){ var v=(val.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase(); val.value=v; return parseInt(v||'0',16)&0xFF; }
+  function rdNum(){ var v=(num.value||'').replace(/[^0-9]/g,'').slice(0,1); num.value=v; var n=parseInt(v||'0',10); if(n<0) n=0; if(n>7) n=7; return n; }
+  function hex2(n){ return '$'+(n&0xFF).toString(16).toUpperCase().padStart(2,'0'); }
+  function curSyn(){ var n=rdNum(); return NAME[op]+' #'+n+',d0'; }
+  function sync(){
+    instr.textContent=curSyn(); run.textContent='Run '+curSyn();
+    var n=rdNum();
+    vb.textContent=bin8(byte);
+    mk.innerHTML=markRow(n);
+  }
+  function run1(){
+    var n=rdNum();
+    var before=byte;
+    var oldbit=(before>>n)&1;              // the tested bit BEFORE the op
+    var Z=oldbit?0:1;                       // Z = COMPLEMENT of the old bit: Z=1 iff the bit was 0
+    var res=before;
+    if(op==='bset'){ res=before|(1<<n); }
+    else if(op==='bclr'){ res=before&~(1<<n); }
+    else if(op==='bchg'){ res=before^(1<<n); }
+    // btst: res stays == before (test only)
+    byte=res&0xFF;                          // hold the byte across runs
+    vb.textContent=bin8(before);
+    mk.innerHTML=markRow(n);
+    rb.innerHTML=bin8hl(byte,before); rh.textContent=hex2(byte);
+    ze.textContent=Z;
+    ze.classList.remove('mr-flash'); void ze.offsetWidth; ze.classList.add('mr-flash');
+    rb.classList.remove('mr-flash'); void rb.offsetWidth; rb.classList.add('mr-flash');
+    var msg;
+    var wasWere=oldbit?('is '+oldbit+', so Z becomes 0 (the bit was set)'):('is '+oldbit+', so Z becomes 1 (the bit was clear)');
+    if(op==='btst'){
+      msg='btst #'+n+',d0: bit '+n+' of '+hex2(before)+' '+wasWere+'; the byte is unchanged because BTST only tests. After btst, beq branches when the bit was 0.';
+    } else if(op==='bset'){
+      msg='bset #'+n+',d0: bit '+n+' was '+oldbit+' so Z becomes '+Z+' (Z reflects the OLD bit), then the bit is set to 1: '+hex2(before)+' becomes '+hex2(byte)+'.';
+    } else if(op==='bclr'){
+      msg='bclr #'+n+',d0: bit '+n+' was '+oldbit+' so Z becomes '+Z+' (Z reflects the OLD bit), then the bit is cleared to 0: '+hex2(before)+' becomes '+hex2(byte)+'.';
+    } else {
+      msg='bchg #'+n+',d0: bit '+n+' was '+oldbit+' so Z becomes '+Z+' (Z reflects the OLD bit), then the bit is flipped: '+hex2(before)+' becomes '+hex2(byte)+'.';
+    }
+    note.textContent=msg;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.bp-op'),function(b){
+    b.addEventListener('click',function(){ op=b.dataset.op;
+      Array.prototype.forEach.call(document.querySelectorAll('.bp-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
+      sync(); });
+  });
+  val.addEventListener('input',function(){ byte=rdVal(); vb.textContent=bin8(byte); });   // edit seeds the byte
+  num.addEventListener('input',function(){ instr.textContent=curSyn(); run.textContent='Run '+curSyn(); mk.innerHTML=markRow(rdNum()); });
+  run.addEventListener('click',run1);
+  reset.addEventListener('click',function(){
+    op='btst'; byte=0x6C; val.value='6C'; num.value='2';
+    Array.prototype.forEach.call(document.querySelectorAll('.bp-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='btst'?'true':'false'); });
+    sync();
+    rb.textContent='0110 1100'; rh.textContent='$6C'; ze.textContent='0';
+    note.textContent='Reset. Value $6C, bit 2, btst. Pick an op and run it (the byte is held across runs, so a bset then a later bclr act on the current value).';
+  });
+  sync();
+})();
+</script>
+
+</body>
+</html>

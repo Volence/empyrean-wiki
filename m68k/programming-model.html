@@ -219,6 +219,29 @@ code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em
 .rm-bit.ccr{border-color:var(--gold);}
 .rm-srlabel{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em;
   text-transform:uppercase; color:var(--dim); align-self:center; margin-right:.15rem;}
+/* the status register drawn as a full 16-bit ruler */
+.rm-egbanner{font-family:var(--mono); font-size:.68rem; color:var(--dim); line-height:1.5;
+  border:1px solid var(--line); border-radius:4px; padding:.5rem .65rem; background:var(--panel2);}
+.rm-egbanner em{color:var(--ink); font-style:normal;}
+.rm-srfull{display:flex; flex-direction:column; gap:.22rem; margin-top:.3rem;}
+.rm-eg{color:var(--dim); font-weight:normal; text-transform:none; letter-spacing:0; margin-left:.4rem;}
+.rm-rscale{display:flex; justify-content:space-between; font-family:var(--mono); font-size:.52rem;
+  letter-spacing:.05em; color:var(--dim);}
+.rm-rcells{display:flex; gap:3px; overflow-x:auto; padding-bottom:.1rem;}
+.rm-rc{flex:1 1 0; min-width:1.35rem; display:flex; flex-direction:column; align-items:center;
+  gap:.05rem; padding:.18rem .05rem; border:1px solid var(--line); border-radius:3px;
+  background:var(--panel2); color:var(--ink); cursor:pointer; font-family:var(--mono);}
+.rm-rc .rm-rv{font-size:.74rem; font-weight:bold; color:var(--gold);}
+.rm-rc .rm-rn{font-size:.5rem; color:var(--dim);}
+.rm-rc.sys{border-color:#88AAEE;}
+.rm-rc.ccr{border-color:var(--gold);}
+.rm-rc.off{opacity:.42;}
+.rm-rc.off .rm-rv{color:var(--dim); font-weight:normal;}
+.rm-rc[aria-pressed="true"]{border-color:var(--accent); background:rgba(68,102,238,.2);}
+.rm-rc:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.rm-rgroups{display:flex; justify-content:space-between; font-family:var(--mono); font-size:.54rem;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--dim);}
+.rm-rkey{font-family:var(--mono); font-size:.54rem; color:var(--dim);}
 .rm-cap{font-family:var(--mono); font-size:.78rem; color:var(--ink); margin:0;
   min-height:4.2em; max-width:40rem; line-height:1.5; border-top:1px solid var(--line); padding-top:.6rem;}
 .rm-cap b{color:var(--gold); font-weight:normal;}
@@ -307,9 +330,12 @@ plus one special one. Eight <strong>data registers</strong>, <code>d0</code> thr
 hold the values a program computes with: a ring count, a coordinate, a byte of flags, a loop counter.
 Eight <strong>address registers</strong>, <code>a0</code> through <code>a7</code>, hold pointers: the
 address of an object, a table, a buffer. And one <strong>program counter</strong> tracks where
-execution currently is. Every <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span> is 32 bits wide. This is the whole
-working surface: instructions pull values in from memory, shuffle and compute in these registers
-because that is fastest, and write results back out.</p>
+execution currently is. Every <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span> is 32 bits wide, and all of them live
+<em>inside the CPU itself</em>. That is worth stating plainly, because it is the source of a lot of early
+confusion: unlike a byte of memory, a register has no address of its own. You name it (<code>d0</code>,
+<code>a3</code>) rather than point at it, and no memory address ever reaches one. This is the whole
+working surface: instructions pull values in from memory, do the shuffling and computing in these
+registers (far quicker to reach than memory itself), and write the results back out.</p>
 
 <p>Two of those registers have a fixed second job the hardware itself relies on.
 <code>a7</code> is also the <strong>stack pointer</strong>, the register subroutine calls and returns
@@ -356,6 +382,10 @@ what that part is for.</p>
 
 <figure class="diagram">
 <div class="regmodel">
+  <div class="rm-egbanner"><em>Example contents.</em> Every value shown is one thing a slot <em>could</em>
+  hold, not a fixed value; the lesson is what each slot is <em>for</em>. The slots are inside the CPU and
+  have no memory address of their own. For an address register, the value it holds <em>is</em> an address,
+  a pointer into work RAM, ROM, or a hardware port.</div>
   <div class="rm-banks">
     <div class="rm-bank">
       <div class="rm-btitle">Data registers (values)</div>
@@ -382,36 +412,45 @@ what that part is for.</p>
     <div class="rm-bank">
       <div class="rm-btitle">Program counter</div>
       <button type="button" class="rm-reg" data-part="pc" data-nm="pc"><span class="rm-nm">pc</span><span class="rm-v">$00000206</span></button>
-      <div class="rm-btitle" style="margin-top:.5rem;">Status register</div>
-      <div class="rm-sr">
-        <div class="rm-srrow">
-          <span class="rm-srlabel">System byte</span>
-          <button type="button" class="rm-bit sys" data-part="sr-sys"><span class="rm-bn">T</span><span class="rm-bs">trace</span></button>
-          <button type="button" class="rm-bit sys" data-part="sr-sys"><span class="rm-bn">S</span><span class="rm-bs">super</span></button>
-          <button type="button" class="rm-bit sys" data-part="sr-sys"><span class="rm-bn">I2-0</span><span class="rm-bs">mask</span></button>
-        </div>
-        <div class="rm-srrow">
-          <span class="rm-srlabel">CCR</span>
-          <button type="button" class="rm-bit ccr" data-part="ccr-x"><span class="rm-bn">X</span><span class="rm-bs">extend</span></button>
-          <button type="button" class="rm-bit ccr" data-part="ccr-n"><span class="rm-bn">N</span><span class="rm-bs">neg</span></button>
-          <button type="button" class="rm-bit ccr" data-part="ccr-z"><span class="rm-bn">Z</span><span class="rm-bs">zero</span></button>
-          <button type="button" class="rm-bit ccr" data-part="ccr-v"><span class="rm-bn">V</span><span class="rm-bs">over</span></button>
-          <button type="button" class="rm-bit ccr" data-part="ccr-c"><span class="rm-bn">C</span><span class="rm-bs">carry</span></button>
-        </div>
-      </div>
     </div>
+  </div>
+  <div class="rm-srfull">
+    <div class="rm-btitle">Status register (sr), 16 bits <span class="rm-eg">example value: $2704</span></div>
+    <div class="rm-rscale"><span>bit 15</span><span>bit 0</span></div>
+    <div class="rm-rcells" role="group" aria-label="Status register, sixteen bits, example value $2704. Click any bit to read its job.">
+      <button type="button" class="rm-rc sys" data-part="sr-t"><span class="rm-rv">0</span><span class="rm-rn">T</span></button>
+      <button type="button" class="rm-rc off" data-part="sr-unused"><span class="rm-rv">0</span><span class="rm-rn">&middot;</span></button>
+      <button type="button" class="rm-rc sys" data-part="sr-s"><span class="rm-rv">1</span><span class="rm-rn">S</span></button>
+      <button type="button" class="rm-rc off" data-part="sr-unused"><span class="rm-rv">0</span><span class="rm-rn">&middot;</span></button>
+      <button type="button" class="rm-rc off" data-part="sr-unused"><span class="rm-rv">0</span><span class="rm-rn">&middot;</span></button>
+      <button type="button" class="rm-rc sys" data-part="sr-mask"><span class="rm-rv">1</span><span class="rm-rn">I2</span></button>
+      <button type="button" class="rm-rc sys" data-part="sr-mask"><span class="rm-rv">1</span><span class="rm-rn">I1</span></button>
+      <button type="button" class="rm-rc sys" data-part="sr-mask"><span class="rm-rv">1</span><span class="rm-rn">I0</span></button>
+      <button type="button" class="rm-rc off" data-part="sr-unused"><span class="rm-rv">0</span><span class="rm-rn">&middot;</span></button>
+      <button type="button" class="rm-rc off" data-part="sr-unused"><span class="rm-rv">0</span><span class="rm-rn">&middot;</span></button>
+      <button type="button" class="rm-rc off" data-part="sr-unused"><span class="rm-rv">0</span><span class="rm-rn">&middot;</span></button>
+      <button type="button" class="rm-rc ccr" data-part="ccr-x"><span class="rm-rv">0</span><span class="rm-rn">X</span></button>
+      <button type="button" class="rm-rc ccr" data-part="ccr-n"><span class="rm-rv">0</span><span class="rm-rn">N</span></button>
+      <button type="button" class="rm-rc ccr" data-part="ccr-z"><span class="rm-rv">1</span><span class="rm-rn">Z</span></button>
+      <button type="button" class="rm-rc ccr" data-part="ccr-v"><span class="rm-rv">0</span><span class="rm-rn">V</span></button>
+      <button type="button" class="rm-rc ccr" data-part="ccr-c"><span class="rm-rv">0</span><span class="rm-rn">C</span></button>
+    </div>
+    <div class="rm-rgroups"><span>system byte (privileged)</span><span>CCR (the flags)</span></div>
+    <div class="rm-rkey">Dim cells with a &middot; are unused: six of the sixteen bits always read 0. Example value $2704 = supervisor on, all interrupts masked, Z set. Click any bit to read its job.</div>
   </div>
   <div class="rm-ctrl">
     <button type="button" class="rm-reset" id="rm-reset">Reset to d0</button>
-    <span class="rm-hint">Click or tab to any register or flag. The values shown are illustrative contents, not fixed: the lesson is what each slot is <em>for</em>.</span>
+    <span class="rm-hint">Click or tab to any register or flag. The values shown are example contents, not fixed: the lesson is what each slot is <em>for</em>. a7 is tinted green to mark that it doubles as the stack pointer.</span>
   </div>
   <p class="rm-cap" id="rm-cap" aria-live="polite">This is the entire programmer-visible state of the 68000. <b>d0</b> is one of eight general-purpose data registers, 32 bits wide, holding a value the code is working on. All eight data registers are interchangeable; nothing about d0 makes it special. Pick any part above to read its job.</p>
 </div>
 <figcaption>The 68000 register model: eight data registers for values, eight address registers for
-pointers (a7 doubling as the stack pointer), the program counter, and the status register split into a
-privileged system byte and the condition-code half. Static fallback: selecting each part names its
-width and role; a7 is the stack pointer, the pc is written only by jumps and returns, and the five CCR
-flags X N Z V C are the CPU's record of how the last operation came out.</figcaption>
+pointers (a7 doubling as the stack pointer), the program counter, and the status register drawn as its
+full 16-bit ruler (a privileged system byte, the five CCR flags, and six unused bits that always read 0).
+Every value shown is an example, and the slots live inside the CPU with no memory address of their own.
+Static fallback: selecting each part names its width and role; a7 is the stack pointer, the pc is written
+only by jumps and returns, and the five CCR flags X N Z V C are the CPU's record of how the last
+operation came out.</figcaption>
 </figure>
 
 <div class="tbl"><table>
@@ -453,7 +492,11 @@ for.</p>
 <p>The status register is 16 bits, but it is really two half-registers with very different audiences.
 The low byte is the <strong>condition code register</strong> (CCR): the five flags X N Z V C that
 ordinary code lives on. The high byte is the <strong>system byte</strong>: the supervisor bit, the
-interrupt mask, and the trace bit, which only privileged code may touch. The
+interrupt mask, and the trace bit, which only privileged code may touch. Of the 16 bits, only 10 actually
+carry anything: 5 in the CCR and 5 in the system byte (the trace bit, the supervisor bit, and the 3-bit
+interrupt mask). The other 6 are unused and always read as zero, which is why a full status-register
+constant like <code>#$2700</code> is mostly zeros. The 16-bit ruler in
+<a href="#s1">section 1</a> shows exactly which bit is which. The
 <a href="moving-data.html#move">MOVE</a>
 that clears the whole thing during boot writes both halves at once:</p>
 
@@ -474,6 +517,23 @@ one.</p>
 flags do nothing; their entire purpose is that the very next branch can read them and decide where to
 go. This is how the CPU makes decisions without a separate "test" step: subtract, compare, or even
 just move a value, and the flags already describe the result.</p>
+
+<p>It is worth taking the phrase "side effect" literally, because it clears up the usual confusion about
+<em>when</em> the flags get set. An instruction like <code>add</code> produces <strong>two outputs at
+once</strong>: the result, which goes to the destination you named, and a flag update, which goes into the
+CCR. You asked for the sum; the flag update comes with it, every time, whether you wanted it or not. That
+is the side effect. It is also why <a href="#s1">LEA</a> and <a
+href="moving-data.html#movea">MOVEA</a> feel
+different: they were built to have only the first output and touch no flags, so a branch placed after one
+is reading whatever the last flag-setting instruction left behind.</p>
+
+<p>The timing follows from that. The flags are written <em>as the instruction completes</em>, from the
+result it just produced, and they hold until the next flag-setting instruction overwrites them. Take
+<code>add.b #2,(a0)</code> where the byte at <code>(a0)</code> holds <code>$FE</code> (254). The byte add
+lands on <code>$100</code>, which does not fit in a byte, so it wraps to <code>$00</code>, and in the same
+step the CPU records how that came out: Z is set (the result was zero), C and X are set (the add carried
+out past the top bit), and N and V are cleared. A <code>beq</code> on the very next line then acts on that
+Z with nothing in between, because the add already did the testing as part of adding.</p>
 
 <div class="ccgrid">
   <div class="ccard"><span class="cc-l">N</span><span class="cc-n">negative</span><div class="cc-d">A copy of the result's top bit. Set means the result, read as a signed number, is negative.</div></div>
@@ -504,7 +564,7 @@ just move a value, and the flags already describe the result.</p>
 
 <p>This page explains what the codes <em>mean</em>. Watching them actually flip as instructions run,
 picking an operation and seeing X N Z V C change before and after, is the job of the live flags demo on
-the Math, Logic &amp; Bits page (coming), which is where that toy lives so it can sit next to the
+the Math &amp; Logic page (coming), which is where that toy lives so it can sit next to the
 instructions that set the flags in interesting ways.</p>
 
 <div class="gotcha"><span class="g-tag">Gotcha</span>
@@ -514,6 +574,19 @@ Not every instruction touches the flags, and assuming they all do is a classic b
 reading whatever the last flag-setting instruction left behind, not the address you just loaded. When
 you need the flags set from a value, use a data-register operation or an explicit
 <code>tst</code>.</div>
+
+<h3>The system byte: control, not a side effect</h3>
+
+<p>Everything above is the CCR, the low half, written <em>for</em> you as a side effect of arithmetic.
+The high half, the <strong>system byte</strong>, works the opposite way: no ordinary <code>add</code> or
+<code>move</code> ever touches it. It holds mode and control state, not a record of results, and it
+changes only on purpose, when the CPU takes an exception or interrupt, when <code>rte</code> returns from
+one, or when privileged code writes the SR directly with <code>move #x,sr</code>. So an instruction that
+reshapes the CCR leaves the whole top byte exactly as it was. Its three fields: the <strong>trace bit</strong>
+T, which when set makes the CPU trap after every instruction so a debugger can single-step; the
+<strong>interrupt mask</strong> I2 I1 I0, a priority threshold saying which interrupts are currently
+allowed to break in; and the <strong>supervisor bit</strong> S, the privilege switch, which is the one
+piece the Genesis actually leans on.</p>
 
 <h3>Supervisor and user mode</h3>
 
@@ -908,39 +981,39 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><th scope="col">Mnemonic</th><th scope="col">What it does</th><th scope="col">Page</th></tr>
   </thead>
   <tbody>
-  <tr><td class="ix-mn"><span class="mn-plain">ADD</span><span class="ix-x">Add</span></td><td class="ix-gl">Add a value to a data register or memory.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ADDA</span><span class="ix-x">Add Address</span></td><td class="ix-gl">Add a value into an address register; sets no flags.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ADDI</span><span class="ix-x">Add Immediate</span></td><td class="ix-gl">Add an immediate constant to a destination.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ADDQ</span><span class="ix-x">Add Quick</span></td><td class="ix-gl">Add a small constant, 1 to 8, in one word.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">AND</span><span class="ix-x">Logical AND</span></td><td class="ix-gl">Bitwise AND of two operands.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ANDI</span><span class="ix-x">AND Immediate</span></td><td class="ix-gl">Bitwise AND with an immediate constant.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ASL</span><span class="ix-x">Arithmetic Shift Left</span></td><td class="ix-gl">Arithmetic shift left; the vacated low bits fill with zero.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ASR</span><span class="ix-x">Arithmetic Shift Right</span></td><td class="ix-gl">Arithmetic shift right; copies the sign bit down, so it divides signed values.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">ADD</span><span class="ix-x">Add</span></td><td class="ix-gl">Add a value to a data register or memory.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">ADDA</span><span class="ix-x">Add Address</span></td><td class="ix-gl">Add a value into an address register; sets no flags.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">ADDI</span><span class="ix-x">Add Immediate</span></td><td class="ix-gl">Add an immediate constant to a destination.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">ADDQ</span><span class="ix-x">Add Quick</span></td><td class="ix-gl">Add a small constant, 1 to 8, in one word.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">AND</span><span class="ix-x">Logical AND</span></td><td class="ix-gl">Bitwise AND of two operands.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">ANDI</span><span class="ix-x">AND Immediate</span></td><td class="ix-gl">Bitwise AND with an immediate constant.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#asl">ASL</a><span class="ix-x">Arithmetic Shift Left</span></td><td class="ix-gl">Arithmetic shift left; the vacated low bits fill with zero.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#asr">ASR</a><span class="ix-x">Arithmetic Shift Right</span></td><td class="ix-gl">Arithmetic shift right; copies the sign bit down, so it divides signed values.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">Bcc</span><span class="ix-x">Branch Conditionally</span></td><td class="ix-gl">Branch if a condition code is true; the family BEQ, BNE, BCS, BPL and the rest.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">BCHG</span><span class="ix-x">Test Bit and Change</span></td><td class="ix-gl">Test one bit, then flip it.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">BCLR</span><span class="ix-x">Test Bit and Clear</span></td><td class="ix-gl">Test one bit, then clear it to 0.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#bchg">BCHG</a><span class="ix-x">Test Bit and Change</span></td><td class="ix-gl">Test one bit, then flip it.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#bclr">BCLR</a><span class="ix-x">Test Bit and Clear</span></td><td class="ix-gl">Test one bit, then clear it to 0.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">BRA</span><span class="ix-x">Branch Always</span></td><td class="ix-gl">Branch always; an unconditional goto.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">BSET</span><span class="ix-x">Test Bit and Set</span></td><td class="ix-gl">Test one bit, then set it to 1.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#bset">BSET</a><span class="ix-x">Test Bit and Set</span></td><td class="ix-gl">Test one bit, then set it to 1.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">BSR</span><span class="ix-x">Branch to Subroutine</span></td><td class="ix-gl">Branch to a subroutine, pushing the return address.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">BTST</span><span class="ix-x">Test Bit</span></td><td class="ix-gl">Test one bit, setting Z from it, without changing it.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#btst">BTST</a><span class="ix-x">Test Bit</span></td><td class="ix-gl">Test one bit, setting Z from it, without changing it.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">CHK</span><span class="ix-x">Check Register Against Bounds</span></td><td class="ix-gl">Trap if a register is outside 0 to an upper bound.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#clr">CLR</a><span class="ix-x">Clear</span></td><td class="ix-gl">Write zero to a register or memory.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">CMP</span><span class="ix-x">Compare</span></td><td class="ix-gl">Compare two values (subtract without storing) to set the flags.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">CMPA</span><span class="ix-x">Compare Address</span></td><td class="ix-gl">Compare a value against an address register.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">CMPI</span><span class="ix-x">Compare Immediate</span></td><td class="ix-gl">Compare a value against an immediate constant.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">CMP</span><span class="ix-x">Compare</span></td><td class="ix-gl">Compare two values (subtract without storing) to set the flags.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">CMPA</span><span class="ix-x">Compare Address</span></td><td class="ix-gl">Compare a value against an address register.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">CMPI</span><span class="ix-x">Compare Immediate</span></td><td class="ix-gl">Compare a value against an immediate constant.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">DBcc</span><span class="ix-x">Decrement and Branch Conditionally</span></td><td class="ix-gl">Decrement a counter and loop until the condition is true or it passes -1; the family DBF/DBRA and friends.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">DIVS</span><span class="ix-x">Divide Signed</span></td><td class="ix-gl">Signed divide, 32 by 16, giving a quotient and remainder.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">DIVU</span><span class="ix-x">Divide Unsigned</span></td><td class="ix-gl">Unsigned divide, 32 by 16, giving a quotient and remainder.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">EOR</span><span class="ix-x">Exclusive OR</span></td><td class="ix-gl">Bitwise exclusive-OR.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">EORI</span><span class="ix-x">Exclusive OR Immediate</span></td><td class="ix-gl">Bitwise exclusive-OR with an immediate.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">DIVS</span><span class="ix-x">Divide Signed</span></td><td class="ix-gl">Signed divide, 32 by 16, giving a quotient and remainder.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">DIVU</span><span class="ix-x">Divide Unsigned</span></td><td class="ix-gl">Unsigned divide, 32 by 16, giving a quotient and remainder.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">EOR</span><span class="ix-x">Exclusive OR</span></td><td class="ix-gl">Bitwise exclusive-OR.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">EORI</span><span class="ix-x">Exclusive OR Immediate</span></td><td class="ix-gl">Bitwise exclusive-OR with an immediate.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#exg">EXG</a><span class="ix-x">Exchange Registers</span></td><td class="ix-gl">Exchange the full 32 bits of two registers.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#ext">EXT</a><span class="ix-x">Sign Extend</span></td><td class="ix-gl">Sign-extend a byte to a word, or a word to a long.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">JMP</span><span class="ix-x">Jump</span></td><td class="ix-gl">Jump to any address; a goto that takes any control-addressing mode.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">JSR</span><span class="ix-x">Jump to Subroutine</span></td><td class="ix-gl">Jump to a subroutine at any address, pushing the return.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#lea">LEA</a><span class="ix-x">Load Effective Address</span></td><td class="ix-gl">Load a computed address itself (not its contents) into an address register.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">LINK</span><span class="ix-x">Link and Allocate</span></td><td class="ix-gl">Open a stack frame, saving a frame pointer and reserving local space.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">LSL</span><span class="ix-x">Logical Shift Left</span></td><td class="ix-gl">Logical shift left.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">LSR</span><span class="ix-x">Logical Shift Right</span></td><td class="ix-gl">Logical shift right; zero-fills from the top, so it divides unsigned values.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#lsl">LSL</a><span class="ix-x">Logical Shift Left</span></td><td class="ix-gl">Logical shift left.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#lsr">LSR</a><span class="ix-x">Logical Shift Right</span></td><td class="ix-gl">Logical shift right; zero-fills from the top, so it divides unsigned values.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#move">MOVE</a><span class="ix-x">Move</span></td><td class="ix-gl">Copy a value from one place to another.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">MOVE to CCR</span><span class="ix-x">Move to Condition Codes</span></td><td class="ix-gl">Write only the condition-code half of the status register.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">MOVE to/from SR</span><span class="ix-x">Move Status Register</span></td><td class="ix-gl">Read or write the whole status register; writing it is privileged.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
@@ -948,32 +1021,32 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><td class="ix-mn"><a href="moving-data.html#movea">MOVEA</a><span class="ix-x">Move Address</span></td><td class="ix-gl">Load an address into an address register; sets no flags.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#movem">MOVEM</a><span class="ix-x">Move Multiple Registers</span></td><td class="ix-gl">Save or restore a set of registers in one instruction.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#moveq">MOVEQ</a><span class="ix-x">Move Quick</span></td><td class="ix-gl">Load a small signed constant, -128 to 127, into a data register in one word.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">MULS</span><span class="ix-x">Multiply Signed</span></td><td class="ix-gl">Signed multiply, 16 by 16 giving a 32-bit product.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">MULU</span><span class="ix-x">Multiply Unsigned</span></td><td class="ix-gl">Unsigned multiply, 16 by 16 giving a 32-bit product.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">NEG</span><span class="ix-x">Negate</span></td><td class="ix-gl">Negate a value (two's complement).</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">MULS</span><span class="ix-x">Multiply Signed</span></td><td class="ix-gl">Signed multiply, 16 by 16 giving a 32-bit product.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">MULU</span><span class="ix-x">Multiply Unsigned</span></td><td class="ix-gl">Unsigned multiply, 16 by 16 giving a 32-bit product.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">NEG</span><span class="ix-x">Negate</span></td><td class="ix-gl">Negate a value (two's complement).</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">NOP</span><span class="ix-x">No Operation</span></td><td class="ix-gl">Do nothing for one instruction; a deliberate pause or a patch slot.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">NOT</span><span class="ix-x">Logical Complement</span></td><td class="ix-gl">Flip every bit (one's complement).</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">OR</span><span class="ix-x">Logical OR</span></td><td class="ix-gl">Bitwise OR.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ORI</span><span class="ix-x">OR Immediate</span></td><td class="ix-gl">Bitwise OR with an immediate.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">NOT</span><span class="ix-x">Logical Complement</span></td><td class="ix-gl">Flip every bit (one's complement).</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">OR</span><span class="ix-x">Logical OR</span></td><td class="ix-gl">Bitwise OR.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">ORI</span><span class="ix-x">OR Immediate</span></td><td class="ix-gl">Bitwise OR with an immediate.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#pea">PEA</a><span class="ix-x">Push Effective Address</span></td><td class="ix-gl">Push a computed address onto the stack.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">RESET</span><span class="ix-x">Reset External Devices</span></td><td class="ix-gl">Pulse the reset line to the external chips, without resetting the CPU itself.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ROL</span><span class="ix-x">Rotate Left</span></td><td class="ix-gl">Rotate left; bits that fall off the top come back at the bottom.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ROR</span><span class="ix-x">Rotate Right</span></td><td class="ix-gl">Rotate right; bits that fall off the bottom come back at the top.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ROXL</span><span class="ix-x">Rotate Left with Extend</span></td><td class="ix-gl">Rotate left through the X bit, a 33-bit rotate for multi-word work.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ROXR</span><span class="ix-x">Rotate Right with Extend</span></td><td class="ix-gl">Rotate right through the X bit, a 33-bit rotate for multi-word work.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#rol">ROL</a><span class="ix-x">Rotate Left</span></td><td class="ix-gl">Rotate left; bits that fall off the top come back at the bottom.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#ror">ROR</a><span class="ix-x">Rotate Right</span></td><td class="ix-gl">Rotate right; bits that fall off the bottom come back at the top.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#roxl">ROXL</a><span class="ix-x">Rotate Left with Extend</span></td><td class="ix-gl">Rotate left through the X bit, a 33-bit rotate for multi-word work.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><a href="shifts-bits.html#roxr">ROXR</a><span class="ix-x">Rotate Right with Extend</span></td><td class="ix-gl">Rotate right through the X bit, a 33-bit rotate for multi-word work.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">RTE</span><span class="ix-x">Return from Exception</span></td><td class="ix-gl">Return from an exception, restoring the saved SR and PC; privileged.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">RTR</span><span class="ix-x">Return and Restore</span></td><td class="ix-gl">Return from a subroutine, also restoring the condition codes from the stack.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">RTS</span><span class="ix-x">Return from Subroutine</span></td><td class="ix-gl">Return from a subroutine; pop the return address into the PC.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">Scc</span><span class="ix-x">Set Conditionally</span></td><td class="ix-gl">Set a byte to all-ones or all-zeros from a condition; the family SEQ, SNE and the rest.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">STOP</span><span class="ix-x">Stop</span></td><td class="ix-gl">Load a new SR and halt the CPU until an interrupt; privileged.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">SUB</span><span class="ix-x">Subtract</span></td><td class="ix-gl">Subtract a value.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">SUBA</span><span class="ix-x">Subtract Address</span></td><td class="ix-gl">Subtract a value from an address register; sets no flags.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">SUBI</span><span class="ix-x">Subtract Immediate</span></td><td class="ix-gl">Subtract an immediate constant.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">SUBQ</span><span class="ix-x">Subtract Quick</span></td><td class="ix-gl">Subtract a small constant, 1 to 8, in one word.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">SUB</span><span class="ix-x">Subtract</span></td><td class="ix-gl">Subtract a value.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">SUBA</span><span class="ix-x">Subtract Address</span></td><td class="ix-gl">Subtract a value from an address register; sets no flags.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">SUBI</span><span class="ix-x">Subtract Immediate</span></td><td class="ix-gl">Subtract an immediate constant.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">SUBQ</span><span class="ix-x">Subtract Quick</span></td><td class="ix-gl">Subtract a small constant, 1 to 8, in one word.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#swap">SWAP</a><span class="ix-x">Swap Register Halves</span></td><td class="ix-gl">Exchange the upper and lower 16-bit halves of a data register.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">TRAP</span><span class="ix-x">Trap</span></td><td class="ix-gl">A software interrupt to one of sixteen vectored handlers.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">TRAPV</span><span class="ix-x">Trap on Overflow</span></td><td class="ix-gl">Trap if the V (overflow) flag is set.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">TST</span><span class="ix-x">Test</span></td><td class="ix-gl">Test a value against zero, setting N and Z.</td><td><span class="ix-cat soon">Math, Logic &amp; Bits</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">TST</span><span class="ix-x">Test</span></td><td class="ix-gl">Test a value against zero, setting N and Z.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">UNLK</span><span class="ix-x">Unlink</span></td><td class="ix-gl">Close a stack frame opened by LINK.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   </tbody>
 </table>
@@ -1032,13 +1105,16 @@ function expandAll(btn){
 (function(){
   var cap = document.getElementById('rm-cap');
   if(!cap) return;
-  var regs = Array.prototype.slice.call(document.querySelectorAll('.rm-reg, .rm-bit'));
+  var regs = Array.prototype.slice.call(document.querySelectorAll('.rm-reg, .rm-rc'));
   var CAP = {
     d:  '<b>%NM%</b> is one of the eight general-purpose data registers, 32 bits wide, holding a value the code is working on: a count, a coordinate, a byte of flags. All eight are interchangeable, and arithmetic, logic, shifts, and comparisons all operate on them. A .b or .w operation touches only the low 8 or 16 bits and leaves the rest alone.',
-    a:  '<b>%NM%</b> is one of the address registers, 32 bits wide, holding a pointer: the address of an object, a table, a buffer. It feeds the register-indirect modes like (%NM%) and x_pos(%NM%). A word written to it is sign-extended to all 32 bits, and address-register math sets no condition codes.',
+    a:  '<b>%NM%</b> is one of the address registers, 32 bits wide, holding a pointer: the address of an object, a table, a buffer. It feeds the register-indirect modes like (%NM%) and x_pos(%NM%). A word written to it is sign-extended to all 32 bits, and address-register math sets no condition codes. The value shown is one example address; where it points (work RAM, ROM, or a hardware port like the VDP at $C00000) is decided by the memory map, not by the register.',
     sp: '<b>a7 is the stack pointer (sp)</b>, an address register the CPU also uses on its own: calls push the return address here, rts pops it, and -(sp) / (sp)+ are how you push and pop. It grows downward, from high addresses toward low. There are really two of it, a supervisor and a user stack pointer, chosen by the S bit; the Genesis always uses the supervisor one.',
     pc: '<b>pc is the program counter</b>: the address of the next instruction to fetch. It is not one of d0-d7 / a0-a7 and you cannot MOVE into it. Only branches, jumps, calls (bsr/jsr) and returns (rts/rte) write it. Fetch, advance, repeat, that loop is the whole of a running program.',
-    'sr-sys': '<b>The system byte of the status register</b>: the trace bit T, the supervisor bit S, and the 3-bit interrupt mask (I2 I1 I0). Writing this half is privileged. S = 1 is supervisor mode; the mask says which interrupt levels are currently ignored. The console init sets it with move #$2700,sr.',
+    'sr-t': '<b>T, the trace bit</b> (system byte, privileged). When set, the CPU takes a trace exception after every single instruction, which is how a debugger single-steps code. It is not a side effect of anything you compute: ordinary instructions leave it alone, and you set it by writing the SR. Sonic leaves it 0.',
+    'sr-s': '<b>S, the supervisor bit</b> (system byte, privileged). 1 = supervisor mode (full privilege), 0 = user mode. It is not set by arithmetic: it flips to 1 automatically when the CPU takes an exception or interrupt, and RTE restores it. The Genesis boots supervisor and stays there the whole run.',
+    'sr-mask': '<b>I2 I1 I0, the interrupt mask</b> (system byte, privileged): a 3-bit priority threshold. Interrupts at or below this level are ignored; 111 masks everything, 000 allows all. The CPU raises it automatically while handling an interrupt and RTE restores it, and privileged code sets it explicitly with move #x,sr. Ordinary instructions never touch it.',
+    'sr-unused': '<b>An unused status-register bit</b>: six of the sixteen bits (positions 14, 12, 11, and 7 to 5) carry nothing on the 68000 and always read as zero. Only ten bits hold information: five in the CCR (X N Z V C) and five in the system byte (T, S, and the 3-bit mask). That is why a whole-register value like $2700 is mostly zeros.',
     'ccr-x': '<b>X, the extend flag</b>: a saved copy of the carry, kept apart from C so multi-precision math (addx, roxl) can ripple a carry across several longwords without an in-between instruction disturbing it.',
     'ccr-n': '<b>N, the negative flag</b>: a copy of the result’s top bit. Set means the result reads as negative in two’s complement. Signed branches like blt read it.',
     'ccr-z': '<b>Z, the zero flag</b>: set when the result was exactly zero. This is the flag beq and bne read, and the single most-tested bit on the machine.',
