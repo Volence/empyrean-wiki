@@ -668,9 +668,26 @@ lost ninth bit is exactly why carry is set. Read as signed, -1 + 1 = 0 fits fine
   <tr><td><code>$7F + $01 = $80</code></td><td>127 + 1 should be 128, outside -128 to 127</td><td>127 + 1 = 128, fits 0 to 255</td><td>V=1, C=0</td></tr>
   <tr><td><code>$FF + $01 = $00</code></td><td>-1 + 1 = 0, fits -128 to 127</td><td>255 + 1 should be 256, outside 0 to 255</td><td>V=0, C=1</td></tr>
 </table></div>
-<p>Both additions produce a valid 8-bit bit pattern. The flags tell you whether that pattern is a valid
-answer under the interpretation your program cares about: use V for signed arithmetic, C for unsigned. That
-is also why signed and unsigned code read <em>different</em> flags for the same kind of comparison:</p>
+<p>Both additions produce a valid 8-bit bit pattern. The flags just tell you whether that pattern is a
+valid answer under the interpretation your program cares about.</p>
+
+<p><strong>Which flag do you check?</strong> The CPU sets both because it does not know what the bits mean
+to your program. Check V when the value is meant to be <em>signed</em>, and C when it is meant to be
+<em>unsigned</em>. A signed velocity might run -128 to 127: if adding acceleration turns 127 into -128, V
+reports that the signed answer did not fit. An unsigned counter might run 0 to 255: if bumping 255 gives 0,
+C reports that the answer needed a ninth bit. The very same instruction can be checked either way:</p>
+<pre>	add.b	<span class="n">#1</span>,d0
+	bvs.s	SignedOverflow		<span class="c">; d0 is signed (a velocity)</span>
+	bcs.s	UnsignedOverflow	<span class="c">; d0 is unsigned (a counter)</span></pre>
+<p>The arithmetic is identical; the correct branch depends on what <code>d0</code> represents. The gap
+shows up most sharply in comparisons, where the signed and unsigned "less than" can disagree:</p>
+<pre>	cmp.w	d1,d0			<span class="c">; compare d0 against d1</span>
+	blt.s	D0IsLower		<span class="c">; signed less-than</span>
+	blo.s	D0IsLower		<span class="c">; unsigned lower</span></pre>
+<p>Say <code>d0 = $FFFF</code> and <code>d1 = $0001</code>. Signed, those are -1 and 1, so d0 is lower and
+<code>blt</code> branches. Unsigned, they are 65535 and 1, so d0 is <em>not</em> lower and <code>blo</code>
+does not. Same bits, same compare, opposite answer: the branch you choose declares which interpretation you
+mean. For quick reference, the common signed and unsigned branches:</p>
 <div class="tbl"><table>
   <tr><th>Meaning</th><th>Branch</th><th>Condition</th></tr>
   <tr><td>Negative result</td><td><code>BMI</code></td><td>N=1</td></tr>
