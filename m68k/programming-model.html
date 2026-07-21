@@ -633,21 +633,30 @@ Z with nothing in between, because the add already did the testing as part of ad
 <div class="ccgrid">
   <div class="ccard"><span class="cc-l">N</span><span class="cc-n">negative</span><div class="cc-d">A copy of the result's top bit. Set means the result, read as a signed number, is negative. BMI branches on it directly; the signed less-than branch BLT combines it with V (it tests N XOR V).</div></div>
   <div class="ccard"><span class="cc-l">Z</span><span class="cc-n">zero</span><div class="cc-d">Set when the result was exactly zero. This is the flag <code>beq</code> and <code>bne</code> read.</div></div>
-  <div class="ccard"><span class="cc-l">V</span><span class="cc-n">overflow</span><div class="cc-d">Set when a <em>signed</em> result did not fit and the sign came out wrong, for example adding two large positives and landing on a negative.</div></div>
-  <div class="ccard"><span class="cc-l">C</span><span class="cc-n">carry</span><div class="cc-d">Set when an <em>unsigned</em> operation carried out of, or borrowed into, the top bit. Signed comparisons mostly use N, V, and Z, though extended signed arithmetic still chains through the carry; unsigned code lives on it.</div></div>
+  <div class="ccard"><span class="cc-l">V</span><span class="cc-n">overflow</span><div class="cc-d">Answers the <em>signed</em> question: did the true result fall outside the signed range? For an 8-bit value that range is -128 to 127; if the correct answer lands outside it, V is set. Signed branches like <code>BLT</code> read it (via N XOR V).</div></div>
+  <div class="ccard"><span class="cc-l">C</span><span class="cc-n">carry</span><div class="cc-d">Answers the <em>unsigned</em> question: did the true result fall outside the unsigned range? For an 8-bit value that range is 0 to 255; C is set when an add goes above 255 or a subtract needs to go below 0. Unsigned branches like <code>BCS</code> / <code>BLO</code> read it.</div></div>
   <div class="ccard"><span class="cc-l">X</span><span class="cc-n">extend</span><div class="cc-d">A carry-like flag, updated alongside C by most arithmetic but a separate flag (a <code>cmp</code> changes C while leaving X untouched), so extended, multi-word math (<code>addx</code>, <code>roxl</code>) can thread a carry across several longwords even when a compare or branch sits between the steps.</div></div>
 </div>
 
-<div class="teach"><span class="t-tag">Teaching example &middot; V (overflow) vs C (carry) on the same add</span>
-<p>V and C are set by the same instruction but answer different questions: V is for signed reading, C
-for unsigned. One add can set one and clear the other.</p>
-<pre>	move.b	<span class="n">#$7F</span>,d0
-	add.b	<span class="n">#1</span>,d0	<span class="c">; $80: signed 127 -> -128, overflow (V set); unsigned 127 -> 128, no carry (C clear)</span>
-
-	move.b	<span class="n">#$FF</span>,d0
-	add.b	<span class="n">#1</span>,d0	<span class="c">; $00: unsigned 255+1 wrapped, carry (C set); signed -1+1 = 0, no overflow (V clear)</span></pre>
-<p>Signed code and unsigned code therefore read <em>different</em> flag combinations to make the same
-kind of decision:</p>
+<div class="teach"><span class="t-tag">Teaching example &middot; one add, two interpretations: V and C</span>
+<p>The CPU does not do a "signed add" or an "unsigned add." It does one binary addition and sets
+<em>both</em> flags. Your code decides which reading matters: V answers the signed question, C the unsigned
+one. Take <code>$7F + $01</code>:</p>
+<pre>  0111 1111    $7F
++ 0000 0001    $01
+-----------
+  1000 0000    $80</pre>
+<p>Read as unsigned, 127 + 1 = 128, and nothing went wrong. Read as signed, <code>$80</code> is -128, not
++128, so the signed answer is out of range: that is overflow. The same eight bits, two readings. Here it is
+next to the opposite case, <code>$FF + $01</code>:</p>
+<div class="tbl"><table>
+  <tr><th>Addition</th><th>Signed reading</th><th>Unsigned reading</th><th>Flags</th></tr>
+  <tr><td><code>$7F + $01 = $80</code></td><td>127 + 1 should be 128, outside -128 to 127</td><td>127 + 1 = 128, fits 0 to 255</td><td>V=1, C=0</td></tr>
+  <tr><td><code>$FF + $01 = $00</code></td><td>-1 + 1 = 0, fits -128 to 127</td><td>255 + 1 should be 256, outside 0 to 255</td><td>V=0, C=1</td></tr>
+</table></div>
+<p>Both additions produce a valid 8-bit bit pattern. The flags tell you whether that pattern is a valid
+answer under the interpretation your program cares about: use V for signed arithmetic, C for unsigned. That
+is also why signed and unsigned code read <em>different</em> flags for the same kind of comparison:</p>
 <div class="tbl"><table>
   <tr><th>Meaning</th><th>Branch</th><th>Condition</th></tr>
   <tr><td>Negative result</td><td><code>BMI</code></td><td>N=1</td></tr>
@@ -1450,8 +1459,8 @@ function expandAll(btn){
     'ccr-x': '<b>X, the extend flag</b>: a carry-like flag, updated alongside C by most arithmetic but a separate flag (a cmp changes C while leaving X untouched), so extended, multi-word math (addx, roxl) can thread a carry across several longwords even when a compare or branch sits between the steps.',
     'ccr-n': '<b>N, the negative flag</b>: a copy of the result’s top bit. Set means the result reads as negative in two’s complement. BMI branches on it directly; the signed less-than branch BLT combines it with V (it tests N XOR V).',
     'ccr-z': '<b>Z, the zero flag</b>: set when the result was exactly zero. This is the flag beq and bne read, and the single most-tested bit on the machine.',
-    'ccr-v': '<b>V, the overflow flag</b>: set when a signed result did not fit and the sign came out wrong, for example adding two large positives and landing on a negative.',
-    'ccr-c': '<b>C, the carry flag</b>: set when an unsigned operation carried out of, or borrowed into, the top bit. Unsigned branches like bcs read it; signed comparisons mostly use N, V, and Z, though extended signed arithmetic still chains through the carry.'
+    'ccr-v': '<b>V, the overflow flag</b>: the SIGNED reading of the last result. The CPU runs one binary operation and sets both V and C; V answers whether the true answer fell outside the signed range (for a byte, -128 to 127). Signed branches like blt read it (via N XOR V).',
+    'ccr-c': '<b>C, the carry flag</b>: the UNSIGNED reading of the same result. V and C are two interpretations of one operation, not two different operations. C answers whether the true answer fell outside the unsigned range (for a byte, 0 to 255): an add above 255 or a subtract below 0. Unsigned branches like bcs / blo read it.'
   };
   function select(btn){
     regs.forEach(function(b){ b.setAttribute('aria-pressed', b===btn ? 'true':'false'); });
