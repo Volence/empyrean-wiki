@@ -320,6 +320,13 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 mnemonic you want? Skip to the <a href="#s7">instruction index</a> at the bottom: type
 <code>rte</code>, <code>pea</code>, or any other, and land on its entry.</p>
 
+<p style="margin-top:1rem; color:var(--dim); font-size:.85rem;">Notation, if any of it is new: <code>$</code> is
+hexadecimal and <code>%</code> is binary; <code>#</code> marks an immediate constant (<code>#$100</code> is the
+number itself); parentheses mean the memory <em>at</em> an address (<code>(a0)</code> is what a0 points at, not
+a0 itself); and the size suffixes <code>.b</code>, <code>.w</code>, <code>.l</code> select 8, 16, or 32 bits. The
+<a href="addressing-modes.html">Addressing Modes page</a> carries
+the full key.</p>
+
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; The register file</h2>
 
@@ -328,7 +335,7 @@ plus the program counter and the status register off to the side. Eight <strong>
 hold the values a program computes with: a ring count, a coordinate, a byte of flags, a loop counter.
 Eight <strong>address registers</strong>, <code>a0</code> through <code>a7</code>, hold pointers: the
 address of an object, a table, a buffer. And one <strong>program counter</strong> tracks where
-execution currently is. Every <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span> is 32 bits wide, and all of them live
+execution currently is. Every data register, every address register, and the program counter is 32 bits wide (the status <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span> is the exception, at 16 bits), and all of them live
 <em>inside the CPU itself</em>. That is worth stating plainly, because it is the source of a lot of early
 confusion: unlike a byte of memory, a register has no address of its own. You name it (<code>d0</code>,
 <code>a3</code>) rather than point at it, and no memory address ever reaches one. This is the whole
@@ -464,7 +471,7 @@ what that part is for.</p>
     <button type="button" class="rm-reset" id="rm-reset">Reset to d0</button>
     <span class="rm-hint">Click or tab to any register or flag to read what it is for. a7 reads "a7 / sp" because it doubles as the stack pointer.</span>
   </div>
-  <p class="rm-cap" id="rm-cap" aria-live="polite">This is the entire programmer-visible state of the 68000. <b>d0</b> is one of eight general-purpose data registers, 32 bits wide, holding a value the code is working on. All eight data registers are interchangeable; nothing about d0 makes it special. Pick any part above to read its job.</p>
+  <p class="rm-cap" id="rm-cap" aria-live="polite">This is the core programmer-visible state of the 68000 (the inactive user stack pointer is reached separately with move usp). <b>d0</b> is one of eight general-purpose data registers, 32 bits wide, holding a value the code is working on. All eight data registers are interchangeable; nothing about d0 makes it special. Pick any part above to read its job.</p>
 </div>
 <figcaption>The 68000 register model: eight data registers for values, eight address registers for
 pointers (a7 doubling as the stack pointer), the program counter, and the status register drawn as its
@@ -530,9 +537,15 @@ that initializes the SR during boot writes both halves at once:</p>
 	move	<span class="n">#$2700</span>,sr	<span class="c">; set the sr</span></pre>
 <span class="src">s2disasm/s2.asm:271-273 (the standard console init, just before the game starts)</span>
 
+<p>That middle line, <code>movem.l (a6),d0-a6</code>, zeroes fifteen registers at once, d0 through a6,
+by reading zeros from the address in a6. Its <code>; clear all registers</code> comment is the
+disassembly's own wording; strictly it is the fifteen general registers, since a7 (the stack pointer),
+the pc, and the sr are not in that list and keep their values.</p>
+
 <p>That <code>#$2700</code> is a whole status register in one constant. Bit 13 set puts the CPU in
-supervisor mode; bits 10 to 8 set to <code>111</code> mask off every ordinary maskable interrupt while
-the machine is still setting itself up (level 7 is non-maskable and always gets through); every
+supervisor mode; bits 10 to 8 set to <code>111</code> mask off every ordinary maskable interrupt, levels 1
+through 6, while the machine is still setting itself up (level 7 is a special non-maskable case: a transition
+up to it from a lower request level can still generate an interrupt); every
 condition-code bit is left zero. Reading a status register value is a
 matter of knowing which bit is which, and the diagram in <a href="#s1">section 1</a> lets you poke each
 one.</p>
@@ -540,8 +553,9 @@ one.</p>
 <h3>The five condition codes</h3>
 
 <p>Most instructions update the CCR as a side effect of whatever they just computed. On their own the
-flags do nothing; their entire purpose is that the very next branch can read them and decide where to
-go. This is how the CPU makes decisions without a separate "test" step: subtract, compare, or even
+flags do nothing; their purpose is that a later conditional instruction (a branch, or an <code>Scc</code>,
+<code>DBcc</code>, and the like) can read them and decide what to do, as long as nothing changed the
+relevant flags in between. This is how the CPU makes decisions without a separate "test" step: subtract, compare, or even
 just move a value, and the flags already describe the result.</p>
 
 <p>It is worth taking the phrase "side effect" literally, because it clears up the usual confusion about
@@ -568,7 +582,7 @@ Z with nothing in between, because the add already did the testing as part of ad
   <div class="ccard"><span class="cc-l">Z</span><span class="cc-n">zero</span><div class="cc-d">Set when the result was exactly zero. This is the flag <code>beq</code> and <code>bne</code> read.</div></div>
   <div class="ccard"><span class="cc-l">V</span><span class="cc-n">overflow</span><div class="cc-d">Set when a <em>signed</em> result did not fit and the sign came out wrong, for example adding two large positives and landing on a negative.</div></div>
   <div class="ccard"><span class="cc-l">C</span><span class="cc-n">carry</span><div class="cc-d">Set when an <em>unsigned</em> operation carried out of, or borrowed into, the top bit. Signed comparisons mostly use N, V, and Z, though extended signed arithmetic still chains through the carry; unsigned code lives on it.</div></div>
-  <div class="ccard"><span class="cc-l">X</span><span class="cc-n">extend</span><div class="cc-d">A saved copy of the carry, kept separate so extended, multi-word math (<code>addx</code>, <code>roxl</code>) can thread a carry across several longwords even when a compare or branch sits between the steps (those leave X untouched).</div></div>
+  <div class="ccard"><span class="cc-l">X</span><span class="cc-n">extend</span><div class="cc-d">A carry-like flag, updated alongside C by most arithmetic but a separate flag (a <code>cmp</code> changes C while leaving X untouched), so extended, multi-word math (<code>addx</code>, <code>roxl</code>) can thread a carry across several longwords even when a compare or branch sits between the steps.</div></div>
 </div>
 
 <div class="teach"><span class="t-tag">Teaching example &middot; V (overflow) vs C (carry) on the same add</span>
@@ -689,7 +703,7 @@ manual keeps talking about two stacks.</p>
     <tr><th>Bit</th><th>Name</th><th>Half</th><th>Meaning</th></tr>
     <tr><td>15</td><td><code>T</code></td><td>system</td><td>Trace: when set, the CPU takes a trace exception after every instruction (single-step debugging).</td></tr>
     <tr><td>13</td><td><code>S</code></td><td>system</td><td>Supervisor: 1 = supervisor mode, 0 = user mode.</td></tr>
-    <tr><td>10-8</td><td><code>I2 I1 I0</code></td><td>system</td><td>Interrupt mask: interrupts at or below this level are ignored. <code>111</code> masks all; <code>000</code> allows all.</td></tr>
+    <tr><td>10-8</td><td><code>I2 I1 I0</code></td><td>system</td><td>Interrupt mask: maskable interrupts at or below this level are ignored. <code>111</code> blocks levels 1 to 6; level 7 is non-maskable. <code>000</code> allows all.</td></tr>
     <tr><td>4</td><td><code>X</code></td><td>CCR</td><td>Extend.</td></tr>
     <tr><td>3</td><td><code>N</code></td><td>CCR</td><td>Negative.</td></tr>
     <tr><td>2</td><td><code>Z</code></td><td>CCR</td><td>Zero.</td></tr>
@@ -824,9 +838,9 @@ The 68000 keeps addresses as full 32-bit values inside its registers, but its pa
 address pins wired to the outside world. So when it actually reaches out to memory it uses the low 24
 bits and <em>ignores the top 8</em>. That fixes the real, physical address space at 2^24 = 16 MB,
 <code>$000000</code> to <code>$FFFFFF</code>, and it means two addresses that differ only in their top
-byte, say <code>$00FF0000</code> and <code>$12FF0000</code>, land on the exact same memory. Motorola
-chose 24 pins to save package cost while leaving the registers full-width so later chips (the 68020 and
-up) could wire all 32 without changing the programming model. On the Genesis, which is always a plain
+byte, say <code>$00FF0000</code> and <code>$12FF0000</code>, land on the exact same memory. The upside of
+this split: 24 pins make for a smaller, cheaper package, while the full-width registers left room for later
+chips (the 68020 and up) to wire all 32 without changing the programming model. On the Genesis, which is always a plain
 68000, only those 24 bits ever matter.</div>
 
 <p>The Genesis fills that 16 MB map with ROM down low, the hardware chips in the middle, and the
@@ -952,6 +966,20 @@ discarded before the address ever reaches memory. The header mask above is the o
 <p>Because control flow is nothing but "some instruction writes the PC," a wrong value in the PC is one
 of the ways a 68000 program dies. It is worth knowing exactly how it dies, because the failure has two
 distinct shapes and neither one looks like the tidy crash you might expect.</p>
+
+<p>A crash, though, is just an exception the game did not want, and every exception (wanted or not) follows
+the same six steps. This is the sequence that ties together the supervisor stack, the vector table, and
+<code>rte</code> that the rest of this page has met one piece at a time:</p>
+<ol style="max-width:42rem; line-height:1.5;">
+  <li>The exception fires: a bus or address error, an illegal instruction, a <code>trap</code>, an interrupt, and so on.</li>
+  <li>The CPU switches into supervisor mode.</li>
+  <li>It switches to the supervisor stack, so <code>a7</code> now points at the SSP.</li>
+  <li>It pushes the current SR and PC onto that stack, saving enough to resume the interrupted work later.</li>
+  <li>It reads the handler's address from this exception's slot in the vector table and loads it into the PC.</li>
+  <li>The handler runs; if execution is meant to continue, it ends with <code>rte</code>, which pops the saved SR and PC back and carries on where it left off.</li>
+</ol>
+<p><code>ErrorTrap</code>, below, is simply a handler that deliberately never reaches step 6: it loops
+forever, which is the silent freeze.</p>
 
 <details class="explain">
   <summary>New here? &middot; How can the program counter end up wrong in the first place?</summary>
@@ -1100,6 +1128,15 @@ knew those four bytes were a return address in the first place.</div>
   </div>
 </details>
 
+<p>One last distinction the stack makes easy to blur: the CPU defines the <em>mechanism</em>, not the
+<em>policy</em>. <code>bsr</code> and <code>jsr</code> push a return address, <code>rts</code> pops it, and
+exception entry and <code>rte</code> do their fixed dance, all of that is wired into the silicon. But which
+registers a routine must preserve, where its parameters go, how it hands back a result, and who pops
+arguments off the stack afterward are <strong>software conventions</strong> the engine chooses, not rules
+the 68000 enforces. That is why one Sonic routine carefully saves registers on entry while another freely
+clobbers them: each is following (or ignoring) a convention the code agreed on, and the CPU is indifferent
+either way.</p>
+
 <!-- ================================================================ -->
 <h2 id="s7">7 &middot; The instruction index</h2>
 
@@ -1137,7 +1174,7 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><td class="ix-mn"><a href="shifts-bits.html#bset">BSET</a><span class="ix-x">Test Bit and Set</span></td><td class="ix-gl">Test one bit, then set it to 1.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">BSR</span><span class="ix-x">Branch to Subroutine</span></td><td class="ix-gl">Branch to a subroutine, pushing the return address.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><a href="shifts-bits.html#btst">BTST</a><span class="ix-x">Test Bit</span></td><td class="ix-gl">Test one bit, setting Z from it, without changing it.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">CHK</span><span class="ix-x">Check Register Against Bounds</span></td><td class="ix-gl">Trap if a register is outside 0 to an upper bound.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">CHK</span><span class="ix-x">Check Register Against Bounds</span></td><td class="ix-gl">Trap if a data register, taken as signed, is below 0 or above an upper bound.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#clr">CLR</a><span class="ix-x">Clear</span></td><td class="ix-gl">Write zero to a register or memory.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">CMP</span><span class="ix-x">Compare</span></td><td class="ix-gl">Compare two values (subtract without storing) to set the flags.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">CMPA</span><span class="ix-x">Compare Address</span></td><td class="ix-gl">Compare a value against an address register.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
@@ -1179,14 +1216,14 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><td class="ix-mn"><span class="mn-plain">RTR</span><span class="ix-x">Return and Restore</span></td><td class="ix-gl">Return from a subroutine, also restoring the condition codes from the stack.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">RTS</span><span class="ix-x">Return from Subroutine</span></td><td class="ix-gl">Return from a subroutine; pop the return address into the PC.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">Scc</span><span class="ix-x">Set Conditionally</span></td><td class="ix-gl">Set a byte to all-ones or all-zeros from a condition; the family SEQ, SNE and the rest.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">STOP</span><span class="ix-x">Stop</span></td><td class="ix-gl">Load a new SR and halt the CPU until an interrupt; privileged.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">STOP</span><span class="ix-x">Stop</span></td><td class="ix-gl">Load a new SR and halt the CPU until a qualifying interrupt, trace exception, or reset; privileged.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">SUB</span><span class="ix-x">Subtract</span></td><td class="ix-gl">Subtract a value.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">SUBA</span><span class="ix-x">Subtract Address</span></td><td class="ix-gl">Subtract a value from an address register; sets no flags.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">SUBI</span><span class="ix-x">Subtract Immediate</span></td><td class="ix-gl">Subtract an immediate constant.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">SUBQ</span><span class="ix-x">Subtract Quick</span></td><td class="ix-gl">Subtract a small constant, 1 to 8, in one word.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">SUBX</span><span class="ix-x">Subtract Extended</span></td><td class="ix-gl">Subtract with the extend bit, for multi-word subtraction.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#swap">SWAP</a><span class="ix-x">Swap Register Halves</span></td><td class="ix-gl">Exchange the upper and lower 16-bit halves of a data register.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">TRAP</span><span class="ix-x">Trap</span></td><td class="ix-gl">A software interrupt to one of sixteen vectored handlers.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">TRAP</span><span class="ix-x">Trap</span></td><td class="ix-gl">A synchronous, software-generated exception to one of sixteen vectored handlers.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">TRAPV</span><span class="ix-x">Trap on Overflow</span></td><td class="ix-gl">Trap if the V (overflow) flag is set.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">TST</span><span class="ix-x">Test</span></td><td class="ix-gl">Test a value against zero, setting N and Z.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">UNLK</span><span class="ix-x">Unlink</span></td><td class="ix-gl">Close a stack frame opened by LINK.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
@@ -1255,9 +1292,9 @@ function expandAll(btn){
     pc: '<b>pc is the program counter</b>: the address of the next instruction to fetch. It is not one of d0-d7 / a0-a7 and you cannot MOVE into it. Normal sequential fetch advances it automatically; branches, jumps, calls (bsr/jsr) and returns (rts/rte) redirect it explicitly; and reset, interrupts, traps, and other exceptions load it from the vector table. Fetch, advance, repeat, that loop is the whole of a running program.',
     'sr-t': '<b>T, the trace bit</b> (system byte, privileged). When set, the CPU takes a trace exception after every single instruction, which is how a debugger single-steps code. It is not a side effect of anything you compute: ordinary instructions leave it alone, and you set it by writing the SR. Sonic leaves it 0.',
     'sr-s': '<b>S, the supervisor bit</b> (system byte, privileged). 1 = supervisor mode (full privilege), 0 = user mode. It is not set by arithmetic: it flips to 1 automatically when the CPU takes an exception or interrupt, and RTE restores it. The Genesis boots supervisor and stays there the whole run.',
-    'sr-mask': '<b>I2 I1 I0, the interrupt mask</b> (system byte, privileged): a 3-bit priority threshold. Interrupts at or below this level are ignored; 111 blocks every ordinary maskable interrupt, including the Genesis VDP’s level-4 and level-6 interrupts; level 7 is a special non-maskable case that still gets through. 000 allows all. The CPU raises it automatically while handling an interrupt and RTE restores it, and privileged code sets it explicitly with move #x,sr. Ordinary instructions never touch it.',
+    'sr-mask': '<b>I2 I1 I0, the interrupt mask</b> (system byte, privileged): a 3-bit priority threshold. Interrupts at or below this level are ignored; 111 blocks every ordinary maskable interrupt, including the Genesis VDP’s level-4 and level-6 interrupts; level 7 is a special non-maskable case (a transition up to it from a lower request level can still generate an interrupt). 000 allows all. The CPU raises it automatically while handling an interrupt and RTE restores it, and privileged code sets it explicitly with move #x,sr. Ordinary instructions never touch it.',
     'sr-unused': '<b>An unused status-register bit</b>: six of the sixteen bits (positions 14, 12, 11, and 7 to 5) carry nothing: on the 68000 they read as zero, but they are officially reserved, so write them as zero and do not rely on the value. Only ten bits hold information: five in the CCR (X N Z V C) and five in the system byte (T, S, and the 3-bit mask). That is why a whole-register value like $2700 is mostly zeros.',
-    'ccr-x': '<b>X, the extend flag</b>: a saved copy of the carry, kept apart from C so extended, multi-word math (addx, roxl) can thread a carry across several longwords even when a compare or branch sits between the steps (those leave X untouched).',
+    'ccr-x': '<b>X, the extend flag</b>: a carry-like flag, updated alongside C by most arithmetic but a separate flag (a cmp changes C while leaving X untouched), so extended, multi-word math (addx, roxl) can thread a carry across several longwords even when a compare or branch sits between the steps.',
     'ccr-n': '<b>N, the negative flag</b>: a copy of the result’s top bit. Set means the result reads as negative in two’s complement. BMI branches on it directly; the signed less-than branch BLT combines it with V (it tests N XOR V).',
     'ccr-z': '<b>Z, the zero flag</b>: set when the result was exactly zero. This is the flag beq and bne read, and the single most-tested bit on the machine.',
     'ccr-v': '<b>V, the overflow flag</b>: set when a signed result did not fit and the sign came out wrong, for example adding two large positives and landing on a negative.',
