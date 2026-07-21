@@ -640,54 +640,54 @@ Z with nothing in between, because the add already did the testing as part of ad
 
 <div class="teach"><span class="t-tag">Teaching example &middot; one add, two interpretations: V and C</span>
 
-<p><strong>One addition, two questions.</strong> The 68000 does not have separate signed and unsigned
-versions of ADD. It adds the same bits either way, then answers two independent questions: did the answer
-fit when the operands are read as <em>signed</em> (reported by V), and did it fit when they are read as
-<em>unsigned</em> (reported by C)? For a byte:</p>
+<p><strong>First, what the bits mean.</strong> The same eight bits stand for different numbers depending on
+how the program reads them. From <code>$00</code> to <code>$7F</code> the signed and unsigned readings
+agree; once the high bit is set they part ways:</p>
 <div class="tbl"><table>
-  <tr><th>Interpretation</th><th>Range</th><th>Flag set when the answer falls outside</th></tr>
-  <tr><td>Signed</td><td>-128 to 127</td><td><code>V</code></td></tr>
-  <tr><td>Unsigned</td><td>0 to 255</td><td><code>C</code></td></tr>
+  <tr><th>Bits</th><th>Hex</th><th>Unsigned</th><th>Signed</th></tr>
+  <tr><td><code>0000 0000</code></td><td><code>$00</code></td><td>0</td><td>0</td></tr>
+  <tr><td><code>0111 1111</code></td><td><code>$7F</code></td><td>127</td><td>127</td></tr>
+  <tr><td><code>1000 0000</code></td><td><code>$80</code></td><td>128</td><td>-128</td></tr>
+  <tr><td><code>1111 1110</code></td><td><code>$FE</code></td><td>254</td><td>-2</td></tr>
+  <tr><td><code>1111 1111</code></td><td><code>$FF</code></td><td>255</td><td>-1</td></tr>
 </table></div>
-<p>After each ADD both flags are recalculated independently: each becomes 1 if its kind of overflow
-happened and 0 if it did not. Neither, either, or both can be set.</p>
+<p>For a byte whose high bit is set, subtract 256 from its unsigned value to get its signed meaning:
+<code>$FF</code> is 255 - 256 = -1, and <code>$80</code> is 128 - 256 = -128. There is only one zero;
+<code>$80</code> is -128, not a negative zero.</p>
 
-<p><strong>When signed overflow occurs.</strong></p>
-<pre>  0111 1111    $7F
-+ 0000 0001    $01
------------
-  1000 0000    $80</pre>
-<p>The stored result is <code>$80</code>. Read as signed, this was 127 + 1: the correct answer is 128, but
-a signed byte only reaches 127, and the stored pattern <code>$80</code> means -128, so the signed answer
-did not fit and V=1. Read as unsigned, 127 + 1 = 128 fits in 0 to 255, so no ninth bit was needed and C=0.</p>
-
-<p><strong>When unsigned carry occurs.</strong></p>
-<pre>  1111 1111    $FF
-+ 0000 0001    $01
------------
-1 0000 0000    $100
-^ extra ninth bit</pre>
-<p>A byte stores only the lower eight bits, so the stored result is <code>0000 0000</code>, or
-<code>$00</code>, and the extra ninth bit is recorded in C, so C=1. Read as signed, the same bits mean
--1 + 1 = 0, which fits, so V=0.</p>
-
+<p><strong>The flags are two independent fit checks.</strong> ADD performs one binary addition, and
+afterward the CPU recalculates both flags:</p>
+<ul>
+  <li>V=1 if the sum does not fit when the operands are read as <em>signed</em> values, -128 to 127; otherwise V=0.</li>
+  <li>C=1 if the sum does not fit when the operands are read as <em>unsigned</em> values, 0 to 255; otherwise C=0.</li>
+</ul>
+<p>You do not choose which flag the instruction sets, and you do not normally try to trip one on purpose.
+The CPU always calculates both; your program checks whichever matches what the value represents. All four
+combinations can happen:</p>
 <div class="tbl"><table>
-  <tr><th>Addition</th><th>Signed result</th><th>Unsigned result</th><th>Flags</th></tr>
-  <tr><td><code>$7F + $01</code></td><td>Does not fit</td><td>Fits</td><td>V=1, C=0</td></tr>
-  <tr><td><code>$FF + $01</code></td><td>Fits</td><td>Does not fit</td><td>V=0, C=1</td></tr>
+  <tr><th>Addition</th><th>Binary</th><th>Signed</th><th>Unsigned</th><th>Flags</th></tr>
+  <tr><td><code>$01 + $01</code></td><td><code>0000 0001 + 0000 0001 = 0000 0010</code></td><td>1 + 1 = 2, fits</td><td>1 + 1 = 2, fits</td><td>V=0, C=0</td></tr>
+  <tr><td><code>$7F + $01</code></td><td><code>0111 1111 + 0000 0001 = 1000 0000</code></td><td>127 + 1 = 128, does not fit</td><td>127 + 1 = 128, fits</td><td>V=1, C=0</td></tr>
+  <tr><td><code>$FF + $01</code></td><td><code>1111 1111 + 0000 0001 = 1 0000 0000</code><br>stored <code>0000 0000</code></td><td>-1 + 1 = 0, fits</td><td>255 + 1 = 256, does not fit</td><td>V=0, C=1</td></tr>
+  <tr><td><code>$80 + $80</code></td><td><code>1000 0000 + 1000 0000 = 1 0000 0000</code><br>stored <code>0000 0000</code></td><td>-128 + -128 = -256, does not fit</td><td>128 + 128 = 256, does not fit</td><td>V=1, C=1</td></tr>
 </table></div>
-<p>The result bits alone do not tell the CPU what the value means. The flags preserve both interpretations
-so your program can check the relevant one.</p>
+<p>That is every possibility: neither flag, only V, only C, or both. <code>$FF + $01</code> and
+<code>$80 + $80</code> both spill a ninth bit, so both set C; they differ in V because their signed sums
+differ, -1 + 1 fits but -128 + -128 does not.</p>
 
-<p><strong>Which flag does your code check?</strong> Check the flag that matches the meaning your program
-gave the value. If <code>d0</code> holds a signed velocity, which can go negative:</p>
+<p><strong>Which flag does your code check?</strong> Check the one that matches the meaning your program
+gave the value. A signed velocity can go negative, so it is read signed:</p>
 <pre>	add.b	<span class="n">#1</span>,d0
 	bvs.s	VelocityOverflow	<span class="c">; result fell outside -128 to 127</span></pre>
-<p>If <code>d0</code> holds an unsigned counter, which cannot go negative:</p>
+<p>An unsigned counter cannot go negative, so it is read unsigned:</p>
 <pre>	add.b	<span class="n">#1</span>,d0
 	bcs.s	CounterWrapped		<span class="c">; result passed 255 and wrapped to 0</span></pre>
-<p>The ADD is identical; what <code>d0</code> represents decides which flag matters. The same choice shows
-up in comparisons:</p>
+<p>The ADD is identical; what <code>d0</code> represents decides which flag matters.</p>
+</div>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; the same choice, in a comparison</span>
+<p>The same signed-or-unsigned choice runs through comparisons, where the two "less than" tests can disagree
+outright:</p>
 <pre>	cmp.w	d1,d0
 	blt.s	D0IsLower		<span class="c">; signed comparison</span>
 	blo.s	D0IsLower		<span class="c">; unsigned comparison</span></pre>
