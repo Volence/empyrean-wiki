@@ -349,6 +349,10 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
 on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
 
+<p style="margin-top:.8rem; color:var(--dim); font-size:.85rem;">Scope: these are the ten everyday movers.
+A few specialized ones sit elsewhere, MOVEP (byte-spreading to peripherals, rare in Genesis code), plus
+the SR/CCR/USP moves and the stack-frame pair LINK/UNLK that the Flow &amp; System page covers.</p>
+
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; The MOVE family</h2>
 
@@ -359,6 +363,14 @@ eight general-purpose data registers (D0-D7) for values, and eight address regis
 with A7 doubling as the stack pointer) for pointers. Reading or writing a register costs nothing
 extra in bus time, unlike memory, which is why so much 68000 code is a dance of getting values
 into registers, working on them there, and writing results back out.</p>
+
+<p>Two reading conventions before the examples start. The 68000 writes operands <strong>source, then
+destination</strong>: <code>move.w d0,d1</code> copies d0 <em>into</em> d1, so the right-hand operand is
+where the value lands. And the punctuation carries meaning: a <code>#</code> marks an immediate literal
+(<code>#$100</code> is the number itself), a <code>$</code> marks hexadecimal, and parentheses mean the
+memory <em>at</em> an address (<code>(a0)</code> is what a0 points at, not a0 itself). The
+<a href="addressing-modes.html">Addressing Modes page</a>
+carries the full notation key.</p>
 
 <details class="explain">
   <summary>New here? &middot; What do .b, .w, and .l mean?</summary>
@@ -371,9 +383,11 @@ into registers, working on them there, and writing results back out.</p>
     32 bits and leaves the rest of the register alone, which is a common source of stale-data bugs
     for anyone assuming a byte operation clears the whole register the way it might on other
     chips.</p>
-    <p>Picking the smallest size that fits the job matters on real hardware: a <code>.b</code>
-    move is both smaller in ROM and faster to execute than the equivalent <code>.l</code> move to
-    the same address, because the 68000's bus does less work for a byte transfer.</p>
+    <p>Picking the size that fits the job matters on real hardware, but not the way beginners often assume.
+    A register-to-register move is 2 bytes and 4 cycles at <em>every</em> size, so the suffix alone does not
+    make it smaller or faster. Where size pays off is memory and immediates: a byte or word transfer to
+    memory moves less across the bus (fewer cycles), and a smaller <em>immediate</em> encodes in fewer
+    bytes.</p>
   </div>
 </details>
 
@@ -433,8 +447,10 @@ into registers, working on them there, and writing results back out.</p>
   <summary>New here? &middot; What is a label, and who decides its address?</summary>
   <div class="x-body">
     <p>A label like <code>Score</code>, <code>Return_Here</code>, or <code>ObjCC</code> is just a
-    name for a spot: a place in the code, or a slot in RAM. You never assign it a number. The
-    assembler does that at build time, by plain bookkeeping: it walks the source top to bottom,
+    name for a spot: a place in the code, or a slot in RAM. You do not hand it a number yourself (you
+    <em>can</em> bind a name to a value directly with <code>equ</code> or <code>=</code>, but a location
+    label like these is a different tool). The assembler works out its address at build time, by plain
+    bookkeeping: it walks the source top to bottom,
     adds up the size of everything it emits, and whatever address the count has reached when it
     meets your label IS that label's value from then on. Write the same code with one extra
     instruction above the label and the label's address quietly moves; nobody edits it by hand.</p>
@@ -450,10 +466,11 @@ into registers, working on them there, and writing results back out.</p>
     (<code>pea Label(pc)</code>: 4 bytes, 16 cycles), and because it says "this far from me"
     rather than "at this fixed spot," it keeps working if the whole block of code is moved
     somewhere else in ROM. The catch is reach: the distance field is 16 bits signed, so
-    <code>(pc)</code> only works for labels within 32KB of the instruction, which is also why a
-    RAM variable can never use it (RAM is nowhere near the code). Hence the pattern all over
-    Sonic-era source: nearby code labels get <code>(pc)</code>, RAM variables get
-    <code>(xxx).w</code>, far-away data gets <code>(xxx).l</code>.</p>
+    <code>(pc)</code> only works for labels within 32KB of the instruction, which is also why work-RAM
+    variables in Genesis code cannot use it: the code runs from ROM, and RAM is nowhere near it. Hence the
+    pattern all over Sonic-era source: nearby code labels get <code>(pc)</code>, work-RAM variables in the
+    high <code>$FFxxxx</code> range get <code>(xxx).w</code> (those addresses sign-extend from a single
+    word), far-away data gets <code>(xxx).l</code>.</p>
   </div>
 </details>
 
@@ -481,8 +498,8 @@ into registers, working on them there, and writing results back out.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by MOVE">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
-    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state term" data-def="Set from the result, not automatically 1: N becomes 1 only when the result is negative. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state term" data-def="Set from the result, not automatically 1: Z becomes 1 only when the result is zero. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
@@ -597,12 +614,12 @@ into registers, working on them there, and writing results back out.</p>
   <pre>	move.w	<span class="n">#$100</span>,x_vel(a0)
 	move.w	<span class="n">#-$80</span>,y_vel(a0)</pre>
   <span class="src">s2disasm/s2.asm:13543-13544 (ObjCC, the ending-sequence Tornado)</span>
-  <p><code>a0</code> points at the plane's object data block, and <code>x_vel</code> / <code>y_vel</code> are its horizontal and vertical speed fields. Nothing moves this instant: the MOVEs just drop in the constants ($100 rightward, and -$80, which is negative, so upward). Every frame afterward the engine adds those speeds to the plane's position, and that is what actually carries it up and to the right, out over the clouds.</p>
+  <p><code>a0</code> points at the plane's object data block, and <code>x_vel</code> / <code>y_vel</code> are its horizontal and vertical speed fields. Nothing moves this instant: the MOVEs just drop in the constants. These are velocities in Sonic's fixed-point format, where one whole pixel per frame is <code>$100</code> (256 subpixel units), so <code>#$100</code> is 1 pixel per frame rightward and <code>#-$80</code> is half a pixel per frame upward, not 256 and 128 pixels. Every frame afterward the engine adds those speeds to the plane's position, and that is what actually carries it up and to the right, out over the clouds.</p>
 
   <p>A MOVE is also how you arm a countdown. The retracting spikes hold still, then snap out on a timer:</p>
   <pre>	move.w	<span class="n">#60</span>,spikes_retract_timer(a0)	<span class="c">; reset timer</span></pre>
   <span class="src">s2disasm/s2.asm:29357 (MoveSpikes, the retracting spikes object)</span>
-  <p>This copies 60 into the object's retract timer, which is 60 frames, one second at the Genesis frame rate. The move itself changes nothing you can see; each following frame the object counts that timer down, and when it hits zero the spikes move. One MOVE sets the fuse; the countdown elsewhere in the object burns it.</p>
+  <p>This copies 60 into the object's retract timer, which is 60 frames, about one second on an NTSC console (PAL hardware runs at 50 frames a second, so a little longer there). The move itself changes nothing you can see; each following frame the object counts that timer down, and when it hits zero the spikes move. One MOVE sets the fuse; the countdown elsewhere in the object burns it.</p>
 
   <p>And because a MOVE sets the N and Z flags from the value it copied, you can react to that value on the spot, with no separate compare. This is ProcessDMAQueue, the routine that flushes the frame's queued video transfers to the VDP; it reads the next entry of the command buffer and stops at the zero end-marker:</p>
   <pre>	move.w	(a1)+,d0
@@ -634,8 +651,8 @@ into registers, working on them there, and writing results back out.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by MOVEQ">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
-    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state term" data-def="Set from the result, not automatically 1: N becomes 1 only when the result is negative. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state term" data-def="Set from the result, not automatically 1: Z becomes 1 only when the result is zero. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
@@ -823,10 +840,12 @@ as it was.</p>
 <details class="explain" id="stack">
   <summary>New here? &middot; What is the stack, and why does the CPU need one?</summary>
   <div class="x-body">
-    <p>The stack is a region of <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span> that grows downward and is always
-    addressed through A7, the stack pointer. "Push" means write a value at the address A7 currently
-    points to and then decrease A7 by the value's size; "pop" (more properly, "pull") means
-    increase A7 first and then read from there. Because it always operates on whatever A7 points
+    <p>The stack is a region of <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. Most CPU-visible runtime state lives here; graphics and sound state live in the VDP's VRAM/CRAM/VSRAM and the Z80's RAM.">work RAM</span> that grows downward and is always
+    addressed through A7, the stack pointer. "Push" (the <code>-(sp)</code> form) decreases A7 by the
+    value's size <em>first</em>, then writes the value at the new address; "pop" or "pull" (the
+    <code>(sp)+</code> form) reads from where A7 points <em>first</em>, then increases A7 by the size. This
+    predecrement-then-write, read-then-postincrement ordering is what keeps A7 pointing at the current top
+    item. Because it always operates on whatever A7 points
     to right now, the stack is naturally last-in-first-out: the most recent thing pushed is the
     first thing that comes back off.</p>
     <p>That discipline is exactly what a subroutine call needs. <code>jsr</code> pushes a return
@@ -1125,8 +1144,8 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
   </div>
   <figcaption>MOVEM saves a chosen register list to the stack in descending order and restores it in reverse, for a cost that scales with the list (static fallback: saving d0/d1/d2/a0/a1 pushes a1 first and d0 last, leaving d0 on top, and costs 8 + 8 times 5 = 48 cycles; the matching restore pops d0 first and a1 last, each value back in its own register).</figcaption>
   </figure>
-  <p>Saving every register at the very top of the vertical interrupt handler, predecrementing onto
-  the stack:</p>
+  <p>Saving all fifteen working registers (d0-a6, everything except the stack pointer itself) at the very
+  top of the vertical interrupt handler, predecrementing onto the stack:</p>
   <pre>V_Int:
 	movem.l	d0-a6,-(sp)
 	tst.b	(Vint_routine).w
@@ -1146,6 +1165,11 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
 	movem.w	(a5)+,d5-d7
 	movem.l	(a5)+,a0-a4</pre>
   <span class="src">s2disasm/s2.asm:206-208</span>
+  <p>One subtlety in that word-sized load: <code>movem.w</code> into data registers
+  <strong>sign-extends</strong> each 16-bit word to fill all 32 bits, whereas a word-sized <em>save</em>
+  stores just the low 16 bits of each register. So <code>movem.w (a5)+,d5-d7</code> is meant for values
+  read as signed words; a raw bit pattern with its top bit set comes back with its high half filled with
+  ones.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   With a predecrement destination (register-to-memory), the registers are stored in
   <strong>descending order</strong>, A7 down through D0, specifically so that a matching
@@ -1293,7 +1317,7 @@ carry meaning, without touching memory at all.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   On the original MC68000 specifically (not the later 68010 and up), CLR to a memory destination
   performs a read-then-write bus cycle, not a write-only one. That is invisible for ordinary
-  <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span>, but it matters if the destination is a hardware register with a
+  <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. Most CPU-visible runtime state lives here; graphics and sound state live in the VDP's VRAM/CRAM/VSRAM and the Z80's RAM.">work RAM</span>, but it matters if the destination is a hardware register with a
   read side effect, since clearing it can silently trigger that side effect as an unwanted extra
   read. Later 680x0 family members fixed CLR to be write-only.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
@@ -1307,8 +1331,8 @@ carry meaning, without touching memory at all.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by SWAP">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
-    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state term" data-def="Set from the result, not automatically 1: N becomes 1 only when the result is negative. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state term" data-def="Set from the result, not automatically 1: Z becomes 1 only when the result is zero. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
@@ -1353,7 +1377,7 @@ carry meaning, without touching memory at all.</p>
   </div>
   <figcaption>SWAP trades a data register's two 16-bit halves in place (static fallback: swap d0 turns $12345678 into $56781234; the high word $1234 and low word $5678 exchange positions, and swapping again restores the original).</figcaption>
   </figure>
-  <p>Both real uses here build a <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could, while the CPU keeps working.">DMA</span> command word out of two 16-bit halves computed
+  <p>Both real uses here build a <span class="term" data-def="Direct Memory Access: the VDP moves bulk data into video memory itself, far faster than the CPU copying word by word. A 68000-to-VDP transfer halts the CPU while it runs; VRAM fill and VRAM-to-VRAM copy do not.">DMA</span> command word out of two 16-bit halves computed
   separately, which is exactly the situation SWAP is built for. First, shaping a VRAM destination
   address into the top half of a DMA command:</p>
   <pre>	andi.l	<span class="n">#$FFFF</span>,d2 <span class="c">; command to specify destination address and begin DMA</span>
@@ -1424,9 +1448,11 @@ carry meaning, without touching memory at all.</p>
   </div>
   <figcaption>EXG is a trade, not a copy: both registers keep their value in the other's home (static fallback: with d0 = $0000AAAA and d1 = $0000BBBB, exg d0,d1 gives d0 = $0000BBBB and d1 = $0000AAAA; by contrast move.l d0,d1 would copy d0 over d1, destroying the $BBBB that was there).</figcaption>
   </figure>
-  <p>EXG is genuinely uncommon in hand-written 68000 game code. Most register swaps go through a
-  spare register and a couple of MOVEs instead, since EXG doesn't obviously save time or registers
-  in most contexts; across the entire 91,000-line Sonic 2 disassembly it appears only a handful of
+  <p>EXG is genuinely uncommon in hand-written 68000 game code, but not because MOVEs are better: it is
+  uncommon because <em>needing</em> to swap two whole registers is rare. When a genuine swap is required,
+  EXG beats the alternative on every axis, 6 cycles and 2 bytes with no scratch register and no effect on
+  the condition codes, against three MOVEs through a spare register (12 cycles, 6 bytes, a register tied up,
+  and N and Z clobbered). Across the entire 91,000-line Sonic 2 disassembly it appears only a handful of
   times, always as a plain two-register swap inside physics code. Here is the end of a
   floor-sensor routine whose contract with its callers is "the winning distance comes back in d1,
   its angle in d3." The excerpt runs all the way to the <code>rts</code> so you can see who the
@@ -1465,8 +1491,8 @@ loc_1ECD4:
   <div class="flags" role="group" aria-label="Condition codes affected by EXT">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none" aria-label="X unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state">set</span></span>
-    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set" aria-label="N set from result"><span class="fl-name">N</span><span class="fl-state term" data-def="Set from the result, not automatically 1: N becomes 1 only when the result is negative. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
+    <span class="fchip f-set" aria-label="Z set from result"><span class="fl-name">Z</span><span class="fl-state term" data-def="Set from the result, not automatically 1: Z becomes 1 only when the result is zero. In this Flags row 'clear' means forced to 0 and 'unaff.' means left unchanged.">set</span></span>
     <span class="fchip f-clear" aria-label="V cleared"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" aria-label="C cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
   </div>
