@@ -577,24 +577,30 @@ constant like <code>#$2700</code> is mostly zeros. The 16-bit ruler in
 <a href="moving-data.html#move">MOVE</a>
 that initializes the SR during boot writes both halves at once:</p>
 
-<pre>	move.w	d0,(a2)
-	movem.l	(a6),d0-a6	<span class="c">; clear all registers</span>
-	move	<span class="n">#$2700</span>,sr	<span class="c">; set the sr</span></pre>
-<span class="src">s2disasm/s2.asm:271-273 (the standard console init, just before the game starts)</span>
+<pre>	movem.l	(a6),d0-a6
+	move	<span class="n">#$2700</span>,sr	<span class="c">; set the status register</span></pre>
+<span class="src">s2disasm/s2.asm:272-273 (the standard console init, just before the game starts)</span>
 
-<p>MOVEM is not inherently a clearing instruction; the clearing is a premise carried in from earlier.
-Startup code had already zeroed work RAM and left a6 pointing at that zero-filled block, so this line
-loads fifteen consecutive zero longwords into d0 through a6 (a7, the pc, and the sr are not in the list
-and keep their values, so the <code>; clear all registers</code> comment is really the fifteen general
-registers).</p>
+<p><code>$2700</code> supplies all sixteen bits of the status register in one constant. Decoded nibble by
+nibble it is <code>%0010 0111 0000 0000</code> (<code>$2</code> is <code>0010</code>, <code>$7</code> is
+<code>0111</code>, and each <code>$0</code> is <code>0000</code>), so only four bits are set. Reading it
+field by field:</p>
 
-<p>That <code>#$2700</code> is a whole status register in one constant. Bit 13 set puts the CPU in
-supervisor mode; bits 10 to 8 set to <code>111</code> mask off every ordinary maskable interrupt, levels 1
-through 6, while the machine is still setting itself up (level 7 is a special non-maskable case: a transition
-up to it from a lower request level can still generate an interrupt); every
-condition-code bit is left zero. Reading a status register value is a
-matter of knowing which bit is which, and the diagram in <a href="#s1">section 1</a> lets you poke each
-one.</p>
+<div class="tbl"><table>
+  <tr><th>Bits</th><th>Field</th><th>Value</th><th>Effect</th></tr>
+  <tr><td>15</td><td><code>T</code></td><td>0</td><td>Tracing off</td></tr>
+  <tr><td>14</td><td>reserved</td><td>0</td><td>Written as zero</td></tr>
+  <tr class="hi"><td>13</td><td><code>S</code></td><td>1</td><td>Supervisor mode</td></tr>
+  <tr><td>12-11</td><td>reserved</td><td>00</td><td>Written as zero</td></tr>
+  <tr class="hi"><td>10-8</td><td>Interrupt mask</td><td>111</td><td>Mask level 7 (blocks levels 1 through 6)</td></tr>
+  <tr><td>7-5</td><td>reserved</td><td>000</td><td>Written as zero</td></tr>
+  <tr><td>4-0</td><td><code>X N Z V C</code></td><td>00000</td><td>All condition codes cleared</td></tr>
+</table></div>
+
+<p>So while initialization runs, the CPU is in supervisor mode with interrupt levels 1 through 6 masked
+(level 7 keeps its special transition-triggered behavior) and the condition codes start clear. The same
+nibble-by-nibble decoding works on any register value; the interactive diagram in
+<a href="#s1">section 1</a> lets you poke each bit.</p>
 
 <h3>The five condition codes</h3>
 
