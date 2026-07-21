@@ -593,15 +593,15 @@ order the table below runs top to bottom:</p>
   <tr><td>14</td><td>reserved</td><td>0</td><td>Written as zero</td></tr>
   <tr class="hi"><td>13</td><td><code>S</code></td><td>1</td><td>Supervisor mode</td></tr>
   <tr><td>12-11</td><td>reserved</td><td>00</td><td>Written as zero</td></tr>
-  <tr class="hi"><td>10-8</td><td>Interrupt mask</td><td>111</td><td>Mask level 7 (blocks levels 1 through 6)</td></tr>
+  <tr class="hi"><td>10-8</td><td>Interrupt mask</td><td>111</td><td>Highest mask; levels 1 through 6 ignored</td></tr>
   <tr><td>7-5</td><td>reserved</td><td>000</td><td>Written as zero</td></tr>
   <tr><td>4-0</td><td><code>X N Z V C</code></td><td>00000</td><td>All condition codes cleared</td></tr>
 </table></div>
 
-<p>So while initialization runs, the CPU is in supervisor mode with interrupt levels 1 through 6 masked
-(level 7 keeps its special transition-triggered behavior) and the condition codes start clear. The same
-nibble-by-nibble decoding works on any register value; the interactive diagram in
-<a href="#s1">section 1</a> lets you poke each bit.</p>
+<p>So <code>$2700</code> places the CPU in supervisor mode, sets the interrupt mask to its highest level,
+and leaves the condition codes cleared, which is why interrupt requests at levels 1 through 6 are ignored
+while initialization runs. The same nibble-by-nibble decoding works on any register value; the interactive
+diagram in <a href="#s1">section 1</a> lets you poke each bit.</p>
 
 <h3>The five condition codes</h3>
 
