@@ -641,14 +641,28 @@ Z with nothing in between, because the add already did the testing as part of ad
 <div class="teach"><span class="t-tag">Teaching example &middot; one add, two interpretations: V and C</span>
 <p>The CPU does not do a "signed add" or an "unsigned add." It does one binary addition and sets
 <em>both</em> flags. Your code decides which reading matters: V answers the signed question, C the unsigned
-one. Take <code>$7F + $01</code>:</p>
+one. Two additions make the point, one that trips signed overflow and one that trips unsigned carry.</p>
+
+<p><strong>Signed overflow, <code>$7F + $01</code>:</strong></p>
 <pre>  0111 1111    $7F
 + 0000 0001    $01
 -----------
   1000 0000    $80</pre>
-<p>Read as unsigned, 127 + 1 = 128, and nothing went wrong. Read as signed, <code>$80</code> is -128, not
-+128, so the signed answer is out of range: that is overflow. The same eight bits, two readings. Here it is
-next to the opposite case, <code>$FF + $01</code>:</p>
+<p>All eight bits fit, so there is no carry: C=0. But read as signed, <code>$80</code> is -128, not +128.
+127 + 1 cannot fit in the signed range -128 to 127, so the sign came out wrong and V=1.</p>
+
+<p><strong>Unsigned carry, <code>$FF + $01</code>:</strong></p>
+<pre>  1111 1111    $FF
++ 0000 0001    $01
+-----------
+1 0000 0000    $100</pre>
+<p>The complete answer is <code>$100</code>, which needs nine bits, but the byte holds only eight. So it
+stores the low eight (<code>0000 0000</code> = <code>$00</code>) and records the extra bit by setting C=1.
+That leftmost <code>1</code>, sitting past the left edge of the 8-bit field, is the carry made physical. It
+is not that 256 fits in <code>0000 0000</code>: <code>0000 0000</code> is only the part that fit, and the
+lost ninth bit is exactly why carry is set. Read as signed, -1 + 1 = 0 fits fine, so V=0.</p>
+
+<p>The same two additions, side by side:</p>
 <div class="tbl"><table>
   <tr><th>Addition</th><th>Signed reading</th><th>Unsigned reading</th><th>Flags</th></tr>
   <tr><td><code>$7F + $01 = $80</code></td><td>127 + 1 should be 128, outside -128 to 127</td><td>127 + 1 = 128, fits 0 to 255</td><td>V=1, C=0</td></tr>
