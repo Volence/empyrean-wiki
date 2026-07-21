@@ -288,6 +288,47 @@ tr.ix-hidden{display:none;}
 /* this page's fallback captions run long; sentence case reads better than the
    theme's small-caps at that length */
 figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+
+/* stack / control-flow stepper */
+.stkstep{display:flex; flex-direction:column; gap:.9rem;}
+.ss-modes{display:flex; flex-wrap:wrap; gap:.4rem;}
+.ss-mode{font-family:var(--mono); font-size:.74rem; padding:.34rem .7rem; cursor:pointer;
+  border-radius:4px; background:var(--panel2); color:var(--ink); border:1px solid var(--line);}
+.ss-mode[aria-pressed="true"]{border-color:var(--accent); background:rgba(68,102,238,.2);}
+.ss-mode:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.ss-body{display:flex; flex-wrap:wrap; gap:1.4rem; align-items:flex-start;}
+.ss-regs{display:flex; flex-direction:column; gap:.3rem; min-width:12rem;}
+.ss-reg{display:flex; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.82rem;
+  padding:.28rem .55rem; border:1px solid var(--line); border-radius:4px; background:var(--panel2);}
+.ss-reg .ss-rn{color:var(--dim); min-width:1.7rem;}
+.ss-reg .ss-rv{color:var(--gold); font-variant-numeric:tabular-nums;}
+.ss-reg.changed{border-color:var(--accent); background:rgba(68,102,238,.2);}
+.ss-reg.err{border-color:#CC66AA; background:rgba(204,102,170,.14);}
+.ss-reg.err .ss-rv{color:#CC66AA;}
+.ss-memwrap{min-width:15rem;}
+.ss-memtitle{font-family:var(--mono); font-size:.62rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); margin-bottom:.35rem;}
+.ss-memnote{display:block; text-transform:none; letter-spacing:0; font-size:.62rem; color:var(--dim); margin-top:.15rem;}
+.ss-mem{display:flex; flex-direction:column; gap:2px; font-family:var(--mono); font-size:.74rem;}
+.ss-row{display:flex; align-items:center; gap:.5rem;}
+.ss-row .ss-addr{color:var(--dim); font-variant-numeric:tabular-nums;}
+.ss-row .ss-byte{min-width:1.6rem; text-align:center; padding:.1rem .3rem; border:1px solid var(--line);
+  border-radius:3px; background:var(--panel2); color:var(--ink);}
+.ss-row.sp .ss-addr{color:var(--gold);}
+.ss-row .ss-sp{color:var(--gold); font-size:.62rem; min-width:2.6rem;}
+.ss-row .ss-tag{font-size:.6rem; letter-spacing:.04em; color:#88AAEE; margin-left:.2rem;}
+.ss-byte.hit{border-color:var(--accent); background:rgba(68,102,238,.24); color:var(--gold); font-weight:600;}
+.ss-byte.err{border-color:#CC66AA; background:rgba(204,102,170,.18); color:#CC66AA;}
+.ss-ctrl{display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;}
+.ss-btn{font-family:var(--mono); font-size:.74rem; padding:.32rem .7rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.ss-btn:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.ss-btn:disabled{opacity:.4; cursor:default;}
+.ss-count{font-family:var(--mono); font-size:.66rem; color:var(--dim);}
+.ss-instr{margin:0; font-size:.8rem; min-height:1.2em;}
+.ss-note{font-family:var(--mono); font-size:.78rem; color:var(--ink); margin:0; min-height:3.4em;
+  max-width:42rem; line-height:1.5; border-top:1px solid var(--line); padding-top:.6rem;}
+.ss-note b{color:var(--gold); font-weight:normal;}
 </style>
 </head>
 <body>
@@ -1043,6 +1084,44 @@ pop <code>d0</code>'s old value into the <code>pc</code> and jump into nowhere. 
 game.</p>
 </div>
 
+<p style="margin-top:1.1rem;">Step through it: watch the return address land in memory, the balance hold
+or break, and see that an exception uses the very same stack.</p>
+
+<figure class="diagram">
+<div class="stkstep">
+  <div class="ss-modes" role="group" aria-label="Choose a scenario to step through">
+    <button type="button" class="ss-mode" data-mode="A" aria-pressed="true">Balanced call</button>
+    <button type="button" class="ss-mode" data-mode="B" aria-pressed="false">Forgot the restore</button>
+    <button type="button" class="ss-mode" data-mode="C" aria-pressed="false">Exception and rte</button>
+  </div>
+  <div class="ss-body">
+    <div class="ss-regs" id="ss-regs" aria-label="Register readout"></div>
+    <div class="ss-memwrap">
+      <div class="ss-memtitle">Stack memory <span class="ss-memnote">high addresses at top; sp points at the lowest written byte; the stack grows downward</span></div>
+      <div class="ss-mem" id="ss-mem" role="table" aria-label="Stack memory column, big-endian bytes"></div>
+    </div>
+  </div>
+  <div class="ss-ctrl">
+    <button type="button" class="ss-btn" id="ss-back">&#9664; Back</button>
+    <button type="button" class="ss-btn" id="ss-step">Step &#9654;</button>
+    <button type="button" class="ss-btn ss-reset" id="ss-reset">Reset</button>
+    <span class="ss-count" id="ss-count"></span>
+  </div>
+  <pre class="ss-instr" id="ss-instr"></pre>
+  <p class="ss-note" id="ss-note" aria-live="polite"></p>
+</div>
+<figcaption>Interactive stack and control-flow stepper. Three scenarios share the same stack machinery.
+<strong>Balanced call</strong>: bsr.w pushes the return address, the routine saves and restores d0, and
+rts pops the return address back so sp lands home at $FFFFFF00. <strong>Forgot the restore</strong>: the
+same call with the matching pop skipped, so rts reads the leftover saved d0 ($0000002A) into the pc and
+jumps into nowhere, the balance bug. <strong>Exception and rte</strong>: an exception pushes a 6-byte
+frame (the SR word and the PC longword), runs a handler, and rte pops both back, restoring execution
+exactly where it was, the very same push and pop as a call but driven by the CPU. Static fallback:
+each Step advances one instruction, showing the instruction executed, the changed registers (pc, sp, d0,
+and sr in the exception case), and the big-endian bytes read or written in the stack column; Back
+retreats one step and Reset returns to the start.</figcaption>
+</figure>
+
 <p>Real routines do the very same thing at scale. This decompressor brackets its work by saving and restoring thirteen registers in one instruction:</p>
 
 <pre>NemDec:
@@ -1406,6 +1485,176 @@ function expandAll(btn){
   }
   q.addEventListener('input', apply);
   apply();
+})();
+
+/* ---- stack / control-flow stepper ---- */
+(function(){
+  var memEl = document.getElementById('ss-mem');
+  if(!memEl) return;
+  var regsEl  = document.getElementById('ss-regs');
+  var noteEl  = document.getElementById('ss-note');
+  var instrEl = document.getElementById('ss-instr');
+  var countEl = document.getElementById('ss-count');
+  var stepBtn = document.getElementById('ss-step');
+  var backBtn = document.getElementById('ss-back');
+  var resetBtn= document.getElementById('ss-reset');
+  var modeBtns= Array.prototype.slice.call(document.querySelectorAll('.ss-mode'));
+
+  var TOP = 0xFFFFFF00, LOW = 0xFFFFFEF4; // inclusive address range for the column
+  function hex(n, digits){
+    var s = (n >>> 0).toString(16).toUpperCase();
+    while(s.length < digits) s = '0' + s;
+    return s;
+  }
+  function addr(a){ return '$' + hex(a >>> 0, 8); }
+
+  // Each step is a function applied to a state object. Stepping rebuilds from step 0.
+  // A step records: instr (real syntax), note (HTML), touched register names, and
+  // touched byte addresses (with an optional error flag), plus a group tag.
+  function initState(mode){
+    var mem = {}; // addr -> byte value (number)
+    return {
+      pc: 0x00001000, sp: 0xFFFFFF00, d0: 0x0000002A, sr: 0x2700,
+      mem: mem, showSr: (mode === 'C'),
+      chReg: {}, chBytes: {}, errReg: {}, errBytes: {}, tags: {},
+      instr: '', note: ''
+    };
+  }
+  // helpers that also flag the touched cells for the CURRENT step
+  function writeLong(st, base, val, tag){
+    for(var i=0;i<4;i++){ st.mem[base+i] = (val >>> ((3-i)*8)) & 0xFF; st.chBytes[base+i]=1; }
+    if(tag) st.tags[base] = tag;
+  }
+  function writeWord(st, base, val, tag){
+    for(var i=0;i<2;i++){ st.mem[base+i] = (val >>> ((1-i)*8)) & 0xFF; st.chBytes[base+i]=1; }
+    if(tag) st.tags[base] = tag;
+  }
+  function readLong(st, base, err){
+    var v = 0;
+    for(var i=0;i<4;i++){ v = (v << 8) | (st.mem[base+i]|0); (err?st.errBytes:st.chBytes)[base+i]=1; }
+    return v >>> 0;
+  }
+  function readWord(st, base){
+    var v = 0;
+    for(var i=0;i<2;i++){ v = (v << 8) | (st.mem[base+i]|0); st.chBytes[base+i]=1; }
+    return v >>> 0;
+  }
+
+  // Steps per mode. Index 0 is the initial state (no instruction executed).
+  var MODES = {
+    A: [
+      function(st){ st.instr=''; st.note='<b>Start.</b> pc points at the call; sp points at the top of the stack.'; },
+      function(st){ st.pc=0x00002000; st.sp=0xFFFFFEFC; st.chReg.pc=st.chReg.sp=1;
+        writeLong(st, 0xFFFFFEFC, 0x00001004, 'return address');
+        st.instr='	bsr.w	Sub';
+        st.note='bsr.w pushes the 4-byte return address <b>$00001004</b> (big-endian: 00 00 10 04) and jumps into Sub; sp drops by 4.'; },
+      function(st){ st.sp=0xFFFFFEF8; st.chReg.sp=1;
+        writeLong(st, 0xFFFFFEF8, 0x0000002A, 'saved d0');
+        st.instr='	move.l	d0,-(sp)';
+        st.note='Sub saves d0 on the stack; sp drops by 4 again.'; },
+      function(st){ st.d0=readLong(st, 0xFFFFFEF8); st.sp=0xFFFFFEFC; st.chReg.d0=st.chReg.sp=1;
+        st.instr='	move.l	(sp)+,d0';
+        st.note='Sub restores d0 by popping it back; sp rises by 4.'; },
+      function(st){ st.pc=readLong(st, 0xFFFFFEFC); st.sp=0xFFFFFF00; st.chReg.pc=st.chReg.sp=1;
+        st.instr='	rts';
+        st.note='rts pops the top 4 bytes into pc. The push and pop balanced, so those bytes really are the return address <b>$00001004</b>, and sp is home at $FFFFFF00.'; }
+    ],
+    B: [
+      function(st){ st.instr=''; st.note='<b>Start.</b> pc points at the call; sp points at the top of the stack.'; },
+      function(st){ st.pc=0x00002000; st.sp=0xFFFFFEFC; st.chReg.pc=st.chReg.sp=1;
+        writeLong(st, 0xFFFFFEFC, 0x00001004, 'return address');
+        st.instr='	bsr.w	Sub';
+        st.note='bsr.w pushes the 4-byte return address <b>$00001004</b> (big-endian: 00 00 10 04) and jumps into Sub; sp drops by 4.'; },
+      function(st){ st.sp=0xFFFFFEF8; st.chReg.sp=1;
+        writeLong(st, 0xFFFFFEF8, 0x0000002A, 'saved d0');
+        st.instr='	move.l	d0,-(sp)';
+        st.note='Sub saves d0 on the stack; sp drops by 4 again.'; },
+      function(st){ st.pc=readLong(st, 0xFFFFFEF8, true); st.sp=0xFFFFFEFC; st.chReg.pc=st.chReg.sp=1; st.errReg.pc=1;
+        st.instr='	rts';
+        st.note='The restore was skipped, so the top of the stack is still the saved d0, not the return address. rts loads <b>$0000002A</b> into pc and jumps into nowhere. This is the balance bug.'; }
+    ],
+    C: [
+      function(st){ st.instr=''; st.note='Ordinary code running. Then an interrupt or fault occurs.'; },
+      function(st){ st.sp=0xFFFFFEFA; st.chReg.sp=1;
+        writeWord(st, 0xFFFFFEFA, 0x2700, 'saved sr');
+        writeLong(st, 0xFFFFFEFC, 0x00001000, 'saved pc');
+        st.pc=0x00003000; st.chReg.pc=1;
+        st.instr='	(exception entry)';
+        st.note='The exception pushes the SR and the PC onto the supervisor stack (a 6-byte frame) and jumps to the handler via the vector table. The CPU does this for you.'; },
+      function(st){ st.instr='	(handler runs)';
+        st.note='The handler runs. When it finishes, it returns with rte.'; },
+      function(st){ st.sr=readWord(st, 0xFFFFFEFA); st.pc=readLong(st, 0xFFFFFEFC); st.sp=0xFFFFFF00;
+        st.chReg.sr=st.chReg.pc=st.chReg.sp=1;
+        st.instr='	rte';
+        st.note='rte pops the SR and PC back off the stack, restoring both, so execution resumes exactly where the exception interrupted it. Same push/pop as a call, but the CPU drives it. The exact frame varies by exception; this is the common case.'; }
+    ]
+  };
+
+  var mode = 'A', idx = 0;
+
+  function build(mode, upTo){
+    var st = initState(mode);
+    var steps = MODES[mode];
+    for(var i=1;i<=upTo;i++){
+      st.chReg={}; st.chBytes={}; st.errReg={}; st.errBytes={};
+      steps[i](st);
+    }
+    if(upTo === 0){ steps[0](st); }
+    return st;
+  }
+
+  function regRow(name, val, digits, st){
+    var cls = 'ss-reg';
+    if(st.errReg[name]) cls += ' err';
+    else if(st.chReg[name]) cls += ' changed';
+    return '<div class="'+cls+'"><span class="ss-rn">'+name+'</span>'+
+           '<span class="ss-rv">$'+hex(val, digits)+'</span></div>';
+  }
+
+  function render(){
+    var st = build(mode, idx);
+    // registers
+    var html = regRow('pc', st.pc, 8, st) + regRow('sp', st.sp, 8, st) + regRow('d0', st.d0, 8, st);
+    if(st.showSr) html += regRow('sr', st.sr, 4, st);
+    regsEl.innerHTML = html;
+    // memory column: high address at top, low at bottom
+    var rows = '';
+    for(var a = TOP; a >= LOW; a--){
+      var isSp = (a === st.sp);
+      var b = st.mem[a];
+      var bcls = 'ss-byte';
+      if(st.errBytes[a]) bcls += ' err';
+      else if(st.chBytes[a]) bcls += ' hit';
+      var tag = st.tags[a] ? '<span class="ss-tag">'+st.tags[a]+'</span>' : '';
+      rows += '<div class="ss-row'+(isSp?' sp':'')+'">'+
+        '<span class="ss-sp">'+(isSp?'sp &#9656;':'')+'</span>'+
+        '<span class="ss-addr">'+addr(a)+'</span>'+
+        '<span class="'+bcls+'">'+(b===undefined?'00':hex(b,2))+'</span>'+ tag +'</div>';
+    }
+    memEl.innerHTML = rows;
+    // instr + note
+    instrEl.textContent = st.instr || '(initial state)';
+    noteEl.innerHTML = st.note;
+    // controls
+    var last = MODES[mode].length - 1;
+    countEl.textContent = 'step ' + idx + ' of ' + last;
+    stepBtn.disabled = (idx >= last);
+    backBtn.disabled = (idx <= 0);
+  }
+
+  function setMode(m){
+    mode = m; idx = 0;
+    modeBtns.forEach(function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-mode')===m ? 'true':'false'); });
+    render();
+  }
+  modeBtns.forEach(function(b){
+    b.addEventListener('click', function(){ setMode(b.getAttribute('data-mode')); });
+  });
+  stepBtn.addEventListener('click', function(){ if(idx < MODES[mode].length-1){ idx++; render(); } });
+  backBtn.addEventListener('click', function(){ if(idx > 0){ idx--; render(); } });
+  resetBtn.addEventListener('click', function(){ idx = 0; render(); });
+
+  setMode('A');
 })();
 </script>
 
