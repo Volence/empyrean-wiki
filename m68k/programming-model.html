@@ -639,62 +639,61 @@ Z with nothing in between, because the add already did the testing as part of ad
 </div>
 
 <div class="teach"><span class="t-tag">Teaching example &middot; one add, two interpretations: V and C</span>
-<p>The CPU does not do a "signed add" or an "unsigned add." It does one binary addition and sets
-<em>both</em> flags. Your code decides which reading matters: V answers the signed question, C the unsigned
-one. Two additions make the point, one that trips signed overflow and one that trips unsigned carry.</p>
 
-<p><strong>Signed overflow, <code>$7F + $01</code>:</strong></p>
+<p><strong>One addition, two questions.</strong> The 68000 does not have separate signed and unsigned
+versions of ADD. It adds the same bits either way, then answers two independent questions: did the answer
+fit when the operands are read as <em>signed</em> (reported by V), and did it fit when they are read as
+<em>unsigned</em> (reported by C)? For a byte:</p>
+<div class="tbl"><table>
+  <tr><th>Interpretation</th><th>Range</th><th>Flag set when the answer falls outside</th></tr>
+  <tr><td>Signed</td><td>-128 to 127</td><td><code>V</code></td></tr>
+  <tr><td>Unsigned</td><td>0 to 255</td><td><code>C</code></td></tr>
+</table></div>
+<p>After each ADD both flags are recalculated independently: each becomes 1 if its kind of overflow
+happened and 0 if it did not. Neither, either, or both can be set.</p>
+
+<p><strong>When signed overflow occurs.</strong></p>
 <pre>  0111 1111    $7F
 + 0000 0001    $01
 -----------
   1000 0000    $80</pre>
-<p>All eight bits fit, so there is no carry: C=0. But read as signed, <code>$80</code> is -128, not +128.
-127 + 1 cannot fit in the signed range -128 to 127, so the sign came out wrong and V=1.</p>
+<p>The stored result is <code>$80</code>. Read as signed, this was 127 + 1: the correct answer is 128, but
+a signed byte only reaches 127, and the stored pattern <code>$80</code> means -128, so the signed answer
+did not fit and V=1. Read as unsigned, 127 + 1 = 128 fits in 0 to 255, so no ninth bit was needed and C=0.</p>
 
-<p><strong>Unsigned carry, <code>$FF + $01</code>:</strong></p>
+<p><strong>When unsigned carry occurs.</strong></p>
 <pre>  1111 1111    $FF
 + 0000 0001    $01
 -----------
-1 0000 0000    $100</pre>
-<p>The complete answer is <code>$100</code>, which needs nine bits, but the byte holds only eight. So it
-stores the low eight (<code>0000 0000</code> = <code>$00</code>) and records the extra bit by setting C=1.
-That leftmost <code>1</code>, sitting past the left edge of the 8-bit field, is the carry made physical. It
-is not that 256 fits in <code>0000 0000</code>: <code>0000 0000</code> is only the part that fit, and the
-lost ninth bit is exactly why carry is set. Read as signed, -1 + 1 = 0 fits fine, so V=0.</p>
+1 0000 0000    $100
+^ extra ninth bit</pre>
+<p>A byte stores only the lower eight bits, so the stored result is <code>0000 0000</code>, or
+<code>$00</code>, and the extra ninth bit is recorded in C, so C=1. Read as signed, the same bits mean
+-1 + 1 = 0, which fits, so V=0.</p>
 
-<p>The same two additions, side by side:</p>
 <div class="tbl"><table>
-  <tr><th>Addition</th><th>Signed reading</th><th>Unsigned reading</th><th>Flags</th></tr>
-  <tr><td><code>$7F + $01 = $80</code></td><td>127 + 1 should be 128, outside -128 to 127</td><td>127 + 1 = 128, fits 0 to 255</td><td>V=1, C=0</td></tr>
-  <tr><td><code>$FF + $01 = $00</code></td><td>-1 + 1 = 0, fits -128 to 127</td><td>255 + 1 should be 256, outside 0 to 255</td><td>V=0, C=1</td></tr>
+  <tr><th>Addition</th><th>Signed result</th><th>Unsigned result</th><th>Flags</th></tr>
+  <tr><td><code>$7F + $01</code></td><td>Does not fit</td><td>Fits</td><td>V=1, C=0</td></tr>
+  <tr><td><code>$FF + $01</code></td><td>Fits</td><td>Does not fit</td><td>V=0, C=1</td></tr>
 </table></div>
-<p>Both additions produce a valid 8-bit bit pattern. The flags just tell you whether that pattern is a
-valid answer under the interpretation your program cares about.</p>
+<p>The result bits alone do not tell the CPU what the value means. The flags preserve both interpretations
+so your program can check the relevant one.</p>
 
-<p><strong>Which flag do you check?</strong> The CPU sets both because it does not know what the bits mean
-to your program. Check V when the value is meant to be <em>signed</em>, and C when it is meant to be
-<em>unsigned</em>. A signed velocity might run -128 to 127: if adding acceleration turns 127 into -128, V
-reports that the signed answer did not fit. An unsigned counter might run 0 to 255: if bumping 255 gives 0,
-C reports that the answer needed a ninth bit. The very same instruction can be checked either way:</p>
+<p><strong>Which flag does your code check?</strong> Check the flag that matches the meaning your program
+gave the value. If <code>d0</code> holds a signed velocity, which can go negative:</p>
 <pre>	add.b	<span class="n">#1</span>,d0
-	bvs.s	SignedOverflow		<span class="c">; d0 is signed (a velocity)</span>
-	bcs.s	UnsignedOverflow	<span class="c">; d0 is unsigned (a counter)</span></pre>
-<p>The arithmetic is identical; the correct branch depends on what <code>d0</code> represents. The gap
-shows up most sharply in comparisons, where the signed and unsigned "less than" can disagree:</p>
-<pre>	cmp.w	d1,d0			<span class="c">; compare d0 against d1</span>
-	blt.s	D0IsLower		<span class="c">; signed less-than</span>
-	blo.s	D0IsLower		<span class="c">; unsigned lower</span></pre>
-<p>Say <code>d0 = $FFFF</code> and <code>d1 = $0001</code>. Signed, those are -1 and 1, so d0 is lower and
-<code>blt</code> branches. Unsigned, they are 65535 and 1, so d0 is <em>not</em> lower and <code>blo</code>
-does not. Same bits, same compare, opposite answer: the branch you choose declares which interpretation you
-mean. For quick reference, the common signed and unsigned branches:</p>
-<div class="tbl"><table>
-  <tr><th>Meaning</th><th>Branch</th><th>Condition</th></tr>
-  <tr><td>Negative result</td><td><code>BMI</code></td><td>N=1</td></tr>
-  <tr><td>Signed less-than</td><td><code>BLT</code></td><td>N &ne; V</td></tr>
-  <tr><td>Unsigned lower</td><td><code>BLO</code> (<code>BCS</code>)</td><td>C=1</td></tr>
-  <tr><td>Equal</td><td><code>BEQ</code></td><td>Z=1</td></tr>
-</table></div>
+	bvs.s	VelocityOverflow	<span class="c">; result fell outside -128 to 127</span></pre>
+<p>If <code>d0</code> holds an unsigned counter, which cannot go negative:</p>
+<pre>	add.b	<span class="n">#1</span>,d0
+	bcs.s	CounterWrapped		<span class="c">; result passed 255 and wrapped to 0</span></pre>
+<p>The ADD is identical; what <code>d0</code> represents decides which flag matters. The same choice shows
+up in comparisons:</p>
+<pre>	cmp.w	d1,d0
+	blt.s	D0IsLower		<span class="c">; signed comparison</span>
+	blo.s	D0IsLower		<span class="c">; unsigned comparison</span></pre>
+<p>If <code>d0 = $FFFF</code> and <code>d1 = $0001</code>: read signed, -1 &lt; 1, so <code>blt</code>
+branches; read unsigned, 65535 &lt; 1 is false, so <code>blo</code> does not. The branch you choose tells
+the CPU which interpretation your program intends.</p>
 </div>
 
 <details class="explain">
