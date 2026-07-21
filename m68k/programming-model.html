@@ -584,7 +584,8 @@ that initializes the SR during boot writes both halves at once:</p>
 <p><code>$2700</code> supplies all sixteen bits of the status register in one constant. Decoded nibble by
 nibble it is <code>%0010 0111 0000 0000</code> (<code>$2</code> is <code>0010</code>, <code>$7</code> is
 <code>0111</code>, and each <code>$0</code> is <code>0000</code>), so only four bits are set. Reading it
-field by field:</p>
+field by field, from bit 15 (the leftmost bit of that binary) down to bit 0 (the rightmost), which is the
+order the table below runs top to bottom:</p>
 
 <div class="tbl"><table>
   <tr><th>Bits</th><th>Field</th><th>Value</th><th>Effect</th></tr>
