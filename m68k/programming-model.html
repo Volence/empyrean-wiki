@@ -527,7 +527,7 @@ higher priority.</p>
 <p>The status register is 16 bits, but it is really two half-registers with very different audiences.
 The low byte is the <strong>condition code register</strong> (CCR): the five flags X N Z V C that
 ordinary code lives on. The high byte is the <strong>system byte</strong>: the supervisor bit, the
-interrupt mask, and the trace bit, which only privileged code may touch. Of the 16 bits, only 10 actually
+interrupt mask, and the trace bit, which only supervisor code may write directly (reading the SR is not privileged). Of the 16 bits, only 10 actually
 carry anything: 5 in the CCR and 5 in the system byte (the trace bit, the supervisor bit, and the 3-bit
 interrupt mask). The other 6 are unused and reserved: they read as zero on the 68000, but treat them
 as reserved, write them as zero and do not rely on the value. That is why a full status-register
@@ -704,7 +704,7 @@ manual keeps talking about two stacks.</p>
     <tr><th>Bit</th><th>Name</th><th>Half</th><th>Meaning</th></tr>
     <tr><td>15</td><td><code>T</code></td><td>system</td><td>Trace: when set, the CPU takes a trace exception after every instruction (single-step debugging).</td></tr>
     <tr><td>13</td><td><code>S</code></td><td>system</td><td>Supervisor: 1 = supervisor mode, 0 = user mode.</td></tr>
-    <tr><td>10-8</td><td><code>I2 I1 I0</code></td><td>system</td><td>Interrupt mask: maskable interrupts at or below this level are ignored. <code>111</code> blocks levels 1 to 6; level 7 is non-maskable. <code>000</code> allows all.</td></tr>
+    <tr><td>10-8</td><td><code>I2 I1 I0</code></td><td>system</td><td>Interrupt mask: maskable interrupts at or below this level are ignored. <code>111</code> blocks levels 1 through 6; level 7 is edge-sensitive, so a transition from a lower request level to level 7 can still be recognized. <code>000</code> allows all.</td></tr>
     <tr><td>4</td><td><code>X</code></td><td>CCR</td><td>Extend.</td></tr>
     <tr><td>3</td><td><code>N</code></td><td>CCR</td><td>Negative.</td></tr>
     <tr><td>2</td><td><code>Z</code></td><td>CCR</td><td>Zero.</td></tr>
@@ -713,7 +713,7 @@ manual keeps talking about two stacks.</p>
   </table></div>
   <p class="enc-note">Bits 14, 12, 11, and 7 to 5 are unused and read as zero. So
   <code>#$2700</code> is <code>%0010 0111 0000 0000</code>: S set (supervisor), the interrupt mask at 7
-  (all masked), trace clear, and every condition code clear. Verified against the Motorola M68000
+  (levels 1 through 6 masked), trace clear, and every condition code clear. Verified against the Motorola M68000
   Programmer's Reference Manual (status register description), cross-checked with MarkeyJester's 68000
   tutorial.</p>
   </div>
@@ -862,7 +862,7 @@ piece of arithmetic that explains a notation you see on nearly every line of Gen
   <tr><td><code>$A00000</code>-<code>$A1FFFF</code></td><td>Z80 and system I/O</td><td>Sound / control</td></tr>
   <tr><td><code>$C00000</code>-<code>$C0001F</code></td><td>VDP ports</td><td>Video</td></tr>
   <tr><td><code>$FF0000</code>-<code>$FFFFFF</code></td><td>Work RAM (64 KB)</td><td>Variables</td></tr>
-  <tr class="hi"><td><code>$FFFF8000</code>-<code>$FFFFFFFF</code></td><td>Upper 32 KB of work RAM</td><td>Absolute-short window</td></tr>
+  <tr class="hi"><td><code>$FFFF8000</code>-<code>$FFFFFFFF</code></td><td>Upper 32 KB of the SAME work RAM (physical <code>$FF8000</code>-<code>$FFFFFF</code>)</td><td>Absolute-short window</td></tr>
 </table></div>
 <figcaption>The Genesis 68000 address map (not to scale, and only the regions this page touches). Cartridge
 ROM sits low, the Z80 and system I/O and the VDP ports occupy the middle, and the 68000's 64 KB of work
@@ -1025,12 +1025,12 @@ to pop. If the pushes and pops do not balance, <code>rts</code> loads the wrong 
 goes wrong, which is exactly the failure <a href="#s6">section 6</a> is about. A clean routine
 brackets its work with matching save and restore. Here it is at its simplest:</p>
 
-<div class="teach"><span class="t-tag">Teaching example &middot; a balanced call, byte by byte</span>
+<div class="teach"><span class="t-tag">Teaching example &middot; a balanced call, step by step</span>
 <p>A constructed example (not lifted from the disassembly), with toy addresses to make the discipline
-concrete. Say <code>sp</code> starts at <code>$FFFFFF00</code>
-and a routine is called, saves one register, works, and returns:</p>
-<pre>	sp = $FFFFFF00
-	bsr.w	Sub		<span class="c">; push return address $00001004, sp drops to $FFFFFEFC</span>
+concrete. Say the call is made from <code>pc = $00001000</code> with <code>sp = $FFFFFF00</code>, and the
+routine saves one register, works, and returns:</p>
+<pre>	pc = $00001000, sp = $FFFFFF00
+	bsr.w	Sub		<span class="c">; push return address $00001004 (just past this 4-byte bsr.w), sp drops to $FFFFFEFC</span>
 	<span class="c">; inside Sub:</span>
 	move.l	d0,-(sp)	<span class="c">; save d0, sp drops to $FFFFFEF8</span>
 	<span class="c">; ... work ...</span>
@@ -1396,7 +1396,8 @@ function expandAll(btn){
     var term = q.value.trim().toLowerCase();
     var shown = 0;
     rows.forEach(function(r){
-      var hit = term === '' || r.textContent.toLowerCase().indexOf(term) !== -1;
+      var haystack = Array.prototype.map.call(r.cells, function(cell){ return cell.textContent; }).join(' ').toLowerCase();
+      var hit = term === '' || haystack.indexOf(term) !== -1;
       r.classList.toggle('ix-hidden', !hit);
       if(hit) shown++;
     });
