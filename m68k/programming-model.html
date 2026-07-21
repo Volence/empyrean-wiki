@@ -300,8 +300,7 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   <p class="sub">Before any instruction can do anything, there has to be something for it to do it to.
   That something is the 68000's programmer-visible state: sixteen registers, a program counter, a
   status register, and a flat memory map. Every instruction in the language reads or writes some part
-  of it. This page is the map of that state, the place the rest of the track is built on, and it
-  carries the full index of every instruction so you can jump straight to any one you can name. Every
+  of it. This page is the map of that state, the place the rest of the track is built on. Every
   example is real, pulled from the Sonic 2 disassembly and re-verified line by line, unless a snippet is marked as a teaching example.</p>
   <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
 </header>
@@ -311,9 +310,9 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   <a href="#s2"><span class="n">2</span>The status register and condition codes</a>
   <a href="#s3"><span class="n">3</span>The program counter and labels</a>
   <a href="#s4"><span class="n">4</span>Pointers and the memory map</a>
-  <a href="#s5"><span class="n">5</span>When the PC goes wrong</a>
-  <a href="#s6"><span class="n">6</span>The stack</a>
-  <a href="#s7"><span class="n">7</span>The instruction index</a>
+  <a href="#s5"><span class="n">5</span>The stack</a>
+  <a href="#s6"><span class="n">6</span>Exceptions and when the PC goes wrong</a>
+  <a href="#s7"><span class="n">7</span>Reference: the instruction index</a>
 </nav>
 
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">In a hurry, and you already know the
@@ -323,7 +322,11 @@ mnemonic you want? Skip to the <a href="#s7">instruction index</a> at the bottom
 <p style="margin-top:1rem; color:var(--dim); font-size:.85rem;">Notation, if any of it is new: <code>$</code> is
 hexadecimal and <code>%</code> is binary; <code>#</code> marks an immediate constant (<code>#$100</code> is the
 number itself); parentheses mean the memory <em>at</em> an address (<code>(a0)</code> is what a0 points at, not
-a0 itself); and the size suffixes <code>.b</code>, <code>.w</code>, <code>.l</code> select 8, 16, or 32 bits. The
+a0 itself); and the size suffixes <code>.b</code>, <code>.w</code>, <code>.l</code> select 8, 16, or 32 bits. An
+assembly line normally begins with an instruction mnemonic followed by its operands, and in this wiki's
+syntax the <em>source</em> comes first and the <em>destination</em> second: <code>move.w source,destination</code>
+puts the value into the right-hand operand. Some source omits a size suffix when the instruction or its
+operands already fix it. The
 <a href="addressing-modes.html">Addressing Modes page</a> carries
 the full key.</p>
 
@@ -346,7 +349,7 @@ registers (far quicker to reach than memory itself), and write the results back 
 <code>a7</code> is also the <strong>stack pointer</strong>, the register subroutine calls and returns
 push and pop through, so it is written <code>sp</code> as often as <code>a7</code> and the two names
 mean the same register. And the <strong>status register</strong> sits off to the side holding the
-condition codes and the mode bits. The diagram below is the entire state; poke any part of it to see
+condition codes and the mode bits. The diagram below is the core programmer-visible state; poke any part of it to see
 what that part is for.</p>
 
 <details class="explain">
@@ -371,19 +374,14 @@ what that part is for.</p>
     <p>Every data register is physically 32 bits wide, but most instructions let you say how much of
     that width to touch. The size suffix goes on the mnemonic: <code>.b</code> means a byte (the low 8
     bits), <code>.w</code> means a word (the low 16 bits), and <code>.l</code> means a longword (all
-    32 bits). So <code>move.b</code> writes only the bottom byte of its destination and leaves the
-    other 24 bits exactly as they were; <code>move.w</code> writes the bottom 16 and leaves the top 16
-    alone; <code>move.l</code> writes the whole thing.</p>
-    <p>This trips up newcomers coming from higher-level languages, who expect assigning a small value
-    to clear the whole variable. It does not: a <code>.b</code> or <code>.w</code> operation is a
-    surgical write to the low part, and whatever junk was in the upper bits is still there afterward.
-    That is a real source of bugs, and it is also exactly why a partial <a
-    href="moving-data.html#clr">CLR</a> or a
-    <a href="moving-data.html#ext">sign extension</a>
-    matters. Picking the size that fits matters, but not the way beginners assume: a
+    32 bits). So <code>move.b</code> operates on the bottom byte of its destination,
+    <code>move.w</code> on the bottom 16 bits, and <code>move.l</code> on all 32. (What happens to the
+    bits a partial size does <em>not</em> touch is the very next explainer.)</p>
+    <p>Picking the size that fits matters, but not the way beginners assume: a
     register-to-register move is 2 bytes and 4 cycles at every size, so the suffix alone is not
-    smaller or faster. Size pays off with memory transfers (a byte or word moves in fewer bus cycles)
-    and with immediates (a smaller constant encodes in fewer bytes).</p>
+    smaller or faster. Size pays off with memory transfers (a byte or word often moves in fewer bus cycles)
+    and with immediates. A byte or word immediate both occupy one extension word, while a long immediate
+    needs two, so the real saving is byte-or-word versus <em>long</em>, not byte versus word.</p>
   </div>
 </details>
 
@@ -391,7 +389,8 @@ what that part is for.</p>
   <summary>New here? &middot; What does a .b or .w write leave behind?</summary>
   <div class="x-body">
     <p>On a <strong>data</strong> register, a <code>.b</code> or <code>.w</code> operation writes only the
-    low 8 or 16 bits and leaves the upper bits exactly as they were. It does <em>not</em> clear them.</p>
+    low 8 or 16 bits and leaves the upper bits exactly as they were. It does <em>not</em> clear them. (The
+    "low byte" is the rightmost two hex digits of the 32-bit value.)</p>
     <div class="teach"><span class="t-tag">Teaching example</span>
     <pre>	move.l	<span class="n">#$12345678</span>,d0	<span class="c">; d0 = $12345678</span>
 	move.b	<span class="n">#$AB</span>,d0	<span class="c">; d0 = $123456AB  (low byte only)</span>
@@ -479,7 +478,8 @@ full 16-bit ruler (a privileged system byte, the five CCR flags, and six unused/
 for an example value $2704. The register slots show names only: click each to read its role. Every slot
 lives inside the CPU with no memory address of its own. Static fallback: selecting each part names its
 width and role; a7 is the stack pointer, the pc is written
-only by jumps and returns, and the five CCR flags X N Z V C are the CPU's record of how the most recent
+by control-flow instructions (branches, jumps, calls, returns) and by reset and other exceptions, and
+the five CCR flags X N Z V C are the CPU's record of how the most recent
 instructions that touched them came out.</figcaption>
 </figure>
 
@@ -487,7 +487,7 @@ instructions that touched them came out.</figcaption>
   <tr><th>Register</th><th>Width</th><th>Holds</th><th>Notes</th></tr>
   <tr><td><code>d0</code>-<code>d7</code></td><td>32 bits</td><td>values (data)</td><td>Interchangeable; feed arithmetic, logic, shifts, and comparisons.</td></tr>
   <tr><td><code>a0</code>-<code>a6</code></td><td>32 bits</td><td>pointers (addresses)</td><td>Feed the register-indirect modes like <code>(a0)</code> and <code>x_pos(a0)</code>. A word written to one sign-extends to all 32 bits; address math sets no flags.</td></tr>
-  <tr class="hi"><td><code>a7</code> / <code>sp</code></td><td>32 bits</td><td>the stack pointer</td><td>Same as any address register, but calls, returns, and <code>-(sp)</code>/<code>(sp)+</code> use it automatically. Grows downward. See <a href="#s6">section 6</a>.</td></tr>
+  <tr class="hi"><td><code>a7</code> / <code>sp</code></td><td>32 bits</td><td>the stack pointer</td><td>Same as any address register, but calls, returns, and <code>-(sp)</code>/<code>(sp)+</code> use it automatically. Grows downward. See <a href="#s5">section 5</a>.</td></tr>
   <tr><td><code>pc</code></td><td>32 bits</td><td>next instruction address</td><td>Not a general register. Normal sequential fetch advances it automatically; branches, jumps, calls (bsr/jsr) and returns (rts/rte) redirect it explicitly; and reset, interrupts, traps, and other exceptions load it from the vector table. See <a href="#s3">section 3</a>.</td></tr>
   <tr><td><code>sr</code></td><td>16 bits</td><td>flags + mode bits</td><td>Condition codes X N Z V C plus the supervisor bit and interrupt mask. See <a href="#s2">section 2</a>.</td></tr>
 </table></div>
@@ -520,6 +520,10 @@ for.</p>
 <!-- ================================================================ -->
 <h2 id="s2">2 &middot; The status register and condition codes</h2>
 
+<p>An interrupt is a hardware request that pauses the current code, runs a designated handler, and
+normally returns to the interrupted work with <code>rte</code>; higher-numbered interrupt levels have
+higher priority.</p>
+
 <p>The status register is 16 bits, but it is really two half-registers with very different audiences.
 The low byte is the <strong>condition code register</strong> (CCR): the five flags X N Z V C that
 ordinary code lives on. The high byte is the <strong>system byte</strong>: the supervisor bit, the
@@ -537,10 +541,11 @@ that initializes the SR during boot writes both halves at once:</p>
 	move	<span class="n">#$2700</span>,sr	<span class="c">; set the sr</span></pre>
 <span class="src">s2disasm/s2.asm:271-273 (the standard console init, just before the game starts)</span>
 
-<p>That middle line, <code>movem.l (a6),d0-a6</code>, zeroes fifteen registers at once, d0 through a6,
-by reading zeros from the address in a6. Its <code>; clear all registers</code> comment is the
-disassembly's own wording; strictly it is the fifteen general registers, since a7 (the stack pointer),
-the pc, and the sr are not in that list and keep their values.</p>
+<p>MOVEM is not inherently a clearing instruction; the clearing is a premise carried in from earlier.
+Startup code had already zeroed work RAM and left a6 pointing at that zero-filled block, so this line
+loads fifteen consecutive zero longwords into d0 through a6 (a7, the pc, and the sr are not in the list
+and keep their values, so the <code>; clear all registers</code> comment is really the fifteen general
+registers).</p>
 
 <p>That <code>#$2700</code> is a whole status register in one constant. Bit 13 set puts the CPU in
 supervisor mode; bits 10 to 8 set to <code>111</code> mask off every ordinary maskable interrupt, levels 1
@@ -655,15 +660,13 @@ piece the Genesis actually leans on.</p>
 <strong>supervisor mode</strong> everything is allowed: the privileged instructions, the system byte of
 the SR, the lot. In <strong>user mode</strong>, writing the system half of the SR is privileged (reading
 the SR is not, on the MC68000) and the privileged instructions trap instead of running, so a misbehaving program cannot mask interrupts or reprogram the
-machine out from under the operating system. The two modes even get their own stack pointers: the same
-name <code>a7</code> selects the supervisor stack pointer when S is 1 and a separate user stack pointer
-when S is 0.</p>
+machine out from under the operating system. The two modes also get their own stack pointers, the
+detail the "two a7 registers" paragraph below pins down.</p>
 
 <div class="decision"><span class="d-tag">Hardware choice &middot; two modes, one register name</span>
 Motorola built the supervisor / user split so a real operating system could protect itself from
-application code. The Genesis has no operating system, and Sonic 2 uses exactly one half of the
-mechanism: it comes up in supervisor mode at reset and stays there for the entire run, so the game code
-always has full privilege and the user stack pointer is never really used. The boot code still
+application code. The Genesis has no operating system: Sonic 2 comes up in supervisor mode at reset and
+stays there for the entire run, so the user stack pointer is never really used. The boot code still
 initializes it, to a clean zero, before switching the SR to its running value:
 <pre style="margin:.5rem 0 0;">	movea.l	d0,a6	<span class="c">; clear a6</span>
 	move.l	a6,usp	<span class="c">; set usp to $0</span></pre>
@@ -679,11 +682,9 @@ user-mode machinery as inherited plumbing rather than something the game switche
     <code>reset</code>, and the USP moves are privileged, and if you ever saw one trap you would be
     hunting a ghost without knowing the rule. On the Genesis they work precisely because the game is
     always supervisor.</p>
-    <p>Second, the split is why the 68000 has that odd doubled stack pointer, and why documentation talks
-    about "the supervisor stack." It is one register name, <code>a7</code>, quietly pointing at two
-    different stacks depending on the S bit. Since the Genesis lives in supervisor mode, "the stack" in
-    every other section of this track means the supervisor stack, and you never have to think about the
-    other one.</p>
+    <p>Second, the split is why the 68000 has that odd doubled stack pointer (spelled out in the
+    paragraph just below). Since the Genesis lives in supervisor mode, "the stack" in every other section
+    of this track means the supervisor stack, and you never have to think about the other one.</p>
   </div>
 </details>
 
@@ -730,8 +731,8 @@ somewhere else.</p>
 <div class="decision"><span class="d-tag">Hardware choice &middot; the PC is not a general register</span>
 The 68000 deliberately keeps the program counter out of the <code>d0</code>-<code>d7</code> /
 <code>a0</code>-<code>a7</code> file. You cannot write <code>move.l #$1000,pc</code>; the assembler will
-not even encode it. The only instructions allowed to change the PC are the ones whose entire job is to
-change it: the branches (<code>bra</code>, <code>bcc</code>), the jumps (<code>jmp</code>), the calls
+not even encode it. The instructions that directly express ordinary control flow are the ones whose entire job is to
+change the PC: the branches (<code>bra</code>, <code>bcc</code>), the jumps (<code>jmp</code>), the calls
 (<code>bsr</code>, <code>jsr</code>), and the returns (<code>rts</code>, <code>rte</code>). This is not a
 limitation to work around: control flow moves only through the instructions built for it (branches,
 jumps, calls, returns), which is simply how the 68000 is designed. A
@@ -750,7 +751,7 @@ jumps, calls, returns), which is simply how the 68000 is designed. A
     pointing forward over the code you want to skip.</p>
     <p>A subroutine call adds one idea: before redirecting the finger, it writes down where the finger
     was (the return address) so a later <code>rts</code> can restore it. Where it writes that down is the
-    stack, which is why <a href="#s6">section 6</a> and the PC are so tightly linked. All of this is the
+    stack, which is why <a href="#s5">section 5</a> and the PC are so tightly linked. All of this is the
     Flow &amp; System page's territory (coming); here the point is narrower: the PC is just a register,
     and control flow is just instructions assigning to it.</p>
   </div>
@@ -794,7 +795,9 @@ time, and understanding it removes a whole category of confusion about where add
 </details>
 
 <p>Here is the very first table in the ROM, the one that names the two most important addresses the CPU
-ever reads, entirely through labels:</p>
+ever reads, entirely through labels. Note that <code>dc.l</code> is an assembler <em>directive</em>, not a
+CPU instruction: it tells the assembler to place a 32-bit value in the ROM, which is why these lines look
+unlike the instructions elsewhere.</p>
 
 <pre>Vectors:
 	dc.l System_Stack	<span class="c">; Initial stack pointer value</span>
@@ -809,7 +812,7 @@ the first longword of the ROM into <code>a7</code> (that is the initial stack po
 longword into the PC (that is where execution begins). No magic entry point, just "the address written
 in the second slot of the table." Every other slot is an address the CPU jumps to when something goes
 wrong, and this ROM has pointed almost all of them at <code>ErrorTrap</code>, a choice
-<a href="#s5">section 5</a> comes back to.</p>
+<a href="#s6">section 6</a> comes back to.</p>
 
 <details class="explain">
   <summary>New here? &middot; What does a reset actually set up?</summary>
@@ -828,25 +831,45 @@ wrong, and this ROM has pointed almost all of them at <code>ErrorTrap</code>, a 
 <!-- ================================================================ -->
 <h2 id="s4">4 &middot; Pointers and the memory map</h2>
 
-<p>An address register holds a pointer, and a pointer is just a number that names a location. The
+<p>An address register holds a pointer, and a pointer is just a number that names a location. Address
+registers are pointer-<em>oriented</em>, not pointer-<em>typed</em>: they can hold any 32-bit pattern, and
+the CPU never verifies that the pattern is a sensible address, which is why a bad pointer produces such
+chaotic failures. The
 68000's addresses are 32-bit numbers, so in principle they range over four gigabytes. In practice the
 chip is wired to something much smaller, and the gap between the two is the source of both a useful
 trick and a lurking trap.</p>
 
 <div class="decision"><span class="d-tag">Hardware choice &middot; 32 bits stored, 24 bits decoded</span>
 The 68000 keeps addresses as full 32-bit values inside its registers, but its package only has 24
-address pins wired to the outside world. So when it actually reaches out to memory it uses the low 24
-bits and <em>ignores the top 8</em>. That fixes the real, physical address space at 2^24 = 16 MB,
-<code>$000000</code> to <code>$FFFFFF</code>, and it means two addresses that differ only in their top
-byte, say <code>$00FF0000</code> and <code>$12FF0000</code>, land on the exact same memory. The upside of
-this split: 24 pins make for a smaller, cheaper package, while the full-width registers left room for later
-chips (the 68020 and up) to wire all 32 without changing the programming model. On the Genesis, which is always a plain
-68000, only those 24 bits ever matter.</div>
+address pins, so when it reaches out to memory it uses the low 24 bits and <em>ignores the top 8</em>.
+That fixes the real, physical address space at 2^24 = 16 MB, <code>$000000</code> to
+<code>$FFFFFF</code>. 24 pins make for a cheaper package, while the full-width registers left room for
+later chips (the 68020 and up) to wire all 32. On the Genesis, always a plain 68000, only those 24 bits
+ever matter; the full consequences of that gap are the "two spellings, one location" note at the end of
+this section.</div>
 
-<p>The Genesis fills that 16 MB map with ROM down low, the hardware chips in the middle, and the
+<p>Not every address selects stored memory. Some Genesis addresses select hardware registers, so writing
+to <code>$C00000</code>, for example, sends data to the VDP rather than storing it in RAM. This is called
+memory-mapped I/O. The Genesis fills that 16 MB map with ROM down low, the hardware chips in the middle, and the
 68000's <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. Most CPU-visible runtime state lives here; graphics and sound state live in the VDP's VRAM/CRAM/VSRAM and the Z80's RAM.">work RAM</span> right at the top, from <code>$FF0000</code> to
-<code>$FFFFFF</code>. That placement is not an accident, and the reason is a small piece of arithmetic
-worth internalizing because it explains a notation you see on nearly every line of Genesis code.</p>
+<code>$FFFFFF</code>. That placement carries a benefit worth understanding, because it rests on a small
+piece of arithmetic that explains a notation you see on nearly every line of Genesis code.</p>
+
+<figure class="diagram">
+<div class="tbl"><table>
+  <tr><th>Address range</th><th>Region</th><th>Role</th></tr>
+  <tr><td><code>$000000</code>-<code>$3FFFFF</code></td><td>Cartridge ROM</td><td>Program</td></tr>
+  <tr><td><code>$A00000</code>-<code>$A1FFFF</code></td><td>Z80 and system I/O</td><td>Sound / control</td></tr>
+  <tr><td><code>$C00000</code>-<code>$C0001F</code></td><td>VDP ports</td><td>Video</td></tr>
+  <tr><td><code>$FF0000</code>-<code>$FFFFFF</code></td><td>Work RAM (64 KB)</td><td>Variables</td></tr>
+  <tr class="hi"><td><code>$FFFF8000</code>-<code>$FFFFFFFF</code></td><td>Upper 32 KB of work RAM</td><td>Absolute-short window</td></tr>
+</table></div>
+<figcaption>The Genesis 68000 address map (not to scale, and only the regions this page touches). Cartridge
+ROM sits low, the Z80 and system I/O and the VDP ports occupy the middle, and the 68000's 64 KB of work
+RAM sits at the very top. The highlighted upper 32 KB of work RAM, <code>$FFFF8000</code> to
+<code>$FFFFFFFF</code>, is the window a two-byte absolute-short address can reach, which is why so many
+work-RAM globals live up there.</figcaption>
+</figure>
 
 <details class="explain">
   <summary>New here? &middot; Why is the RAM at the very top of the map, not the bottom?</summary>
@@ -882,13 +905,18 @@ current frame's video-interrupt routine number and then sets the next one:</p>
 work RAM. Because the code writes it as <code>(Vint_routine).w</code>, only the low 16 bits,
 <code>$F62A</code>, are stored in the instruction; at run time the CPU sign-extends that back to
 <code>$FFFFF62A</code> (the top bit of <code>$F62A</code> is set) and reaches the right byte. Two bytes
-in the instruction, the whole top of the map in range. That is the payoff the memory layout was designed
-to give.</p>
+in the instruction, the whole top of the map in range. That is the upshot of that placement.</p>
+
+<p>The two suffixes on <code>move.b (Vint_routine).w,d0</code> answer different questions.
+<code>move.b</code> is the <em>data</em> size, one byte; <code>(Vint_routine).w</code> is the
+<em>addressing</em> form, absolute-short. The <code>.w</code> describes the address, not the data. (The
+<a href="addressing-modes.html">Addressing Modes page</a>
+covers the addressing form in full.)</p>
 
 <h3>Byte order: the 68000 is big-endian</h3>
 
 <p>When a word or longword is stored in memory, the 68000 puts the <strong>most-significant byte at the
-lowest address</strong> and the rest in descending order after it. This is called big-endian, and it is
+lowest address</strong>, with successively less-significant bytes at increasing addresses. This is called big-endian, and it is
 the order you read a number in on paper.</p>
 
 <div class="teach"><span class="t-tag">Teaching example &middot; a longword laid out in memory</span>
@@ -909,7 +937,7 @@ stack, and the byte order of data tables all depend on knowing that the high byt
 
 <p>Byte accesses may use any address at all. But <strong>word and longword accesses must start at an
 even address</strong> on the 68000. A word or long access to an odd address raises an <a
-href="#s5">address error</a>, the same hardware exception family as fetching from an odd PC. This is also
+href="#s6">address error</a>, the same hardware exception family as fetching from an odd PC. This is also
 why a byte push or pop steps <code>a7</code> by 2 rather than 1: the extra step keeps the stack
 word-aligned so the words and longs stored on it always land on even addresses.</p>
 
@@ -961,7 +989,109 @@ discarded before the address ever reaches memory. The header mask above is the o
 24-bit address is actually stored; everywhere else the padded logical form is normal and correct.</div>
 
 <!-- ================================================================ -->
-<h2 id="s5">5 &middot; When the PC goes wrong</h2>
+<h2 id="s5">5 &middot; The stack</h2>
+
+<p>The stack is not a special chip or a separate memory; it is just an ordinary region of work RAM that
+<code>a7</code> points into, used with a simple discipline. Pushing means "step <code>a7</code> down and
+write below where it was"; popping means "read where <code>a7</code> points and step it back up." The
+68000 builds this right into two <a
+href="addressing-modes.html#mode-predec">addressing
+modes</a>: <code>-(sp)</code> predecrements before writing (a push) and <code>(sp)+</code>
+postincrements after reading (a pop). The stack grows <em>downward</em>, from high addresses toward low,
+which is why <a href="#s3">section 3</a>'s vector table hands the CPU an initial <code>a7</code> up near
+the top of RAM.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is the stack actually used for?</summary>
+  <div class="x-body">
+    <p>Three everyday jobs, all variations on "set something aside and get it back in reverse order."
+    The first is subroutine return addresses: <code>bsr</code> and <code>jsr</code> push the address to
+    come back to, and <code>rts</code> pops it. The second is saving registers: a routine that needs to
+    use <code>d0</code>-<code>d3</code> but must not disturb its caller's copies pushes them on entry and
+    pops them on exit. The third is passing values between routines when there are more of them than fit
+    comfortably in registers.</p>
+    <p>The reason a stack works for all three is that calls nest: routine A calls B calls C, and they
+    finish in the opposite order, C then B then A. A stack is exactly the structure that gives back the
+    most recently saved thing first, so each <code>rts</code> naturally finds its own return address on
+    top, and each register-save is unwound by its matching restore. The whole scheme rests on one rule,
+    below.</p>
+  </div>
+</details>
+
+<p>That one rule is <strong>balance</strong>: whatever a routine pushes, it must pop before it returns,
+on <em>every</em> path out. The <code>rts</code> at the end blindly pops four bytes into the PC and jumps
+there; it has no idea whether those four bytes are the return address you meant or a register you forgot
+to pop. If the pushes and pops do not balance, <code>rts</code> loads the wrong four bytes and the PC
+goes wrong, which is exactly the failure <a href="#s6">section 6</a> is about. A clean routine
+brackets its work with matching save and restore. Here it is at its simplest:</p>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; a balanced call, byte by byte</span>
+<p>A constructed example (not lifted from the disassembly), with toy addresses to make the discipline
+concrete. Say <code>sp</code> starts at <code>$FFFFFF00</code>
+and a routine is called, saves one register, works, and returns:</p>
+<pre>	sp = $FFFFFF00
+	bsr.w	Sub		<span class="c">; push return address $00001004, sp drops to $FFFFFEFC</span>
+	<span class="c">; inside Sub:</span>
+	move.l	d0,-(sp)	<span class="c">; save d0, sp drops to $FFFFFEF8</span>
+	<span class="c">; ... work ...</span>
+	move.l	(sp)+,d0	<span class="c">; restore d0, sp rises to $FFFFFEFC</span>
+	rts			<span class="c">; pop $00001004 into pc, sp rises to $FFFFFF00</span></pre>
+<p>Because the one push of <code>d0</code> is matched by exactly one pop, <code>sp</code> is back at
+<code>$FFFFFF00</code> when <code>rts</code> runs, so the four bytes it reads are genuinely the return
+address, not the saved <code>d0</code>. Drop the <code>move.l (sp)+,d0</code> and <code>rts</code> would
+pop <code>d0</code>'s old value into the <code>pc</code> and jump into nowhere. Balance is the whole
+game.</p>
+</div>
+
+<p>Real routines do the very same thing at scale. This decompressor brackets its work by saving and restoring thirteen registers in one instruction:</p>
+
+<pre>NemDec:
+	movem.l	d0-a1/a3-a5,-(sp)
+	<span class="c">; ... decompression body omitted ...</span>
+	movem.l	(sp)+,d0-a1/a3-a5
+	rts</pre>
+<span class="src">s2disasm/s2.asm:1806-1807, 1844-1845 (NemDec, the Nemesis art decompressor)</span>
+
+<p>The save pushes thirteen registers (d0-d7, then a0-a1, then a3-a5, 52 bytes on the stack); the restore
+just before <code>rts</code> pops the same thirteen, so <code>a7</code> is back precisely where it started
+and the four bytes <code>rts</code> reads are genuinely the return address. Note <code>d0-a1</code> runs
+from d0 straight through a1, crossing out of the data bank into the address bank. Get that list even one register out of balance and <code>rts</code>
+returns into the middle of nowhere. The trap is sharpest when a routine has an early exit: every
+<code>return</code> path, not just the last, has to undo the same pushes, which is why the balance is a
+property of the whole routine and not just its final line.</p>
+
+<div class="gotcha"><span class="g-tag">Gotcha</span>
+Because the return address is just four bytes sitting at <code>(sp)</code>, ordinary code can overwrite
+it, and <code>rts</code> will happily "return" wherever the new value points. Done by accident, that is
+the balance bug above: the CPU cannot tell a corrupted return slot from a valid one, because it never
+knew those four bytes were a return address in the first place. One subtlety: a restore list with a
+<em>different</em> set of registers but the <em>same count</em> still balances <code>sp</code> (it just
+restores the wrong values into the wrong registers); only a different total byte count actually unbalances
+<code>sp</code> and misdirects <code>rts</code>.</div>
+
+<details class="explain">
+  <summary>Aside &middot; the same slip, weaponized: speedrun arbitrary code execution</summary>
+  <div class="x-body">
+    <p>Done on <em>purpose</em>, from outside the game, the same overwritable return slot is the backbone
+    of speedrun "arbitrary code execution" (ACE): feed the game inputs that make it write a chosen address
+    over a return slot, and the next <code>rts</code> jumps into attacker-controlled data, turning a
+    platformer into a tiny programmable machine. Same mechanism as the balance bug, one an accident and
+    one an exploit; the CPU treats them identically because it never distinguished the four bytes as a
+    return address at all.</p>
+  </div>
+</details>
+
+<p>One last distinction the stack makes easy to blur: the CPU defines the <em>mechanism</em>, not the
+<em>policy</em>. <code>bsr</code> and <code>jsr</code> push a return address, <code>rts</code> pops it, and
+exception entry and <code>rte</code> do their fixed dance, all of that is wired into the silicon. But which
+registers a routine must preserve, where its parameters go, how it hands back a result, and who pops
+arguments off the stack afterward are <strong>software conventions</strong> the engine chooses, not rules
+the 68000 enforces. That is why one Sonic routine carefully saves registers on entry while another freely
+clobbers them: each is following (or ignoring) a convention the code agreed on, and the CPU is indifferent
+either way.</p>
+
+<!-- ================================================================ -->
+<h2 id="s6">6 &middot; Exceptions and when the PC goes wrong</h2>
 
 <p>Because control flow is nothing but "some instruction writes the PC," a wrong value in the PC is one
 of the ways a 68000 program dies. It is worth knowing exactly how it dies, because the failure has two
@@ -978,8 +1108,11 @@ the same six steps. This is the sequence that ties together the supervisor stack
   <li>It reads the handler's address from this exception's slot in the vector table and loads it into the PC.</li>
   <li>The handler runs; if execution is meant to continue, it ends with <code>rte</code>, which pops the saved SR and PC back and carries on where it left off.</li>
 </ol>
-<p><code>ErrorTrap</code>, below, is simply a handler that deliberately never reaches step 6: it loops
-forever, which is the silent freeze.</p>
+<p>This is the common <em>conceptual</em> sequence; it excludes reset, which builds no saved frame at
+all. The exact stack frame varies by exception, and bus and address errors save extra diagnostic
+information beyond SR and PC.</p>
+<p><code>ErrorTrap</code>, below, is a handler that does run (step 6's "handler runs" part) but
+deliberately never reaches the <code>rte</code>: it loops forever, which is the silent freeze.</p>
 
 <details class="explain">
   <summary>New here? &middot; How can the program counter end up wrong in the first place?</summary>
@@ -1041,107 +1174,41 @@ single highest-leverage thing to install before doing any serious work on 68000 
 Vladikcomper, MD Debugger and Error Handler, a third-party tool, not part of the game.)</div>
 
 <!-- ================================================================ -->
-<h2 id="s6">6 &middot; The stack</h2>
+<h2 id="checkpoint">Before moving on</h2>
 
-<p>The stack is not a special chip or a separate memory; it is just an ordinary region of work RAM that
-<code>a7</code> points into, used with a simple discipline. Pushing means "step <code>a7</code> down and
-write below where it was"; popping means "read where <code>a7</code> points and step it back up." The
-68000 builds this right into two <a
-href="addressing-modes.html#mode-predec">addressing
-modes</a>: <code>-(sp)</code> predecrements before writing (a push) and <code>(sp)+</code>
-postincrements after reading (a pop). The stack grows <em>downward</em>, from high addresses toward low,
-which is why <a href="#s3">section 3</a>'s vector table hands the CPU an initial <code>a7</code> up near
-the top of RAM.</p>
+<p>Five quick checks on the state model this page built. Try to answer each before revealing it.</p>
 
 <details class="explain">
-  <summary>New here? &middot; What is the stack actually used for?</summary>
-  <div class="x-body">
-    <p>Three everyday jobs, all variations on "set something aside and get it back in reverse order."
-    The first is subroutine return addresses: <code>bsr</code> and <code>jsr</code> push the address to
-    come back to, and <code>rts</code> pops it. The second is saving registers: a routine that needs to
-    use <code>d0</code>-<code>d3</code> but must not disturb its caller's copies pushes them on entry and
-    pops them on exit. The third is passing values between routines when there are more of them than fit
-    comfortably in registers.</p>
-    <p>The reason a stack works for all three is that calls nest: routine A calls B calls C, and they
-    finish in the opposite order, C then B then A. A stack is exactly the structure that gives back the
-    most recently saved thing first, so each <code>rts</code> naturally finds its own return address on
-    top, and each register-save is unwound by its matching restore. The whole scheme rests on one rule,
-    below.</p>
-  </div>
+  <summary>What does <code>move.b #$AA,d0</code> preserve?</summary>
+  <div class="x-body"><p>The upper 24 bits of <code>d0</code>. Only the low byte is written.</p></div>
 </details>
-
-<p>That one rule is <strong>balance</strong>: whatever a routine pushes, it must pop before it returns,
-on <em>every</em> path out. The <code>rts</code> at the end blindly pops four bytes into the PC and jumps
-there; it has no idea whether those four bytes are the return address you meant or a register you forgot
-to pop. If the pushes and pops do not balance, <code>rts</code> loads the wrong four bytes and the PC
-goes wrong, which is exactly the failure <a href="#s5">section 5</a> just described. A clean routine
-brackets its work with matching save and restore, like this decompressor:</p>
-
-<pre>NemDec:
-	movem.l	d0-a1/a3-a5,-(sp)
-	<span class="c">; ... decompression body omitted ...</span>
-	movem.l	(sp)+,d0-a1/a3-a5
-	rts</pre>
-<span class="src">s2disasm/s2.asm:1806-1807, 1844-1845 (NemDec, the Nemesis art decompressor)</span>
-
-<p>The save pushes thirteen registers (d0-d7, then a0-a1, then a3-a5, 52 bytes on the stack); the restore
-just before <code>rts</code> pops the same thirteen, so <code>a7</code> is back precisely where it started
-and the four bytes <code>rts</code> reads are genuinely the return address. Note <code>d0-a1</code> runs
-from d0 straight through a1, crossing out of the data bank into the address bank. Get that list even one register out of balance and <code>rts</code>
-returns into the middle of nowhere. The trap is sharpest when a routine has an early exit: every
-<code>return</code> path, not just the last, has to undo the same pushes, which is why the balance is a
-property of the whole routine and not just its final line.</p>
-
-<div class="teach"><span class="t-tag">Teaching example &middot; a balanced call, byte by byte</span>
-<p>A constructed example (not lifted from the disassembly), with toy addresses to make the discipline
-concrete. Say <code>sp</code> starts at <code>$FFFFFF00</code>
-and a routine is called, saves one register, works, and returns:</p>
-<pre>	sp = $FFFFFF00
-	bsr.w	Sub		<span class="c">; push return address $00001004, sp drops to $FFFFFEFC</span>
-	<span class="c">; inside Sub:</span>
-	move.l	d0,-(sp)	<span class="c">; save d0, sp drops to $FFFFFEF8</span>
-	<span class="c">; ... work ...</span>
-	move.l	(sp)+,d0	<span class="c">; restore d0, sp rises to $FFFFFEFC</span>
-	rts			<span class="c">; pop $00001004 into pc, sp rises to $FFFFFF00</span></pre>
-<p>Because the one push of <code>d0</code> is matched by exactly one pop, <code>sp</code> is back at
-<code>$FFFFFF00</code> when <code>rts</code> runs, so the four bytes it reads are genuinely the return
-address, not the saved <code>d0</code>. Drop the <code>move.l (sp)+,d0</code> and <code>rts</code> would
-pop <code>d0</code>'s old value into the <code>pc</code> and jump into nowhere. Balance is the whole
-game.</p>
-</div>
-
-<div class="gotcha"><span class="g-tag">Gotcha</span>
-Because the return address is just four bytes sitting at <code>(sp)</code>, ordinary code can overwrite
-it, and <code>rts</code> will happily "return" wherever the new value points. Done by accident, that is
-the balance bug above: the CPU cannot tell a corrupted return slot from a valid one, because it never
-knew those four bytes were a return address in the first place.</div>
-
 <details class="explain">
-  <summary>Aside &middot; the same slip, weaponized: speedrun arbitrary code execution</summary>
-  <div class="x-body">
-    <p>Done on <em>purpose</em>, from outside the game, the same overwritable return slot is the backbone
-    of speedrun "arbitrary code execution" (ACE): feed the game inputs that make it write a chosen address
-    over a return slot, and the next <code>rts</code> jumps into attacker-controlled data, turning a
-    platformer into a tiny programmable machine. Same mechanism as the balance bug, one an accident and
-    one an exploit; the CPU treats them identically because it never distinguished the four bytes as a
-    return address at all.</p>
-  </div>
+  <summary>Why can <code>(Vint_routine).w</code> reach <code>$FFFFF62A</code>?</summary>
+  <div class="x-body"><p>Its high <code>$FFxxxx</code> address sign-extends from a single 16-bit word
+  (<code>$F62A</code> becomes <code>$FFFFF62A</code>), so absolute-short reaches the top 32 KB of work RAM.</p></div>
 </details>
-
-<p>One last distinction the stack makes easy to blur: the CPU defines the <em>mechanism</em>, not the
-<em>policy</em>. <code>bsr</code> and <code>jsr</code> push a return address, <code>rts</code> pops it, and
-exception entry and <code>rte</code> do their fixed dance, all of that is wired into the silicon. But which
-registers a routine must preserve, where its parameters go, how it hands back a result, and who pops
-arguments off the stack afterward are <strong>software conventions</strong> the engine chooses, not rules
-the 68000 enforces. That is why one Sonic routine carefully saves registers on entry while another freely
-clobbers them: each is following (or ignoring) a convention the code agreed on, and the CPU is indifferent
-either way.</p>
+<details class="explain">
+  <summary>What does reset load from <code>$000000</code> and <code>$000004</code>?</summary>
+  <div class="x-body"><p>The initial supervisor stack pointer from <code>$000000</code> and the initial PC from
+  <code>$000004</code>.</p></div>
+</details>
+<details class="explain">
+  <summary>Why must word and long accesses start on even addresses?</summary>
+  <div class="x-body"><p>The 68000 requires them to be even-aligned; an odd word or long access raises an
+  address error.</p></div>
+</details>
+<details class="explain">
+  <summary>What happens if <code>rts</code> runs while a saved register is still on top of the stack?</summary>
+  <div class="x-body"><p><code>rts</code> pops those four bytes into the PC as if they were the return address
+  and jumps into garbage. That is the balance bug.</p></div>
+</details>
 
 <!-- ================================================================ -->
-<h2 id="s7">7 &middot; The instruction index</h2>
+<h2 id="s7">7 &middot; Reference appendix: the instruction index</h2>
 
-<p>This is the one place that lists every instruction the track documents, each with a one-line gloss
-and a link straight to its full entry. Type a mnemonic you half-remember, <code>rte</code>,
+<p>The lesson ends here; what follows is a reference appendix, not more reading. It lists every
+instruction the track documents, each with a one-line gloss and a link straight to its full entry. You
+are not expected to read it top to bottom: type a mnemonic you half-remember, <code>rte</code>,
 <code>pea</code>, <code>btst</code>, and the table filters as you go; the search also matches words in
 the description, so <code>divide</code> or <code>rotate</code> finds the right rows too. Instructions
 on a page that is already built are live links; the rest are marked with the page they are coming to.</p>
@@ -1167,7 +1234,7 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><td class="ix-mn"><span class="mn-plain">ANDI</span><span class="ix-x">AND Immediate</span></td><td class="ix-gl">Bitwise AND with an immediate constant.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="shifts-bits.html#asl">ASL</a><span class="ix-x">Arithmetic Shift Left</span></td><td class="ix-gl">Arithmetic shift left; the vacated low bits fill with zero.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><a href="shifts-bits.html#asr">ASR</a><span class="ix-x">Arithmetic Shift Right</span></td><td class="ix-gl">Arithmetic shift right; copies the sign bit down, so it divides signed values.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">Bcc</span><span class="ix-x">Branch Conditionally</span></td><td class="ix-gl">Branch if a condition code is true; the family BEQ, BNE, BCS, BPL and the rest.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">Bcc</span><span class="ix-x">Branch Conditionally</span></td><td class="ix-gl">Branch if a condition code is true; the Bcc family covers BEQ, BNE, BCS, BPL and the rest. (BCC is also the specific mnemonic for branch-if-carry-clear.)</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
   <tr><td class="ix-mn"><a href="shifts-bits.html#bchg">BCHG</a><span class="ix-x">Test Bit and Change</span></td><td class="ix-gl">Test one bit, then flip it.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><a href="shifts-bits.html#bclr">BCLR</a><span class="ix-x">Test Bit and Clear</span></td><td class="ix-gl">Test one bit, then clear it to 0.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
   <tr><td class="ix-mn"><span class="mn-plain">BRA</span><span class="ix-x">Branch Always</span></td><td class="ix-gl">Branch always; an unconditional goto.</td><td><span class="ix-cat soon">Flow &amp; System</span></td></tr>
