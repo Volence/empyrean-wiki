@@ -386,12 +386,12 @@ confusion: unlike a byte of memory, a register has no address of its own. You na
 working surface: instructions pull values in from memory, do the shuffling and computing in these
 registers (far quicker to reach than memory itself), and write the results back out.</p>
 
-<p>Two of those registers have a fixed second job the hardware itself relies on.
-<code>a7</code> is also the <strong>stack pointer</strong>, the register subroutine calls and returns
-push and pop through, so it is written <code>sp</code> as often as <code>a7</code> and the two names
-mean the same register. And the <strong>status register</strong> sits off to the side holding the
-condition codes and the mode bits. The diagram below is the core programmer-visible state; poke any part of it to see
-what that part is for.</p>
+<p>Two parts of this state deserve special attention. <code>a7</code> is an address register, but it also
+serves as the <strong>stack pointer</strong>, which subroutine calls, returns, and exceptions use to push
+and pop values, so it is written <code>sp</code> just as often as <code>a7</code>; the two names refer to
+the same register. The <strong>status register</strong> is not general-purpose at all. Its dedicated job is
+to hold the condition codes and the system-control bits. The diagram below is the core programmer-visible
+state; poke any part of it to see what that part is for.</p>
 
 <details class="explain">
   <summary>New here? &middot; What is a register, and why not just use memory?</summary>
