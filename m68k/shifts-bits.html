@@ -424,7 +424,8 @@ in both C and X.</figcaption>
     <span class="fl-label">Cost</span>
     <span class="cchip">6 + 2n cycles</span>
     <span class="cchip">2 bytes</span>
-    <span class="cctx">register shift by n (.b/.w); a memory word shift-by-1 is 8c. Longs add 2 to the base:</span>
+    <span class="cctx">register shift by n (.b/.w); a memory word shift-by-1 is 12c on (An) (base 8 plus the
+    effective-address time). Longs add 2 to the base:</span>
   </div>
   <details class="refbox">
     <summary>Full timing and size</summary>
@@ -438,7 +439,10 @@ in both C and X.</figcaption>
     </table></div>
     <p class="enc-note">n is the shift count, so a longer shift genuinely costs more (2 cycles per place),
     which is why code shifts by the smallest count it can. The memory form shifts a word by exactly 1.
-    c = CPU cycles, b = bytes; Genesis memory adds wait states.</p>
+    c = CPU cycles, b = bytes; Genesis memory adds wait states. A memory shift or rotate is word-only, one
+    bit, base 8 cycles plus the effective-address time: (An) is 12, -(An) is 14, (d16,An) and (xxx).W are 16.
+    The 8 is only the base. This effective-address overhead is intrinsic to the 68000, separate from Genesis
+    wait states.</p>
     </div>
   </details>
   <div class="operands"><span class="fl-label">Operands</span></div>
@@ -894,8 +898,9 @@ you can see a bit park there and re-enter on the next run, which is how a rotate
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   ROXL reads the CURRENT X, so whatever set X last (an add, a shift, an <code>lsr</code>, a previous ROXL)
   decides the bit that enters at the bottom. Set X deliberately before the chain: to start a multi-word
-  rotate cleanly, clear X first (for instance with an <code>and</code> that clears C and X, or arrange the
-  feeding shift). A stale X quietly corrupts the low bit.</div>
+  rotate cleanly, clear X first (for instance with <code>andi.b #$EF,ccr</code>, which writes the CCR directly,
+  or by arranging the feeding shift so a 0 lands in X). Note a plain <code>and</code> clears C and V but leaves
+  X untouched, so it cannot clear X. A stale X quietly corrupts the low bit.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Do not need the bit to pass through X? Plain <a href="#rol">ROL</a> is a simpler 8-bit wrap that leaves X
   alone and just copies to C. To thread through X in the other direction, use <a href="#roxr">ROXR</a>. If
@@ -944,11 +949,12 @@ you can see a bit park there and re-enter on the next run, which is how a rotate
   <p>ROXR is ROXL going the other way: the bottom bit of the operand moves into X, the OLD X moves into the
   top, and C ends equal to the new X. For a byte that is the same 9-bit ring, just turned right. It chains a
   rotate across words in the high-to-low direction: rotate the high word first, its bottom bit exits into X,
-  then ROXR the low word so that bit enters at the top, threading a 32-bit rotate through two 16-bit rotates.
+  then ROXR the low word so that bit enters at the top, threading a 32-bit shift across two 16-bit steps; a
+  full 32-bit rotate needs one more step to wrap the ejected low bit back into the top.
   No clean real example of ROXR appears in the Sonic 2 disassembly (its sibling ROXL is used for the same
   chaining), so here is the two-word rotate-right idiom spelled out:</p>
   <div class="teach"><span class="t-tag">Illustrative, not from the disassembly</span>
-<pre>	<span class="c">; rotate the 32-bit value in d0:d1 right by one, d0 high, d1 low</span>
+<pre>	<span class="c">; logical-shift the 32-bit value in d0:d1 right by one, d0 high, d1 low</span>
 	lsr.w	#1,d0		<span class="c">; low bit of high word exits into X</span>
 	roxr.w	#1,d1		<span class="c">; that X bit enters the top of the low word</span>
 	<span class="c">; the low word's own bottom bit is now parked in X, ready to</span>

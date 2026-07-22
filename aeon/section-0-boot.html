@@ -459,16 +459,20 @@ addresses. Click a region to see what lives there and where this page uses it.</
   <strong>Initial stack pointer = $FFFFFF00, not $00000000.</strong> The stack grows downward
   from near the top of Work RAM, far from game data at low RAM addresses, and the top 256 bytes
   ($FFFFFF00-$FFFFFFFF) stay out of the stack's path (Aeon parks its cold-boot marker at
-  $FFFFFF00). The alternative (SSP&nbsp;=&nbsp;$0) makes the stack wrap around the bottom of
-  the address space, where an overflow is silent and catastrophic.
+  $FFFFFF00). A common alternative is SSP = $0: the first push predecrements $00000000 to
+  $FFFFFFFC, which the 68000's 24-bit bus addresses as $FFFFFC, the top of work RAM, so the
+  stack simply lives at the very top of RAM (the same address wrap this boot code uses on
+  purpose for the RAM clear in section 5). Several shipping games do exactly this. Aeon instead
+  fixes SSP at $FFFFFF00 so the top 256 bytes stay reserved for the cold-boot marker, not
+  because $0 is unsafe.
   <p class="prov-label">Who does what</p>
   <div class="prov">
     <span class="yes">Vectorman ✓ high RAM</span>
     <span class="yes">Gunstar Heroes ✓ high RAM</span>
     <span class="yes">Alien Soldier ✓ high RAM</span>
-    <span class="no">S.C.E.: $0</span>
-    <span class="no">Batman &amp; Robin: $0</span>
-    <span class="no">Thunder Force IV: $0</span>
+    <span class="yes">S.C.E.: $0</span>
+    <span class="yes">Batman &amp; Robin: $0</span>
+    <span class="yes">Thunder Force IV: $0</span>
   </div>
 </div>
 
@@ -920,7 +924,7 @@ fill on its own; the bottom lane is everything the CPU does in the meantime, in 
       <div class="track">
         <div class="tseg t-cpu" style="width:7%;">inc = 1, start fill</div>
         <div class="tseg t-cpu" style="width:25%;">Z80 init + driver load</div>
-        <div class="tseg t-cpu t-big" style="width:46%;">clear 64KB work RAM (~180,000 cycles, the dominator)</div>
+        <div class="tseg t-cpu t-big" style="width:46%;">clear 64KB work RAM (~393,000 cycles, the dominator)</div>
         <div class="tseg t-cpu" style="width:8%;">PSG silence</div>
         <div class="tseg t-wait" style="width:14%;">wait: fill done?</div>
       </div>
@@ -931,8 +935,9 @@ fill on its own; the bottom lane is everything the CPU does in the meantime, in 
   in a small handful of frames.</figcaption>
 </figure>
 
-<p>For the record, those real durations: the 64KB work-RAM clear alone is roughly 180,000 CPU
-cycles, about 23 milliseconds, and it is the biggest single CPU chore in the sequence. The
+<p>For the record, those real durations: the 64KB work-RAM clear alone is roughly 393,000 CPU
+cycles, about 51 milliseconds at 7.67 MHz (16,384 iterations of a 14-cycle move.l d0,-(a6) plus
+a 10-cycle dbf), and it is the biggest single CPU chore in the sequence. The
 entire boot, from the reset vector to the handoff into the game loop, finishes in a small
 handful of frames. There is no loading bar because there is nothing to wait for; the first
 thing slow enough to notice is whatever the game's first state chooses to load.</p>

@@ -448,8 +448,8 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
   <div class="x-body">
     <p>It looks redundant, but each form is a specialization that saves space or stays out of the
     flags' way. Plain <a href="#add">ADD</a> is the general case: add any value to a data register.
-    <a href="#addq">ADDQ</a> is a shortcut for tiny constants (1 to 8) that packs the whole instruction
-    into one word. <a href="#addi">ADDI</a> is for larger constants added in place. And <a href="#adda">ADDA</a>
+    <a href="#addq">ADDQ</a> is a shortcut for tiny constants (1 to 8) that needs no extension word for
+    its constant, unlike ADDI. <a href="#addi">ADDI</a> is for larger constants added in place. And <a href="#adda">ADDA</a>
     adds to an ADDRESS register, which the CPU deliberately treats differently: no flags, no byte size.</p>
     <p>The good news is you rarely choose consciously. Write <code>add.w d0,a1</code> and the assembler
     quietly encodes ADDA because the destination is an address register; write a 1-to-8 constant and a
@@ -511,12 +511,13 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
   </div>
   <p>ADD adds a value to a data register (or a register's value into memory) and reports fully on the
   result through all five flags. It is the workhorse of the page: how a position gains a velocity, a
-  counter climbs, an index advances. Because it sets N, Z, V, and C from the sum, you can branch on
-  the result immediately, no separate compare needed. Reach for plain ADD when the amount is a runtime
-  value in a register or memory; when it is a small constant, its cheaper cousins below win.</p>
+  counter climbs, an index advances. Because it sets N, Z, V, and C from the sum, and those flags are
+  ready to branch on when you do not insert another flag-setting instruction first. Reach for plain ADD
+  when the amount is a runtime value in a register or memory; when it is a small constant, its cheaper
+  cousins below win.</p>
   <p>This is the exact position-plus-velocity step, from Obj5F (a moving object), and it shows the
-  reason ADD sets flags: the very next lines branch on the new position to delete the object once it
-  drifts off screen.</p>
+  reason ADD sets flags: the two ADDs update the position, then a cmpi tests that position and a blt
+  deletes the object once it drifts off screen.</p>
   <pre>	add.w	d1,x_pos(a0)
 	add.w	d0,y_pos(a0)
 	cmpi.w	<span class="n">#0</span>,x_pos(a0)
@@ -786,9 +787,11 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
     </div>
     <p class="msim-note" id="aq-note" aria-live="polite">d0 holds $0032 (50). Add 1 through 8 and it climbs in a single-word instruction. Type 9 and the line will not assemble as ADDQ at all, the quick field only reaches 8; the assembler needs ADDI for anything bigger.</p>
   </div>
-  <figcaption>ADDQ carries its constant, 1 to 8, inside the opcode word itself, so it is 2 bytes with
-  no extension. Static fallback: addq.w #1,d0 with d0 = $0032 gives $0033; addq.w #8,d0 gives $003A;
-  addq.w #9,d0 does not assemble as ADDQ, since the quick field stops at 8.</figcaption>
+  <figcaption>ADDQ carries its constant, 1 to 8, inside the opcode word itself, so it needs no immediate
+  extension word; with a register or (An) destination that makes it 2 bytes, though a memory-address
+  destination still adds its own address words. Static fallback: addq.w #1,d0 with d0 = $0032 gives
+  $0033; addq.w #8,d0 gives $003A; addq.w #9,d0 does not assemble as ADDQ, since the quick field stops
+  at 8.</figcaption>
   </figure>
   <p>The classic guarded increment, from ring collection: bump the ring count by one, but only if it
   is below the 999 cap.</p>
@@ -1358,7 +1361,8 @@ setup half of nearly every <code>if</code> and every loop in the engine.</p>
     <span class="fl-label">Cost</span>
     <span class="cchip">4 cycles</span>
     <span class="cchip">2 bytes</span>
-    <span class="cctx">register or <code>(An)</code>, any size; other memory modes add their price.</span>
+    <span class="cctx">register, any size (4c). Memory costs its effective address on top: <code>(An)</code>
+    is 8c (byte/word), 12c (long); other modes add more.</span>
   </div>
   <div class="operands"><span class="fl-label">Operands</span></div>
   <div class="opgrid" role="group" aria-label="Legal addressing modes for TST">
@@ -1879,8 +1883,8 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
       <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">The immediate form of AND: mask a constant against a register or memory. It is what
-    the assembler uses when you write <code>and #n,&lt;ea&gt;</code>. (Privileged <code>andi #n,SR</code>
-    and <code>andi #n,CCR</code> forms exist too, but those belong to the Flow &amp; System page.)</p>
+    the assembler uses when you write <code>and #n,&lt;ea&gt;</code>. (The privileged <code>andi #n,SR</code>
+    and the user-mode <code>andi #n,CCR</code> forms exist too, but both belong to the Flow &amp; System page.)</p>
   </div>
   <p>ANDI applies a constant mask, the everyday way to clear specific bits of a flag byte or hardware
   register in place. From the sprite code, clearing both flip bits of an object's render flags before
@@ -1972,7 +1976,8 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
       <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">The immediate form of OR: set named bits on. Very common on status bytes and
-    art-tile flag words. (Privileged <code>ori #n,SR</code>/<code>CCR</code> forms are Flow &amp; System.)</p>
+    art-tile flag words. (The privileged <code>ori #n,SR</code> and the user-mode <code>ori #n,CCR</code>
+    forms are Flow &amp; System.)</p>
   </div>
   <p>ORI sets specific bits with a constant mask. Two everyday uses: marking a state flag on a player,
   and setting the flip bits of an art-tile word before it goes to the sprite table.</p>
@@ -2035,8 +2040,9 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   EOR is the one logic instruction whose source cannot be memory or an immediate: it must be a data
   register. Reach for a memory or constant operand and you need <a href="#eori">EORI</a> or a load first.
-  (One neat trick this enables: <code>eor.w d0,d0</code>, a register against itself, drives every bit to
-  0, though <code>moveq #0</code> is the cheaper way to zero a register.)</div>
+  (One neat trick this enables: <code>eor.w d0,d0</code>, a register against itself, clears d0's low word
+  to 0 (<code>eor.l d0,d0</code> clears all 32 bits), though <code>moveq #0</code> is the cheaper way to
+  zero the whole register.)</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Flipping a SINGLE bit is <a href="shifts-bits.html#bchg"><code>BCHG</code></a>
   (Shifts &amp; Bits page). Zeroing a register is <code>moveq #0</code>, not a self-EOR.</div>

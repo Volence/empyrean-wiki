@@ -293,7 +293,7 @@ select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel
   <p class="eyebrow">Aeon Engine · 02</p>
   <h1>The VDP &amp; the Frame</h1>
   <p class="sub">Everything a player sees comes from one chip: the VDP, walking its own private
-  memory sixty times a second. This page explains what that chip actually is, then follows one
+  memory once per frame (roughly sixty times a second on NTSC, fifty on PAL). This page explains what that chip actually is, then follows one
   frame all the way through the engine, from the moment the game loop finishes work to the
   moment pixels leave for the television. Verified line-by-line against
   <code>engine/system/</code> and <code>engine/level/</code>.</p>
@@ -315,7 +315,7 @@ select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel
 <h2 id="s1">1 · What the VDP draws with</h2>
 
 <p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> never sees pixels arrive from the CPU one at a time. Instead it owns
-64KB of private memory and, sixty times a second, walks that memory and composites a picture out
+64KB of private memory and, once per frame (roughly sixty times a second on NTSC, fifty on PAL), walks that memory and composites a picture out
 of four kinds of thing living inside it: <span class="term" data-def="An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.">tiles</span>, nametables, <span class="term" data-def="A set of 16 colors in CRAM. Every tile and sprite picks one of the four palettes.">palettes</span>, and <span class="term" data-def="A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.">sprites</span>. Everything else in this
 page, the queues, the buffers, the interrupts, exists to get bytes into that memory in the right
 shape, at the right time.</p>
@@ -332,7 +332,10 @@ shape, at the right time.</p>
     small enough that the unified art pool holds well over a thousand of them, resident,
     permanently, in VRAM. There is no "load this sprite's graphics" step during gameplay the way
     a modern engine streams a texture; the tile is already sitting in video memory, and drawing
-    it is just telling the VDP which slot to read.</p>
+    it is just telling the VDP which slot to read. That residency is per-slot, not per-sprite-forever:
+    DPLC (Dynamic Pattern Load Cue, section 5) can overwrite what sits in specific resident slots
+    frame to frame as an animation plays, so a slot's contents change even though the pool itself
+    never grows or streams in new territory.</p>
   </div>
 </details>
 
@@ -351,10 +354,11 @@ it draws.</p>
   <span class="bf b-tile">TILE INDEX<br>11 bits</span>
 </div>
 
-<p>Fifteen bits, laid out high to low: priority (draw above or below the other plane and most
-sprites), a 2-bit palette select (which of the four 16-color palettes), vertical flip, horizontal
-flip, and an 11-bit tile index (0-2047, which is exactly why the unified art pool tops out where
-it does). Bit 15 itself is unused by the plane hardware. The composer below lets you build one of
+<p>Sixteen bits, laid out high to low: priority (draw above or below the other plane and most
+sprites, bit 15), a 2-bit palette select (bits 14-13, which of the four 16-color palettes),
+vertical flip (bit 12), horizontal flip (bit 11), and an 11-bit tile index (bits 10-0, 0-2047,
+which is exactly why the unified art pool tops out where it does). Every bit of the word is
+spoken for; none are unused. The composer below lets you build one of
 these words by hand and watch both the bits and the picture update together.</p>
 
 <figure class="diagram">
@@ -406,7 +410,7 @@ these words by hand and watch both the bits and the picture update together.</p>
     palette is transparent (or the backdrop color, for a whole-plane background), which is why a
     4-bit tile only really shows 15 colors.</p>
     <p>Four palettes sounds tight, but it buys something modern engines pay dearly for: instant,
-    zero-cost palette swaps. Recolor Sonic's shield by rewriting 16 bytes of CRAM, not a single
+    zero-cost palette swaps. Recolor Sonic's shield by rewriting 32 bytes of CRAM, not a single
     pixel of tile data. The wiki's own palette story lives on the Art &amp; Compression page.</p>
   </div>
 </details>
@@ -426,7 +430,7 @@ to reach VRAM every frame, and reliably.</p>
 <h2 id="s2">2 · Two ports and a shadow table</h2>
 
 <p>The CPU cannot address <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>, <span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>, or the VDP's 24 configuration <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span> directly. Every access goes through two
-16-bit mail slots at fixed addresses: the data port (where bytes and words actually flow) and the
+16-bit mail slots at fixed addresses: the data port (where words and longwords actually flow, never single bytes) and the
 control port (where you first say where those bytes are going, or, using a different write
 pattern, which register to set). A "register write" is really a magic word sent to the control
 port; there is no address named "register 5", only the convention that a control-port word shaped
@@ -867,6 +871,12 @@ DMAEntry endstruct
         rts</pre>
 <span class="src">engine/system/dma_queue.asm:232</span>
 
+<p>Note the check order: the budget is tested before the current entry is charged against it, not
+after checking whether the entry fits. An entry larger than what is left still drains fully, so
+the budget can go negative by up to one entry's size before the next entry's check catches it and
+defers that one to the next frame. The queue is not a hard limit; it can overshoot by one entry
+per VBlank, by design.</p>
+
 <p>When the budget runs dry mid-queue, entries are not dropped. <code>.out_of_budget</code> falls
 into <code>.compact</code>, which shifts the undrained tail down to the queue base so those
 entries are still there, at the front, next VBlank:</p>
@@ -933,7 +943,9 @@ either fit or they spill.</p>
   <figcaption>DMA budget packer: click a block to enqueue it into this frame's VBlank window,
   click a placed block to remove it; once the window fills, further blocks spill into the next
   frame instead of being lost (static fallback: the budget table above states the two fixed
-  window sizes and the compaction behavior on overrun).</figcaption>
+  window sizes and the compaction behavior on overrun). This visualizer uses the DMA budget as a
+  strict cutoff for clarity. Aeon's current queue processing checks the budget before starting each
+  entry, so the real engine may exceed the target by the size of one final DMA entry.</figcaption>
 </figure>
 
 <p>Two safety details round out the enqueue path, both in <code>QueueDMATransfer</code>, the
@@ -1138,11 +1150,13 @@ screen edge, not corruption, but it is genuinely lost, not delayed.</p>
   <p style="margin:.2rem 0 .4rem;">Say the camera whips sideways fast enough in one frame to
   cross four 16-pixel block boundaries at once. Four calls to <code>Draw_TileColumn</code> queue
   four column entries, each up to 136 bytes worst case (two headers plus 64 rows). If the buffer
-  already had, say, 1,400 of its 1,536 bytes spoken for from earlier in the frame, the third or
-  fourth column simply won't fit and its <code>cmpi.w</code> capacity check fails before it
-  writes a single word. The first two columns still land at VBlank; the third and fourth are
-  gone. The player sees the newly-revealed strip pop in a frame late at the very edge of the
-  screen, exactly where a fast pan is least likely to be scrutinized.</p>
+  already had, say, 1,400 of its 1,536 bytes spoken for from earlier in the frame, only 136 bytes
+  remain, exactly one column's worst case. The first column still lands at VBlank; the second,
+  third, and fourth all fail their <code>cmpi.w</code> capacity check before writing a single word.
+  The player sees a gap or stale strip at the newly revealed edge, exactly where a fast pan is
+  least likely to be scrutinized, that persists until something later happens to redraw that
+  exact spot, not a guaranteed one-frame-late fix, since the drop has no re-queue mechanism at
+  all.</p>
 </div>
 
 <div class="decision"><span class="d-tag">Decision</span>
@@ -1250,12 +1264,13 @@ bend a background instead of just sliding it.</p>
     or right by this many pixels. Normally that number is set once and holds for the whole frame,
     so the plane slides as a rigid sheet. But the VDP reads the scroll value fresh, from a table
     in VRAM, for every scanline it draws, not just once at the top of the frame.</p>
-    <p>An HBlank interrupt firing between scanlines is the moment to rewrite that table entry
-    before the next line gets drawn. Give line 50 a different scroll value than line 49, and the
-    picture literally bends at that seam, foreground rows scrolling faster than a distant
-    background above them, or a wavy heat-shimmer effect where each line offsets by a slightly
-    different amount. It's not a special hardware mode; it's the ordinary scroll register, just
-    rewritten far more often than once per frame.</p>
+    <p>The VDP itself reads a fresh entry from that table for every scanline it draws,
+    automatically, with no CPU work per line. That is what per-line scroll mode actually is: a
+    real hardware mode selected by a VDP register bit, not the ordinary scroll register rewritten
+    more often. Software's only job is to have the whole table filled with the right per-line
+    values before the frame starts (section 6's Static_Hscroll_Line does exactly this, once per
+    VBlank). An HBlank handler is not required for this kind of parallax bend; it earns its keep
+    for effects that must recompute something partway through the frame.</p>
   </div>
 </details>
 
@@ -1284,8 +1299,10 @@ as the default:</p>
 exit, movem save, jsr, rts, movem restore, rte, runs roughly 180 cycles per scanline, not the 20
 or so you might assume from reading the handler itself. A proposed
 RAM-trampoline fix, not yet applied, would shortcut the indirect call for the common empty-table
-case and bring that down to roughly 76 cycles. Today, every scanline of every frame pays the
-full 180.</p>
+case and bring that down to roughly 76 cycles. Today, H-interrupts are disabled at boot (VDP
+register $00 = $04, HInt off) and nothing in the shipped engine turns them back on, so this
+per-scanline cost is not currently being paid at all. It becomes real the moment a section
+enables H-INT and installs a non-null handler.</p>
 
 <p>The raster command table walker, the system that would actually install per-section stackable
 effects (shadow/highlight lighting, palette gradients, water-line splits) through this seam, is

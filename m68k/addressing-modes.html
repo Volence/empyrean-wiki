@@ -379,9 +379,14 @@ a word in memory through <code>(a0)</code> costs 4. So:</p>
 <pre>	move.w	d0,d1        <span class="c">= 4  +  0 (source d0)  +  0 (dest d1)</span>
 	move.w	(a0),d1      <span class="c">= 4  +  4 (source (a0)) +  0 (dest d1) = 8</span>
 	move.w	(a0),(a1)    <span class="c">= 4  +  4 (source (a0)) +  4 (dest (a1)) = 12</span></pre>
-<p>Nothing here is special to MOVE. Swap in any instruction's base, add the same two mode prices
-from the table below, and you have its cost. That is why the instruction pages do not each reprint a
-giant timing matrix: they state a base, then point here for the per-mode add-ons.</p>
+<p>This two-sided add is exact for MOVE, whose base is 4 and which adds effective-address time on both
+operands. It is not the whole story for other instructions. Read-modify-write instructions such as
+ADD, SUB, AND, and OR have their own bases that depend on direction: ADD.W into a data register is
+base 4, but ADD.W into memory (ADD.W Dn,(An)) is base 8, because writing memory means reading it,
+adding, and writing it back. So take the base from that instruction's own row in the Standard
+Instruction table, then add effective-address time only for the operand Motorola marks with a plus.
+For example ADD.W D0,(A0) is base 8 plus the (A0) price of 4, which is 12 cycles, not the 8 a
+MOVE-shaped guess would give.</p>
 </div>
 
 <p>The same addition governs SIZE. The opcode itself is one 16-bit word. A mode that needs extra
@@ -1002,9 +1007,12 @@ variables, bakes in constants, and finds its own tables.</p>
   stored 16 bits as <em>signed</em> and extends the top bit across the upper half, so an address like
   <code>$FF00</code> becomes <code>$FFFFFF00</code>, not <code>$0000FF00</code>. That splits the short
   form's reach into two 32KB windows: the very bottom of the map ($00000000 up) and the very top
-  ($FFFF8000 up). The Genesis wires its work RAM and I/O into that top window on purpose, so nearly
-  every RAM variable and hardware register is reachable in the cheap 2-byte form. The tradeoff is the
-  hole in the middle: anything from $00008000 to $FFFF7FFF needs the full 4-byte absolute long.</div>
+  ($FFFF8000 up). The Genesis wires its work RAM into that top window on purpose, so nearly every RAM
+  variable is reachable in the cheap 2-byte form. Hardware is a different story: the controllers, Z80,
+  and version register at $A1xxxx and the VDP at $C00000 sit in neither short window, so they are
+  reached with absolute long or through an address register, not absolute short (which is why the
+  version read on the next page uses <code>(HW_Version).l</code>). The tradeoff is the hole in the
+  middle: anything from $00008000 to $FFFF7FFF needs the full 4-byte absolute long.</div>
 </div>
 
 <div class="mode" id="mode-absl">
@@ -1039,7 +1047,7 @@ variables, bakes in constants, and finds its own tables.</p>
   <div class="mmeta">
     <div class="row bd"><span class="lbl">You write</span><span class="val"><code>#60</code>, a leading <code>#</code>, then the constant.</span></div>
     <div class="row bd"><span class="lbl">Under the hood</span><span class="val">No address to compute. The constant sits in the instruction's own extension word.</span></div>
-    <div class="row bd"><span class="lbl">You work with</span><span class="val">That number itself. Nothing to fetch, nothing to resolve: <code>#60</code> <em>is</em> the operand.</span></div>
+    <div class="row bd"><span class="lbl">You work with</span><span class="val">That number itself. No separate data lookup, and no address to resolve: <code>#60</code> <em>is</em> the operand. It still rides in an extension word right after the opcode, and the CPU fetches that word as it decodes, which is why an immediate costs 4 cycles and 2 bytes for a word, not zero like a register.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-imm">4 cycles for a byte or word, 8 for a long; 2 extension bytes for a byte or word constant, 4 for a long</a>.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Loading a literal value: a timer count, a velocity, a bit mask, a state number. Any time the number is known when you write the code, not read from somewhere at runtime.</span></div>
   </div>
@@ -1054,14 +1062,18 @@ variables, bakes in constants, and finds its own tables.</p>
     <span class="rf-arrow">&rarr;</span>
     <span class="rf-cell"><span class="rf-k">you work with</span><code class="v">60</code></span>
   </div>
-  <p class="rf-note">The constant lives in the instruction's own extension word, so there is nothing to fetch and no address to compute. It lands in the <code>spikes_retract_timer</code> field, which the object counts down, snapping the spikes out at zero.</p></div>
+  <p class="rf-note">No separate data lookup, and no address to resolve: 60 is the operand. It still rides in the instruction's own extension word right after the opcode, and the CPU fetches that word as it decodes, which is why this costs 4 cycles and 2 bytes for the word constant, not zero like a register. It lands in the <code>spikes_retract_timer</code> field, which the object counts down, snapping the spikes out at zero.</p></div>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   This is <em>plain</em> immediate. The small constant inside <code>moveq</code>,
   <code>addq</code>, and <code>subq</code> is a different animal, the "quick immediate" mode, packed
   right into the opcode word with no extension at all (and limited: signed 8-bit for
   <code>moveq</code>, 1 to 8 for <code>addq</code>/<code>subq</code>). That is one of the two modes
   that push Motorola's count from twelve to fourteen. When a constant fits, the quick forms are
-  smaller and faster than a plain <code>#n</code>; when it does not, you fall back to this mode.</div>
+  smaller and faster than a plain <code>#n</code>; when it does not, you fall back to this mode.
+  That no-extension point is about the constant only: <code>moveq</code> really is always one word,
+  but <code>addq</code> and <code>subq</code> still grow an extension word when their destination
+  needs one, so <code>addq.w #1,(label).w</code> is 4 bytes even though the <code>#1</code> costs
+  nothing.</div>
 </div>
 
 <div class="mode" id="mode-pcdisp">
@@ -1144,13 +1156,12 @@ for <code>(pc)</code> so often.</p>
     of me"; instead of "read the table at $002000," it says "read the table 12 bytes past me." Every
     reference is relative to the code's own position, so you can pick up the whole block and drop it
     somewhere else and every distance still lands where it should.</p>
-    <p>Why would code move? Because ROM layout shifts constantly during development: add a routine
-    above this one, or the assembler packs things differently, and every fixed address below it slides
-    to a new spot. Code written with PC-relative references does not care; code that baked in absolute
-    addresses to its own nearby tables would now point at the wrong place. That is the deeper reason
-    Sonic-era source reaches for <code>(pc)</code> whenever it addresses a table that travels with the
-    code: not just to save a couple of bytes, but so the block stays correct when everything around it
-    moves.</p>
+    <p>Why does relocatability matter, if the assembler recomputes every label on each rebuild anyway?
+    Because a rebuild does fix both absolute and PC-relative references. The payoff of PC-relative is
+    different: an already-assembled block can be picked up and run at another address without being
+    reassembled or patched, since it only ever refers to distances from itself. It also encodes
+    smaller, a 2-byte displacement instead of a 4-byte absolute address, which is the more common
+    day-to-day reason Sonic-era source reaches for <code>(pc)</code>.</p>
   </div>
 </details>
 
@@ -1165,11 +1176,12 @@ reason to prefer <code>(pc)</code> for code-space data.</p>
 farther and it will not assemble; you must fall back to an absolute address. So PC-relative is the
 tool for <em>near</em> data, and absolute long is the tool for anything far.</p>
 
-<p><strong>Why RAM can never be PC-relative.</strong> Put those two facts together and a rule drops
-out. Code lives in ROM at the bottom of the map; work RAM lives at the top, at $FFxxxx, megabytes
-away. No PC-relative displacement can span that gap, so a RAM variable is <em>never</em> reachable as
-<code>d(PC)</code>. RAM is always named by an absolute address, and because it sits in the top
-window, the cheap <code>(xx).w</code> short form reaches it.</p>
+<p><strong>Why ROM code cannot reach RAM PC-relative.</strong> Put two facts together. First, the
+displacement is 16-bit signed, so code running in ROM at the bottom of the map cannot span the
+megabytes up to work RAM at $FFxxxx. Second, PC-relative modes are read-only, so even within reach
+they can never be a write destination. So from ROM a RAM variable is named by an absolute address,
+and since it sits in the top window the cheap <code>(xx).w</code> form reaches it. (Code that itself
+runs from RAM could read nearby RAM PC-relative, but Genesis game code runs from ROM.)</p>
 
 <p>The result is a house pattern you will see everywhere in real 68000 source, three modes sorted by
 what they are naming:</p>

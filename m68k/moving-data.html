@@ -385,9 +385,9 @@ carries the full notation key.</p>
     chips.</p>
     <p>Picking the size that fits the job matters on real hardware, but not the way beginners often assume.
     A register-to-register move is 2 bytes and 4 cycles at <em>every</em> size, so the suffix alone does not
-    make it smaller or faster. Where size pays off is memory and immediates: a byte or word transfer to
-    memory moves less across the bus (fewer cycles), and a smaller <em>immediate</em> encodes in fewer
-    bytes.</p>
+    make it smaller or faster. Where size pays off is memory and long immediates: a byte or word transfer
+    to memory moves less across the bus (fewer cycles) than a long, and a long immediate costs two
+    extension words where a byte or word immediate costs one (and MOVEQ costs none).</p>
   </div>
 </details>
 
