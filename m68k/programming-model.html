@@ -638,6 +638,25 @@ Z with nothing in between, because the add already did the testing as part of ad
   <div class="ccard"><span class="cc-l">X</span><span class="cc-n">extend</span><div class="cc-d">A carry-like flag, updated alongside C by most arithmetic but a separate flag (a <code>cmp</code> changes C while leaving X untouched), so extended, multi-word math (<code>addx</code>, <code>roxl</code>) can thread a carry across several longwords even when a compare or branch sits between the steps.</div></div>
 </div>
 
+<details class="explain">
+  <summary>New here? &middot; What does "the result reads as negative" mean? There is no minus sign.</summary>
+  <div class="x-body">
+    <p>Right, there is no minus sign in hardware; a register only holds bits. Negative numbers work by
+    wrap-around, like an odometer rolling backward past zero. The bit pattern <code>$FF</code> in a byte
+    means 255 <em>or</em> -1 depending entirely on how the code chooses to read it, and the tell is the
+    top bit: read as signed, patterns with the top bit clear are zero and up, and patterns with the top
+    bit set are the negatives. The N flag is nothing more than a copy of that top bit. So "N is set"
+    literally means "the top bit of the result is 1," which signed code reads as negative and unsigned
+    code reads as just a large value.</p>
+    <p>That is also why the same flag serves two readings without the CPU knowing which you meant: the
+    hardware sets N, Z, V, and C mechanically from the bits, and your choice of branch (a signed
+    <code>blt</code> versus an unsigned <code>bcs</code>) decides which flags to believe. The full
+    odometer treatment, including why a negative needs more <code>F</code> digits at a bigger size, is on
+    the <a href="moving-data.html#negatives">Moving
+    Data page</a>.</p>
+  </div>
+</details>
+
 <div class="teach"><span class="t-tag">Teaching example &middot; one add, two interpretations: V and C</span>
 
 <p><strong>First, what the bits mean.</strong> The same eight bits stand for different numbers depending on
@@ -654,25 +673,6 @@ agree; once the high bit is set they part ways:</p>
 <p>For a byte whose high bit is set, subtract 256 from its unsigned value to get its signed meaning:
 <code>$FF</code> is 255 - 256 = -1, and <code>$80</code> is 128 - 256 = -128. There is only one zero;
 <code>$80</code> is -128, not a negative zero.</p>
-
-<p><strong>So how does the code know a value is signed?</strong> Nothing records it. The bits are just
-bits, and the CPU never tracks a type. Signedness lives in the code: the programmer decides a value is
-signed, then consistently uses sign-aware instructions on it. It shows up in how the value gets widened (<a href="moving-data.html#ext">EXT</a> copies the top bit up; the unsigned choice zero-fills),
-halved (<a href="shifts-bits.html#asr">ASR</a> keeps the sign, <a href="shifts-bits.html#lsr">LSR</a> does not), and multiplied or
-divided (<a href="math-logic.html#muls">MULS</a> / <a href="math-logic.html#divs">DIVS</a> signed, <a href="math-logic.html#mulu">MULU</a> /
-<a href="math-logic.html#divu">DIVU</a> unsigned), and which conditional branches read the result (signed <code>BLT</code>/<code>BMI</code> versus unsigned <code>BLO</code>/<code>BCS</code>). Most of those live on later pages, linked so you can look them up; you
-do not need them yet, only the idea.</p>
-<p>Your negative velocity is the clearest case. A character's <code>x_vel</code> is stored signed, so moving
-left is a negative value like <code>$FFF0</code> (-16). Each frame the engine applies it to the position
-roughly like this:</p>
-<pre>	<a href="moving-data.html#move">move.w</a>	x_vel(a0),d0	<span class="c">; the signed velocity, $FFF0 = -16</span>
-	<a href="moving-data.html#ext">ext.l</a>	d0		<span class="c">; sign-extend to 32 bits: $FFFFFFF0, still -16</span>
-	<a href="shifts-bits.html#asl">asl.l</a>	<span class="n">#8</span>,d0		<span class="c">; scale it into the position format</span>
-	<a href="math-logic.html#add">add.l</a>	d0,x_pos(a0)	<span class="c">; add it, so a negative velocity moves left</span></pre>
-<p>That <code>ext.l</code> is where the code commits to signed: it stretches <code>$FFF0</code> to
-<code>$FFFFFFF0</code> so -16 stays -16. Zero-extend instead (the unsigned reading) and <code>$FFF0</code>
-becomes +65520, sending the character the wrong way at absurd speed. Same bits, one instruction different,
-opposite behavior. In assembly nothing checks this for you; you are the type system.</p>
 
 <p><strong>The flags are two independent fit checks.</strong> ADD performs one binary addition, and
 afterward the CPU recalculates both flags:</p>
@@ -702,6 +702,25 @@ gave the value. A signed velocity can go negative, so it is read signed:</p>
 <pre>	add.b	<span class="n">#1</span>,d0
 	bcs.s	CounterWrapped		<span class="c">; result passed 255 and wrapped to 0</span></pre>
 <p>The ADD is identical; what <code>d0</code> represents decides which flag matters.</p>
+
+<p><strong>So how does the code know a value is signed?</strong> Nothing records it. The bits are just
+bits, and the CPU never tracks a type. Signedness lives in the code: the programmer decides a value is
+signed, then consistently uses sign-aware instructions on it. The branch you just chose is one, but so is how the value gets widened (<a href="moving-data.html#ext">EXT</a> copies the top bit up; the unsigned choice zero-fills),
+halved (<a href="shifts-bits.html#asr">ASR</a> keeps the sign, <a href="shifts-bits.html#lsr">LSR</a> does not), and multiplied or
+divided (<a href="math-logic.html#muls">MULS</a> / <a href="math-logic.html#divs">DIVS</a> signed, <a href="math-logic.html#mulu">MULU</a> /
+<a href="math-logic.html#divu">DIVU</a> unsigned). Most of those live on later pages, linked so you can look them up; you
+do not need them yet, only the idea.</p>
+<p>Your negative velocity is the clearest case. A character's <code>x_vel</code> is stored signed, so moving
+left is a negative value like <code>$FFF0</code> (-16). Each frame the engine applies it to the position
+roughly like this:</p>
+<pre>	<a href="moving-data.html#move">move.w</a>	x_vel(a0),d0	<span class="c">; the signed velocity, $FFF0 = -16</span>
+	<a href="moving-data.html#ext">ext.l</a>	d0		<span class="c">; sign-extend to 32 bits: $FFFFFFF0, still -16</span>
+	<a href="shifts-bits.html#asl">asl.l</a>	<span class="n">#8</span>,d0		<span class="c">; scale it into the position format</span>
+	<a href="math-logic.html#add">add.l</a>	d0,x_pos(a0)	<span class="c">; add it, so a negative velocity moves left</span></pre>
+<p>That <code>ext.l</code> is where the code commits to signed: it stretches <code>$FFF0</code> to
+<code>$FFFFFFF0</code> so -16 stays -16. Zero-extend instead (the unsigned reading) and <code>$FFF0</code>
+becomes +65520, sending the character the wrong way at absurd speed. Same bits, one instruction different,
+opposite behavior. In assembly nothing checks this for you; you are the type system.</p>
 </div>
 
 <div class="teach"><span class="t-tag">Teaching example &middot; the same choice, in a comparison</span>
@@ -714,25 +733,6 @@ outright:</p>
 branches; read unsigned, 65535 &lt; 1 is false, so <code>blo</code> does not. The branch you choose tells
 the CPU which interpretation your program intends.</p>
 </div>
-
-<details class="explain">
-  <summary>New here? &middot; What does "the result reads as negative" mean? There is no minus sign.</summary>
-  <div class="x-body">
-    <p>Right, there is no minus sign in hardware; a register only holds bits. Negative numbers work by
-    wrap-around, like an odometer rolling backward past zero. The bit pattern <code>$FF</code> in a byte
-    means 255 <em>or</em> -1 depending entirely on how the code chooses to read it, and the tell is the
-    top bit: read as signed, patterns with the top bit clear are zero and up, and patterns with the top
-    bit set are the negatives. The N flag is nothing more than a copy of that top bit. So "N is set"
-    literally means "the top bit of the result is 1," which signed code reads as negative and unsigned
-    code reads as just a large value.</p>
-    <p>That is also why the same flag serves two readings without the CPU knowing which you meant: the
-    hardware sets N, Z, V, and C mechanically from the bits, and your choice of branch (a signed
-    <code>blt</code> versus an unsigned <code>bcs</code>) decides which flags to believe. The full
-    odometer treatment, including why a negative needs more <code>F</code> digits at a bigger size, is on
-    the <a href="moving-data.html#negatives">Moving
-    Data page</a>.</p>
-  </div>
-</details>
 
 <p>This page explains what the codes <em>mean</em>. Watching them actually flip as instructions run,
 picking an operation and seeing X N Z V C change before and after, is the job of the live flags demo on
