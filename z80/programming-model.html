@@ -241,7 +241,7 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   <p class="crumb"><a href="../index.html">EMPYREAN</a> / Z80 ASSEMBLY / THE PROGRAMMING MODEL</p>
   <p class="eyebrow">Z80 Assembly</p>
   <h1>The Programming Model</h1>
-  <p class="sub">This is the Genesis's second CPU, the small one that runs all the sound, and none of the
+  <p class="sub">This is the Genesis's second CPU, the small one that usually runs the sound driver, and none of the
   68000 is required to follow this page. Where a comparison to the 68000 helps, this page draws it.</p>
   <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
 </header>
@@ -269,11 +269,13 @@ way you would name a variable. Unlike a byte of memory, a register has no addres
 <span class="term" data-def="The special register (A on the Z80) that most 8-bit arithmetic and logic operations read from and write their result back to.">accumulator</span>, the register the Z80's 8-bit arithmetic-and-logic unit
 (the part of the chip that adds, subtracts, and compares) is physically wired to. When you add,
 subtract, AND, OR, XOR, or compare one byte against another, the CPU reads one operand from
-<code>A</code>, does the work, and writes the answer straight back into <code>A</code>. Concretely,
-<code>ADD A,r</code>, <code>ADC</code>, <code>SUB</code>, <code>SBC</code>, <code>AND r</code>,
-<code>OR r</code>, <code>XOR r</code>, and <code>CP r</code> (compare) all take <code>A</code> as
-their implied ingredient and their destination, and the flags in <code>F</code> report on how
-<code>A</code>'s result came out. <code>B</code> through <code>L</code> are the general-purpose
+<code>A</code> and does the work. For the 8-bit forms of <code>ADD A,r</code>, <code>ADC A,r</code>,
+<code>SUB</code>, <code>SBC A,r</code>, <code>AND r</code>, <code>OR r</code>, and <code>XOR r</code>,
+the answer is written straight back into <code>A</code>, and the flags in <code>F</code> report on how
+it came out. Compare, <code>CP r</code>, is the odd one out: it subtracts to set the flags exactly as
+<code>SUB</code> would, but throws the result away, so it tells you how <code>A</code> and the other
+value relate without changing <code>A</code> at all. (The 16-bit <code>ADC HL,rr</code> and
+<code>SBC HL,rr</code> are a separate story, since those target <code>HL</code>, not <code>A</code>.) <code>B</code> through <code>L</code> are the general-purpose
 supporting cast: they hold the other values, hand them to <code>A</code> to be worked on, and hold
 results afterward.</p>
 
@@ -336,7 +338,10 @@ driver then branches on whether <code>A</code> came out zero, which is Section 3
         add     a, 3     <span class="c">; A = 8   (A + 3, answer back into A)</span></pre>
   <p style="margin:.5rem 0 0;">There is no <code>add b, 3</code> that behaves this way: 8-bit
   addition is defined on <code>A</code>. To add 3 to <code>B</code>, you would move <code>B</code>
-  into <code>A</code>, add, and move it back, or use <code>INC</code> three times.</p>
+  into <code>A</code>, add, and move it back. (You could also <code>INC</code> three times to reach the
+same value, but that is not the same as adding 3 where the flags are concerned: <code>INC</code> leaves
+the carry <code>C</code> untouched, and after three of them <code>H</code> and <code>P/V</code> describe
+only the final increment.)</p>
 </div>
 
 <!-- ================================================================ -->
@@ -381,10 +386,12 @@ exactly 16 bits wide, so a pair can hold an address. That is what turns the pair
 pointers, the registers you load with an address and then reach memory through.</p>
 
 <p><code>HL</code> is the one built for that job. Written in parentheses, <code>(HL)</code> means "the
-byte in memory at the address currently in <code>HL</code>." A large number of instructions accept
-<code>(HL)</code> anywhere they would accept a register: wherever you could name a register, you can
-instead say <code>(HL)</code> and operate on the byte <code>HL</code> points at. That flexibility makes
-<code>HL</code> the general-purpose pointer of the Z80.</p>
+byte in memory at the address currently in <code>HL</code>." Many 8-bit load, arithmetic, logic,
+shift, and bit instructions accept <code>(HL)</code> as a memory operand in the same places they
+accept an 8-bit register: instead of naming a register you name <code>(HL)</code>, and the instruction
+works on the byte <code>HL</code> points at. It is not literally every position (there is no
+<code>ld (hl),(hl)</code>, for instance), but the pattern is broad enough that <code>(HL)</code> is the
+Z80's everyday way to reach memory, which makes <code>HL</code> its general-purpose pointer.</p>
 
 <details class="explain">
   <summary>New here? &middot; What does <code>(HL)</code> mean?</summary>
@@ -401,11 +408,12 @@ instead say <code>(HL)</code> and operate on the byte <code>HL</code> points at.
   </div>
 </details>
 
-<p>The other pairs can reach memory too, but on a much shorter leash. <code>BC</code> and
-<code>DE</code> address memory only in four fixed forms: <code>LD A,(BC)</code> and
+<p>The other pairs can reach memory too, but on a much shorter leash. In ordinary explicit byte loads,
+<code>BC</code> and <code>DE</code> address memory in just four forms: <code>LD A,(BC)</code> and
 <code>LD A,(DE)</code> to load a byte, and <code>LD (BC),A</code> and <code>LD (DE),A</code> to store
 one. Only <code>A</code> can be the other side, and you cannot do arithmetic on the address in the
-same breath. <code>IX</code> and <code>IY</code>, two more 16-bit registers, reach memory a third way,
+same breath. (<code>DE</code> also serves as an implied destination pointer in the block-move
+instructions such as <code>LDIR</code>, but that is a specialized use for a later page.) <code>IX</code> and <code>IY</code>, two more 16-bit registers, reach memory a third way,
 by indexed addressing such as <code>(IX+d)</code> with a signed displacement, which Section 4 covers.
 So the pairs are not interchangeable pointers: <code>HL</code> is the flexible general pointer,
 <code>BC</code> and <code>DE</code> are <code>A</code>-only address registers, and <code>IX</code>/<code>IY</code>
@@ -507,12 +515,15 @@ do next.</p>
 bits is a separate flag, a single yes/no fact set automatically by the last operation. Section 1
 called <code>F</code> "special" and pointed here; this is the whole of it.</p>
 
-<p><code>F</code> pairs up with the accumulator exactly the way Section 2's pairs work: <code>A</code>
-and <code>F</code> together form the register pair <code>AF</code>, with <code>A</code> as the high
-byte and <code>F</code> as the low byte. The pairing is not arbitrary. The accumulator holds the
-result you just computed and <code>F</code> holds the flags describing it, so it is natural to save
-or restore the two together in one stroke; the instruction <code>push af</code> stows both at once
-(you will meet the stack it pushes to in Section 4).</p>
+<p><code>A</code> and <code>F</code> can be treated as the register pair <code>AF</code>, with
+<code>A</code> as the high byte and <code>F</code> as the low byte. Watch out here, though, because
+this is not a general 16-bit working register the way Section 2's <code>BC</code>, <code>DE</code>,
+and <code>HL</code> are: there is no <code>ld af,$1234</code>, no <code>inc af</code>, no
+<code>add hl,af</code>. <code>AF</code> exists for one narrow but important job, moving the accumulator
+and its flags together in a single step. The accumulator holds the result you just computed and
+<code>F</code> holds the flags describing it, so it is natural to save or swap the two as a unit; the
+instruction <code>push af</code> stows both at once (you will meet the stack it pushes to in
+Section 4), and Section 5's <code>ex af,af'</code> exchanges them as a unit too.</p>
 
 <details class="explain">
   <summary>New here? &middot; What is a flag, and who reads it?</summary>
@@ -540,7 +551,7 @@ come back to; the notes below it explain the ones that need care.</p>
     <tr><td><code>7</code></td><td><code>S</code> (Sign)</td><td>A copy of the result's top bit. When a value is read as signed, <code>S</code> = 1 means the result is negative.</td></tr>
     <tr><td><code>6</code></td><td><code>Z</code> (Zero)</td><td>Set to 1 when the result is zero. The most-tested flag by far.</td></tr>
     <tr><td><code>5</code></td><td><span style="color:var(--dim);">unused</span></td><td>Undocumented; not a flag you set out to use.</td></tr>
-    <tr><td><code>4</code></td><td><code>H</code> (Half-carry)</td><td>Set when a carry or borrow crosses between bit 3 and bit 4 of a byte. The Z80 uses it to fix up binary-coded-decimal arithmetic. Not directly testable by a branch.</td></tr>
+    <tr><td><code>4</code></td><td><code>H</code> (Half-carry)</td><td>Set when a carry or borrow crosses between bit 3 and bit 4 for 8-bit arithmetic (for a 16-bit add it is the carry between bit 11 and bit 12). The Z80 uses it to fix up binary-coded-decimal arithmetic. Not directly testable by a branch.</td></tr>
     <tr><td><code>3</code></td><td><span style="color:var(--dim);">unused</span></td><td>Undocumented; not a flag you set out to use.</td></tr>
     <tr><td><code>2</code></td><td><code>P/V</code> (Parity/Overflow)</td><td>Dual-purpose. After logic operations it reports parity; after arithmetic it reports signed overflow. See the note below.</td></tr>
     <tr><td><code>1</code></td><td><code>N</code> (Add/Subtract)</td><td>0 after an add, 1 after a subtract. The Z80 uses it, together with <code>H</code>, to correct binary-coded-decimal results. Not directly testable by a branch.</td></tr>
@@ -562,6 +573,16 @@ valid decimal form. You do not test <code>H</code> or <code>N</code> with a bran
 conditional jump that looks at them. They exist for <code>DAA</code>'s benefit, and it is fair to
 mostly ignore them until you do decimal math. Bits 5 and 3 carry no defined meaning at all; they are
 undocumented and not flags you use.</p>
+
+<p>One rule underlies all of this and is worth holding onto: each instruction decides for itself which
+flags it updates and which it leaves untouched. Not every operation rewrites all six. Many arithmetic
+and logic instructions on <code>A</code> update the whole set, but others move only some, and a few
+move none at all: <code>inc hl</code> and <code>dec hl</code> (and the other 16-bit increments) change
+no flags whatsoever, and <code>add hl,rr</code> updates <code>H</code>, <code>N</code>, and
+<code>C</code> while leaving <code>S</code>, <code>Z</code>, and <code>P/V</code> exactly as an earlier
+instruction left them. That is not an oversight, it is useful: it lets code set a flag with one
+instruction and branch on it several instructions later. When you reach the instruction pages, each
+entry spells out precisely which flags it moves.</p>
 
 <details class="explain">
   <summary>New here? &middot; Why is one bit doing two jobs?</summary>
@@ -603,9 +624,11 @@ the Z80's set is a deliberate variation on the same idea. Reading the shared nam
 <code>N</code> means different things on the two chips (negative on the 68000, add/subtract on the
 Z80), while the Z80's sign flag is named <code>S</code>. <code>Z</code> and <code>C</code> match. The
 Z80 has no <code>X</code> (extend) bit; it adds a half-carry <code>H</code> and an add/subtract
-<code>N</code>, both purely for decimal-adjust; and it folds the 68000's separate parity and overflow
-needs into the single dual-purpose <code>P/V</code>. Same principle, a result leaves flags behind for
-the next instruction, with a different bit budget. (Optional; the
+<code>N</code>, both purely for decimal-adjust. Overflow is handled differently too: the 68000 has a
+dedicated overflow bit <code>V</code> and no parity flag at all, while the Z80 has no separate
+<code>V</code> and instead reuses its one <code>P/V</code> bit for either parity or overflow depending
+on the instruction. Same principle, a result leaves flags behind for the next instruction, with a
+different bit budget. (Optional; the
 <a href="../m68k/programming-model.html">68000 Programming Model</a> page covers that register.)</p>
 
 <!-- ================================================================ -->
@@ -620,7 +643,7 @@ here we just name each register and what it holds.</p>
 <p><code>IX</code> and <code>IY</code> are the Z80's two <span class="term" data-def="A 16-bit register (IX or IY on the Z80) that holds a base address, so an instruction can reach memory at that address plus a small signed offset.">index registers</span>. Each holds a 16-bit
 address, like <code>HL</code>, but their signature move is indexed addressing: <code>(IX+d)</code> means
 "the byte at the address in <code>IX</code> plus a small <a href="../basics/numbers-and-notation.html">signed displacement</a> <code>d</code>." That <code>d</code> is
-an 8-bit signed value, so it reaches roughly -128 to +127 bytes from the base. Point an index register at
+an 8-bit signed value, so it reaches from -128 to +127 bytes from the base. Point an index register at
 the start of a small data structure and each field is a fixed offset away, so you read or write any field
 by naming the base once and the offset per access.</p>
 
@@ -691,7 +714,7 @@ began.</p>
 right now, and it advances on its own as each instruction runs, so straight-line code simply flows from one
 instruction to the next. You never load <code>PC</code> directly the way you load <code>A</code> or
 <code>HL</code>; instead the control-flow instructions rewrite it for you. A jump drops a new address into
-<code>PC</code>; a call does that after first pushing the old <code>PC</code> onto the stack; a return pops
+<code>PC</code>; a call does that after first pushing the return address, the address of the instruction right after the call, onto the stack; a return pops
 that saved address back into <code>PC</code>. Every branch you write in Section 3's two-beat rhythm is, under
 the hood, a conditional edit to <code>PC</code>.</p>
 
@@ -707,8 +730,10 @@ Z80 just spends fewer, narrower registers on the same jobs. (The
 <p>Here is the Z80's best "wait, what?" trick: it carries a second, complete copy of its main
 registers, kept invisibly in the background. There is another <code>AF</code>, another
 <code>BC</code>, another <code>DE</code>, and another <code>HL</code>, written with a prime mark as
-<code>AF'</code>, <code>BC'</code>, <code>DE'</code>, and <code>HL'</code>. Only one of the two sets
-is live at any given moment; the other waits in the wings. This is the
+<code>AF'</code>, <code>BC'</code>, <code>DE'</code>, and <code>HL'</code>. It is not one all-or-nothing
+spare set, though: it comes in two halves that swap independently, the <code>BC</code>/<code>DE</code>/<code>HL</code>
+trio as one bank and <code>AF</code> as the other, so you can have the shadow <code>BC</code>/<code>DE</code>/<code>HL</code>
+live while the main <code>AF</code> stays put (the sound driver does exactly that below). This is the
 <span class="term" data-def="A duplicate set of the main registers (written with a prime, like BC') that the Z80 can swap in with a single instruction, mainly for fast interrupt handling.">shadow register set</span> (also called the alternate set), and nothing about it looks like the tidy,
 one-of-each CPU the earlier sections described.</p>
 
@@ -803,11 +828,14 @@ exact piece <code>EXX</code> leaves out. Where <code>EXX</code> saves your worki
         ex      af, af'      <span class="c">; stash A and flags in the shadow AF</span>
         <span class="c">; ... do a little work in A, freely changing the flags ...</span>
         ex      af, af'      <span class="c">; restore A and flags, exactly as they were</span>
-        ret</pre>
+        reti</pre>
   <p style="margin:.5rem 0 0;">The first swap hides the interrupted code's <code>A</code> and flags
   in <code>AF'</code>; the second brings them back. Because the flag register rides inside
   <code>AF</code>, this is a cheap way to borrow the accumulator without disturbing whatever
-  comparison the interrupted code was in the middle of.</p>
+  comparison the interrupted code was in the middle of. A maskable interrupt handler conventionally
+  ends with <code>reti</code> rather than plain <code>ret</code>; on the Genesis, which has no Z80
+  interrupt daisy-chain, a plain <code>ret</code> returns just the same, but <code>reti</code> is the
+  portable habit. (Note that <code>reti</code> does not by itself re-enable interrupts.)</p>
 </div>
 
 <p>If the 68000 is your reference point, there is simply nothing to compare this to, which is itself
@@ -917,7 +945,7 @@ function expandAll(btn){
     'flag-pv':'<b>P/V</b> is parity after logic, overflow after arithmetic.',
     'flag-n':'<b>N</b> is add/subtract, for BCD.',
     'flag-c':'<b>C</b> is carry/borrow.',
-    'flag-unused':'<b>An unused flag bit</b>: unused, always 0.',
+    'flag-unused':'<b>An undocumented flag bit</b>: its value is not guaranteed, so portable code must not rely on it.',
     'index':'<b>%NM%</b> is a 16-bit index register for (%NM%+d) addressing.',
     'sp':'<b>SP</b> is the 16-bit stack pointer; the stack grows downward.',
     'pc':'<b>PC</b> is the 16-bit program counter; jumps and calls rewrite it, you do not.',
