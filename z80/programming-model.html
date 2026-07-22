@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Z80: The Programming Model</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🎹%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+/* ============================================================
+   Page-specific styles: Z80 - The Programming Model
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+details.refbox summary::-webkit-details-marker{display:none;}
+
+/* collapsible reference box (reused from the instruction pages) */
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* this page's explorer captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+
+/* register-model explorer: poke any part of the Z80's programmer-visible state,
+   and toggle Pair to watch two 8-bit registers become one 16-bit register.
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE; alpha exempt) */
+.regmodel{display:flex; flex-direction:column; gap:.9rem;}
+.rm-egbanner{font-family:var(--mono); font-size:.68rem; color:var(--dim); line-height:1.5;
+  border:1px solid var(--line); border-radius:4px; padding:.5rem .65rem; background:var(--panel2);}
+.rm-egbanner em{color:var(--ink); font-style:normal;}
+.rm-banks{display:flex; flex-wrap:wrap; gap:1.3rem;}
+.rm-bank{display:flex; flex-direction:column; gap:.3rem; align-content:start;}
+.rm-row{display:flex; flex-wrap:wrap; gap:.3rem;}
+.rm-btitle{font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--dim); margin-bottom:.1rem;}
+.rm-btitle .rm-eg{color:var(--dim); text-transform:none; letter-spacing:0; margin-left:.4rem;}
+/* registers are clickable name+value chips */
+.rm-reg{display:flex; flex-direction:column; align-items:center; gap:.05rem; white-space:nowrap;
+  font-family:var(--mono); font-size:.8rem; padding:.3rem .55rem; border:1px solid var(--line);
+  border-radius:4px; background:var(--panel2); color:var(--ink); cursor:pointer; min-width:2.4rem;}
+.rm-reg .rm-nm{color:var(--ink); font-weight:bold;}
+.rm-reg .rm-hex{font-size:.68rem; color:var(--gold);}
+.rm-reg.rm-pair{border-color:var(--accent);}
+.rm-reg.rm-shadow{opacity:.5;}
+.rm-reg.chg{border-color:var(--accent); background:rgba(68,102,238,.2);}
+.rm-reg[aria-pressed="true"]{border-color:var(--accent); background:rgba(68,102,238,.2);}
+.rm-reg:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+/* the flag register F, drawn as its 8-bit ruler */
+.rm-flagwrap{display:flex; flex-direction:column; gap:.22rem;}
+.rm-rscale{display:flex; justify-content:space-between; font-family:var(--mono); font-size:.52rem;
+  letter-spacing:.05em; color:var(--dim);}
+.rm-rcells{display:flex; gap:3px; overflow-x:auto; padding-bottom:.1rem;}
+.rm-rc{flex:1 1 0; min-width:1.9rem; display:flex; flex-direction:column; align-items:center;
+  gap:.05rem; padding:.18rem .05rem; border:1px solid var(--line); border-radius:3px;
+  background:var(--panel2); color:var(--ink); cursor:pointer; font-family:var(--mono);}
+.rm-rc .rm-rv{font-size:.74rem; font-weight:bold; color:var(--gold);}
+.rm-rc .rm-rn{font-size:.5rem; color:var(--dim);}
+.rm-rc.ccr{border-color:var(--gold);}
+.rm-rc.off{opacity:.42;}
+.rm-rc.off .rm-rv{color:var(--dim); font-weight:normal;}
+.rm-rc[aria-pressed="true"]{border-color:var(--accent); background:rgba(68,102,238,.2);}
+.rm-rc:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.rm-cap{font-family:var(--mono); font-size:.78rem; color:var(--ink); margin:0;
+  min-height:4.2em; max-width:40rem; line-height:1.5; border-top:1px solid var(--line); padding-top:.6rem;}
+.rm-cap b{color:var(--gold); font-weight:normal;}
+.rm-ctrl{display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;}
+.rm-btn{font-family:var(--mono); font-size:.72rem; padding:.3rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.rm-btn[aria-pressed="true"]{border-color:var(--accent); background:rgba(68,102,238,.2);}
+.rm-btn:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.rm-hint{font-family:var(--mono); font-size:.66rem; color:var(--dim);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / Z80 ASSEMBLY / THE PROGRAMMING MODEL</p>
+  <p class="eyebrow">Z80 Assembly</p>
+  <h1>The Programming Model</h1>
+  <p class="sub">This is the Genesis's second CPU, the small one that runs all the sound, and none of the
+  68000 is required to follow this page. Where a comparison to the 68000 helps, this page draws it.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>The accumulator and the 8-bit registers</a>
+  <a href="#s2"><span class="n">2</span>Register pairs</a>
+  <a href="#s3"><span class="n">3</span>The flag register F, and AF</a>
+  <a href="#s4"><span class="n">4</span>IX, IY, SP, and PC</a>
+  <a href="#s5"><span class="n">5</span>The shadow register set</a>
+</nav>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; The accumulator and the 8-bit registers</h2>
+
+<p>A Z80 program does almost all of its work in a handful of tiny storage slots built into the
+processor, called <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span>. There are seven you compute with, and every one of them holds
+exactly <a href="../basics/numbers-and-notation.html">8 bits</a>, a single byte. Their names are short: <code>A</code>, <code>B</code>,
+<code>C</code>, <code>D</code>, <code>E</code>, <code>H</code>, and <code>L</code>. An eighth
+register, <code>F</code>, is special: it holds status flags rather than a value you work with, and
+Section 3 is entirely about it. You name a register to use it (<code>A</code>, <code>B</code>), the
+way you would name a variable. Unlike a byte of memory, a register has no address of its own.</p>
+
+<p>One of the seven is not like the others. <code>A</code> is the
+<span class="term" data-def="The special register (A on the Z80) that most 8-bit arithmetic and logic operations read from and write their result back to.">accumulator</span>, the register the Z80's 8-bit arithmetic-and-logic unit
+(the part of the chip that adds, subtracts, and compares) is physically wired to. When you add,
+subtract, AND, OR, XOR, or compare one byte against another, the CPU reads one operand from
+<code>A</code>, does the work, and writes the answer straight back into <code>A</code>. Concretely,
+<code>ADD A,r</code>, <code>ADC</code>, <code>SUB</code>, <code>SBC</code>, <code>AND r</code>,
+<code>OR r</code>, <code>XOR r</code>, and <code>CP r</code> (compare) all take <code>A</code> as
+their implied ingredient and their destination, and the flags in <code>F</code> report on how
+<code>A</code>'s result came out. <code>B</code> through <code>L</code> are the general-purpose
+supporting cast: they hold the other values, hand them to <code>A</code> to be worked on, and hold
+results afterward.</p>
+
+<p>It would make a tidy story to say every calculation flows through <code>A</code>, but that
+overstates it. <code>A</code> is the accumulator for 8-bit arithmetic, logic, and comparison, which
+is a genuinely large share of the everyday work, yet plenty of operations bypass it entirely.
+<code>INC</code> and <code>DEC</code> (add or subtract one) act on any 8-bit register directly. The
+bit operations (<code>BIT</code>, <code>SET</code>, <code>RES</code>) and the rotates and shifts also
+work on any register, or on the byte in memory at <code>(HL)</code>. And the 16-bit additions, which Section 2 covers, add register <em>pairs</em>
+together and never touch <code>A</code>. So the accurate framing is this: <code>A</code> is where
+8-bit math and logic happen, while many single-register operations, and all the 16-bit ones, go
+around it.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What does "accumulator" mean?</summary>
+  <div class="x-body">
+    <p>Picture an old desktop calculator with a single running total on its display. You do not get
+    to compute "3 plus 4" in the abstract; you press a number, then press +, then press another
+    number, and the total on the display updates. Every operation reads that one display and writes
+    its answer back to it. That display is an accumulator: the one place results pile up, or
+    <em>accumulate</em>.</p>
+    <p>On the Z80, <code>A</code> is that display. The chip has one 8-bit adder-and-comparer, and it
+    is wired so that one side of it is always <code>A</code>. To add two bytes you get one of them
+    into <code>A</code> first, then add the second; the sum lands in <code>A</code>, ready for the
+    next step. The other registers (<code>B</code> through <code>L</code>) are like scraps of paper
+    where you park numbers you will feed into the calculator later. This is why so much Z80 code
+    has the rhythm "load a value into <code>A</code>, do something to it, read the result out of
+    <code>A</code>."</p>
+  </div>
+</details>
+
+<p>If you have seen the 68000, the contrast is the quickest way in, though you need none of it here.
+That chip gives you eight equal, interchangeable 32-bit data registers, <code>d0</code> through
+<code>d7</code>; you can add into any one of them just as easily as any other. The Z80 takes the
+opposite approach: one privileged 8-bit accumulator plus six general 8-bit registers that feed it.
+Different philosophy, same underlying job of holding the values a program is working on. (The
+<a href="../m68k/programming-model.html">68000 Programming Model</a> page covers that side if you are curious.)</p>
+
+<p>Here is the accumulator doing an ordinary 8-bit job, lifted straight from Aeon's Z80 sound
+driver as it polls the FM sound chip:</p>
+
+<pre>        ld      a, (SND_Z80_YM_A0)       <span class="c">; YM status: bit0 = Timer A overflow</span>
+        and     SND_TIMERA_OVF_MASK</pre>
+<span class="src">engine/sound/z80_sound_driver.asm:363</span>
+
+<p>The first line loads the FM chip's status byte into <code>A</code>. The second ANDs that byte with
+a mask that has just one bit set, the "Timer A overflowed" bit. AND keeps a bit only where
+<em>both</em> inputs have it, so afterward <code>A</code> holds that single bit and nothing else:
+non-zero if the timer overflowed, zero if it did not. Notice that both the read value and the result
+live in <code>A</code>, because that is exactly where 8-bit logic like AND operates. The instruction
+names only the mask (<code>SND_TIMERA_OVF_MASK</code> is a named constant, not a register);
+<code>A</code> is the implied other operand and the destination, never written in the line. (The
+driver then branches on whether <code>A</code> came out zero, which is Section 3's flags at work.)</p>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not engine code</span>
+  <p style="margin:0 0 .5rem;">The same shape with plain numbers, to see the accumulator fill and
+  update:</p>
+  <pre>        ld      a, 5     <span class="c">; A = 5</span>
+        add     a, 3     <span class="c">; A = 8   (A + 3, answer back into A)</span></pre>
+  <p style="margin:.5rem 0 0;">There is no <code>add b, 3</code> that behaves this way: 8-bit
+  addition is defined on <code>A</code>. To add 3 to <code>B</code>, you would move <code>B</code>
+  into <code>A</code>, add, and move it back, or use <code>INC</code> three times.</p>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; Register pairs</h2>
+
+<p>Two of the 8-bit registers can be glued together and used as a single 16-bit register. Join
+<code>B</code> and <code>C</code> and you have <code>BC</code>; the same trick gives <code>DE</code>
+(from <code>D</code> and <code>E</code>) and <code>HL</code> (from <code>H</code> and <code>L</code>).
+This joined-up form is called a <span class="term" data-def="Two 8-bit registers treated together as one 16-bit register, like B and C forming BC.">register pair</span>, and much of the Z80's character comes from it.</p>
+
+<p>In each pair the first-named register holds the <a href="../basics/numbers-and-notation.html">high byte</a> and the second holds the low
+byte. So <code>B</code> is the high byte of <code>BC</code> and <code>C</code> is the low byte;
+<code>D</code> is high and <code>E</code> low in <code>DE</code>; <code>H</code> is high and
+<code>L</code> low in <code>HL</code>. Read as one number, <code>BC</code> with <code>B</code> = <code>$19</code>
+and <code>C</code> = <code>$2A</code> is the 16-bit value <code>$192A</code>: the high byte supplies the
+top two hex digits, the low byte the bottom two.</p>
+
+<figure class="diagram">
+  <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; font-family:var(--mono);">
+    <div style="display:flex; gap:.4rem;">
+      <div style="border:1px solid var(--line); border-radius:4px; padding:.55rem .7rem; background:var(--panel); text-align:center;">
+        <div style="font-size:.62rem; letter-spacing:.12em; color:var(--dim); text-transform:uppercase;">B &middot; high byte</div>
+        <div style="font-size:1.15rem; color:var(--gold); margin-top:.25rem;">$19</div>
+      </div>
+      <div style="border:1px solid var(--line); border-radius:4px; padding:.55rem .7rem; background:var(--panel); text-align:center;">
+        <div style="font-size:.62rem; letter-spacing:.12em; color:var(--dim); text-transform:uppercase;">C &middot; low byte</div>
+        <div style="font-size:1.15rem; color:var(--gold); margin-top:.25rem;">$2A</div>
+      </div>
+    </div>
+    <div style="font-size:1.5rem; color:var(--accent);" aria-hidden="true">&rarr;</div>
+    <div style="border:1px solid var(--accent); border-radius:4px; padding:.55rem .9rem; background:var(--panel2); text-align:center;">
+      <div style="font-size:.62rem; letter-spacing:.12em; color:var(--dim); text-transform:uppercase;">BC &middot; one 16-bit register</div>
+      <div style="font-size:1.15rem; color:var(--gold); margin-top:.25rem;">$192A</div>
+    </div>
+  </div>
+  <figcaption>B (high) and C (low) join into the 16-bit pair BC: $19 and $2A become $192A.</figcaption>
+</figure>
+
+<p>Why bother joining them? A single 8-bit register only counts from 0 to 255, nowhere near enough
+to name a location in the Z80's memory; a memory address needs a full 16 bits. A register pair is
+exactly 16 bits wide, so a pair can hold an address. That is what turns the pairs into the Z80's
+pointers, the registers you load with an address and then reach memory through.</p>
+
+<p><code>HL</code> is the one built for that job. Written in parentheses, <code>(HL)</code> means "the
+byte in memory at the address currently in <code>HL</code>." A large number of instructions accept
+<code>(HL)</code> anywhere they would accept a register: wherever you could name a register, you can
+instead say <code>(HL)</code> and operate on the byte <code>HL</code> points at. That flexibility makes
+<code>HL</code> the general-purpose pointer of the Z80.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What does <code>(HL)</code> mean?</summary>
+  <div class="x-body">
+    <p>Think of the number in <code>HL</code> as an address written on an envelope, not the letter
+    inside. Name the pair plainly, <code>HL</code>, and you are talking about that 16-bit number
+    itself. Wrap it in parentheses, <code>(HL)</code>, and you are talking about the byte that lives
+    <em>at</em> that address in memory. It is the difference between a street address on an envelope
+    and the house standing at that address.</p>
+    <p>So a pair like <code>HL</code> does not store your data; it stores <em>where</em> your data is.
+    To read the byte, the CPU takes the address out of <code>HL</code>, goes to that spot in memory,
+    and brings the byte back. Following an address to the thing it names has a name of its own:
+    dereferencing. The parentheses are the Z80's way of writing it.</p>
+  </div>
+</details>
+
+<p>The other pairs can reach memory too, but on a much shorter leash. <code>BC</code> and
+<code>DE</code> address memory only in four fixed forms: <code>LD A,(BC)</code> and
+<code>LD A,(DE)</code> to load a byte, and <code>LD (BC),A</code> and <code>LD (DE),A</code> to store
+one. Only <code>A</code> can be the other side, and you cannot do arithmetic on the address in the
+same breath. <code>IX</code> and <code>IY</code>, two more 16-bit registers, reach memory a third way,
+by indexed addressing such as <code>(IX+d)</code> with a signed displacement, which Section 4 covers.
+So the pairs are not interchangeable pointers: <code>HL</code> is the flexible general pointer,
+<code>BC</code> and <code>DE</code> are <code>A</code>-only address registers, and <code>IX</code>/<code>IY</code>
+are the displacement-indexed pair.</p>
+
+<p>If the 68000 is your reference point, <code>HL</code> is the closest thing the Z80 has to one of its
+address registers, but the resemblance is loose: the 68000's <code>a0</code> through <code>a6</code> are
+interchangeable pointers (<code>a7</code> doubles as its stack pointer), whereas the Z80's pairs each
+carry their own rules. (Optional reading; the
+<a href="../m68k/programming-model.html">68000 Programming Model</a> page has that side.)</p>
+
+<p>Here is a pair being loaded in one stroke, from Aeon's sound driver as it sets up DAC streaming:</p>
+
+<pre>        ld      de, SND_Z80_YM_A1        <span class="c">; de = $4001 (DAC data port; held all streaming)</span></pre>
+<span class="src">engine/sound/z80_sound_driver.asm:341</span>
+
+<p>A single instruction drops the full 16-bit constant <code>$4001</code> into <code>DE</code>, filling
+both halves at once (<code>D</code> becomes <code>$40</code>, <code>E</code> becomes <code>$01</code>).
+The driver parks that address in <code>DE</code> and streams every sample byte out through it.</p>
+
+<p>And here is <code>HL</code> working as a pointer. A few lines earlier the driver set <code>H</code> to
+a fixed value, <code>$19</code>; now it sets <code>L</code> and reads through the pair:</p>
+
+<pre>        ld      l, c                     <span class="c">; l = RD (h = $19)</span>
+        ld      a, (hl)                  <span class="c">; ring[rd]</span></pre>
+<span class="src">engine/sound/z80_sound_driver.asm:356</span>
+
+<p><code>H</code> is holding the page <code>$19</code> and <code>L</code> is set to an index
+(<code>c</code>, the ring read position), so together <code>HL</code> points at
+<code>ring[rd]</code>, one byte in a small buffer. <code>ld a,(hl)</code> then reads that byte into
+<code>A</code>. The same two registers are doing double duty here: individually as the bytes
+<code>H</code> and <code>L</code> that you set one at a time, and jointly as the single pointer
+<code>HL</code> that names a memory address.</p>
+
+<figure class="diagram">
+<div class="regmodel" id="regmodel">
+  <div class="rm-egbanner"><em>The Z80's programmer-visible state.</em> These are the slots the CPU
+  works in; they live inside the chip and have no memory address of their own. Click any slot to read
+  what it is for. The core lesson lives in the <b>Pair</b> button: press it to watch each two 8-bit
+  registers join into one 16-bit register, high byte then low byte. <code>EXX</code> and
+  <code>EX AF,AF'</code> swap in the dimmed shadow set.</div>
+
+  <div class="rm-banks">
+    <div class="rm-bank">
+      <div class="rm-btitle">Working registers (8-bit) <span class="rm-eg">Pair joins them into 16-bit</span></div>
+      <div class="rm-row" id="rm-main"></div>
+    </div>
+    <div class="rm-bank">
+      <div class="rm-btitle">Shadow set (alternate, swap-only)</div>
+      <div class="rm-row" id="rm-shadow"></div>
+    </div>
+  </div>
+
+  <div class="rm-flagwrap">
+    <div class="rm-btitle">F, the flag register, bit 7 down to bit 0 <span class="rm-eg">example: Z and C set</span></div>
+    <div class="rm-rscale"><span>bit 7</span><span>bit 0</span></div>
+    <div class="rm-rcells" id="rm-flags" role="group" aria-label="The flag register F, eight bits from bit 7 down to bit 0. Click any bit to read its job."></div>
+  </div>
+
+  <div class="rm-bank">
+    <div class="rm-btitle">Index and pointer registers (16-bit)</div>
+    <div class="rm-row">
+      <button type="button" class="rm-reg" data-part="index" data-nm="IX"><span class="rm-nm">IX</span><span class="rm-hex">$1C00</span></button>
+      <button type="button" class="rm-reg" data-part="index" data-nm="IY"><span class="rm-nm">IY</span><span class="rm-hex">$1FF0</span></button>
+      <button type="button" class="rm-reg" data-part="sp" data-nm="SP"><span class="rm-nm">SP</span><span class="rm-hex">$1FFE</span></button>
+      <button type="button" class="rm-reg" data-part="pc" data-nm="PC"><span class="rm-nm">PC</span><span class="rm-hex">$0038</span></button>
+    </div>
+  </div>
+
+  <div class="rm-ctrl">
+    <button type="button" class="rm-btn" id="rm-pair" aria-pressed="false">Pair</button>
+    <button type="button" class="rm-btn" id="rm-exx">EXX (swap BC/DE/HL)</button>
+    <button type="button" class="rm-btn" id="rm-exaf">EX AF,AF'</button>
+    <button type="button" class="rm-btn" id="rm-reset">Reset</button>
+    <span class="rm-hint">Every slot is reachable by Tab and operable with Enter or Space.</span>
+  </div>
+
+  <p class="rm-cap" id="rm-cap" aria-live="polite"></p>
+</div>
+<figcaption>The Z80's registers. Toggle Pair to watch B and C join into the 16-bit BC, high byte then
+low; press EXX to swap in the shadow BC'/DE'/HL' set, or EX AF,AF' to swap AF with AF'. Static fallback:
+A is the accumulator; B, C, D, E, H, L are 8-bit general registers that pair up (B with C, D with E, H
+with L) into the 16-bit BC, DE, HL; F is the flag register whose bits (S, Z, H, P/V, N, C, plus two
+unused) record the last result; IX and IY are index registers, SP the stack pointer, PC the program
+counter; and a dimmed shadow set (AF', BC', DE', HL') can only be swapped in, never named directly.
+Selecting any slot names its width and role.</figcaption>
+</figure>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; The flag register F, and AF</h2>
+
+<p>Every time the Z80 does a piece of arithmetic or logic, it leaves a few little yes/no notes
+behind about how the result came out: was it zero, did it go negative, did it overflow. Those notes
+live in the eighth register, <code>F</code>, and a later instruction can read them to decide what to
+do next.</p>
+
+<p><code>F</code> is the <span class="term" data-def="A register whose individual bits each record a fact about the last result, such as whether it was zero or negative, so a later instruction can branch on it.">flag register</span>, the Z80's status register. Unlike <code>A</code> through
+<code>L</code>, you do not load a value into <code>F</code> and compute with it; instead each of its
+bits is a separate flag, a single yes/no fact set automatically by the last operation. Section 1
+called <code>F</code> "special" and pointed here; this is the whole of it.</p>
+
+<p><code>F</code> pairs up with the accumulator exactly the way Section 2's pairs work: <code>A</code>
+and <code>F</code> together form the register pair <code>AF</code>, with <code>A</code> as the high
+byte and <code>F</code> as the low byte. The pairing is not arbitrary. The accumulator holds the
+result you just computed and <code>F</code> holds the flags describing it, so it is natural to save
+or restore the two together in one stroke; the instruction <code>push af</code> stows both at once
+(you will meet the stack it pushes to in Section 4).</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is a flag, and who reads it?</summary>
+  <div class="x-body">
+    <p>A flag is one bit that answers one yes/no question about the last thing the CPU did. Picture a
+    row of small mailbox flags, each either up or down. After the Z80 subtracts two numbers, it flips
+    the "was the answer zero?" flag up if they were equal, and down if they were not. It does this
+    for you, every time, without being asked.</p>
+    <p>The reader is the next instruction. Z80 code almost never tests a value directly; instead it
+    does a calculation, which sets the flags, and then a <em>conditional jump</em> looks at one flag
+    and branches on it. <code>jp z,somewhere</code> means "jump to <code>somewhere</code> only if the
+    zero flag is up"; <code>jr c,elsewhere</code> means "jump only if the carry flag is up." So the
+    rhythm of Z80 logic is two beats: an operation that quietly sets flags, then a jump that reads
+    one. The flags are the wire between "what just happened" and "what to do about it."</p>
+  </div>
+</details>
+
+<p>Here is the exact layout of <code>F</code>, bit 7 down to bit 0. This table is the reference to
+come back to; the notes below it explain the ones that need care.</p>
+
+<div class="tbl">
+<table>
+  <thead><tr><th>Bit</th><th>Name</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>7</code></td><td><code>S</code> (Sign)</td><td>A copy of the result's top bit. When a value is read as signed, <code>S</code> = 1 means the result is negative.</td></tr>
+    <tr><td><code>6</code></td><td><code>Z</code> (Zero)</td><td>Set to 1 when the result is zero. The most-tested flag by far.</td></tr>
+    <tr><td><code>5</code></td><td><span style="color:var(--dim);">unused</span></td><td>Undocumented; not a flag you set out to use.</td></tr>
+    <tr><td><code>4</code></td><td><code>H</code> (Half-carry)</td><td>Set when a carry or borrow crosses between bit 3 and bit 4 of a byte. The Z80 uses it to fix up binary-coded-decimal arithmetic. Not directly testable by a branch.</td></tr>
+    <tr><td><code>3</code></td><td><span style="color:var(--dim);">unused</span></td><td>Undocumented; not a flag you set out to use.</td></tr>
+    <tr><td><code>2</code></td><td><code>P/V</code> (Parity/Overflow)</td><td>Dual-purpose. After logic operations it reports parity; after arithmetic it reports signed overflow. See the note below.</td></tr>
+    <tr><td><code>1</code></td><td><code>N</code> (Add/Subtract)</td><td>0 after an add, 1 after a subtract. The Z80 uses it, together with <code>H</code>, to correct binary-coded-decimal results. Not directly testable by a branch.</td></tr>
+    <tr><td><code>0</code></td><td><code>C</code> (Carry)</td><td>The carry out of an add, or the borrow from a subtract. The other heavily-tested flag.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Four of these flags you branch on directly. <code>Z</code> (zero) and <code>C</code> (carry) are
+the workhorses: nearly every loop and comparison ends with a jump that reads one of them.
+<code>S</code> (sign) is simply a copy of the result's top bit, which is the sign bit
+<a href="../basics/numbers-and-notation.html">when a byte is read as a signed number</a>; a set <code>S</code> means negative. <code>P/V</code>
+you can also branch on, but its meaning depends on what set it, which the next note untangles.</p>
+
+<p>The other two, <span class="term" data-def="A flag set when an add or subtract carries between bit 3 and bit 4 of a byte; the Z80 uses it to fix up binary-coded-decimal arithmetic.">half-carry</span> (<code>H</code>) and add/subtract (<code>N</code>), are a matched pair the
+Z80 keeps for one specific job: correcting binary-coded-decimal arithmetic (packing a decimal digit
+into each nibble of a byte). The <code>DAA</code> instruction reads both to adjust a result back into
+valid decimal form. You do not test <code>H</code> or <code>N</code> with a branch; there is no
+conditional jump that looks at them. They exist for <code>DAA</code>'s benefit, and it is fair to
+mostly ignore them until you do decimal math. Bits 5 and 3 carry no defined meaning at all; they are
+undocumented and not flags you use.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why is one bit doing two jobs?</summary>
+  <div class="x-body">
+    <p><code>P/V</code> is the one flag whose meaning changes with the instruction that set it, which
+    is confusing until you see why. The Z80 had exactly one spare flag bit and two different useful
+    facts to report, so it made the bit report whichever one fits the operation.</p>
+    <p>After a <em>logic</em> operation (AND, OR, XOR), the bit is <strong>parity</strong>:
+    it is 1 when the number of 1-bits in the result is even, 0 when odd. Parity was handy for the
+    serial-communication code the Z80 was designed for. After an <em>arithmetic</em> operation (add,
+    subtract, compare), the same bit is instead <strong>overflow</strong>: it is set when a signed
+    result <a href="../basics/numbers-and-notation.html">slips outside the range a signed byte can hold</a>, which is -128 to +127. Adding two
+    positive numbers and landing on a "negative" result is the classic overflow the flag catches.</p>
+    <p>So the honest one-line description is "parity after logic, overflow after arithmetic," never
+    just one of the two. (It also carries a couple of special-case meanings, such as reflecting the
+    interrupt state after <code>LD A,I</code>, but the parity/overflow split is the part you use.)</p>
+  </div>
+</details>
+
+<p>Here is the two-beat rhythm from the explainer in real driver code. Section 1 read the FM chip's
+status byte into <code>A</code> and masked it; the very next line is the jump that reads the flag that
+masking left behind:</p>
+
+<pre>        ld      a, (SND_Z80_YM_A0)       <span class="c">; YM status: bit0 = Timer A overflow</span>
+        and     SND_TIMERA_OVF_MASK
+        jp      nz, SndDrv_TimerATick    <span class="c">; overflow -&gt; tick (spill/frame/refill/reload), rejoin</span></pre>
+<span class="src">engine/sound/z80_sound_driver.asm:363</span>
+
+<p>The <code>and</code> leaves its result in <code>A</code> and, as a side effect, sets the zero flag:
+<code>Z</code> = 1 if the masked byte came out zero (timer had not overflowed), <code>Z</code> = 0 if a
+bit survived (it had). The driver never compares <code>A</code> to anything; it just reads the flag.
+<code>jp nz</code> means "jump if not zero," so control leaves for <code>SndDrv_TimerATick</code>
+exactly when the overflow bit was set, and falls through otherwise. The <code>and</code> set the note;
+the <code>jp nz</code> read it. That is the whole loop of Z80 decision-making, and it is why the flag
+register earns a section of its own.</p>
+
+<p>If the 68000 is your reference point, its condition-code register holds <code>X N Z V C</code>, and
+the Z80's set is a deliberate variation on the same idea. Reading the shared names first:
+<code>N</code> means different things on the two chips (negative on the 68000, add/subtract on the
+Z80), while the Z80's sign flag is named <code>S</code>. <code>Z</code> and <code>C</code> match. The
+Z80 has no <code>X</code> (extend) bit; it adds a half-carry <code>H</code> and an add/subtract
+<code>N</code>, both purely for decimal-adjust; and it folds the 68000's separate parity and overflow
+needs into the single dual-purpose <code>P/V</code>. Same principle, a result leaves flags behind for
+the next instruction, with a different bit budget. (Optional; the
+<a href="../m68k/programming-model.html">68000 Programming Model</a> page covers that register.)</p>
+
+<!-- ================================================================ -->
+<h2 id="s4">4 &middot; IX, IY, SP, and PC</h2>
+
+<p>Four more registers round out the model, all of them 16 bits wide, and unlike the working
+registers of Sections 1 to 3 each has a single dedicated job. Two of them, <code>IX</code> and
+<code>IY</code>, you point at data; the other two, <code>SP</code> and <code>PC</code>, the CPU keeps
+pointed at housekeeping structures for you. The instructions that use them get their own page later;
+here we just name each register and what it holds.</p>
+
+<p><code>IX</code> and <code>IY</code> are the Z80's two <span class="term" data-def="A 16-bit register (IX or IY on the Z80) that holds a base address, so an instruction can reach memory at that address plus a small signed offset.">index registers</span>. Each holds a 16-bit
+address, like <code>HL</code>, but their signature move is indexed addressing: <code>(IX+d)</code> means
+"the byte at the address in <code>IX</code> plus a small <a href="../basics/numbers-and-notation.html">signed displacement</a> <code>d</code>." That <code>d</code> is
+an 8-bit signed value, so it reaches roughly -128 to +127 bytes from the base. Point an index register at
+the start of a small data structure and each field is a fixed offset away, so you read or write any field
+by naming the base once and the offset per access.</p>
+
+<p>Aeon's sound driver does exactly this while it sets up a song's channels. <code>IY</code> points at a
+header record and <code>IX</code> at the live channel it is filling in; each named offset is one field:</p>
+
+<pre>        ld      a, (iy+SHC_ROUTE)
+        ld      (ix+sc_route), a</pre>
+<span class="src">engine/sound/z80_sound_driver.asm:1256</span>
+
+<p>The first line reads the header's route field (<code>SHC_ROUTE</code> is that field's offset from
+<code>IY</code>) into <code>A</code>; the second stores it into the channel's own route field
+(<code>sc_route</code> is that field's offset from <code>IX</code>). Both registers stay parked on their
+structure's base while the offsets pick out fields, which is the whole point of an index register.</p>
+
+<p><code>SP</code> is the <span class="term" data-def="The 16-bit register on the Z80 that points at the top of the stack: PUSH decrements it then writes, POP reads then increments it.">stack pointer</span>. It holds the address of the top of the <em>stack</em>, a
+scratch area the CPU uses to stow values and, above all, return addresses when one routine calls
+another. The stack is last-in-first-out: the most recently pushed value is the first one popped back.
+Two details matter and both are easy to get backwards. First, the stack grows <em>downward</em> in
+memory: <code>PUSH</code> subtracts 2 from <code>SP</code> and then writes, so each pushed value sits at a
+lower address than the last, and <code>POP</code> reads and then adds 2 back. Second, you set where the
+stack lives once, at startup, by loading <code>SP</code> with its top address; the driver does this on its
+first breath:</p>
+
+<pre>        ld      sp, SND_STACK_TOP        <span class="c">; stack top $1FFE (see the z80-ram-map spec)</span></pre>
+<span class="src">engine/sound/z80_sound_driver.asm:143</span>
+
+<details class="explain">
+  <summary>New here? &middot; What is a stack, and why does it grow downward?</summary>
+  <div class="x-body">
+    <p>A stack is a pile you can only add to or take from at the top, like a stack of plates: you set a
+    plate on top, and the next plate you lift off is the one you just set down. Computers lean on this
+    because it matches how routines call each other. When routine A calls B, the CPU pushes A's return
+    address; if B then calls C, C's return address goes on top. When C finishes it pops <em>its</em>
+    address (the top plate) and returns to B; when B finishes it pops the next one and returns to A.
+    Last in, first out, so the addresses come back in exactly the right order.</p>
+    <p>Why downward? It is a convention chosen so the stack and your program's data can share one block
+    of memory without colliding. Put your variables at the low addresses and grow them upward; put the
+    stack at the high addresses and grow it downward; the two march toward each other and you only run
+    out of room when they actually meet. That is why <code>SND_STACK_TOP</code> is set to a high address
+    (<code>$1FFE</code>) and every <code>PUSH</code> steps <em>down</em> from there.</p>
+  </div>
+</details>
+
+<p>The stack is why Section 3 could promise that <code>push af</code> stows the accumulator and its flags
+together. The sound driver's interrupt handler leans on it hard: because an interrupt can fire in the
+middle of anything, the handler pushes every register it will touch on entry and pops them back on exit,
+so the interrupted code never notices. Watch the order, it is the last-in-first-out rule in the flesh:</p>
+
+<pre>        push    af
+        push    bc
+        push    de
+        push    hl
+        <span class="c">; ... handle the interrupt ...</span>
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af</pre>
+<span class="src">engine/sound/z80_sound_driver.asm:489</span>
+
+<p>The pushes go <code>af</code>, <code>bc</code>, <code>de</code>, <code>hl</code>; the pops come back
+<code>hl</code>, <code>de</code>, <code>bc</code>, <code>af</code>, exact mirror image. <code>hl</code>
+was pushed last so it is popped first, and every register lands back in the register it left from. Each
+push stepped <code>SP</code> down; each pop stepped it back up, so <code>SP</code> ends exactly where it
+began.</p>
+
+<p><code>PC</code> is the <span class="term" data-def="The 16-bit register on the Z80 that holds the address of the instruction currently being fetched; it advances as instructions run and is redirected by jumps, calls, and returns.">program counter</span>. It holds the address of the instruction the CPU is fetching
+right now, and it advances on its own as each instruction runs, so straight-line code simply flows from one
+instruction to the next. You never load <code>PC</code> directly the way you load <code>A</code> or
+<code>HL</code>; instead the control-flow instructions rewrite it for you. A jump drops a new address into
+<code>PC</code>; a call does that after first pushing the old <code>PC</code> onto the stack; a return pops
+that saved address back into <code>PC</code>. Every branch you write in Section 3's two-beat rhythm is, under
+the hood, a conditional edit to <code>PC</code>.</p>
+
+<p>If the 68000 is your reference point, all four have close cousins there and the comparison is optional.
+The 68000 also has a program counter and a stack pointer (its address register <code>a7</code>), and its
+own indexed addressing reaches memory through an address register plus an index. The shapes rhyme; the
+Z80 just spends fewer, narrower registers on the same jobs. (The
+<a href="../m68k/programming-model.html">68000 Programming Model</a> page covers that side.)</p>
+
+<!-- ================================================================ -->
+<h2 id="s5">5 &middot; The shadow register set</h2>
+
+<p>Here is the Z80's best "wait, what?" trick: it carries a second, complete copy of its main
+registers, kept invisibly in the background. There is another <code>AF</code>, another
+<code>BC</code>, another <code>DE</code>, and another <code>HL</code>, written with a prime mark as
+<code>AF'</code>, <code>BC'</code>, <code>DE'</code>, and <code>HL'</code>. Only one of the two sets
+is live at any given moment; the other waits in the wings. This is the
+<span class="term" data-def="A duplicate set of the main registers (written with a prime, like BC') that the Z80 can swap in with a single instruction, mainly for fast interrupt handling.">shadow register set</span> (also called the alternate set), and nothing about it looks like the tidy,
+one-of-each CPU the earlier sections described.</p>
+
+<p>You move between the two sets with a swap, and there are exactly two swap instructions.
+<code>EXX</code> swaps the whole trio <code>BC</code>/<code>DE</code>/<code>HL</code> with their primed
+counterparts <code>BC'</code>/<code>DE'</code>/<code>HL'</code> in one stroke, and pointedly leaves
+<code>AF</code> alone. <code>EX AF,AF'</code> handles the other half: it swaps <code>AF</code> with
+<code>AF'</code> and touches nothing else. Between the two you can exchange any part of the set, but
+always a whole pair at a time, never a single byte.</p>
+
+<p>That "whole pair at a time" is the catch, and it is the thing to get right. The shadow registers
+are not eight extra registers you can name. There is no <code>ld b',5</code> and no way to add into
+<code>HL'</code>; no ordinary instruction reads or writes a primed register directly. The one thing
+you can do with the shadow set is swap it in. Once <code>EXX</code> has made it live, its
+<code>BC</code>/<code>DE</code>/<code>HL</code> are simply the ordinary
+<code>BC</code>/<code>DE</code>/<code>HL</code> that every instruction already knows, and the set you
+swapped out becomes the hidden one. So the honest description is not "sixteen registers"; it is one
+register set with a spare, plus a single cheap instruction to trade one for the other.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why would a CPU have a second set of registers?</summary>
+  <div class="x-body">
+    <p>Imagine you are partway through a careful calculation, papers spread across your desk in a
+    particular arrangement, when the phone rings and demands a quick, unrelated task. You have two
+    choices. You could photograph the whole desk, sweep it clear, do the new task, then lay every
+    paper back exactly where it was; or you could pull a second desk alongside, spin your chair to
+    it, do the task, and spin back, your first desk untouched the entire time.</p>
+    <p>The first way is what Section 4's <code>push</code>/<code>pop</code> dance does: to borrow the
+    registers you save every one to the stack and restore them afterward, several instructions and
+    several memory writes each way. The second way is the shadow set: one <code>EXX</code> spins your
+    chair to a fresh set of registers, you work, one <code>EXX</code> spins back, and the set you
+    left is exactly as you left it. When a task interrupts you often and you must be quick about it,
+    a second desk beats packing and unpacking the first one every single time.</p>
+  </div>
+</details>
+
+<p>That speed is the whole point, and it is why the shadow set earns its keep in one place above all:
+a fast context switch. When an interrupt fires, the handler needs some working registers, but it must
+hand them back untouched or the interrupted code will find its world rearranged. Section 4 showed the
+careful way, pushing <code>af</code>/<code>bc</code>/<code>de</code>/<code>hl</code> on entry and
+popping them on exit. The shadow set offers a shortcut: <code>EXX</code> on the way in to grab a
+private <code>BC</code>/<code>DE</code>/<code>HL</code>, <code>EXX</code> on the way out to give them
+back, with no stack traffic at all. Sound drivers, which run their mixing on a tight interrupt many
+times a second, reach for this constantly.</p>
+
+<p>Aeon's sound driver uses it for something a little subtler than a whole context switch: it keeps
+one running counter in the shadow set so that its <em>main</em> <code>HL</code> stays free for other
+work. The DAC sample-streaming loop (which runs with interrupts off) walks a small ring buffer with
+the main <code>HL</code> as its pointer, and it separately needs to count down the number of ROM bytes
+still to stream. Rather than spend a main register on that counter, it parks the count in the shadow
+<code>HL</code>. It sets that up once, before the loop begins:</p>
+
+<pre>        exx
+        ld      hl, (SND_ROM_LEN)        <span class="c">; hl' = ROM len (shadow set)</span>
+        exx</pre>
+<span class="src">engine/sound/z80_sound_driver.asm:348</span>
+
+<p>Then, each time through the loop, after it has copied one byte from ROM into the ring, it ducks
+into the shadow set just long enough to tick that counter down and test it, and ducks straight back
+out:</p>
+
+<pre>        exx
+        dec     hl                       <span class="c">; len-- (shadow)</span>
+        ld      a, h
+        or      l
+        exx</pre>
+<span class="src">engine/sound/z80_sound_driver.asm:382</span>
+
+<p>Read it a line at a time. The first <code>exx</code> makes the shadow set live, so the
+<code>hl</code> named on the next line is the counter, not the ring pointer. <code>dec hl</code> drops
+the remaining length by one. The pair <code>ld a,h</code> then <code>or l</code> is a small Z80 idiom
+worth pocketing: there is no single instruction that tests a 16-bit pair for zero, so you copy the
+high byte into <code>A</code> and OR the low byte onto it. The result is zero only when
+<em>both</em> bytes were zero, which leaves the zero flag set exactly when <code>HL</code> has reached
+<code>$0000</code>. The second <code>exx</code> swaps the main set back in, so the ring pointer in the
+main <code>HL</code> returns untouched, ready for the next byte. Two swaps bracket the whole thing,
+and outside them the counter does not exist as far as the rest of the loop can tell. (The
+<code>jp z</code> that reads the flag this sets sits on the very next line, ending the stream when the
+count hits zero.)</p>
+
+<p>Aeon's driver never needs <code>EX AF,AF'</code>, but it is worth seeing once, because it is the
+exact piece <code>EXX</code> leaves out. Where <code>EXX</code> saves your working pairs,
+<code>EX AF,AF'</code> saves the accumulator and, just as importantly, the flags that ride in
+<code>F</code> alongside it, all in one instruction:</p>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not engine code</span>
+  <p style="margin:0 0 .5rem;">An interrupt handler that only needs <code>A</code> and the flags can
+  preserve them with a single swap on the way in and out, instead of a <code>push af</code> /
+  <code>pop af</code> pair:</p>
+  <pre>handler:
+        ex      af, af'      <span class="c">; stash A and flags in the shadow AF</span>
+        <span class="c">; ... do a little work in A, freely changing the flags ...</span>
+        ex      af, af'      <span class="c">; restore A and flags, exactly as they were</span>
+        ret</pre>
+  <p style="margin:.5rem 0 0;">The first swap hides the interrupted code's <code>A</code> and flags
+  in <code>AF'</code>; the second brings them back. Because the flag register rides inside
+  <code>AF</code>, this is a cheap way to borrow the accumulator without disturbing whatever
+  comparison the interrupted code was in the middle of.</p>
+</div>
+
+<p>If the 68000 is your reference point, there is simply nothing to compare this to, which is itself
+the point. The 68000 has no shadow registers; when it needs to free up registers it saves them the
+long way, writing them out to the stack with <code>MOVEM</code> (move multiple) and reading them back
+the same way, much like the Z80's own <code>push</code>/<code>pop</code> route from Section 4. The
+one-instruction bulk swap is a Z80 flavour with no equivalent on the bigger chip, a small piece of
+cleverness worth savouring. (Optional; the
+<a href="../m68k/programming-model.html">68000 Programming Model</a> page covers how it saves registers.)</p>
+
+<details class="refbox">
+  <summary>Deep reference &middot; the I and R registers</summary>
+  <div class="enc-body">
+    <p>Two more 8-bit registers exist that a beginner can safely skip; they are here for completeness
+    and for the curious. Neither is a working register you compute in.</p>
+    <p><strong><code>I</code>, the Interrupt Page Address register.</strong> It holds 8 bits and matters
+    in one specific mode, interrupt mode 2. In that mode, when a device interrupts the CPU, the Z80
+    builds the address of the handler to run by taking <code>I</code> as the high 8 bits and letting
+    the interrupting device supply the low 8 bits. Together those form a 16-bit address into a table of
+    handler pointers. So <code>I</code> chooses <em>which page</em> of memory that table lives on, and
+    the device chooses the entry within it.</p>
+    <p><strong><code>R</code>, the Memory Refresh register.</strong> Also 8 bits, and mostly the CPU's
+    own business. Its low 7 bits increment automatically after every instruction fetch; the Z80 was
+    designed to drive dynamic RAM, which forgets its contents unless periodically refreshed, and this
+    counter walks through the rows to keep them alive. Bit 7 is not part of that count: it holds
+    whatever was last written by <code>LD R,A</code>. Because the low bits keep changing on their own,
+    <code>R</code> is sometimes read as a cheap ever-changing value, a weak stand-in for a random
+    number. It is not a real random-number generator (its pattern is entirely predictable), so it is
+    fine for a shimmer effect and wrong for anything that needs true randomness.</p>
+  </div>
+</details>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-22 &middot; <a href="../index.html">Back to hub</a></footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+
+/* ---- register-model explorer: pair/unpair, EXX, EX AF,AF' ---- */
+(function(){
+  var root = document.getElementById('regmodel');
+  if(!root) return;
+  var mainEl   = document.getElementById('rm-main');
+  var shadowEl = document.getElementById('rm-shadow');
+  var flagsEl  = document.getElementById('rm-flags');
+  var cap      = document.getElementById('rm-cap');
+  var pairBtn  = document.getElementById('rm-pair');
+  var exxBtn   = document.getElementById('rm-exx');
+  var exafBtn  = document.getElementById('rm-exaf');
+  var resetBtn = document.getElementById('rm-reset');
+
+  var main, shadow, paired, chg;
+
+  function loadDefaults(){
+    main   = {A:0x3C, F:0x41, B:0x19, C:0x2A, D:0x40, E:0x01, H:0x18, L:0x0C};
+    shadow = {A:0x00, F:0x00, B:0x00, C:0xFF, D:0x12, E:0x34, H:0x07, L:0xD0};
+    paired = false; chg = {};
+  }
+
+  function hx(n, d){
+    var s = (n & 0xFF).toString(16).toUpperCase();
+    while(s.length < d) s = '0' + s;
+    return s;
+  }
+
+  var CAP = {
+    'A':  '<b>A</b> is the accumulator, the 8-bit register the arithmetic/logic unit works through.',
+    'gen':'<b>%NM%</b> is an 8-bit general register; it pairs with its partner (B with C, D with E, H with L).',
+    'F':  '<b>F</b> is the flag register; its bits record facts about the last result.',
+    'flag-s':'<b>S</b> is sign, a copy of the result\'s top bit.',
+    'flag-z':'<b>Z</b> is zero, set when the result is 0.',
+    'flag-h':'<b>H</b> is half-carry, for BCD.',
+    'flag-pv':'<b>P/V</b> is parity after logic, overflow after arithmetic.',
+    'flag-n':'<b>N</b> is add/subtract, for BCD.',
+    'flag-c':'<b>C</b> is carry/borrow.',
+    'flag-unused':'<b>An unused flag bit</b>: unused, always 0.',
+    'index':'<b>%NM%</b> is a 16-bit index register for (%NM%+d) addressing.',
+    'sp':'<b>SP</b> is the 16-bit stack pointer; the stack grows downward.',
+    'pc':'<b>PC</b> is the 16-bit program counter; jumps and calls rewrite it, you do not.',
+    'shadow':'<b>%NM%</b> is part of the alternate set; swap it in with EXX (BC/DE/HL) or EX AF,AF\' (AF). You cannot name these directly.'
+  };
+
+  var DEFAULT_CAP = '<b>The Z80 register model.</b> A is the accumulator; B, C, D, E, H, L are the ' +
+    'general 8-bit registers, each pairing with its partner; F is the flag register (its bits below). ' +
+    'IX, IY, SP, PC are the 16-bit registers, and the dimmed bank is the shadow set. Press Pair to watch ' +
+    'each two 8-bit registers join into one 16-bit register, or click any slot to read its job.';
+
+  function chip8(part, nm, val){
+    return '<button type="button" class="rm-reg' + (chg[nm] ? ' chg' : '') + '" data-part="' + part +
+      '" data-nm="' + nm + '" aria-pressed="false"><span class="rm-nm">' + nm +
+      '</span><span class="rm-hex">$' + hx(val, 2) + '</span></button>';
+  }
+  function chipPair(nm, hiK, loK){
+    var val = hx(main[hiK], 2) + hx(main[loK], 2);
+    return '<button type="button" class="rm-reg rm-pair' + (chg[nm] ? ' chg' : '') +
+      '" data-part="pair" data-nm="' + nm + '" data-hi="' + hiK + '" data-lo="' + loK +
+      '" data-val="' + val + '" aria-pressed="false"><span class="rm-nm">' + nm +
+      '</span><span class="rm-hex">$' + val + '</span></button>';
+  }
+
+  function renderMain(){
+    var h = '';
+    if(!paired){
+      h += chip8('A', 'A', main.A);
+      h += chip8('F', 'F', main.F);
+      ['B','C','D','E','H','L'].forEach(function(nm){ h += chip8('gen', nm, main[nm]); });
+    } else {
+      h += chipPair('AF', 'A', 'F');
+      h += chipPair('BC', 'B', 'C');
+      h += chipPair('DE', 'D', 'E');
+      h += chipPair('HL', 'H', 'L');
+    }
+    mainEl.innerHTML = h;
+  }
+
+  function renderShadow(){
+    var pairs = [['AF',"A","F"], ['BC',"B","C"], ['DE',"D","E"], ['HL',"H","L"]];
+    var h = '';
+    pairs.forEach(function(p){
+      var nm = p[0] + "'";
+      var val = '$' + hx(shadow[p[1]], 2) + hx(shadow[p[2]], 2);
+      h += '<button type="button" class="rm-reg rm-shadow' + (chg[nm] ? ' chg' : '') +
+        '" data-part="shadow" data-nm="' + nm + '" aria-pressed="false"><span class="rm-nm">' + nm +
+        '</span><span class="rm-hex">' + val + '</span></button>';
+    });
+    shadowEl.innerHTML = h;
+  }
+
+  var FLAGBITS = [
+    {bit:7, nm:'S',   part:'flag-s'},
+    {bit:6, nm:'Z',   part:'flag-z'},
+    {bit:5, nm:'&middot;', part:'flag-unused', off:true},
+    {bit:4, nm:'H',   part:'flag-h'},
+    {bit:3, nm:'&middot;', part:'flag-unused', off:true},
+    {bit:2, nm:'P/V', part:'flag-pv'},
+    {bit:1, nm:'N',   part:'flag-n'},
+    {bit:0, nm:'C',   part:'flag-c'}
+  ];
+  function renderFlags(){
+    var h = '';
+    FLAGBITS.forEach(function(fb){
+      var v = (main.F >> fb.bit) & 1;
+      h += '<button type="button" class="rm-rc ccr' + (fb.off ? ' off' : '') + '" data-part="' +
+        fb.part + '" aria-pressed="false"><span class="rm-rv">' + v + '</span><span class="rm-rn">' +
+        fb.nm + '</span></button>';
+    });
+    flagsEl.innerHTML = h;
+  }
+
+  function renderAll(){ renderMain(); renderShadow(); renderFlags(); }
+
+  function captionFor(btn){
+    var part = btn.getAttribute('data-part');
+    var nm = btn.getAttribute('data-nm') || '';
+    if(part === 'pair'){
+      var hi = btn.getAttribute('data-hi'), lo = btn.getAttribute('data-lo'), val = btn.getAttribute('data-val');
+      return '<b>' + nm + '</b> is one 16-bit register pair: <b>' + hi + '</b> is the high byte, <b>' +
+        lo + '</b> the low byte, together the 16-bit ' + nm + ' = $' + val + '.';
+    }
+    return (CAP[part] || '').replace(/%NM%/g, nm);
+  }
+
+  function select(btn){
+    root.querySelectorAll('button[data-part]').forEach(function(b){
+      b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+    });
+    cap.innerHTML = captionFor(btn);
+  }
+
+  // one delegated handler for every register / flag chip (they are rebuilt on each render)
+  root.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-part]');
+    if(btn) select(btn);
+  });
+
+  pairBtn.addEventListener('click', function(){
+    paired = !paired; chg = {};
+    pairBtn.setAttribute('aria-pressed', paired ? 'true' : 'false');
+    pairBtn.textContent = paired ? 'Unpair' : 'Pair';
+    renderAll();
+    if(paired){
+      cap.innerHTML = '<b>Paired.</b> Each two 8-bit registers now read as one 16-bit register: B is the ' +
+        'high byte and C the low byte, together the 16-bit BC = $' + hx(main.B, 2) + hx(main.C, 2) +
+        '. The same join makes AF, DE, and HL.';
+    } else {
+      cap.innerHTML = '<b>Unpaired.</b> Each pair splits back into its two 8-bit registers: BC becomes ' +
+        'B = $' + hx(main.B, 2) + ' and C = $' + hx(main.C, 2) + ' again.';
+    }
+  });
+
+  exxBtn.addEventListener('click', function(){
+    ['B','C','D','E','H','L'].forEach(function(k){ var t = main[k]; main[k] = shadow[k]; shadow[k] = t; });
+    chg = {B:1,C:1,D:1,E:1,H:1,L:1, BC:1,DE:1,HL:1, "BC'":1,"DE'":1,"HL'":1};
+    renderAll();
+    cap.innerHTML = '<b>EXX.</b> The main BC/DE/HL and the shadow BC\'/DE\'/HL\' traded places in one ' +
+      'stroke; AF was left untouched. What was hidden is now live, and what was live is now the shadow.';
+  });
+
+  exafBtn.addEventListener('click', function(){
+    var tA = main.A; main.A = shadow.A; shadow.A = tA;
+    var tF = main.F; main.F = shadow.F; shadow.F = tF;
+    chg = {A:1, F:1, AF:1, "AF'":1};
+    renderMain(); renderShadow(); renderFlags();
+    cap.innerHTML = '<b>EX AF,AF\'.</b> AF swapped with the shadow AF\', and nothing else moved. The ' +
+      'accumulator and the flag register both changed together, because F rides inside AF.';
+  });
+
+  resetBtn.addEventListener('click', function(){
+    loadDefaults();
+    pairBtn.setAttribute('aria-pressed', 'false');
+    pairBtn.textContent = 'Pair';
+    renderAll();
+    cap.innerHTML = DEFAULT_CAP;
+    var a = mainEl.querySelector('button[data-part="A"]');
+    if(a) a.focus();
+  });
+
+  loadDefaults();
+  renderAll();
+  cap.innerHTML = DEFAULT_CAP;
+})();
+</script>
+
+</body>
+</html>
