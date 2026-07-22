@@ -670,9 +670,21 @@ agree; once the high bit is set they part ways:</p>
   <tr><td><code>1111 1110</code></td><td><code>$FE</code></td><td>254</td><td>-2</td></tr>
   <tr><td><code>1111 1111</code></td><td><code>$FF</code></td><td>255</td><td>-1</td></tr>
 </table></div>
-<p>For a byte whose high bit is set, subtract 256 from its unsigned value to get its signed meaning:
-<code>$FF</code> is 255 - 256 = -1, and <code>$80</code> is 128 - 256 = -128. There is only one zero;
-<code>$80</code> is -128, not a negative zero.</p>
+<p>The same byte can be read as either unsigned or signed. The patterns from <code>$00</code> through
+<code>$7F</code> mean 0 through 127 either way. Read as signed, though, the patterns with the high bit set,
+<code>$80</code> through <code>$FF</code>, mean the negative numbers -128 through -1.</p>
+<p>To find that signed meaning, take the byte's unsigned value and subtract 256, the number of different
+values a byte can hold:</p>
+<pre>1111 1111 = $FF = 255 unsigned
+255 - 256 = -1 signed
+
+1111 1110 = $FE = 254 unsigned
+254 - 256 = -2 signed
+
+1000 0000 = $80 = 128 unsigned
+128 - 256 = -128 signed</pre>
+<p>Two's complement has only one zero, <code>0000 0000</code> (<code>$00</code>), so the pattern
+<code>1000 0000</code> (<code>$80</code>) is -128, not a negative zero.</p>
 
 <p><strong>The flags are two independent fit checks.</strong> ADD performs one binary addition, and
 afterward the CPU recalculates both flags:</p>
