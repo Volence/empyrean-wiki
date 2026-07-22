@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Computer Basics: Numbers &amp; Notation</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🔢%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
+  max-width:42rem; background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+/* ============================================================
+   Page-specific styles: Numbers & Notation
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* gotcha callout (page-specific, matching the m68k pages) */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* notation callout: marks where a general idea crosses into this wiki's notation */
+.notation{border:1px solid var(--line); border-left:3px solid var(--gold);
+  border-radius:4px; padding:.6rem .8rem; margin:1rem 0;}
+.notation .n-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.3rem;}
+
+/* base converter (decimal / hex / binary) figure */
+.conv-row{display:flex; align-items:center; gap:.4rem; margin:.4rem 0; flex-wrap:wrap;}
+.conv-row label{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  min-width:5rem;}
+.conv-pre{font-family:var(--mono); font-size:.85rem; color:var(--dim);}
+.conv input{font-family:var(--mono); font-size:.9rem; width:6rem; background:var(--panel);
+  color:var(--gold); border:1px solid var(--line); border-radius:3px; padding:.25rem .4rem;
+  text-transform:uppercase;}
+.conv input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.conv-map{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:.5rem 0 0;
+  min-height:1.4em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / COMPUTER BASICS / NUMBERS &amp; NOTATION</p>
+  <p class="eyebrow">Computer Basics</p>
+  <h1>Numbers &amp; Notation</h1>
+  <p class="sub">This is the bottom rung: the number ideas every other page in this wiki quietly assumes, taught here from zero.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#s1"><span class="n">1</span>Bits, bytes, nibbles</a>
+    <a href="#s2"><span class="n">2</span>Binary</a>
+    <a href="#s3"><span class="n">3</span>Hexadecimal</a>
+    <a href="#s4"><span class="n">4</span>Place value and range</a>
+    <a href="#s5"><span class="n">5</span>Widths: byte, word, long</a>
+    <a href="#s6"><span class="n">6</span>Signed or unsigned</a>
+    <a href="#s7"><span class="n">7</span>Letters are numbers too</a>
+  </nav>
+</header>
+
+<h2 id="s1">1 &middot; Bits, bytes, nibbles</h2>
+
+<p>Everything a computer stores, from a score to a color to a letter of text, is built out of one
+tiny piece: a thing that can be in one of two states. Get that one idea and the rest of this page is
+just naming the bigger pieces you build from it.</p>
+
+<p>That smallest piece is a <span class="term" data-def="The smallest piece of information: one of two values, usually written 0 or 1.">bit</span>. A bit
+is a single choice between two possibilities, and by long convention we write those two possibilities
+as <code>0</code> and <code>1</code>. That is the whole definition: two values, nothing more. You will
+often hear a bit described as "one on/off wire," and that picture is genuinely useful, but be careful,
+because it is a mental model and not the definition. A wire can <em>carry</em> a bit, the same way a
+single bit can be held in a chip's memory, written onto a disc, or flipped from one value to the other
+a moment later. The wire is one place a bit can live; the bit is the piece of information itself.</p>
+
+<p>One bit on its own barely says anything: yes or no, on or off. The power comes from grouping bits
+together, because each bit you add doubles how many different things the group can spell out. Two
+common group sizes have names. A <span class="term" data-def="Eight bits: one unit of memory, holding a value from 0 to 255.">byte</span> is
+eight bits, and it is the everyday unit computers move around: memory is measured in bytes, files are
+measured in bytes, and most of the values in a game fit in one or a few bytes. Half of a byte, four
+bits, is a <span class="term" data-def="Four bits, half a byte: exactly one hexadecimal digit, with 16 possible values.">nibble</span> (yes,
+really, because it is a small bite). Four bits can be arranged sixteen different ways, counting from
+<code>0000</code> through <code>1111</code>, so a nibble has sixteen possible values. That number
+sixteen is not an accident you have to memorize here: a later section shows that one nibble lines up
+exactly with one hexadecimal digit, which is the reason the nibble is worth naming at all.</p>
+
+<p>So the sizes build up in a simple ladder: a bit is the atom, a nibble is four of them, and a byte is
+two nibbles. These particular sizes keep coming back not because the universe demands them, but because
+early computers settled on the byte as a convenient chunk to handle at once, and the rest of the field
+agreed to keep using it. When a later page says a value is "one byte" or "two bytes," it is telling you
+exactly how many of these two-state atoms it takes to write that value down.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why do computers use only two values?</summary>
+  <div class="x-body">
+    <p>Imagine you are trying to send a number down a wire to a friend using nothing but voltage, and
+    the wire is a little noisy: the voltage sags a bit, picks up interference, drifts with temperature.
+    If you agreed to use ten different voltage levels for the digits 0 through 9, you now have to tell
+    a "3" apart from a "4" apart from a "5" on a signal that will not sit still, and a small wobble
+    quietly turns one digit into its neighbor. Now agree instead on just two states, call them "clearly
+    low" and "clearly high," with a wide no-man's-land between them. A wobble has to be enormous before
+    a low ever looks like a high. You have traded away spelling richness for reliability, and reliability
+    is what a machine doing billions of these a second desperately needs.</p>
+    <p>That is why modern digital computers <em>favor</em> two states: they are comparatively simple and
+    cheap to build and, above all, easy to tell apart even when the electronics are imperfect. It is
+    worth being precise, though, because this is a spot where people overstate the rule. Two states are
+    favored, not forced. Machines have been built that store more than two levels per cell, and older
+    analog computers represented numbers as smoothly varying quantities with no digits at all. Binary
+    won on engineering merit, reliability and simplicity, not because a computer is physically incapable
+    of anything else. For the rest of this wiki, though, you can safely assume two: every value you meet
+    is spelled out in bits.</p>
+  </div>
+</details>
+
+<h2 id="s2">2 &middot; Binary</h2>
+
+<p>You already count every day in base ten: ten digits, <code>0</code> through <code>9</code>, and when
+you run out of them you carry into the next column. A computer counts the very same way, but it only ever
+has the two values a bit can hold, so it counts in base two. That is
+<span class="term" data-def="Counting with only two digits, 0 and 1, the way digital hardware stores every value.">binary</span>:
+the ordinary idea of digits and carrying, played out with just <code>0</code> and <code>1</code>.</p>
+
+<p>What makes any counting system work is <em>place value</em>: a digit is worth more or less depending on
+which column it sits in. In base ten the columns are worth 1, 10, 100, 1000, each one ten times the column
+to its right, because ten is where you run out of digits and have to carry. Binary carries as soon as it
+runs out of its two digits, so each column is worth twice the one to its right instead of ten times.
+Reading from the right, the binary columns are worth 1, 2, 4, 8, 16, 32, 64, 128, and on doubling forever.</p>
+
+<p>To read a binary number, add up the column values wherever there is a <code>1</code>, and ignore every
+column holding a <code>0</code>. Take the pattern <code>0000 1010</code>. Its columns, from the right, are
+worth 1, 2, 4, 8, 16, and so on; there is a <code>1</code> in the 8 column and a <code>1</code> in the 2
+column, and <code>0</code> everywhere else, so the whole thing is 8 + 2 = 10. That is the entire trick: a
+binary number is just the sum of the place values whose bit is turned on.</p>
+
+<p>But now there is a real danger of confusion. Written on its own, <code>1010</code> could be the binary
+number we just read as ten, or it could be the everyday decimal number one thousand and ten. The digits
+look identical, and only the base tells them apart, so we need a way to mark a written number as binary.
+Throughout this wiki we put a leading percent sign on a binary number: <code>%00001010</code> is
+unmistakably the binary value, ten, and never one thousand and ten.</p>
+
+<div class="notation"><span class="n-tag">Notation</span> The <em>number</em> in base two is real and true
+of every digital computer: it is how the machine actually counts. The way you <em>mark</em> a written
+number as binary, though, is a convention we chose. This wiki and its assembler use a leading
+<code>%</code>; many programming languages instead use a leading <code>0b</code>, and would write the same
+value as <code>0b00001010</code>. Same number, different spelling. The processor itself never sees either
+mark: it only ever holds the raw bits, and the prefix is purely for us humans reading and writing the code.</div>
+
+<p>Counting up in binary works exactly like an odometer whose wheels carry only the digits <code>0</code>
+and <code>1</code>. Start at <code>%0</code> and add one at a time. First <code>%0</code>, then
+<code>%1</code>, and now the rightmost wheel is out of digits, so it rolls back to <code>0</code> and
+carries a <code>1</code> into the next column: <code>%10</code>, which is two, not ten. Keep going and you
+get <code>%11</code> for three, then a carry into a fresh column gives <code>%100</code> for four,
+<code>%101</code> for five, and so on. Every time you fill a column you carry to the left, and because
+there are only two digits it happens twice as often as in decimal, which is why binary numbers grow long so
+quickly.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why does each column double, and why does that cover every number?</summary>
+  <div class="x-body">
+    <p>Picture a kitchen balance scale and a box of weights, but a strange box: the weights come in 1 gram,
+    2 grams, 4 grams, 8 grams, 16 grams, and so on, each one double the last. You weigh something by piling
+    weights on the empty pan until the scale balances. Here is the neat part of a doubling set like that:
+    every whole number of grams can be made in exactly one way, and for each weight you only ever face a
+    yes-or-no question, do I put this one on the pan or not?</p>
+    <p>Say the object weighs ten grams. The 16 alone would tip the scale too far, so it stays off. The 8?
+    Put it on. That leaves two grams still to find. The 4 is too much, so leave it off. The 2? Put it on,
+    and now the scale balances, so the 1 stays off as well. Your answers for the 8, 4, 2, 1 weights were
+    yes, no, yes, no, and 8 + 2 is exactly ten. Write 1 for each yes and 0 for each no and those answers
+    <em>are</em> the bits of the binary number for ten: <code>%1010</code>. Binary is not a strange new way
+    to count. It is the smallest possible set of digits, just two, and a bit in each column is nothing more
+    than that same yes-or-no: is this doubling amount part of the total?</p>
+  </div>
+</details>
+
+<figure class="diagram">
+  <div class="tbl"><table>
+    <tr><th>Place value</th><th>128</th><th>64</th><th>32</th><th>16</th><th>8</th><th>4</th><th>2</th><th>1</th></tr>
+    <tr><th>Bits of %01011010</th>
+      <td style="color:var(--dim);">0</td>
+      <td style="color:var(--gold);">1</td>
+      <td style="color:var(--dim);">0</td>
+      <td style="color:var(--gold);">1</td>
+      <td style="color:var(--gold);">1</td>
+      <td style="color:var(--dim);">0</td>
+      <td style="color:var(--gold);">1</td>
+      <td style="color:var(--dim);">0</td></tr>
+    <tr><th>Adds to the total</th>
+      <td style="color:var(--dim);">&middot;</td>
+      <td style="color:var(--gold);">64</td>
+      <td style="color:var(--dim);">&middot;</td>
+      <td style="color:var(--gold);">16</td>
+      <td style="color:var(--gold);">8</td>
+      <td style="color:var(--dim);">&middot;</td>
+      <td style="color:var(--gold);">2</td>
+      <td style="color:var(--dim);">&middot;</td></tr>
+  </table></div>
+  <p style="font-family:var(--mono); font-size:.9rem; margin:.7rem 0 0;">64 + 16 + 8 + 2 = <span style="color:var(--gold);">90</span></p>
+  <figcaption style="text-transform:none; letter-spacing:.02em;">An eight-bit byte has the place values 128,
+  64, 32, 16, 8, 4, 2, 1 from left to right. The byte %01011010 has its 1 bits in the 64, 16, 8, and 2
+  columns, so it equals 64 + 16 + 8 + 2 = 90 (the value the next sections will also write in hex as $5A).</figcaption>
+</figure>
+
+<p>This is the payoff of the sizes from section 1. Because a byte is eight bits, it has exactly these eight
+columns, 128 down to 1. Turn every bit off and the total is 0; turn every bit on and you add
+128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = 255, the largest value a single byte can hold. So one byte counts from
+0 to 255 and no further, a range we come back to and pin down properly in section 4.</p>
+
+<h2 id="s3">3 &middot; Hexadecimal</h2>
+
+<p>Binary is how the machine counts, but a long row of ones and zeros is miserable for a person to read.
+Hexadecimal is the shorthand programmers actually write, and it is built to line up with binary perfectly.</p>
+
+<p>Decimal has ten digits and binary has two;
+<span class="term" data-def="Counting in base 16, digits 0 to 9 then A to F. One hex digit is exactly four bits, so a byte is two hex digits.">hexadecimal</span>
+has sixteen. It counts in base 16, which means each column runs through sixteen values before it carries,
+instead of ten or two. The trouble is that we only have ten number symbols, <code>0</code> through
+<code>9</code>, and base 16 needs six more. So hex borrows the first six letters of the alphabet:
+after <code>9</code> comes <code>A</code> for ten, <code>B</code> for eleven, <code>C</code> for twelve,
+<code>D</code> for thirteen, <code>E</code> for fourteen, and <code>F</code> for fifteen. Those letters are
+digits here, not text, and <code>F</code> is simply the hex way to write fifteen. Count one past
+<code>F</code> and, just like decimal rolling from <code>9</code> to <code>10</code>, hex rolls over to
+<code>10</code>, its next carry, which is worth sixteen.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why letters, and why exactly these six?</summary>
+  <div class="x-body">
+    <p>A counting system needs one distinct symbol for every value a single column can hold before it
+    carries. Decimal holds ten, so it uses ten symbols, <code>0</code> to <code>9</code>. Base 16 has to
+    hold sixteen values in one column, so it needs sixteen symbols, and after <code>0</code> to <code>9</code>
+    it is six short. Nothing about a computer requires those six extras to be letters; the people who settled
+    hex just reached for the symbols already sitting on every keyboard and in every character set, and the
+    letters <code>A</code> to <code>F</code> were right there, in order, easy to remember.</p>
+    <p>So read <code>A</code> to <code>F</code> as the numbers ten to fifteen and nothing more. <code>C</code>
+    is not a letter that snuck into a number; in hex it <em>is</em> the number twelve, the same way
+    <code>7</code> is the number seven. The confusing part is only that we reused shapes we already knew as
+    letters. Their meaning here is purely numeric.</p>
+  </div>
+</details>
+
+<p>Here is the real reason hex is everywhere, and it is worth reading slowly, because it is the whole point.
+Sixteen is two multiplied by itself four times, so one hex digit covers exactly the sixteen values that four
+bits can spell out. Four bits is a nibble, the half-byte you met in section 1, so <strong>one hex digit is
+exactly one nibble</strong>, no rounding and no leftovers. That makes hex a clean stand-in for binary: chop a
+binary number into groups of four bits and rewrite each group as its single hex digit.</p>
+
+<p>Take the running byte from section 2, <code>%0101 1010</code>, which we worked out as 90. A byte is eight
+bits, so it is two nibbles, and the two nibbles turn into two hex digits:</p>
+
+<figure class="diagram">
+  <div style="font-family:var(--mono); font-size:.95rem; line-height:1.7;">
+    <div><span style="color:var(--dim);">byte</span> &nbsp; <span style="color:var(--gold);">0101</span> <span style="color:var(--accent);">1010</span></div>
+    <div><span style="color:var(--dim);">split</span> &nbsp; <span style="color:var(--gold);">0101</span> = 4 + 1 = <span style="color:var(--gold);">5</span> &nbsp;&nbsp; <span style="color:var(--accent);">1010</span> = 8 + 2 = 10 = <span style="color:var(--accent);">A</span></div>
+    <div><span style="color:var(--dim);">write</span> &nbsp; $<span style="color:var(--gold);">5</span><span style="color:var(--accent);">A</span></div>
+  </div>
+  <figcaption style="text-transform:none; letter-spacing:.02em;">The byte %0101 1010 splits into the
+  nibble 0101, which is 5, and the nibble 1010, which is A (ten). Written together they are $5A. As a whole
+  number that is 5 times 16 plus 10, which is 90, the same value section 2 read out of the bits.</figcaption>
+</figure>
+
+<p>That is the mapping in full: the left nibble <code>0101</code> is 5, the right nibble <code>1010</code> is
+<code>A</code> (ten), so the byte is <code>$5A</code>. And <code>$5A</code> as a plain number is
+5 times 16 plus 10, which is 90, exactly what the binary read out. One byte, always two hex digits, one digit
+per nibble. Once you can see the two nibbles, you can read the byte's hex straight off the bits without ever
+doing decimal arithmetic, which is precisely why people who stare at bytes all day reach for hex.</p>
+
+<p>There is a smaller, second convenience worth naming, but keep it in its place: hex is just far shorter and
+easier to hold in your head. <code>$5A</code> is two characters where <code>%0101 1010</code> is eight, and
+"five-A" is an easier thing to say aloud and remember than a string of ones and zeros. Handy, and real, but it
+is the readability bonus riding on top of the true reason. The nibble mapping above is why hex won.</p>
+
+<div class="notation"><span class="n-tag">Notation</span> Base 16 is a real idea, true of every computer:
+it is a genuine way to count, the same sixteen values however you spell them. The way you <em>mark</em> a
+written number as hexadecimal, though, is a convention people picked. This wiki, this wiki's assembler, and
+much 68000 documentation put a leading <code>$</code> on a hex number, so ninety is <code>$5A</code>. The C
+language instead writes a leading <code>0x</code> and would spell the same value <code>0x5A</code>; some other
+assemblers use a trailing <code>h</code> and write <code>5Ah</code>. Same number, different spelling. The
+processor never sees any of these marks: it only ever holds the raw bits, and the <code>$</code> is purely for
+us humans reading and writing the code.</div>
+
+<div class="gotcha"><span class="g-tag">Gotcha</span>
+The trap that catches everyone once: <code>$10</code> is <strong>sixteen</strong>, not ten. Your eye reads the
+shape "10" as the number ten out of pure habit, but the <code>$</code> says this is hex, and in base 16 the
+columns are worth 1 and 16, not 1 and 10. So <code>$10</code> is one sixteen and zero ones, which is sixteen.
+It is the same rollover you already know: decimal writes <code>10</code> when it runs out of digits at ten,
+binary writes <code>%10</code> when it runs out at two, and hex writes <code>$10</code> when it runs out at
+sixteen, one past <code>$F</code>. When you see a <code>$</code>, stop reading the digits as decimal.</div>
+
+<details class="explain">
+  <summary>New here? &middot; How do I turn a byte into hex by hand?</summary>
+  <div class="x-body">
+    <p>You never have to juggle all eight bits at once, and that is the whole gift of the nibble mapping.
+    Split the byte down the middle into its two nibbles and deal with four bits at a time. Take
+    <code>%01011010</code>. Cut it into a left nibble <code>0101</code> and a right nibble <code>1010</code>.
+    Now read each nibble on its own as a small binary number: <code>0101</code> is 4 + 1 = 5, and
+    <code>1010</code> is 8 + 2 = 10. A single nibble only ever lands between 0 and 15, and that is exactly the
+    span of one hex digit, so turn each into its digit: 5 stays <code>5</code>, and 10 is <code>A</code>. Read
+    them back in the same order, left then right, and the byte is <code>$5A</code>.</p>
+    <p>That is the entire method, and it never gets harder: left nibble to a hex digit, right nibble to a hex
+    digit, done. Going the other way is just as mechanical. Take <code>$5A</code>, expand each digit into its
+    four bits (<code>5</code> is <code>0101</code>, <code>A</code> is <code>1010</code>), and stick them back
+    together for <code>%01011010</code>. The tool below does exactly this, so once you have tried a couple by
+    hand you can check yourself against it.</p>
+  </div>
+</details>
+
+<p>Three spellings, one number: <code>$5A</code>, <code>%0101 1010</code>, and 90 are the same byte written
+three ways. The surest way to make that click is to convert a few yourself and watch all three move together,
+which is exactly what the tool below lets you do.</p>
+
+<figure class="diagram conv" aria-label="Hex, binary, and decimal converter for one byte">
+  <div class="conv-row"><label for="conv-hex">Hex</label><span class="conv-pre">$</span><input id="conv-hex" inputmode="text" autocomplete="off" spellcheck="false" maxlength="2" aria-describedby="conv-map"></div>
+  <div class="conv-row"><label for="conv-bin">Binary</label><span class="conv-pre">%</span><input id="conv-bin" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="9" aria-describedby="conv-map"></div>
+  <div class="conv-row"><label for="conv-dec">Decimal</label><span class="conv-pre" aria-hidden="true">&nbsp;</span><input id="conv-dec" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="3" aria-describedby="conv-map"></div>
+  <p class="conv-map" id="conv-map" aria-live="polite">$5A = %0101 1010 = 90</p>
+  <figcaption>One byte, three spellings. Type a value in any row and the other two update. The byte always shows as two hex digits and two nibbles of binary, so the mapping is visible: $5A is %0101 1010 is 90. One hex digit is exactly four bits.</figcaption>
+</figure>
+
+<h2 id="s4">4 &middot; Place value and range</h2>
+
+<p>Section 2 showed a byte counting from 0 to 255, and section 1 promised that every bit you add
+doubles how many things a group can spell out. This section makes that promise exact, because it is
+the one rule the next section leans on completely. Here it is, the rule this whole cluster of pages
+rests on, worth memorizing as the <strong>2<sup>n</sup> rule</strong>: <strong>n bits give
+2<sup>n</sup> different patterns</strong>. That is the whole of it. Everything about ranges and sizes
+below is this single line, applied.</p>
+
+<p>Build the intuition from the bottom. One bit has two possible patterns, <code>0</code> and
+<code>1</code>: that is 2 patterns, and 2<sup>1</sup> is 2. Add a second bit and each of those two
+patterns can be followed by either a <code>0</code> or a <code>1</code>, so the count doubles to 4:
+<code>00</code>, <code>01</code>, <code>10</code>, <code>11</code>, and 2<sup>2</sup> is 4. Add a
+third bit and it doubles again to 8, a fourth and it is 16. Each new bit doubles the count because it
+splits every pattern you already had into two, the old pattern with a fresh <code>0</code> on the end
+and the same pattern with a <code>1</code>. Doubling starting from 1, n times over, is exactly what
+2<sup>n</sup> means, so n bits give 2<sup>n</sup> patterns.</p>
+
+<figure class="diagram">
+  <div class="tbl"><table>
+    <tr><th>Bits</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th></tr>
+    <tr><th>Patterns (2<sup>n</sup>)</th>
+      <td>2</td><td>4</td><td>8</td><td>16</td><td>32</td><td>64</td><td>128</td>
+      <td style="color:var(--gold);">256</td></tr>
+  </table></div>
+  <p style="font-family:var(--mono); font-size:.9rem; margin:.7rem 0 0;">each added bit &times; 2 &rarr;
+  1 bit = 2, 8 bits = <span style="color:var(--gold);">256</span></p>
+  <figcaption style="text-transform:none; letter-spacing:.02em;">Reading left to right, every extra bit
+  doubles the number of patterns: 2, 4, 8, 16, and on. Eight bits reach 2<sup>8</sup> = 256 patterns,
+  which is why one byte has exactly 256 possible values.</figcaption>
+</figure>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not engine code</span>
+  <p>Take 3 bits and write out every pattern in counting order, and you can check the rule by hand.
+  There are 2<sup>3</sup> = 8 of them, no more and no fewer:</p>
+  <p style="font-family:var(--mono);"><code>000</code> <code>001</code> <code>010</code> <code>011</code>
+  <code>100</code> <code>101</code> <code>110</code> <code>111</code></p>
+  <p>Count them: eight patterns. Notice the shape of the list, the first four all start with
+  <code>0</code> and the last four all start with <code>1</code>. That is the doubling caught in the
+  act: the four 2-bit patterns each appear once with a leading <code>0</code> and once with a leading
+  <code>1</code>, so adding the third bit turned 4 patterns into 8.</p>
+</div>
+
+<p>Now spend the rule on the byte. A byte is 8 bits, so it has 2<sup>8</sup> = 256 patterns, and each
+pattern is one value the byte can hold. Section 2 read those values straight off the place columns: all
+bits off is 0, all bits on is 255. So an unsigned byte holds the 256 values from 0 to 255, written
+<code>$00</code> to <code>$FF</code> in hex, and not one value more.</p>
+
+<p>Two hundred fifty-six patterns, but the largest value is 255, not 256. That gap of one trips up
+nearly everyone the first time, and it is worth pinning down rather than waving past. The count of
+values and the largest value are two different numbers, and they differ by one for a single reason:
+the counting starts at 0, not at 1.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why is the biggest byte value 255 and not 256?</summary>
+  <div class="x-body">
+    <p>Because 0 is one of the values. Picture a short street with 256 houses on it, but the builder
+    numbered the first house 0 instead of 1: house 0, house 1, house 2, and on. By the time you have
+    counted out all 256 houses, the last one is numbered 255, because you spent one of your numbers,
+    the very first, on 0. There are still 256 houses; the highest house number is just one less than
+    the count, since the count includes the zero.</p>
+    <p>The byte works the same way. Its 256 patterns are the values 0, 1, 2, all the way up, and
+    because the list starts at 0 the 256th and last value is 255. So "256 patterns" and "0 to 255" are
+    not in conflict, they are the same fact said two ways: 256 values, the first of which is 0, ending
+    at 255. Any time you meet a range that starts at 0, expect the top to be the count minus one:
+    2<sup>8</sup> = 256 patterns means 0 to 255, 2<sup>16</sup> patterns means 0 to 65,535, and so
+    on.</p>
+  </div>
+</details>
+
+<p>Nothing about the rule was special to 8. Feed it a wider group of bits and the range grows fast,
+because 2<sup>n</sup> doubles at every step. Sixteen bits give 2<sup>16</sup> patterns, which is 65,536
+values, so 0 to 65,535. Thirty-two bits give 2<sup>32</sup>, over four billion values. The next section
+lines these widths up in a table and gives each one its name, so treat this as the trailer: the same
+rule you just learned, run at 16 and 32 bits.</p>
+
+<h3>Powers of two, and where "64KB" comes from</h3>
+
+<p>One more payoff of the rule explains a number you will meet everywhere in this material: sizes like
+64KB. Because memory is addressed with bits, the round numbers of computing are the powers of two, not
+the powers of ten. The one worth carrying in your head is 2<sup>10</sup> = 1024, ten bits' worth of
+patterns, which lands tantalizingly close to 1000 without being 1000. That near-miss is the whole story
+behind the kilobyte.</p>
+
+<p>Here honesty matters, because this is a spot where casual explanations quietly fib. Strictly,
+"64 kB" with a lowercase metric k can mean 64,000 bytes, since in the metric system kilo means exactly
+1000. The amount the hardware actually deals in is 64 times 1024, which is 65,536 bytes, and the exact
+name for that quantity is 64 KiB, 64 kibibytes. Retro computing, and this wiki, write "64 KB" to mean
+that second thing: 64 times 1024 = 65,536 bytes. Read it that way on these pages, but hold it as a
+convention this field settled on and not a law of arithmetic, because "64 KB" written somewhere else is
+not guaranteed to mean exactly 65,536.</p>
+
+<p>So the powers of two are not decoration. 256, 1024, and 65,536 keep turning up because each is 2
+raised to some number of bits, and a group of that many bits holds exactly that many patterns, with no
+rounder number on offer. It is the same 2<sup>n</sup> rule wearing a different hat.</p>
+
+<h2 id="s5">5 &middot; Widths: byte, word, long</h2>
+
+<p>Now apply that rule to the sizes you will actually see. A byte is one handy size, but plenty of values
+will not fit in one: a score climbs past 255, a position on a big level runs into the thousands, an
+address that points anywhere in memory needs far more room still. So bytes get grouped into larger fixed
+sizes, and just three of them cover almost everything in this material. Each one is built by doubling the
+last, which is exactly the move the 2<sup>n</sup> rule rewards.</p>
+
+<p>A <span class="term" data-def="Eight bits: one unit of memory, holding a value from 0 to 255.">byte</span> you
+already know: 8 bits. A <strong>word</strong> is two bytes placed together, so 16 bits. A <strong>long
+word</strong> is two words, which is four bytes, so 32 bits. That is the whole ladder, byte to word to long
+word, each rung twice as wide as the one below it. The names are worth knowing because the rest of the wiki
+uses them constantly: when a page says a value is "a word," it means precisely 16 bits, two bytes, no more
+guessing.</p>
+
+<p>Feed each width into the 2<sup>n</sup> rule and its range drops straight out, no new idea required. A
+byte is 8 bits, so 2<sup>8</sup> = 256 patterns, the values 0 to 255. A word is 16 bits, so
+2<sup>16</sup> = 65,536 patterns, the values 0 to 65,535. A long word is 32 bits, so 2<sup>32</sup>
+patterns, whose top value is 4,294,967,295, a shade over four billion. Nothing here is a fresh fact to
+memorize: it is the single rule from the last section, run at three different widths.</p>
+
+<div class="tbl"><table>
+  <tr><th>Width</th><th>Bits</th><th>Unsigned range</th><th>Hex range</th></tr>
+  <tr><th>Byte</th><td>8</td><td>0 - 255</td><td><code>$00</code> - <code>$FF</code></td></tr>
+  <tr><th>Word</th><td>16</td><td>0 - 65,535</td><td><code>$0000</code> - <code>$FFFF</code></td></tr>
+  <tr><th>Long word</th><td>32</td><td>0 - 4,294,967,295</td><td><code>$00000000</code> - <code>$FFFFFFFF</code></td></tr>
+</table></div>
+
+<p>Look at the hex column doing a quiet second job. Because one hex digit is exactly one nibble, four bits
+(section 3), the number of hex digits is just the bit count divided by four: a byte is 2 hex digits, a word
+is 4, a long word is 8. So the <em>width</em> of a hex number tells you the width of the value at a glance.
+A number written <code>$FFFF</code> is announcing, by its four digits, that it is a word, and a number
+written <code>$FFFFFFFF</code> is announcing that it is a long word. Once your eye learns to count hex
+digits in fours, you can read a value's size off the page without doing any arithmetic at all.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why not just always use the biggest width?</summary>
+  <div class="x-body">
+    <p>You could. A long word holds every value a byte or a word can hold and far more, so if space were
+    free you would reach for it every time and never think about widths again. But space is not free. Every
+    value a program keeps has to live somewhere in memory, and a long word takes four times the room of a
+    byte. On a machine of this era memory is genuinely scarce, so spending four bytes to remember a number
+    that never climbs above 255 is four times the storage for no extra reach, multiplied across the
+    thousands of little values a game juggles at once.</p>
+    <p>So the habit is the opposite of "always go big": pick the smallest width that comfortably fits the
+    values you expect. A flag that is only ever on or off wants a byte, or even a single bit. A ring count
+    that could reach a few hundred wants a word. An address that can point anywhere in a large memory wants
+    a long word, because nothing narrower can name every location. Choosing the width is choosing exactly
+    how much room a value is worth, and picking well is a quiet part of writing tight code.</p>
+  </div>
+</details>
+
+<div class="notation"><span class="n-tag">Notation</span> The widths themselves, 8 bits, 16 bits, and 32
+bits, are general: computers everywhere group bits into bytes, words, and longer units, and the sizes mean
+the same thing wherever you meet them. What is a <em>convention</em> is how you write down which width you
+mean. In this wiki's assembler you tag it with a short suffix on the operation, <code>.b</code> for byte,
+<code>.w</code> for word, and <code>.l</code> for long word. Those suffixes are this assembler's spelling,
+not the names of the widths, and not anything the processor sees: they are a note to the assembler saying
+how many bytes an operation should touch. Where the suffix actually rides on a real instruction, and what
+changes when you swap one for another, is the 68000's story rather than this page's. The 68000 track (see
+<a href="../m68k/programming-model.html">the 68000 Programming Model
+page</a>) shows how these suffixes attach to real instructions.</div>
+
+<h2 id="s6">6 &middot; Signed or unsigned</h2>
+
+<p>Every range so far started at 0 and climbed: a byte holds 0 to 255, a word 0 to 65,535. But
+programs also need negative numbers, a velocity that points left, a score that just dropped. The bits
+have no room to spare, so the machine reuses the ones it already has, and here is the whole idea of this
+section: the <em>same</em> pattern of bits can stand for different numbers depending on how the program
+chooses to read it. Take the byte <code>%11111111</code>, which section 2 read as 255. Read that exact
+pattern as <strong>unsigned</strong> and it is 255; read the very same pattern as <strong>signed</strong>
+and it is -1. The bits do not change. Only the interpretation does.</p>
+
+<p>There is a quick tell, but it comes with a condition you must keep attached to it. When an 8-bit value
+is read as signed, a set top bit (the 128 column) means the value is negative. That is a fact about the
+signed reading only, not about the bits themselves: the pattern <code>%11111111</code> does not announce
+whether it is signed or unsigned, and neither does any other. Nothing in the byte says which reading is
+meant. The program, by the instruction it uses, decides.</p>
+
+<p>This is not a corner case you can put off. Values like <code>$FF</code>, <code>$80</code>, and
+<code>$FFFF</code> show up in real code immediately, and whether each one means a large positive number or
+a small negative one depends entirely on how the surrounding code treats it. Same bits, two possible
+meanings, and only the code's intent tells them apart.</p>
+
+<details class="explain">
+  <summary>New here? &middot; How can the same byte be 255 and -1?</summary>
+  <div class="x-body">
+    <p>Because "255" and "-1" are two ways of reading one pattern, not two different patterns. A byte is
+    just eight bits sitting there; on its own it means nothing until some instruction reads it, and the
+    instruction is what picks the unsigned reading or the signed one. <code>%11111111</code> read one way
+    is the biggest byte, 255; read the other way it is -1. The bits never moved.</p>
+    <p>This page stops here on purpose, because the genuinely clever part is <em>why</em> -1 is spelled
+    <code>%11111111</code> and not, say, a minus sign glued onto a 1, and how that spelling makes ordinary
+    addition come out right. That is the full treatment linked at the end of this section; for now, the
+    one idea to hold is that a byte's meaning is a reading the code chooses, not a label baked into the
+    bits.</p>
+  </div>
+</details>
+
+<p>For this page the takeaway is small and firm: a pattern of bits carries no built-in sign, and the same
+byte can be a big positive number or a small negative one until the code commits to a reading. That is
+enough to keep you from being lost when a value like <code>$FF</code> turns up. The full story, how the
+bits are chosen so the arithmetic just works, lives in the 68000 track: see
+<a href="../m68k/moving-data.html#negatives">the Moving Data
+page's negative-numbers explainer</a>.</p>
+
+<h2 id="s7">7 &middot; Letters are numbers too</h2>
+
+<p>A byte can hold any value from 0 to 255, and so far we have read those values as counts:
+a score, a position, a velocity. But a letter of text is stored in a byte too, and the trick is
+simple once you see it: somebody drew up a table that pairs each letter, digit, and symbol with a
+number, and from then on a letter is just that number sitting in a byte.</p>
+
+<p>The table this wiki's examples use is <span class="term" data-def="A widely used table that gives each letter, digit, and symbol a number, so text can be stored as bytes.">ASCII</span>.
+In it the capital letter <code>A</code> is 65, which written in hex is <code>$41</code>. The next
+letter, <code>B</code>, is 66; <code>C</code> is 67, and on up the alphabet. Digits get numbers too
+(the character <code>0</code> is 48, not the value zero), and so does every space, comma, and
+bracket. Once every character has a number, a whole line of text is nothing more exotic than a run
+of bytes, one byte per character, each holding that character's number from the table.</p>
+
+<p>ASCII is a foundational, broadly used standard, but it is worth being exact about what it is and
+is not. It is not a law of computing the way base two is: nothing forces a machine to store
+<code>A</code> as 65. It is a table people agreed on, one that caught on so widely that it underlies
+much of what you will read here and elsewhere. Other encodings exist and always have, and modern
+text mostly uses Unicode, a far larger scheme built to cover the writing of the whole world rather
+than one keyboard's worth of Latin letters. So read ASCII as the encoding this wiki's examples
+assume, a common and important one, not as the single way every computer everywhere stores text.</p>
+
+<details class="explain">
+  <summary>New here? &middot; If letters are numbers, how does the computer know 65 is 'A' and not the number 65?</summary>
+  <div class="x-body">
+    <p>It does not, and that is the honest answer. Nothing in the byte says whether it is a letter or
+    a count. The byte holding 65 is exactly the same eight bits whether you meant the character
+    <code>A</code> or the plain number sixty-five. What decides is the <em>context</em>: the
+    instruction that touches the byte. Code that is about to draw text on screen reads that 65
+    through the ASCII table and paints an <code>A</code>; code that is adding up a score reads the
+    same 65 as the number and adds it. The byte never changes. The reading does.</p>
+    <p>You have already met this exact idea one section back. There, <code>%11111111</code> was 255
+    read as unsigned or -1 read as signed, and the bits carried no built-in answer, only the code's
+    intent settled it. This is the same lesson wearing different clothes: same bits, different
+    meaning, and the surrounding code is what commits to one. "Is this byte a letter or a number?"
+    has no answer you can find by staring at the byte, exactly as "is this byte positive or
+    negative?" did not.</p>
+  </div>
+</details>
+
+<p>There is a real place in this wiki's own code where a value that looks like a plain number is,
+byte for byte, a word of text. When the console powers on it runs a small security check: it will
+only keep running a cartridge whose boot code writes the letters <code>S</code>, <code>E</code>,
+<code>G</code>, <code>A</code> to a particular hardware register. Here is the exact line that does
+it:</p>
+
+<pre>        move.l  #$53454741, (TMSS_REGISTER).l   ; "SEGA"</pre>
+<span class="src">engine/system/boot.asm:32</span>
+
+<p>The single hex value <code>$53454741</code> is a long word, four bytes, and section 5 showed how
+to read its width straight off the eight hex digits. Split it into its four bytes and they are
+<code>$53</code>, <code>$45</code>, <code>$47</code>, <code>$41</code>. Now look those four up as
+ASCII: <code>$53</code> is 83, the letter <code>S</code>; <code>$45</code> is 69, the letter
+<code>E</code>; <code>$47</code> is 71, the letter <code>G</code>; and <code>$41</code> is 65, the
+letter <code>A</code> we started with. So the number <code>$53454741</code> is not really a number
+at all here, it is the word <strong>SEGA</strong> spelled out one byte per letter. The boot code
+writes those four exact letters to satisfy the console's check, because the machine is literally
+looking for the bytes that spell S, E, G, A. The comment <code>; "SEGA"</code> is the programmer
+telling you what the digits secretly say.</p>
+
+<figure class="diagram">
+  <div class="tbl"><table>
+    <tr><th>Byte (hex)</th><td><code>$53</code></td><td><code>$45</code></td><td><code>$47</code></td><td><code>$41</code></td></tr>
+    <tr><th>As decimal</th><td>83</td><td>69</td><td>71</td><td>65</td></tr>
+    <tr><th>ASCII letter</th>
+      <td style="color:var(--gold);">S</td>
+      <td style="color:var(--gold);">E</td>
+      <td style="color:var(--gold);">G</td>
+      <td style="color:var(--gold);">A</td></tr>
+  </table></div>
+  <figcaption style="text-transform:none; letter-spacing:.02em;">The one long word $53454741 is four
+  bytes, and each byte is one letter's ASCII number: $53 is S, $45 is E, $47 is G, $41 is A. Read as
+  a number it is a large value; read as text it is the word SEGA.</figcaption>
+</figure>
+
+<div class="notation"><span class="n-tag">Notation</span> The idea that letters are numbers is
+general: any encoding is just a table pairing characters with values, and ASCII is one widely used
+table. What is particular to <em>this</em> project is the line above, the way we write the value with
+a leading <code>$</code>, and the choice to pack four letters into one long word to feed the
+console's check. That line is not universal notation you will find in every computer; it is a real
+spot in this wiki's code where the general idea shows up wearing this project's conventions. The same
+letters live in a plainer form elsewhere too: the ROM header field
+<code>GAME_CONSOLE equ "SEGA GENESIS    "</code> (<span class="src" style="display:inline;">games/sonic4/config/game.asm:4</span>)
+is another run of bytes that is really text, this time written as characters between quotes and left
+for the assembler to turn into their ASCII numbers.</div>
+
+<p>That is the whole of it. Give every character a number through an agreed table, store each number
+in a byte, and text becomes just data, a run of bytes like any other. Whether a given byte is a
+letter or a count is never written in the byte itself; the code that reads it decides, the same way
+it decided signed from unsigned in the last section.</p>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-22 &middot; <a href="../index.html">Back to hub</a></footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- byte converter ---- */
+(function(){
+  var hex=document.getElementById('conv-hex');
+  var bin=document.getElementById('conv-bin');
+  var dec=document.getElementById('conv-dec');
+  var map=document.getElementById('conv-map');
+  if(!hex||!bin||!dec||!map) return;
+  function clampByte(n){ if(isNaN(n)) return null; n=Math.floor(n); if(n<0)n=0; if(n>255)n=255; return n; }
+  function toHex(n){ return n.toString(16).toUpperCase().padStart(2,'0'); }
+  function toBin(n){ var s=n.toString(2).padStart(8,'0'); return s.slice(0,4)+' '+s.slice(4); }
+  function render(n, except){
+    if(except!=='hex') hex.value=toHex(n);
+    if(except!=='bin') bin.value=toBin(n);
+    if(except!=='dec') dec.value=String(n);
+    map.textContent='$'+toHex(n)+' = %'+toBin(n)+' = '+n;
+  }
+  function fromHex(){ var n=clampByte(parseInt(hex.value.replace(/[^0-9a-fA-F]/g,''),16)); if(n!==null) render(n,'hex'); }
+  function fromBin(){ var n=clampByte(parseInt(bin.value.replace(/[^01]/g,''),2)); if(n!==null) render(n,'bin'); }
+  function fromDec(){ var n=clampByte(parseInt(dec.value.replace(/[^0-9]/g,''),10)); if(n!==null) render(n,'dec'); }
+  hex.addEventListener('input',fromHex);
+  bin.addEventListener('input',fromBin);
+  dec.addEventListener('input',fromDec);
+  [hex,bin,dec].forEach(function(el){ el.addEventListener('focus', function(){ el.select(); }); });
+  render(0x5A, null);
+})();
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+
+</body>
+</html>

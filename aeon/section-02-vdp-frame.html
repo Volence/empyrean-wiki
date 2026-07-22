@@ -414,7 +414,11 @@ these words by hand and watch both the bits and the picture update together.</p>
 <p>Sprites are the fourth ingredient, and they are built from the same tiles as the planes but
 positioned independently, one entry per sprite in the <span class="term" data-def="The Sprite Attribute Table: the list in VRAM describing every sprite's position, size, tiles and drawing order.">Sprite Attribute Table</span> (SAT) in
 VRAM: up to 80 on screen, each naming a position, a size in tiles, and a starting tile index
-plus the same palette/flip/priority bits a nametable word carries. The SAT's anatomy, byte by
+plus the same palette/flip/priority bits a nametable word carries. That 80 is a whole-frame
+ceiling and assumes the 320-pixel display width; the cap that actually bites is per line. On any
+single scanline the VDP draws at most 20 sprites, and at most 320 sprite pixels, then stops: the
+extra sprites on that line simply do not draw. A crowded row, not a crowded screen, is what makes
+sprites disappear. The SAT's anatomy, byte by
 byte, belongs to the Object System page; this page cares about it only as one more thing that has
 to reach VRAM every frame, and reliably.</p>
 
@@ -894,6 +898,11 @@ entries are still there, at the front, next VBlank:</p>
 </table>
 </div>
 <span class="src">engine/constants.asm:123</span>
+
+<p><code>7,200</code> is not a soft target chosen for comfort: about 7 KB, roughly 230 tiles, is
+all a real NTSC VBlank can DMA to VRAM at all, so the budget sits right at the hardware ceiling.
+PAL's near-double figure follows PAL's near-double blanking window: more dead lines, more transfer
+time.</p>
 
 <p>Boot writes the region-appropriate constant into <code>DMA_Budget_Default</code>, and step 7
 of the pipeline (section 4) copies it into <code>DMA_Budget_Remaining</code> unconditionally,
