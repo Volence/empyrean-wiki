@@ -204,10 +204,12 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
     <a href="#s1"><span class="n">1</span>Bits, bytes, nibbles</a>
     <a href="#s2"><span class="n">2</span>Binary</a>
     <a href="#s3"><span class="n">3</span>Hexadecimal</a>
-    <a href="#s4"><span class="n">4</span>Place value and range</a>
-    <a href="#s5"><span class="n">5</span>Widths: byte, word, long</a>
-    <a href="#s6"><span class="n">6</span>Signed or unsigned</a>
-    <a href="#s7"><span class="n">7</span>Letters are numbers too</a>
+    <a href="#s4"><span class="n">4</span>Bit numbering and parts</a>
+    <a href="#s5"><span class="n">5</span>Place value and range</a>
+    <a href="#s6"><span class="n">6</span>Widths: byte, word, long</a>
+    <a href="#s7"><span class="n">7</span>Signed and two's complement</a>
+    <a href="#s8"><span class="n">8</span>Letters are numbers too</a>
+    <a href="#s9"><span class="n">9</span>Notation at a glance</a>
   </nav>
 </header>
 
@@ -355,7 +357,7 @@ quickly.</p>
 <p>This is the payoff of the sizes from section 1. Because a byte is eight bits, it has exactly these eight
 columns, 128 down to 1. Turn every bit off and the total is 0; turn every bit on and you add
 128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = 255, the largest value a single byte can hold. So one byte counts from
-0 to 255 and no further, a range we come back to and pin down properly in section 4.</p>
+0 to 255 and no further, a range we come back to and pin down properly in section 5.</p>
 
 <h2 id="s3">3 &middot; Hexadecimal</h2>
 
@@ -455,6 +457,22 @@ sixteen, one past <code>$F</code>. When you see a <code>$</code>, stop reading t
   </div>
 </details>
 
+<p>Here is that mapping in full, all sixteen nibble values at once, so you never have to work one out from
+scratch. Every hex digit you will ever meet is one of these rows, and the table doubles as a handy
+reference to come back to:</p>
+
+<div class="tbl"><table>
+  <tr><th>Binary</th><th>Hex</th><th>Dec</th><th>Binary</th><th>Hex</th><th>Dec</th></tr>
+  <tr><td><code>0000</code></td><td><code>$0</code></td><td>0</td><td><code>1000</code></td><td><code>$8</code></td><td>8</td></tr>
+  <tr><td><code>0001</code></td><td><code>$1</code></td><td>1</td><td><code>1001</code></td><td><code>$9</code></td><td>9</td></tr>
+  <tr><td><code>0010</code></td><td><code>$2</code></td><td>2</td><td><code>1010</code></td><td><code>$A</code></td><td>10</td></tr>
+  <tr><td><code>0011</code></td><td><code>$3</code></td><td>3</td><td><code>1011</code></td><td><code>$B</code></td><td>11</td></tr>
+  <tr><td><code>0100</code></td><td><code>$4</code></td><td>4</td><td><code>1100</code></td><td><code>$C</code></td><td>12</td></tr>
+  <tr><td><code>0101</code></td><td><code>$5</code></td><td>5</td><td><code>1101</code></td><td><code>$D</code></td><td>13</td></tr>
+  <tr><td><code>0110</code></td><td><code>$6</code></td><td>6</td><td><code>1110</code></td><td><code>$E</code></td><td>14</td></tr>
+  <tr><td><code>0111</code></td><td><code>$7</code></td><td>7</td><td><code>1111</code></td><td><code>$F</code></td><td>15</td></tr>
+</table></div>
+
 <p>Three spellings, one number: <code>$5A</code>, <code>%0101 1010</code>, and 90 are the same byte written
 three ways. The surest way to make that click is to convert a few yourself and watch all three move together,
 which is exactly what the tool below lets you do.</p>
@@ -467,7 +485,39 @@ which is exactly what the tool below lets you do.</p>
   <figcaption>One byte, three spellings. Type a value in any row and the other two update. The byte always shows as two hex digits and two nibbles of binary, so the mapping is visible: $5A is %0101 1010 is 90. One hex digit is exactly four bits. The space in the binary is only there to make the two nibbles easy to see; in real assembler source you would write %01011010 with no space.</figcaption>
 </figure>
 
-<h2 id="s4">4 &middot; Place value and range</h2>
+<h2 id="s4">4 &middot; Bit numbering and parts of a value</h2>
+
+<p>Once a value is more than a single bit, you need names for its parts, because the rest of this wiki
+leans on them constantly: "the top bit," "bit 0," "the low byte," and so on. The scheme is simple and
+worth fixing in place once. The bits of a value are numbered from the right, starting at bit 0, the 1s
+place. In a byte, then, the rightmost bit is bit 0 and the leftmost is bit 7:</p>
+
+<pre>     % 1 0 1 1 0 0 1 0
+       ^             ^
+       bit 7     bit 0
+       (MSB)     (LSB)</pre>
+
+<p>The two ends have names that turn up everywhere. Bit 0, the 1s place on the right, is the
+<strong>least significant bit</strong>, the <strong>LSB</strong>: least significant because flipping it
+changes the value the least, by just 1. The highest bit, bit 7 in a byte, is the <strong>most
+significant bit</strong>, the <strong>MSB</strong>: flipping it changes the value the most, by 128 in a
+byte. When other sections say "the top bit" or "the high bit," they mean the MSB.</p>
+
+<p>The same high-and-low language names the pieces of a hex number. A byte in hex is two nibbles
+(section 3): the left one is the <strong>high nibble</strong> and the right one the <strong>low
+nibble</strong>, so <code>$B2</code> has high nibble <code>$B</code> and low nibble <code>$2</code>. Step
+up to a two-byte value and the halves get the same treatment: <code>$1234</code> has a <strong>high
+byte</strong> <code>$12</code> and a <strong>low byte</strong> <code>$34</code>. The high half is always
+the more significant one, the part carrying the larger place values.</p>
+
+<div class="notation"><span class="n-tag">Careful</span> "High" and "low" here mean <em>significance</em>,
+the mathematical weight of a bit or byte, not where it sits in memory. The high byte of <code>$1234</code>
+is <code>$12</code> whatever order the two bytes are actually stored in. The separate question of which
+byte goes at the lower memory address is called endianness, and it turns up later with the SEGA example in
+section 8. Keep the two apart: significance is about the number's math, endianness is about memory
+order.</div>
+
+<h2 id="s5">5 &middot; Place value and range</h2>
 
 <p>Section 2 showed a byte counting from 0 to 255, and section 1 promised that every bit you add
 doubles how many things a group can spell out. This section makes that promise exact, because it is
@@ -566,7 +616,7 @@ raised to a whole number of bits: 256 is 2<sup>8</sup>, 1024 is 2<sup>10</sup>, 
 n bits can make, which is why these particular values sit at the round-number spots with nothing tidier
 nearby. It is the same 2<sup>n</sup> rule wearing a different hat.</p>
 
-<h2 id="s5">5 &middot; Widths: byte, word, long</h2>
+<h2 id="s6">6 &middot; Widths: byte, word, long</h2>
 
 <p>Now apply that rule to the sizes you will actually see. A byte is one handy size, but plenty of values
 will not fit in one: a score climbs past 255, a position on a big level runs into the thousands, an
@@ -605,6 +655,12 @@ digits as a hint, not the fact, because leading zeros change nothing about the v
 actually decides how many bits get stored or worked on is never how the number is written down but the
 instruction or data directive that uses it, which is the subject of the next note.</p>
 
+<div class="notation"><span class="n-tag">Key point</span> <code>$1</code> = <code>$01</code> =
+<code>$0001</code> = <code>$00000001</code>. These are all the same number, one. Leading zeros never
+change a value; they can only hint to a reader which width was intended. What sets the actual width is the
+instruction, the data directive, the register part, or the storage location that holds the value, never
+the way the number happens to be written.</div>
+
 <details class="explain">
   <summary>New here? &middot; Why not just always use the biggest width?</summary>
   <div class="x-body">
@@ -635,7 +691,7 @@ another, is the 68000's story: the 68000 track (see
 <a href="../m68k/programming-model.html">the 68000 Programming Model
 page</a>) shows how these size suffixes attach to real instructions.</div>
 
-<h2 id="s6">6 &middot; Signed or unsigned</h2>
+<h2 id="s7">7 &middot; Signed numbers and two's complement</h2>
 
 <p>Every range so far started at 0 and climbed: a byte holds 0 to 255, a word 0 to 65,535. But
 programs also need negative numbers, a velocity that points left, a score that just dropped. The bits
@@ -644,6 +700,22 @@ have no room to spare, so the machine reuses the ones it already has, and here i
 <code>%11111111</code>, which section 2 read as 255. Read that pattern as <strong>unsigned</strong> and it
 is 255; read the very same pattern as <strong>signed</strong> and it is -1. The bits do not change. Only
 the interpretation does.</p>
+
+<p>Before we get to negatives, look at the very edge of the range, because it explains everything that
+follows. A byte holds 0 to 255 and has no room for a 256, so what happens if you add 1 to
+<code>$FF</code>?</p>
+
+<pre>   %11111111    $FF    255
+ + %00000001    $01      1
+ -------------------------
+   %00000000    $00      0    (one bit carried off the top and dropped)</pre>
+
+<p>The true sum is 256, which needs a ninth bit, and a byte has nowhere to put it. That ninth bit is
+carried out and lost, and the eight bits left behind read <code>$00</code>: the byte <em>wraps</em> from
+its top straight back to 0, like an odometer rolling over. It works the other way too, since 0 minus 1
+cannot reach -1 in an unsigned byte, so it wraps the other direction to <code>$FF</code>. This wraparound
+is not a bug to avoid; it is the very thing that makes negative numbers work, as the next few paragraphs
+show.</p>
 
 <p>Nothing in the byte says which reading is meant, so the choice belongs to the program, not the byte.
 And most operations never have to make it: adding, subtracting, and copying produce the identical bits
@@ -663,6 +735,13 @@ bit, which is -128, and the most positive is <code>%01111111</code>, the lower s
 is the pattern at any width: n bits run from -2<sup>n-1</sup> up to +2<sup>n-1</sup> - 1. A byte is -128 to
 127; a word is -32,768 to 32,767.</p>
 
+<div class="tbl"><table>
+  <tr><th>Bits</th><th>Hex</th><th>Unsigned</th><th>Signed calculation</th><th>Signed</th></tr>
+  <tr><td><code>%01111111</code></td><td><code>$7F</code></td><td>127</td><td>top bit clear, unchanged</td><td>127</td></tr>
+  <tr><td><code>%10000000</code></td><td><code>$80</code></td><td>128</td><td>128 - 256</td><td>-128</td></tr>
+  <tr><td><code>%11111111</code></td><td><code>$FF</code></td><td>255</td><td>255 - 256</td><td>-1</td></tr>
+</table></div>
+
 <p>Two patterns are worth memorizing. <code>$80</code> is <code>%10000000</code>, only the top bit set, so
 as a signed byte it is exactly -128, the most negative value. <code>$FF</code> is <code>%11111111</code>,
 every bit set, which is -128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = -1, the pattern we started with. There is
@@ -670,6 +749,20 @@ also a shortcut for any signed byte whose top bit is set: read it as an ordinary
 subtract 256. <code>$FF</code> is 255 unsigned, and 255 - 256 = -1; <code>$80</code> is 128 unsigned, and
 128 - 256 = -128. The subtract-256 trick is just the negative-weight idea in disguise, because turning the
 top column from +128 into -128 is a swing of exactly 256.</p>
+
+<p>Here is the payoff, and it ties straight back to the wraparound we opened with. Storing -1 as
+<code>$FF</code> is not an arbitrary code; it is chosen so that ordinary addition simply works. Add 1 to
+it with the exact same wrapping as before:</p>
+
+<pre>   %11111111    $FF    -1
+ + %00000001    $01     1
+ -------------------------
+   %00000000    $00     0</pre>
+
+<p>The machine adds <code>$FF</code> + <code>$01</code> as plain bits and wraps to <code>$00</code>, and
+read as signed that is exactly -1 + 1 = 0. No separate "subtract" step, no special sign rule: the same
+add that wraps 255 back to 0 also carries -1 to 0. That is the quiet genius of two's complement, and it is
+why almost every machine stores negatives this way.</p>
 
 <details class="explain">
   <summary>New here? &middot; How can the same byte be 255 and -1?</summary>
@@ -690,7 +783,9 @@ tempting alternative is to steal the top bit as a plain minus sign, but that lea
 +0 and a -0, which wastes a pattern and complicates the arithmetic. Two's complement instead spends every
 pattern on a distinct number, so a byte's 256 patterns become the 256 distinct values -128 through 127 with
 exactly one zero among them. That tidiness, one pattern per number and ordinary addition that just works
-across the sign, is a big part of why the scheme won.</p>
+across the sign, is a big part of why the scheme won. It also settles a question beginners often ask: the
+pattern with only the top bit set, <code>$80</code>, is a plain negative number, -128, not any kind of
+"negative zero." Two's complement has no negative zero at all.</p>
 
 <p>That is the whole universal picture: a fixed width, the top bit carrying negative weight, one zero, and
 a range of -2<sup>n-1</sup> to 2<sup>n-1</sup> - 1. What is left is specific to the chip: how the 68000
@@ -699,7 +794,7 @@ which instructions pick the signed or the unsigned reading. Those live on the 68
 <a href="../m68k/moving-data.html#negatives">the Moving Data
 page's negative-numbers explainer</a>.</p>
 
-<h2 id="s7">7 &middot; Letters are numbers too</h2>
+<h2 id="s8">8 &middot; Letters are numbers too</h2>
 
 <p>A byte can hold any value from 0 to 255, and so far we have read those values as counts:
 a score, a position, a velocity. But a letter of text is stored in a byte too, and the trick is
@@ -710,8 +805,9 @@ number, and from then on a letter is just that number sitting in a byte.</p>
 In it the capital letter <code>A</code> is 65, which written in hex is <code>$41</code>. The next
 letter, <code>B</code>, is 66; <code>C</code> is 67, and on up the alphabet. Digits get numbers too
 (the character <code>0</code> is 48, not the value zero), and so does every space, comma, and
-bracket. Once every character has a number, a whole line of text is nothing more exotic than a run
-of bytes, one byte per character, each holding that character's number from the table.</p>
+bracket. ASCII is a 7-bit code: it numbers exactly 128 characters, 0 through 127, and each is normally stored in a
+full 8-bit byte with the high bit left at 0. So a line of ASCII text is a run of bytes, one byte per
+character, each holding that character's number from the table.</p>
 
 <p>ASCII is a foundational, broadly used standard, but it is worth being exact about what it is and
 is not. It is not a law of computing the way base two is: nothing forces a machine to store
@@ -719,7 +815,9 @@ is not. It is not a law of computing the way base two is: nothing forces a machi
 much of what you will read here and elsewhere. Other encodings exist and always have, and modern
 text mostly uses Unicode, a far larger scheme built to cover the writing of the whole world rather
 than one keyboard's worth of Latin letters. So read ASCII as the encoding this wiki's examples
-assume, a common and important one, not as the single way every computer everywhere stores text.</p>
+assume, a common and important one, not as the single way every computer everywhere stores text. It is
+also why "one byte per character" is really an ASCII habit rather than a universal rule: in a modern
+encoding like UTF-8 a single character can take several bytes.</p>
 
 <details class="explain">
   <summary>New here? &middot; If letters are numbers, how does the computer know 65 is 'A' and not the number 65?</summary>
@@ -752,8 +850,10 @@ attempt to touch the video chip freezes the machine. Here is the exact line that
 most significant first, and they are <code>$53</code>, <code>$45</code>, <code>$47</code>,
 <code>$41</code>. Now look them up as ASCII: <code>$53</code> is 83, the letter <code>S</code>;
 <code>$45</code> is 69, <code>E</code>; <code>$47</code> is 71, <code>G</code>; and <code>$41</code> is
-65, the <code>A</code> we started with. So the number <code>$53454741</code> is not really a number here
-at all, it is the word <strong>SEGA</strong> spelled one byte per letter. When the 68000 stores that long
+65, the <code>A</code> we started with. So <code>$53454741</code> is still a perfectly good number, but
+here nobody cares about its numeric size: its four bytes are being read as the ASCII text
+<strong>SEGA</strong>, one byte per letter. That is this page's whole lesson in a single line, the bits
+carry no built-in meaning, and here the code chooses to read them as letters. When the 68000 stores that long
 word it writes the <code>$53</code> first, at the lowest address, because the 68000 is <em>big-endian</em>:
 it puts the most significant byte first, which is exactly why the bytes land in reading order S, E, G, A
 rather than reversed. The register is watching for precisely those four bytes, and the comment
@@ -796,6 +896,21 @@ for the assembler to turn into their ASCII numbers.</div>
 in a byte, and text becomes just data, a run of bytes like any other. Whether a given byte is a
 letter or a count is never written in the byte itself; the code that reads it decides, the same way
 it decided signed from unsigned in the last section.</p>
+
+<h2 id="s9">9 &middot; Notation at a glance</h2>
+
+<p>Everything this page uses to write numbers and to name sizes, gathered in one place for quick
+reference. If a piece of notation on another page ever throws you, this is the table to come back to:</p>
+
+<div class="tbl"><table>
+  <tr><th>Written form</th><th>Means</th></tr>
+  <tr><td><code>90</code></td><td>Decimal, base 10, the everyday number</td></tr>
+  <tr><td><code>%01011010</code></td><td>Binary, base 2, marked by a leading <code>%</code> (source has no space; the space is display only)</td></tr>
+  <tr><td><code>$5A</code></td><td>Hexadecimal, base 16, marked by a leading <code>$</code></td></tr>
+  <tr><td><code>.b</code></td><td>Byte-sized operation, 8 bits</td></tr>
+  <tr><td><code>.w</code></td><td>Word-sized operation, 16 bits (on the 68000)</td></tr>
+  <tr><td><code>.l</code></td><td>Long-word-sized operation, 32 bits (on the 68000)</td></tr>
+</table></div>
 
 <footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-22 &middot; <a href="../index.html">Back to hub</a></footer>
 
