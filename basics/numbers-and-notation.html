@@ -464,7 +464,7 @@ which is exactly what the tool below lets you do.</p>
   <div class="conv-row"><label for="conv-bin">Binary</label><span class="conv-pre">%</span><input id="conv-bin" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="9" aria-describedby="conv-map"></div>
   <div class="conv-row"><label for="conv-dec">Decimal</label><span class="conv-pre" aria-hidden="true">&nbsp;</span><input id="conv-dec" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="3" aria-describedby="conv-map"></div>
   <p class="conv-map" id="conv-map" aria-live="polite">$5A = %0101 1010 = 90</p>
-  <figcaption>One byte, three spellings. Type a value in any row and the other two update. The byte always shows as two hex digits and two nibbles of binary, so the mapping is visible: $5A is %0101 1010 is 90. One hex digit is exactly four bits.</figcaption>
+  <figcaption>One byte, three spellings. Type a value in any row and the other two update. The byte always shows as two hex digits and two nibbles of binary, so the mapping is visible: $5A is %0101 1010 is 90. One hex digit is exactly four bits. The space in the binary is only there to make the two nibbles easy to see; in real assembler source you would write %01011010 with no space.</figcaption>
 </figure>
 
 <h2 id="s4">4 &middot; Place value and range</h2>
@@ -560,9 +560,11 @@ that second thing: 64 times 1024 = 65,536 bytes. Read it that way on these pages
 convention this field settled on and not a law of arithmetic, because "64 KB" written somewhere else is
 not guaranteed to mean exactly 65,536.</p>
 
-<p>So the powers of two are not decoration. 256, 1024, and 65,536 keep turning up because each is 2
-raised to some number of bits, and a group of that many bits holds exactly that many patterns, with no
-rounder number on offer. It is the same 2<sup>n</sup> rule wearing a different hat.</p>
+<p>So the powers of two are not decoration. 256, 1024, and 65,536 keep turning up because each one is 2
+raised to a whole number of bits: 256 is 2<sup>8</sup>, 1024 is 2<sup>10</sup>, 65,536 is
+2<sup>16</sup>. Whenever a count comes out to exactly 2<sup>n</sup>, it is the number of patterns that
+n bits can make, which is why these particular values sit at the round-number spots with nothing tidier
+nearby. It is the same 2<sup>n</sup> rule wearing a different hat.</p>
 
 <h2 id="s5">5 &middot; Widths: byte, word, long</h2>
 
@@ -573,11 +575,13 @@ sizes, and just three of them cover almost everything in this material. Each one
 last, which is exactly the move the 2<sup>n</sup> rule rewards.</p>
 
 <p>A <span class="term" data-def="Eight bits: one unit of memory, holding a value from 0 to 255.">byte</span> you
-already know: 8 bits. A <strong>word</strong> is two bytes placed together, so 16 bits. A <strong>long
-word</strong> is two words, which is four bytes, so 32 bits. That is the whole ladder, byte to word to long
-word, each rung twice as wide as the one below it. The names are worth knowing because the rest of the wiki
-uses them constantly: when a page says a value is "a word," it means precisely 16 bits, two bytes, no more
-guessing.</p>
+already know: 8 bits, and that meaning is nearly universal. The larger sizes, though, are named relative to a
+particular processor. On the 68000, the CPU this wiki is about, a <strong>word</strong> is two bytes, so
+16 bits, and a <strong>long word</strong> is two words, four bytes, so 32 bits. That is the whole ladder,
+byte to word to long word, each rung twice as wide as the one below it. One caution worth carrying: the word
+"word" is not fixed across the industry, other processor families use it for other sizes, so throughout this
+wiki "word" always means the 68000's 16 bits and "long word" its 32. When a page here says a value is "a
+word," it means precisely 16 bits, no more guessing.</p>
 
 <p>Feed each width into the 2<sup>n</sup> rule and its range drops straight out, no new idea required. A
 byte is 8 bits, so 2<sup>8</sup> = 256 patterns, the values 0 to 255. A word is 16 bits, so
@@ -592,12 +596,14 @@ memorize: it is the single rule from the last section, run at three different wi
   <tr><th>Long word</th><td>32</td><td>0 - 4,294,967,295</td><td><code>$00000000</code> - <code>$FFFFFFFF</code></td></tr>
 </table></div>
 
-<p>Look at the hex column doing a quiet second job. Because one hex digit is exactly one nibble, four bits
-(section 3), the number of hex digits is just the bit count divided by four: a byte is 2 hex digits, a word
-is 4, a long word is 8. So the <em>width</em> of a hex number tells you the width of the value at a glance.
-A number written <code>$FFFF</code> is announcing, by its four digits, that it is a word, and a number
-written <code>$FFFFFFFF</code> is announcing that it is a long word. Once your eye learns to count hex
-digits in fours, you can read a value's size off the page without doing any arithmetic at all.</p>
+<p>The hex column lines up with the bit count in a handy way. Because one hex digit is exactly one nibble,
+four bits (section 3), a value that fills a byte needs 2 hex digits, a word 4, and a long word 8. Writers
+lean on this: padding a number out with leading zeros, writing <code>$00FF</code> or
+<code>$000000FF</code>, is a common way to signal to a reader which width is intended. But treat those
+digits as a hint, not the fact, because leading zeros change nothing about the value. <code>$1</code>,
+<code>$01</code>, <code>$0001</code>, and <code>$00000001</code> are all the exact same number, one. What
+actually decides how many bits get stored or worked on is never how the number is written down but the
+instruction or data directive that uses it, which is the subject of the next note.</p>
 
 <details class="explain">
   <summary>New here? &middot; Why not just always use the biggest width?</summary>
@@ -616,57 +622,80 @@ digits in fours, you can read a value's size off the page without doing any arit
   </div>
 </details>
 
-<div class="notation"><span class="n-tag">Notation</span> The widths themselves, 8 bits, 16 bits, and 32
-bits, are general: computers everywhere group bits into bytes, words, and longer units, and the sizes mean
-the same thing wherever you meet them. What is a <em>convention</em> is how you write down which width you
-mean. In this wiki's assembler you tag it with a short suffix on the operation, <code>.b</code> for byte,
-<code>.w</code> for word, and <code>.l</code> for long word. Those suffixes are this assembler's spelling,
-not the names of the widths, and not anything the processor sees: they are a note to the assembler saying
-how many bytes an operation should touch. Where the suffix actually rides on a real instruction, and what
-changes when you swap one for another, is the 68000's story rather than this page's. The 68000 track (see
+<div class="notation"><span class="n-tag">Notation</span> Grouping bits into fixed sizes is general, but
+the exact sizes and their names belong to a processor. On the 68000 you choose a size for an operation and
+write it as a short suffix: <code>.b</code> for byte, <code>.w</code> for word, <code>.l</code> for long
+word. That suffix notation is standard 68000 assembly, the same on any 68000 assembler, not a private habit
+of this wiki. And it is more than a note to the assembler. The text <code>.w</code> does disappear when the
+code is assembled, but the size choice does not: the assembler bakes it into a size field inside the
+instruction's opcode, and the processor reads that field and acts on it, touching one, two, or four bytes
+accordingly. So the written suffix is notation for us to read, but the size it selects is real, and the CPU
+genuinely sees it. Where the suffix rides on a real instruction, and what changes when you swap one for
+another, is the 68000's story: the 68000 track (see
 <a href="../m68k/programming-model.html">the 68000 Programming Model
-page</a>) shows how these suffixes attach to real instructions.</div>
+page</a>) shows how these size suffixes attach to real instructions.</div>
 
 <h2 id="s6">6 &middot; Signed or unsigned</h2>
 
 <p>Every range so far started at 0 and climbed: a byte holds 0 to 255, a word 0 to 65,535. But
 programs also need negative numbers, a velocity that points left, a score that just dropped. The bits
-have no room to spare, so the machine reuses the ones it already has, and here is the whole idea of this
-section: the <em>same</em> pattern of bits can stand for different numbers depending on how the program
-chooses to read it. Take the byte <code>%11111111</code>, which section 2 read as 255. Read that exact
-pattern as <strong>unsigned</strong> and it is 255; read the very same pattern as <strong>signed</strong>
-and it is -1. The bits do not change. Only the interpretation does.</p>
+have no room to spare, so the machine reuses the ones it already has, and here is the whole idea: the
+<em>same</em> pattern of bits can stand for different numbers depending on how it is read. Take the byte
+<code>%11111111</code>, which section 2 read as 255. Read that pattern as <strong>unsigned</strong> and it
+is 255; read the very same pattern as <strong>signed</strong> and it is -1. The bits do not change. Only
+the interpretation does.</p>
 
-<p>There is a quick tell, but it comes with a condition you must keep attached to it. When an 8-bit value
-is read as signed, a set top bit (the 128 column) means the value is negative. That is a fact about the
-signed reading only, not about the bits themselves: the pattern <code>%11111111</code> does not announce
-whether it is signed or unsigned, and neither does any other. Nothing in the byte says which reading is
-meant. The program, by the instruction it uses, decides.</p>
+<p>Nothing in the byte says which reading is meant, so the choice belongs to the program, not the byte.
+And most operations never have to make it: adding, subtracting, and copying produce the identical bits
+whether you picture the operands as signed or unsigned, so a plain add serves both and never needs to
+know. The signed-or-unsigned decision only surfaces where it genuinely changes the answer, a signed versus
+unsigned multiply or divide, stretching a small value into a wider one, or which way a comparison branches.
+Those come as separate signed and unsigned instructions on the 68000, and the Moving Data page covers them;
+the point here is only that the bits carry no sign of their own, and the program's intent supplies it.</p>
 
-<p>This is not a corner case you can put off. Values like <code>$FF</code>, <code>$80</code>, and
-<code>$FFFF</code> show up in real code immediately, and whether each one means a large positive number or
-a small negative one depends entirely on how the surrounding code treats it. Same bits, two possible
-meanings, and only the code's intent tells them apart.</p>
+<p>The scheme almost every computer uses to make this work, the 68000 included, is called
+<span class="term" data-def="The standard way to store signed numbers in a fixed width: the top bit carries negative weight, so every bit pattern is a distinct number and there is a single zero.">two's
+complement</span>, and its universal shape is worth owning right here. In an n-bit signed value the top bit
+is not merely a flag that says "negative"; it carries negative <em>weight</em>. A byte's eight columns are
+normally worth 128, 64, 32, 16, 8, 4, 2, 1; read as signed, that top column flips to <strong>minus</strong>
+128 while the lower seven stay positive. So the most negative byte is <code>%10000000</code>, just the top
+bit, which is -128, and the most positive is <code>%01111111</code>, the lower seven, which is +127. That
+is the pattern at any width: n bits run from -2<sup>n-1</sup> up to +2<sup>n-1</sup> - 1. A byte is -128 to
+127; a word is -32,768 to 32,767.</p>
+
+<p>Two patterns are worth memorizing. <code>$80</code> is <code>%10000000</code>, only the top bit set, so
+as a signed byte it is exactly -128, the most negative value. <code>$FF</code> is <code>%11111111</code>,
+every bit set, which is -128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = -1, the pattern we started with. There is
+also a shortcut for any signed byte whose top bit is set: read it as an ordinary unsigned value and
+subtract 256. <code>$FF</code> is 255 unsigned, and 255 - 256 = -1; <code>$80</code> is 128 unsigned, and
+128 - 256 = -128. The subtract-256 trick is just the negative-weight idea in disguise, because turning the
+top column from +128 into -128 is a swing of exactly 256.</p>
 
 <details class="explain">
   <summary>New here? &middot; How can the same byte be 255 and -1?</summary>
   <div class="x-body">
     <p>Because "255" and "-1" are two ways of reading one pattern, not two different patterns. A byte is
-    just eight bits sitting there; on its own it means nothing until some instruction reads it, and the
-    instruction is what picks the unsigned reading or the signed one. <code>%11111111</code> read one way
-    is the biggest byte, 255; read the other way it is -1. The bits never moved.</p>
-    <p>This page stops here on purpose, because the genuinely clever part is <em>why</em> -1 is spelled
-    <code>%11111111</code> and not, say, a minus sign glued onto a 1, and how that spelling makes ordinary
-    addition come out right. That is the full treatment linked at the end of this section; for now, the
-    one idea to hold is that a byte's meaning is a reading the code chooses, not a label baked into the
-    bits.</p>
+    eight bits sitting there; on its own it means nothing until some instruction reads it, and the reading
+    picks unsigned or signed. Under the unsigned reading of <code>%11111111</code> the top bit is worth
+    +128, so the total is 128 + 127 = 255. Under the signed reading that same top bit is worth -128, so the
+    total is -128 + 127 = -1. Nothing moved; only the weight of the top bit changed sign.</p>
+    <p>Carry one habit away from this: whenever you see a byte with its top bit set, anything from
+    <code>$80</code> through <code>$FF</code>, it is a candidate negative number, and only the code around
+    it settles whether that is what is meant.</p>
   </div>
 </details>
 
-<p>For this page the takeaway is small and firm: a pattern of bits carries no built-in sign, and the same
-byte can be a big positive number or a small negative one until the code commits to a reading. That is
-enough to keep you from being lost when a value like <code>$FF</code> turns up. The full story, how the
-bits are chosen so the arithmetic just works, lives in the 68000 track: see
+<p>One last piece of the universal picture, and an elegant one: two's complement has a single zero. The
+tempting alternative is to steal the top bit as a plain minus sign, but that leaves you with two zeros, a
++0 and a -0, which wastes a pattern and complicates the arithmetic. Two's complement instead spends every
+pattern on a distinct number, so a byte's 256 patterns become the 256 distinct values -128 through 127 with
+exactly one zero among them. That tidiness, one pattern per number and ordinary addition that just works
+across the sign, is a big part of why the scheme won.</p>
+
+<p>That is the whole universal picture: a fixed width, the top bit carrying negative weight, one zero, and
+a range of -2<sup>n-1</sup> to 2<sup>n-1</sup> - 1. What is left is specific to the chip: how the 68000
+records, after each operation, whether a result went negative or overflowed (its condition flags), and
+which instructions pick the signed or the unsigned reading. Those live on the 68000 track: see
 <a href="../m68k/moving-data.html#negatives">the Moving Data
 page's negative-numbers explainer</a>.</p>
 
@@ -711,24 +740,31 @@ assume, a common and important one, not as the single way every computer everywh
 </details>
 
 <p>There is a real place in this wiki's own code where a value that looks like a plain number is,
-byte for byte, a word of text. When the console powers on it runs a small security check: it will
-only keep running a cartridge whose boot code writes the letters <code>S</code>, <code>E</code>,
-<code>G</code>, <code>A</code> to a particular hardware register. Here is the exact line that does
-it:</p>
+byte for byte, a word of text. On the later Genesis models a lock called the TMSS guards the video
+hardware: shortly after boot, the running game must write the letters <code>S</code>, <code>E</code>,
+<code>G</code>, <code>A</code> to a specific hardware register at <code>$A14000</code>, or the very next
+attempt to touch the video chip freezes the machine. Here is the exact line that does it:</p>
 
 <pre>        move.l  #$53454741, (TMSS_REGISTER).l   ; "SEGA"</pre>
 <span class="src">engine/system/boot.asm:32</span>
 
-<p>The single hex value <code>$53454741</code> is a long word, four bytes, and section 5 showed how
-to read its width straight off the eight hex digits. Split it into its four bytes and they are
-<code>$53</code>, <code>$45</code>, <code>$47</code>, <code>$41</code>. Now look those four up as
-ASCII: <code>$53</code> is 83, the letter <code>S</code>; <code>$45</code> is 69, the letter
-<code>E</code>; <code>$47</code> is 71, the letter <code>G</code>; and <code>$41</code> is 65, the
-letter <code>A</code> we started with. So the number <code>$53454741</code> is not really a number
-at all here, it is the word <strong>SEGA</strong> spelled out one byte per letter. The boot code
-writes those four exact letters to satisfy the console's check, because the machine is literally
-looking for the bytes that spell S, E, G, A. The comment <code>; "SEGA"</code> is the programmer
-telling you what the digits secretly say.</p>
+<p>The single hex value <code>$53454741</code> is a long word, four bytes. Split it into those bytes,
+most significant first, and they are <code>$53</code>, <code>$45</code>, <code>$47</code>,
+<code>$41</code>. Now look them up as ASCII: <code>$53</code> is 83, the letter <code>S</code>;
+<code>$45</code> is 69, <code>E</code>; <code>$47</code> is 71, <code>G</code>; and <code>$41</code> is
+65, the <code>A</code> we started with. So the number <code>$53454741</code> is not really a number here
+at all, it is the word <strong>SEGA</strong> spelled one byte per letter. When the 68000 stores that long
+word it writes the <code>$53</code> first, at the lowest address, because the 68000 is <em>big-endian</em>:
+it puts the most significant byte first, which is exactly why the bytes land in reading order S, E, G, A
+rather than reversed. The register is watching for precisely those four bytes, and the comment
+<code>; "SEGA"</code> is the programmer telling you what the digits secretly say.</p>
+
+<p>One clarification, because the word SEGA does double duty here. A TMSS console actually looks for SEGA
+in two separate places. At power-on, before it will boot the cartridge at all, the system firmware checks
+that the ROM's header contains the text "SEGA". That header check is what authorizes the boot. The write
+above is the <em>second</em>, later step: the game, now running, writes "SEGA" to the <code>$A14000</code>
+register to unlock the video hardware. The line of code shown is that video unlock, not the initial header
+check.</p>
 
 <figure class="diagram">
   <div class="tbl"><table>
@@ -783,7 +819,9 @@ function expandAll(btn){
   function clampByte(n){ if(isNaN(n)) return null; n=Math.floor(n); if(n<0)n=0; if(n>255)n=255; return n; }
   function toHex(n){ return n.toString(16).toUpperCase().padStart(2,'0'); }
   function toBin(n){ var s=n.toString(2).padStart(8,'0'); return s.slice(0,4)+' '+s.slice(4); }
+  var cur=0;
   function render(n, except){
+    cur=n;
     if(except!=='hex') hex.value=toHex(n);
     if(except!=='bin') bin.value=toBin(n);
     if(except!=='dec') dec.value=String(n);
@@ -795,7 +833,10 @@ function expandAll(btn){
   hex.addEventListener('input',fromHex);
   bin.addEventListener('input',fromBin);
   dec.addEventListener('input',fromDec);
-  [hex,bin,dec].forEach(function(el){ el.addEventListener('focus', function(){ el.select(); }); });
+  [hex,bin,dec].forEach(function(el){
+    el.addEventListener('focus', function(){ el.select(); });
+    el.addEventListener('blur', function(){ render(cur, null); });
+  });
   render(0x5A, null);
 })();
 
