@@ -655,6 +655,25 @@ agree; once the high bit is set they part ways:</p>
 <code>$FF</code> is 255 - 256 = -1, and <code>$80</code> is 128 - 256 = -128. There is only one zero;
 <code>$80</code> is -128, not a negative zero.</p>
 
+<p><strong>So how does the code know a value is signed?</strong> Nothing records it. The bits are just
+bits, and the CPU never tracks a type. Signedness lives in the code: the programmer decides a value is
+signed, then consistently uses sign-aware instructions on it. It shows up in how the value gets widened (<a href="moving-data.html#ext">EXT</a> copies the top bit up; the unsigned choice zero-fills),
+halved (<a href="shifts-bits.html#asr">ASR</a> keeps the sign, <a href="shifts-bits.html#lsr">LSR</a> does not), and multiplied or
+divided (<a href="math-logic.html#muls">MULS</a> / <a href="math-logic.html#divs">DIVS</a> signed, <a href="math-logic.html#mulu">MULU</a> /
+<a href="math-logic.html#divu">DIVU</a> unsigned), and which conditional branches read the result (signed <code>BLT</code>/<code>BMI</code> versus unsigned <code>BLO</code>/<code>BCS</code>). Most of those live on later pages, linked so you can look them up; you
+do not need them yet, only the idea.</p>
+<p>Your negative velocity is the clearest case. A character's <code>x_vel</code> is stored signed, so moving
+left is a negative value like <code>$FFF0</code> (-16). Each frame the engine applies it to the position
+roughly like this:</p>
+<pre>	<a href="moving-data.html#move">move.w</a>	x_vel(a0),d0	<span class="c">; the signed velocity, $FFF0 = -16</span>
+	<a href="moving-data.html#ext">ext.l</a>	d0		<span class="c">; sign-extend to 32 bits: $FFFFFFF0, still -16</span>
+	<a href="shifts-bits.html#asl">asl.l</a>	<span class="n">#8</span>,d0		<span class="c">; scale it into the position format</span>
+	<a href="math-logic.html#add">add.l</a>	d0,x_pos(a0)	<span class="c">; add it, so a negative velocity moves left</span></pre>
+<p>That <code>ext.l</code> is where the code commits to signed: it stretches <code>$FFF0</code> to
+<code>$FFFFFFF0</code> so -16 stays -16. Zero-extend instead (the unsigned reading) and <code>$FFF0</code>
+becomes +65520, sending the character the wrong way at absurd speed. Same bits, one instruction different,
+opposite behavior. In assembly nothing checks this for you; you are the type system.</p>
+
 <p><strong>The flags are two independent fit checks.</strong> ADD performs one binary addition, and
 afterward the CPU recalculates both flags:</p>
 <ul>
@@ -683,26 +702,6 @@ gave the value. A signed velocity can go negative, so it is read signed:</p>
 <pre>	add.b	<span class="n">#1</span>,d0
 	bcs.s	CounterWrapped		<span class="c">; result passed 255 and wrapped to 0</span></pre>
 <p>The ADD is identical; what <code>d0</code> represents decides which flag matters.</p>
-
-<p><strong>So how does the code know a value is signed?</strong> Nothing records it. The bits are just
-bits, and the CPU never tracks a type. Signedness lives in the code: the programmer decides a value is
-signed, then consistently uses sign-aware instructions on it. The branch you just chose is one, but so is
-how the value gets widened (<a href="moving-data.html#ext">EXT</a> copies the top bit up; the unsigned choice zero-fills),
-halved (<a href="shifts-bits.html#asr">ASR</a> keeps the sign, <a href="shifts-bits.html#lsr">LSR</a> does not), and multiplied or
-divided (<a href="math-logic.html#muls">MULS</a> / <a href="math-logic.html#divs">DIVS</a> signed, <a href="math-logic.html#mulu">MULU</a> /
-<a href="math-logic.html#divu">DIVU</a> unsigned). Most of those live on later pages, linked so you can look them up; you
-do not need them yet, only the idea.</p>
-<p>Your negative velocity is the clearest case. A character's <code>x_vel</code> is stored signed, so moving
-left is a negative value like <code>$FFF0</code> (-16). Each frame the engine applies it to the position
-roughly like this:</p>
-<pre>	<a href="moving-data.html#move">move.w</a>	x_vel(a0),d0	<span class="c">; the signed velocity, $FFF0 = -16</span>
-	<a href="moving-data.html#ext">ext.l</a>	d0		<span class="c">; sign-extend to 32 bits: $FFFFFFF0, still -16</span>
-	<a href="shifts-bits.html#asl">asl.l</a>	<span class="n">#8</span>,d0		<span class="c">; scale it into the position format</span>
-	<a href="math-logic.html#add">add.l</a>	d0,x_pos(a0)	<span class="c">; add it, so a negative velocity moves left</span></pre>
-<p>That <code>ext.l</code> is where the code commits to signed: it stretches <code>$FFF0</code> to
-<code>$FFFFFFF0</code> so -16 stays -16. Zero-extend instead (the unsigned reading) and <code>$FFF0</code>
-becomes +65520, sending the character the wrong way at absurd speed. Same bits, one instruction different,
-opposite behavior. In assembly nothing checks this for you; you are the type system.</p>
 </div>
 
 <div class="teach"><span class="t-tag">Teaching example &middot; the same choice, in a comparison</span>
