@@ -914,6 +914,44 @@ as it was.</p>
   an address register. Always a longword operation; there is no size suffix. It is the standard
   opening move of a routine that is about to work on something: point a register at the table,
   the object, or the port first, and everything that follows gets shorter and cheaper.</p>
+
+  <details class="explain">
+    <summary>New here? &middot; MOVEA or LEA: what is the difference?</summary>
+    <div class="x-body">
+      <p>Both instructions place something into an address register, but they load different things:</p>
+      <ul>
+        <li><a href="#movea">MOVEA</a> loads a <strong>value</strong> into an address register.</li>
+        <li>LEA calculates an operand's <strong>address</strong> and loads that address into an
+        address register.</li>
+      </ul>
+      <p>Ordinary <a href="#move">MOVE</a> cannot use an address register as its direct destination, so
+      MOVEA provides the address-register form of the instruction. Despite its name, MOVEA does not
+      write anything to memory. The A means "move to an address register."</p>
+      <p>Suppose <code>Table</code> is located at <code>$FFFFFF10</code>, and the first longword stored
+      there is <code>$00001000</code>:</p>
+<pre>lea     Table,a0        <span class="c">; a0 = $FFFFFF10</span>
+movea.l Table,a0        <span class="c">; a0 = $00001000</span></pre>
+      <p>LEA loads <em>where</em> <code>Table</code> is. MOVEA reads the longword stored at
+      <code>Table</code> and loads that value.</p>
+      <p>Adding <code>#</code> changes MOVEA's source from memory to an immediate value:</p>
+<pre>movea.l #Table,a0       <span class="c">; a0 = $FFFFFF10</span>
+lea     Table,a0        <span class="c">; a0 = $FFFFFF10</span></pre>
+      <p>For a plain label, these normally produce the same result. The first treats <code>Table</code>
+      as an immediate numeric constant, while the second calculates the effective address represented by
+      <code>Table</code>. LEA usually communicates the intention more clearly when an address is wanted.</p>
+      <p>The difference also applies to calculated addresses:</p>
+<pre>movea.l 8(a1,d0.w),a0   <span class="c">; read a longword from the calculated address</span>
+lea     8(a1,d0.w),a0   <span class="c">; load the calculated address itself</span></pre>
+      <p>Both calculate <code>a1 + 8 +</code> the sign-extended value of <code>d0.w</code>. MOVEA then
+      accesses memory at that address, while LEA stops after calculating the address.</p>
+      <p>An immediate MOVEA cannot express that runtime calculation:</p>
+<pre>movea.l #8(a1,d0.w),a0  <span class="c">; invalid</span></pre>
+      <p>MOVEA supports <code>.w</code> and <code>.l</code>. The word form sign-extends its 16-bit source
+      to 32 bits, so <code>.l</code> is normally used for complete addresses. LEA always produces a full
+      address and therefore has no size suffix. Neither instruction changes the condition codes.</p>
+      <p>In short: MOVEA loads the value supplied by its source; LEA loads where its source would be.</p>
+    </div>
+  </details>
   <figure class="diagram">
   <div class="movesim">
     <div class="msim-instr"><code id="le-instr">lea Score,a0  vs  move.w Score,d0</code> <span>Score is a game variable living in RAM: the label means address $00FF1000, and the current score is the number stored in the cell there. LEA writes down where the cell is; MOVE.w walks in and copies what it holds. Change the contents and see which one notices.</span></div>
