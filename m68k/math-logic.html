@@ -1814,7 +1814,7 @@ Play with each operation in the bitwise visualizer, which shows the bits themsel
   <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
     <div>value&nbsp; <span class="mr-val" id="bt-vb" style="font-size:.95rem;">0110 1100</span></div>
     <div id="bt-maskrow">mask&nbsp;&nbsp; <span class="mr-val" id="bt-mb" style="font-size:.95rem;">0011 1111</span></div>
-    <div>result <span class="mr-val" id="bt-rb" style="font-size:.95rem;">0010 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="bt-rh">$2C</span></div>
+    <div>result <span class="mr-val" id="bt-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="bt-rh">$6C</span></div>
   </div>
   <p class="msim-note" id="bt-note" aria-live="polite">and.b $3F,$6C: the mask $3F is 0011 1111, so AND keeps the low six bits and forces the top two to 0. Result $2C. Switch to OR (turns bits on where the mask is 1), EOR (flips them), or NOT (inverts every bit, no mask).</p>
 </div>
@@ -2427,12 +2427,19 @@ function expandAll(btn){
   function bin8hl(n,ref){ n&=0xFF; ref&=0xFF; var o=''; for(var i=7;i>=0;i--){ if(i===3) o+=' '; var b=(n>>i)&1, r=(ref>>i)&1; o += (b!==r)?('<b>'+b+'</b>'):(''+b); } return o; }
   function rd(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase(); el.value=v; return parseInt(v||'0',16)&0xFF; }
   function usesMask(){ return op!=='not'; }
+  function pending(){
+    var a=rd(val);
+    vb.textContent=bin8(a);
+    rb.textContent=bin8(a); rh.textContent='$'+a.toString(16).toUpperCase().padStart(2,'0');
+  }
   function sync(){
     instr.textContent=SYN[op]; run.textContent='Run '+SYN[op];
     maskrow.style.display = usesMask() ? '' : 'none';
     masklab.style.display = usesMask() ? '' : 'none';
     mask.style.display = usesMask() ? '' : 'none';
-    vb.textContent=bin8(rd(val)); if(usesMask()) mb.textContent=bin8(rd(mask));
+    if(usesMask()) mb.textContent=bin8(rd(mask));
+    pending();
+    note.textContent='Nothing has run yet, so the result row still shows d0 unchanged. Press Run '+SYN[op]+' to apply it.';
   }
   function run1(){
     var a=rd(val), m=usesMask()?rd(mask):0, res;
@@ -2452,12 +2459,12 @@ function expandAll(btn){
       Array.prototype.forEach.call(document.querySelectorAll('.bt-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
       sync(); });
   });
-  val.addEventListener('input',function(){ vb.textContent=bin8(rd(val)); });
-  mask.addEventListener('input',function(){ mb.textContent=bin8(rd(mask)); });
+  val.addEventListener('input',function(){ sync(); });
+  mask.addEventListener('input',function(){ mb.textContent=bin8(rd(mask)); pending(); });
   run.addEventListener('click',run1);
   reset.addEventListener('click',function(){ val.value='6C'; mask.value='3F'; op='and';
     Array.prototype.forEach.call(document.querySelectorAll('.bt-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='and'?'true':'false'); });
-    sync(); rb.textContent='0010 1100'; rh.textContent='$2C';
+    sync();
     note.textContent='Reset. Value $6C, mask $3F. Pick an operation and run it.'; });
   sync();
 })();

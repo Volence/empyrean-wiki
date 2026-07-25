@@ -416,7 +416,7 @@ before and after, which bit fell out into C and X, and what filled the vacated e
   </div>
   <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
     <div>before <span class="mr-val" id="sh-vb" style="font-size:.95rem;">0110 1100</span></div>
-    <div>after&nbsp; <span class="mr-val" id="sh-rb" style="font-size:.95rem;">1101 1000</span> &nbsp;=&nbsp; <span class="mr-val" id="sh-rh">$D8</span></div>
+    <div>after&nbsp; <span class="mr-val" id="sh-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="sh-rh">$6C</span></div>
     <div>C <span class="mr-val" id="sh-c" style="font-size:.95rem;">0</span> &nbsp; X <span class="mr-val" id="sh-x" style="font-size:.95rem;">0</span> &nbsp;<span style="color:var(--dim);">(last bit shifted out)</span></div>
   </div>
   <p class="msim-note" id="sh-note" aria-live="polite">lsl.b #1,$6C: every bit steps left, a 0 enters at the bottom, and the old top bit 0 falls into C and X. $6C becomes $D8 (108 doubled is 216). lsl by n multiplies by 2^n; switch to lsr (unsigned divide by 2^n), asr (signed divide, copies the sign into the top), or asl (like lsl but sets V on signed overflow).</p>
@@ -744,7 +744,7 @@ draws the X cell next to the byte so you can watch a bit park in X and re-enter 
   </div>
   <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
     <div id="ro-beforeline">before <span class="mr-val" id="ro-vb" style="font-size:.95rem;">1011 0100</span> <span class="v" id="ro-xb" style="margin-left:.4rem;">X 0</span></div>
-    <div id="ro-afterline">after&nbsp; <span class="mr-val" id="ro-rb" style="font-size:.95rem;">0110 1000</span> <span class="v" id="ro-xa" style="margin-left:.4rem;">X 1</span> &nbsp;=&nbsp; <span class="mr-val" id="ro-rh">$68</span></div>
+    <div id="ro-afterline">after&nbsp; <span class="mr-val" id="ro-rb" style="font-size:.95rem;">1011 0100</span> <span class="v" id="ro-xa" style="margin-left:.4rem;">X 1</span> &nbsp;=&nbsp; <span class="mr-val" id="ro-rh">$B4</span></div>
     <div>C <span class="mr-val" id="ro-c" style="font-size:.95rem;">1</span> &nbsp;<span style="color:var(--dim);">(wrapped bit for ROL/ROR, new X for ROXL/ROXR)</span></div>
   </div>
   <p class="msim-note" id="ro-note" aria-live="polite">roxl.b #1,$B4 with X=0: the top bit 1 moves into X, the old X 0 enters at the bottom. Byte becomes $68, X and C are now 1. Nine cells, one step around. Run it again and the new X threads back in.</p>
@@ -1375,9 +1375,18 @@ function expandAll(btn){
   function hex2(n){ return '$'+(n&0xFF).toString(16).toUpperCase().padStart(2,'0'); }
   function s8(n){ n&=0xFF; return n>=0x80 ? n-0x100 : n; }
   function curSyn(){ var n=rdCnt(); return NAME[op]+'.b #'+n+',d0'; }
+  // at rest nothing has run, so the "after" row must mirror "before" and the flag cells must
+  // not claim a bit fell out. Called on load, on reset, and whenever an input changes, so the
+  // display can never show a result belonging to a different instruction than the one on screen.
+  function pending(){
+    vb.textContent=bin8(byte);
+    rb.textContent=bin8(byte); rh.textContent=hex2(byte);
+    ce.textContent='\u00B7'; xe.textContent='\u00B7';
+  }
   function sync(){
     instr.textContent=curSyn(); run.textContent='Run '+curSyn();
-    vb.textContent=bin8(byte);
+    pending();
+    note.textContent='Nothing has run yet, so after shows the same bits as before and no bit has fallen into C or X. Press Run '+curSyn()+' to shift them.';
   }
   // apply one shift op to `byte` by count n; return {res, last, vchanged}
   // vchanged tracks (for ASL) whether the sign bit changed at ANY step, per the manual
@@ -1423,15 +1432,14 @@ function expandAll(btn){
       Array.prototype.forEach.call(document.querySelectorAll('.sh-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
       sync(); });
   });
-  val.addEventListener('input',function(){ byte=rdVal(); vb.textContent=bin8(byte); });   // edit seeds the byte
-  cnt.addEventListener('input',function(){ instr.textContent=curSyn(); run.textContent='Run '+curSyn(); });
+  val.addEventListener('input',function(){ byte=rdVal(); sync(); });   // edit seeds the byte
+  cnt.addEventListener('input',function(){ sync(); });
   run.addEventListener('click',run1);
   reset.addEventListener('click',function(){
     op='lsl'; byte=0x6C; val.value='6C'; cnt.value='1';
     Array.prototype.forEach.call(document.querySelectorAll('.sh-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='lsl'?'true':'false'); });
     sync();
-    rb.textContent='1101 1000'; rh.textContent='$D8'; ce.textContent='0'; xe.textContent='0';
-    note.textContent='Reset. Value $6C, count 1, lsl. Pick a shift and run it (the byte is held across runs, so each run shifts the current value).';
+    note.textContent='Reset. Value $6C, count 1, lsl, and nothing has run yet, so after matches before. Pick a shift and run it (the byte is held across runs, so each run shifts the current value).';
   });
   sync();
 })();
@@ -1472,12 +1480,18 @@ function expandAll(btn){
     if(USESX[op]){ xin.disabled=false; xin.style.opacity='1'; xlabel.style.opacity='1'; xlabel.textContent='initial X (0/1)'; }
     else { xin.disabled=true; xin.style.opacity='.4'; xlabel.style.opacity='.4'; xlabel.textContent='X (unused by ROL/ROR)'; }
   }
+  function pending(){
+    vb.textContent=bin8(byte);
+    rb.textContent=bin8(byte); rh.textContent=hex2(byte);
+    ce.textContent='\u00B7';
+  }
   function sync(){
     instr.textContent=curSyn(); run.textContent='Run '+curSyn();
-    vb.textContent=bin8(byte);
+    pending();
     xb.textContent='X '+(USESX[op]?X:'-'); xa.textContent='X '+(USESX[op]?X:'-');
     xb.style.opacity=USESX[op]?'1':'.4'; xa.style.opacity=USESX[op]?'1':'.4';
     reflectX();
+    note.textContent='Nothing has run yet, so after shows the same bits as before and X has not moved. Press Run '+curSyn()+' to rotate them.';
   }
   function run1(){
     var n=rdCnt();
@@ -1513,15 +1527,14 @@ function expandAll(btn){
       Array.prototype.forEach.call(document.querySelectorAll('.ro-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
       sync(); });
   });
-  val.addEventListener('input',function(){ byte=rdVal(); vb.textContent=bin8(byte); });    // edit seeds the byte
-  cnt.addEventListener('input',function(){ instr.textContent=curSyn(); run.textContent='Run '+curSyn(); });
+  val.addEventListener('input',function(){ byte=rdVal(); sync(); });    // edit seeds the byte
+  cnt.addEventListener('input',function(){ sync(); });
   xin.addEventListener('input',function(){ X=rdX(); xb.textContent='X '+(USESX[op]?X:'-'); xa.textContent='X '+(USESX[op]?X:'-'); }); // edit seeds X
   run.addEventListener('click',run1);
   reset.addEventListener('click',function(){
     op='roxl'; byte=0xB4; X=0; val.value='B4'; cnt.value='1'; xin.value='0';
     Array.prototype.forEach.call(document.querySelectorAll('.ro-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='roxl'?'true':'false'); });
     sync();
-    rb.textContent='0110 1000'; rh.textContent='$68'; ce.textContent='1';
     note.textContent='Reset. Value $B4, count 1, X 0, roxl. Run it (the byte AND X are held across runs, so roxl/roxr thread X from the previous run).';
   });
   sync();
@@ -1544,11 +1557,17 @@ function expandAll(btn){
   function rdNum(){ var v=(num.value||'').replace(/[^0-9]/g,'').slice(0,1); num.value=v; var n=parseInt(v||'0',10); if(n<0) n=0; if(n>7) n=7; return n; }
   function hex2(n){ return '$'+(n&0xFF).toString(16).toUpperCase().padStart(2,'0'); }
   function curSyn(){ var n=rdNum(); return NAME[op]+' #'+n+',d0'; }
+  function pending(){
+    vb.textContent=bin8(byte);
+    rb.textContent=bin8(byte); rh.textContent=hex2(byte);
+    ze.textContent='\u00B7';
+  }
   function sync(){
     instr.textContent=curSyn(); run.textContent='Run '+curSyn();
     var n=rdNum();
-    vb.textContent=bin8(byte);
+    pending();
     mk.innerHTML=markRow(n);
+    note.textContent='Nothing has run yet, so after shows the same bits as before and Z has not been set. Press Run '+curSyn()+' to test bit '+n+'.';
   }
   function run1(){
     var n=rdNum();
@@ -1585,15 +1604,14 @@ function expandAll(btn){
       Array.prototype.forEach.call(document.querySelectorAll('.bp-op'),function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
       sync(); });
   });
-  val.addEventListener('input',function(){ byte=rdVal(); vb.textContent=bin8(byte); });   // edit seeds the byte
-  num.addEventListener('input',function(){ instr.textContent=curSyn(); run.textContent='Run '+curSyn(); mk.innerHTML=markRow(rdNum()); });
+  val.addEventListener('input',function(){ byte=rdVal(); sync(); });   // edit seeds the byte
+  num.addEventListener('input',function(){ sync(); });
   run.addEventListener('click',run1);
   reset.addEventListener('click',function(){
     op='btst'; byte=0x6C; val.value='6C'; num.value='2';
     Array.prototype.forEach.call(document.querySelectorAll('.bp-op'),function(o){ o.setAttribute('aria-pressed', o.dataset.op==='btst'?'true':'false'); });
     sync();
-    rb.textContent='0110 1100'; rh.textContent='$6C'; ze.textContent='0';
-    note.textContent='Reset. Value $6C, bit 2, btst. Pick an op and run it (the byte is held across runs, so a bset then a later bclr act on the current value).';
+    note.textContent='Reset. Value $6C, bit 2, btst, and nothing has run yet, so after matches before. Pick an op and run it (the byte is held across runs, so a bset then a later bclr act on the current value).';
   });
   sync();
 })();
