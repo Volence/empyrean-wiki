@@ -520,8 +520,10 @@ address into the program counter; everything else is discipline.</p>
     a live stack column byte by byte. If you want to watch the four bytes move, watch them there.
     This page does not rebuild it.</p>
     <p><b>The program counter</b> holds the address of the instruction being fetched, and steps
-    along by itself. The only instructions that write it are the ones on this page. That is
-    actually the cleanest definition of what this page covers.</p>
+    along by itself. Redirecting it is the whole job of the instructions on this page, which is
+    the cleanest definition of what this page covers. A handful of others move it as a side
+    effect of raising an exception, TRAP and CHK among them, and those belong to the System
+    page.</p>
     <p><b>A label</b> is a name the assembler swaps for an address at build time. When you write
     <code>bsr.w ReadJoypads</code>, the assembled bytes contain a distance, not a name; the name
     is gone before the ROM exists. <a href="addressing-modes.html#s1">Addressing Modes, section 1</a>
@@ -553,8 +555,8 @@ address into the program counter; everything else is discipline.</p>
 
   <p>RTS pops a longword from the stack into the program counter, so execution continues at
   whatever address those four bytes spell. Reach for it as the last instruction of any routine
-  a <code>bsr</code> or <code>jsr</code> called. It is 1,740 of the instructions in Sonic 2, and
-  the fourth most common instruction in the file.</p>
+  a <code>bsr</code> or <code>jsr</code> called. It appears 1,740 times in Sonic 2, which makes
+  it the sixth most common instruction in the file.</p>
 
   <p>The flags row above is doing more work than it looks. Because RTS touches no
   <span class="term" data-def="One of the bits the processor sets to describe the last result, such as whether it was zero or negative. A conditional instruction reads these bits rather than looking at the values themselves.">condition code</span>,
@@ -563,7 +565,7 @@ address into the program counter; everything else is discipline.</p>
   travels back in Z or C rather than in a register.</p>
 
   <p>Here is a whole routine, entry to exit. It clears an object's 64 bytes of RAM so the slot
-  can be reused, and it is the single most tail-called routine in the game:</p>
+  can be reused, and more conditional branches end up here than at any other routine in the game:</p>
 
   <pre>DeleteObject:
 	movea.l	a0,a1
@@ -861,7 +863,8 @@ GameMode_LevelSelect:	bra.w	LevelSelectMenu		<span class="c">; Level select mode
   <p>BSR pushes the address of the next instruction and then branches, so the routine it lands in
   can <code>rts</code> back. Reach for it whenever you want a nearby routine's work done and then
   want to carry on: it is the ordinary function call of 68000 code, and at 1,841 uses it is the
-  second most common instruction in Sonic 2 after <code>move</code>.</p>
+  fourth most common instruction in Sonic 2, behind only <code>move</code>, <code>moveq</code>
+  and <code>beq</code>.</p>
 
   <p>This is the joypad reader, and it uses <code>bsr</code> for a trick you cannot understand
   without knowing what the instruction does to the stack:</p>
@@ -903,8 +906,9 @@ Joypad_Read:</pre>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   If the call is the LAST thing your routine does, do not use <code>bsr</code> followed by
   <code>rts</code>. Use <code>bra</code> to the same target and delete the <code>rts</code>: the
-  callee's own return then goes straight to your caller. That saves 4 bytes, saves the 18-cycle
-  push and the 16-cycle pop, and keeps the stack one level shallower.
+  callee's own return then goes straight to your caller. That saves 2 bytes and 24 cycles (the
+  <code>bsr</code>'s 18 becomes a <code>bra</code>'s 10, and your <code>rts</code>'s 16 stops
+  happening at all), and keeps the stack one level shallower.
   <a href="#s5">Section 5</a> is about exactly this.</div>
 </div>
 
@@ -1341,7 +1345,7 @@ branch just reads the report. This is the single most common shape in engine cod
 invisible until you stop expecting to see a comparison.</p>
 
 <p>That <code>; rts</code> is a s2disasm convention rather than anything the CPU sees, and since
-it appears 273 times in the file it is worth decoding now. The branch target is <code>+</code>,
+278 lines of the file carry it, it is worth decoding now. The branch target is <code>+</code>,
 an anonymous local label meaning "the next <code>+</code> line below". The annotation tells you
 what is waiting there, so you do not have to go and look. In this case the target really is a
 lone <code>rts</code>:</p>
@@ -1379,8 +1383,9 @@ the spelling records that. The disassembly's own comment, "if d4 was &lt; $80", 
 same thing from the other direction.</p>
 
 <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
-<pre>	<span class="c">; BVC and BVS appear ZERO times in the Sonic 2, Sonic 3 and Knuckles,</span>
-	<span class="c">; and Sonic Clean Engine disassemblies, so there is no real one to show.</span>
+<pre>	<span class="c">; No shipped game code in the Sonic 2, Sonic 3 and Knuckles, or Sonic Clean</span>
+	<span class="c">; Engine trees uses BVC or BVS, so there is no real one to show. The only</span>
+	<span class="c">; hits anywhere are two lines inside a macro in S.C.E.'s debugger.</span>
 	<span class="c">; The job they exist for looks like this: clamping a signed add.</span>
 	add.w	d1,d0		<span class="c">; d0 = d0 + d1, as signed words</span>
 	bvc.s	.ok		<span class="c">; V clear means the answer really fits in 16 bits</span>
@@ -1622,8 +1627,10 @@ straight past you to whoever called you. It cannot tell the difference and does 
 pops four bytes and jumps, exactly as it always does.</p>
 
 <p>This is the <span class="term" data-def="Ending a routine by jumping to another routine instead of calling it, so that when the second one finishes it hands control straight back to whoever called the first.">tail call</span>,
-and it is free in every direction. Two instructions become one, so 4 bytes of ROM are saved. The
-18-cycle push and the 16-cycle pop both vanish. The stack stays one level shallower for the whole
+and it is free in every direction. Two instructions become one, so 2 bytes of ROM are saved
+(<code>bsr.w</code> plus <code>rts</code> is 6 bytes, <code>bra.w</code> alone is 4). It saves
+24 cycles: the call drops from 18 to a branch's 10, and your own <code>rts</code>'s 16 stops
+happening at all. The stack stays one level shallower for the whole
 of <code>Inner</code>'s run. And there is no catch, provided you genuinely had nothing left to do
 afterwards.</p>
 
@@ -1808,8 +1815,9 @@ stack.</p>
 <p>The price is that the trick is invisible from the call site. Read
 <code>Obj34_BottomPartIn</code> on its own and nothing about <code>jsr Obj34_Wait(pc)</code>
 suggests the two lines after it might never run. That is a real hazard when you are modifying
-code you did not write, and it is why all three sites in this section carry a comment saying what
-they are doing. If you write this idiom, comment it.</p>
+code you did not write. Two of the three sites in this section say so in a comment; the Big Ring
+one below does not, and is correspondingly harder to read. If you write this idiom, comment
+it.</p>
 
 <details class="explain">
   <summary>New here? &middot; Why would a routine ever want to cancel its caller?</summary>
@@ -1830,20 +1838,24 @@ they are doing. If you write this idiom, comment it.</p>
     permission.</p>
     <p>The cost is that it is invisible from the call site. Reading
     <code>Obj34_BottomPartIn</code> on its own, nothing suggests the two lines after the
-    <code>jsr</code> might not run. That is a real maintenance hazard, which is why both of the
-    other sites in this section carry a comment saying what they are doing, and why this one's
-    comment states the contract in English. If you write this idiom, comment it.</p>
+    <code>jsr</code> might not run. That is a real maintenance hazard, and the disassembly is
+    inconsistent about warning you: this site and the Oil Ocean one state the contract in plain
+    English, while the Big Ring one leaves a bare <code>addq.l #4,sp</code> to speak for itself.
+    If you write this idiom, comment it.</p>
   </div>
 </details>
 
 <div class="gotcha"><span class="g-tag">Gotcha</span>
-<code>addq.w #4,sp</code> and <code>addq.l #4,sp</code> are the same instruction here, and both
-spellings really do appear in Sonic 2 (this site uses <code>.w</code>; the two below use
-<code>.l</code>). That is not sloppiness: when the destination is an address register, the manual
-states that "the entire destination address register is used regardless of the operation size",
-so a word-sized ADDQ still adds to all 32 bits of <code>sp</code>. The size suffix is decoration
-in this one position. Do not carry that habit anywhere else, because for a data register
-destination <code>.w</code> and <code>.l</code> are genuinely different instructions.</div>
+<code>addq.w #4,sp</code> and <code>addq.l #4,sp</code> are two different encodings that do
+exactly the same thing here, and both spellings really do appear in Sonic 2 (this site uses
+<code>.w</code>; the two below use <code>.l</code>). That is not sloppiness: when the destination
+is an address register, the manual states that "the entire destination address register is used
+regardless of the operation size", so a word-sized ADDQ still adds to all 32 bits of
+<code>sp</code>. Note this is a free choice between <code>.w</code> and <code>.l</code> only:
+<code>addq.b</code> into an address register is not legal at all, since the manual permits only
+word and long operations there. And do not carry the habit anywhere else, because for a data
+register destination <code>.w</code> and <code>.l</code> are genuinely different
+instructions.</div>
 
 <p>Two more sites, both confirming this is a technique rather than a one-off. The first is in the
 Oil Ocean scroll code, and its comment names the routine it is refusing to return to:</p>
@@ -2004,8 +2016,8 @@ wrongly, so it is worth being exact.</p>
   true, so step 1 never stops the loop and only the counter ever can. <code>dbf</code> is
   therefore a pure counted loop with no condition at all, which is what you usually want. The
   manual notes that most assemblers also accept <code>DBRA</code> as a spelling of
-  <code>DBF</code>; the Sonic disassemblies do not use it, and <code>dbra</code> appears nowhere
-  in any of the three trees.</p>
+  <code>DBF</code>; the Sonic disassemblies do not use it, and there is no <code>dbra</code> in
+  any assembly source in any of the three trees.</p>
 
   <p>And the third is the counting. Because the branch happens when the result is not -1, the
   loop runs one more time than the number you loaded.</p>
@@ -2018,7 +2030,7 @@ wrongly, so it is worth being exact.</p>
         -1.</span></div>
       <div class="msim-ctrl">
         <label for="db-seed">Load d1 with</label>
-        <input id="db-seed" type="text" value="3" size="4" aria-label="starting count for d1">
+        <input id="db-seed" type="text" value="3" size="4" aria-label="starting count for d1, 0 to 127">
         <button id="db-load" type="button">Run moveq #n,d1</button>
         <button id="db-step" type="button">Step one pass</button>
         <button id="db-runall" type="button">Run to the end</button>
@@ -2224,8 +2236,13 @@ wrong.</p>
   PRIVILEGED, which means executing it outside supervisor mode does not return at all, it raises
   a privilege-violation exception.</div>
 
-  <p>RTE ends an exception handler. On the 68000 an exception pushes six bytes, the status
-  register as a word and then the program counter as a longword, and RTE pops both back. That is
+  <p>RTE ends an exception handler. On the 68000 an ordinary exception, such as an interrupt,
+  pushes six bytes: the status register as a word and then the program counter as a longword.
+  RTE pops both back. (Two exceptions push more. A bus error or an address error, the kind
+  <a href="#s4">section 4</a>'s gotcha describes, pushes a fourteen-byte frame carrying the
+  faulting access address and other diagnostic words UNDERNEATH the usual pair, which is why a
+  handler that reads the usual pair naively prints nonsense for exactly the two failures you most
+  want to debug. The Programming Model page's exception section is the place for that.) That is
   the same shape as RTR and it is a different thing: RTR restores the five condition codes, RTE
   restores the ENTIRE status register, including the interrupt priority mask and the supervisor
   bit. Restoring the mask is the point, because that is how the machine stops being inside an
@@ -2234,7 +2251,10 @@ wrong.</p>
   <p>You have already seen the only kind of RTE a Genesis game contains, at the end of the
   vertical interrupt handler in <a href="#s4">section 4</a>: <code>movem.l (sp)+,d0-a6</code> to
   put the registers back, then <code>rte</code>. There are four <code>rte</code> instructions in
-  the whole of Sonic 2, one per interrupt handler, and that is the normal number.</p>
+  the whole of Sonic 2, which is a normal number for a game. They are not one per handler,
+  though: <code>V_Int</code> and <code>H_Int_Done</code> have one each, and
+  <code>PalToCRAM</code> has two, because it has two exit paths. That is worth noticing, since
+  each of those paths has to leave the stack in the same state, which is the gotcha below.</p>
 
   <p>This page deliberately stops here. Which exceptions exist, what the vector table is, what the
   CPU pushes when things go wrong, and how a handler reads the frame are all covered on
@@ -2786,10 +2806,14 @@ function expandAll(btn){
   }
 
   function readSeed(){
+    // clamp to 0-127: that is all moveq can encode, and the "one more than the number loaded"
+    // narration below is only true for a non-negative count
     var t=(seedEl.value||'').trim();
     var v=/^\$/.test(t) ? parseInt(t.slice(1),16) : parseInt(t,10);
-    if(isNaN(v)) v=0;
-    return ((v%65536)+65536)%65536;
+    if(isNaN(v) || v<0) v=0;
+    if(v>127) v=127;
+    seedEl.value=String(v);
+    return v;
   }
 
   function load(){                       // seeding happens ONLY here and on reset, never mid-run
