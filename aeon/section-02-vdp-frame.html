@@ -872,7 +872,9 @@ DMAEntry endstruct
   zero comparisons per entry, about 514 cycles to drain all 8. Important and Deferrable share
   <code>Drain_Budgeted_Queue</code>, a loop that checks <code>DMA_Budget_Remaining</code> before
   each entry and stops by comparing the current pointer against the queue's first-free address,
-  not a <code>dbf</code>-counted loop. Unrolling all 32 slots the Critical way would cost 704
+  not a <code>dbf</code>-counted loop (<code>dbf</code> decrements a register and loops until it
+  passes -1, so it needs a count known up front; see <a href="../m68k/flow.html#dbcc">68000: Flow</a>).
+  Unrolling all 32 slots the Critical way would cost 704
   bytes of ROM; the hybrid costs roughly 280, putting the fully-unrolled speed only where every
   cycle affects visual stability, and a compact shared loop where one extra frame of latency is
   tolerable.
@@ -1207,7 +1209,11 @@ the whole buffer is terminated by a zero address:</p>
 the shape the control port wants (section 2). Three of those mechanisms are worth carrying in your
 pocket: <code>lsl.l</code> slides every bit left and feeds zeros in at the bottom,
 <code>ror.w</code> rotates the low word around so bits falling off one end reappear at the other,
-and <code>swap</code> exchanges the register's two 16-bit halves in place.
+and <code>swap</code> exchanges the register's two 16-bit halves in place. The
+<code>dbf d1, .drain_row</code> closing the loop is the counted-loop instruction: it decrements the
+low word of <code>d1</code> and branches back until the result passes -1, which is why a count
+loaded as N runs the body N plus one times.
+<a href="../m68k/flow.html#dbcc">68000: Flow</a> owns it.
 <a href="../m68k/shifts-bits.html">68000: Shifts &amp;
 Bits</a> owns the shifts and rotates, with a visualizer for what falls out and what fills in;
 <code>swap</code> lives with the other movers on

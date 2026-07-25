@@ -1,0 +1,2875 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>68000: Flow</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E↩️%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+/* ============================================================
+   Page-specific styles: Flow
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+details.refbox summary::-webkit-details-marker{display:none;}
+
+/* mini-index: chip row of this page's mnemonics */
+nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
+nav.mini a{font-family:var(--mono); font-size:.76rem; letter-spacing:.02em;
+  color:var(--ink); text-decoration:none; border:1px solid var(--accent);
+  border-radius:3px; padding:.22rem .55rem; background:rgba(68,102,238,.1);}
+nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outline:none;}
+.mini-h{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); width:100%; margin:.5rem 0 -.1rem;}
+
+/* instruction entry header: mnemonic + syntax */
+.instr{margin:2.2rem 0 0; padding-top:.2rem;}
+.instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
+.mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
+.syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+.mnx{font-size:.82rem; color:var(--ink); font-style:italic; font-weight:normal;}
+
+/* flags indicator */
+.flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
+.flags .fl-label{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin-right:.3rem;}
+.flags .fchip{display:flex; flex-direction:column; align-items:center; gap:.15rem;
+  width:2.1rem; padding:.25rem 0; border-radius:3px; border:1px solid var(--line);
+  font-family:var(--mono); font-size:.7rem; cursor:help;}
+.flags .fchip:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.flags .fchip .fl-name{font-weight:bold;}
+.flags .fchip .fl-state{font-size:.55rem; letter-spacing:.05em; color:var(--dim);
+  text-transform:uppercase;}
+.flags .fchip.f-set{border-color:var(--gold); background:rgba(238,170,0,.14); color:var(--gold);}
+.flags .fchip.f-set .fl-state{color:var(--gold);}
+.flags .fchip.f-clear{border-color:#CC66AA; background:rgba(204,102,170,.12); color:#CC66AA;}
+.flags .fchip.f-clear .fl-state{color:#CC66AA;}
+.flags .fchip.f-none{border-color:var(--line); color:var(--dim); opacity:.6;}
+.flags .fl-caption{font-family:var(--mono); font-size:.68rem; color:var(--dim);
+  margin-left:.3rem;}
+
+
+/* instruction cost, operands, encoding */
+.cost,.operands{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:.6rem 0; max-width:42rem;}
+.cost .cchip{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent);
+  color:var(--ink); background:rgba(68,102,238,.14); border-radius:3px; padding:.1rem .45rem;
+  font-variant-numeric:tabular-nums;}
+.cost .cnote,.operands .onote{font-size:.8rem; color:var(--dim); max-width:38rem;}
+.cost .cctx{font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.03em;}
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* operand legality grid: which addressing modes each side accepts */
+.opgrid{margin:.6rem 0 .2rem; max-width:42rem;}
+.og-row{display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; margin:.3rem 0;}
+.og-side{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); min-width:6.4rem;}
+.og{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent); border-radius:3px;
+  padding:.12rem .45rem; background:rgba(68,102,238,.14); color:var(--ink);}
+.og.no{border-color:var(--line); background:transparent; color:var(--dim); opacity:.55;
+  text-decoration:line-through;}
+.og-note{font-size:.78rem; color:var(--dim); max-width:40rem; margin:.35rem 0 .6rem;}
+
+/* cheaper cousins: the see-also that names the better tool */
+.kin{border-left:3px solid var(--accent); background:rgba(68,102,238,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.kin .k-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.2rem;}
+
+/* a data VALUE (contents of a register/memory) vs a bare address */
+code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em; font-weight:600;}
+
+/* before/after simulator shell (shared by the flags demo and the per-instruction toys) */
+.movesim{display:flex; flex-direction:column; gap:.8rem;}
+.msim-instr{font-family:var(--mono); display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;}
+.msim-instr code{font-size:1rem; color:var(--gold); background:var(--code-bg);
+  border:1px solid var(--line); border-radius:3px; padding:.2rem .55rem;}
+.msim-instr span{font-size:.72rem; color:var(--dim); max-width:32rem;}
+.msim-ctrl{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.75rem;}
+.msim-ctrl label{color:var(--dim);}
+.msim-ctrl input{font-family:var(--mono); font-size:.85rem; width:4.5rem; background:var(--panel);
+  color:var(--gold); border:1px solid var(--line); border-radius:3px; padding:.25rem .4rem; text-transform:uppercase;}
+.msim-ctrl input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-ctrl button{font-family:var(--mono); font-size:.72rem; padding:.3rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.msim-ctrl button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-regs{display:flex; flex-wrap:wrap; align-items:center; gap:1rem;}
+.mreg{display:inline-flex; flex-direction:column; gap:.2rem; align-items:center; border:1px solid var(--line);
+  border-radius:4px; padding:.5rem .8rem; background:var(--panel2); min-width:5.5rem;}
+.mr-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
+.mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.mr-val b{color:#CC66AA; font-weight:normal;}
+.mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
+.msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
+.mr-flash{background:transparent;}
+@media (prefers-reduced-motion: no-preference){
+  .mr-flash{animation:mrflash .5s ease;}
+  @keyframes mrflash{from{background:rgba(68,102,238,.4);}to{background:transparent;}}
+}
+
+/* live flag readout inside a simulator */
+.msim-fl{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; font-family:var(--mono); font-size:.72rem;}
+.sfchip{border:1px solid var(--line); border-radius:3px; padding:.15rem .5rem; color:var(--dim);}
+.sfchip.on{border-color:var(--gold); color:var(--gold); background:rgba(238,170,0,.14);}
+.sfchip.forced{border-color:#CC66AA; color:#CC66AA;}
+.sfchip.unaff{opacity:.55;}
+.msim-cost{font-family:var(--mono); font-size:.72rem; color:var(--dim); margin:0; max-width:38rem;}
+
+/* size + instruction pickers (reused button-group look) */
+.szgrp{display:inline-flex; gap:.25rem; flex-wrap:wrap;}
+.msim-ctrl .szbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick{display:flex; flex-wrap:wrap; gap:.3rem; margin:.1rem 0;}
+.fpick button{font-family:var(--mono); font-size:.74rem; padding:.25rem .55rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.fpick button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+/* this page's fallback captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+
+/* ---- the condition table (this page's reference core; never collapsed) ---- */
+table.cond{width:100%; border-collapse:collapse; font-size:.85rem; min-width:38rem;}
+table.cond th,table.cond td{border:1px solid var(--line); padding:.35rem .55rem; text-align:left;
+  vertical-align:top;}
+table.cond th{background:var(--panel); font-family:var(--mono); font-size:.66rem;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:normal;}
+table.cond td.cmn{font-family:var(--mono); color:var(--gold); white-space:nowrap;}
+table.cond td.cex{font-family:var(--mono); font-size:.8rem; white-space:nowrap;}
+table.cond td.cenc{font-family:var(--mono); font-size:.78rem; color:var(--dim);}
+table.cond tr.k-unsigned td.cmn{color:#44CC88;}
+table.cond tr.k-signed td.cmn{color:#EEAA00;}
+table.cond tr.k-either td.cmn{color:#AACCEE;}
+table.cond tr.k-flag td.cmn{color:var(--dim);}
+table.cond .cenc{font-family:var(--mono); font-size:.72rem; color:var(--dim);}
+table.cond tr:target{outline:2px solid var(--accent); outline-offset:-2px;}
+.kindkey{display:flex; flex-wrap:wrap; gap:.9rem; font-family:var(--mono); font-size:.7rem;
+  color:var(--dim); margin:.5rem 0 0;}
+.kindkey b{font-weight:normal;}
+.kindkey .ku{color:#44CC88;} .kindkey .ks{color:#EEAA00;} .kindkey .ke{color:#AACCEE;}
+.notn{font-family:var(--mono); font-size:.78rem;}
+.notn .bar{text-decoration:overline;}
+
+/* ---- the goto/call two-by-two ---- */
+table.twobytwo{border-collapse:collapse; margin:1rem 0; font-size:.88rem;}
+table.twobytwo th,table.twobytwo td{border:1px solid var(--line); padding:.55rem .8rem;
+  text-align:left; vertical-align:top;}
+table.twobytwo th{background:var(--panel); font-family:var(--mono); font-size:.66rem;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:normal;}
+table.twobytwo td code{color:var(--gold);}
+table.twobytwo td .tb-sub{display:block; color:var(--dim); font-size:.78rem; margin-top:.2rem;}
+
+/* ---- address-per-line listing: anchors a computed address to real bytes ---- */
+.addrlist{font-family:var(--mono); font-size:.8rem; background:var(--code-bg);
+  border:1px solid var(--line); border-radius:4px; padding:.7rem .9rem; margin:.9rem 0;
+  max-width:42rem; overflow-x:auto; line-height:1.65;}
+.addrlist .al-row{display:flex; gap:1rem; white-space:nowrap;}
+.addrlist .al-adr{color:var(--dim); min-width:6.5rem;}
+.addrlist .al-siz{color:var(--dim); min-width:4.5rem; font-size:.74rem;}
+.addrlist .al-txt{color:var(--ink);}
+.addrlist .al-row.mark .al-adr{color:var(--gold);}
+.addrlist .al-row.mark .al-txt{color:var(--gold);}
+.addrlist .al-cap{color:var(--dim); font-size:.74rem; margin-top:.5rem; white-space:normal;}
+
+/* ---- stack column shared by the two-by-two toy and the tail-call toy ---- */
+.stkwrap{display:flex; flex-wrap:wrap; gap:1.4rem; align-items:flex-start;}
+.stkcol{min-width:14rem;}
+.stk-h{font-family:var(--mono); font-size:.6rem; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--dim); margin:0 0 .4rem;}
+.stk-slot{display:flex; align-items:baseline; gap:.6rem; font-family:var(--mono); font-size:.76rem;
+  border:1px solid var(--line); border-radius:3px; padding:.28rem .5rem; margin:.22rem 0;
+  background:var(--panel2);}
+.stk-slot .sk-at{color:var(--dim); font-size:.7rem; min-width:6.2rem;}
+.stk-slot .sk-hold{color:var(--gold);}
+.stk-slot .sk-tag{color:var(--dim); font-size:.66rem; margin-left:auto;}
+.stk-slot.empty{opacity:.4;}
+.stk-slot.empty .sk-hold{color:var(--dim);}
+.stk-slot.sp{border-color:var(--accent); background:rgba(68,102,238,.16);}
+.stk-slot.fresh{border-color:var(--gold);}
+
+/* ---- the routine trace used by the tail-call toy ---- */
+.trace{font-family:var(--mono); font-size:.78rem; line-height:1.7; background:var(--code-bg);
+  border:1px solid var(--line); border-radius:4px; padding:.7rem .9rem; overflow-x:auto;
+  min-width:16rem;}
+.trace .tr-row{display:flex; gap:.9rem; white-space:nowrap; padding:.05rem .3rem;
+  border-radius:2px;}
+.trace .tr-adr{color:var(--dim); min-width:5.2rem;}
+.trace .tr-txt{color:var(--ink);}
+.trace .tr-row.lbl .tr-txt{color:#44CC88;}
+.trace .tr-row.here{background:rgba(238,170,0,.18);}
+.trace .tr-row.here .tr-txt{color:var(--gold);}
+
+/* ---- the condition tester's 14-way readout ---- */
+.condgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr)); gap:.4rem;}
+.condgrid .cg-pair{border:1px solid var(--line); border-radius:4px; padding:.4rem .5rem;
+  background:var(--panel2);}
+.cg-ph{font-family:var(--mono); font-size:.58rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--dim); margin:0 0 .3rem;}
+.cg-item{display:flex; align-items:baseline; gap:.45rem; font-family:var(--mono); font-size:.74rem;
+  padding:.12rem 0;}
+.cg-item .cg-mn{color:var(--gold); min-width:2.6rem;}
+.cg-item .cg-ex{color:var(--dim); font-size:.68rem; min-width:5.6rem;}
+.cg-item .cg-r{font-size:.66rem; letter-spacing:.06em; margin-left:auto; padding:.02rem .35rem;
+  border-radius:2px; border:1px solid var(--line); color:var(--dim);}
+.cg-item .cg-r.taken{border-color:#44CC88; color:#44CC88; background:rgba(68,204,136,.14);}
+.flagtog{display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;}
+.flagtog button{font-family:var(--mono); font-size:.8rem; min-width:3.4rem; padding:.3rem .5rem;
+  cursor:pointer; border-radius:3px; background:var(--panel); color:var(--dim);
+  border:1px solid var(--line);}
+.flagtog button[aria-pressed="true"]{background:rgba(238,170,0,.18); border-color:var(--gold);
+  color:var(--gold);}
+.flagtog button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+/* ---- a small "same opcode, two spellings" pair table ---- */
+table.synon{border-collapse:collapse; margin:1rem 0; font-size:.86rem;}
+table.synon th,table.synon td{border:1px solid var(--line); padding:.4rem .7rem; text-align:left;}
+table.synon th{background:var(--panel); font-family:var(--mono); font-size:.66rem;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:normal;}
+table.synon td.sy-mn{font-family:var(--mono); color:var(--gold); white-space:nowrap;}
+table.synon td.sy-n{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right;}
+
+/* this page's fallback captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / 68000 ASSEMBLY / FLOW</p>
+  <p class="eyebrow">68000 Assembly</p>
+  <h1>Instructions: Flow</h1>
+  <p class="sub">Everything so far has been about producing values. This page is about what the CPU
+  does next: how it decides, how it calls a routine and finds its way back, and how it loops. Ten
+  instructions cover all of it, and one blunt fact underneath them explains the rest: a return is
+  just four bytes popped off the stack into the program counter, and nothing anywhere remembers
+  what those bytes were for. Get that one fact and the tail call, the jump table, and the classic
+  crash all stop being tricks. Every example is real, pulled from the Sonic 2 disassembly and
+  re-verified line by line.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>Returning, the dumb version</a>
+  <a href="#s2"><span class="n">2</span>Goto or call, near or anywhere</a>
+  <a href="#s3"><span class="n">3</span>Conditions</a>
+  <a href="#s4"><span class="n">4</span>Dispatch</a>
+  <a href="#s5"><span class="n">5</span>The tail call</a>
+  <a href="#s6"><span class="n">6</span>Loops</a>
+  <a href="#s7"><span class="n">7</span>The return family</a>
+</nav>
+
+<nav class="mini" aria-label="Mini-index of this page's instructions">
+  <span class="mini-h">Calls and returns</span>
+  <a href="#bsr">BSR</a><a href="#jsr">JSR</a><a href="#rts">RTS</a><a href="#rtr">RTR</a><a href="#rte">RTE</a>
+  <span class="mini-h">Gotos</span>
+  <a href="#bra">BRA</a><a href="#jmp">JMP</a>
+  <span class="mini-h">Deciding</span>
+  <a href="#bcc">Bcc</a><a href="#dbcc">DBcc</a><a href="#scc">Scc</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
+instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
+on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; Returning, the dumb version</h2>
+
+<p>Start here, because every idiom later on this page is this one fact used deliberately or
+broken by accident.</p>
+
+<p><code>rts</code> takes the four bytes sitting on top of the stack, copies them into the
+program counter, and moves the stack pointer up by four. That is the entire instruction. It does
+not know it is "returning". Nothing marked those four bytes as a <span class="term" data-def="The address of the instruction that should run next once a called routine has finished. A call writes it onto the stack and the return instruction reads it back.">return address</span>
+when they were written, nothing inspects them when they are read, and the stack itself has no
+idea what it is holding. If those four bytes happen to be an address a caller left there,
+execution resumes in the caller and everything looks like a tidy function return. If they happen
+to be a saved register you forgot to pop, the CPU loads that number into the program counter and
+starts executing whatever is at that address.</p>
+
+<p>Hold on to the phrasing, because the wrong model is the natural one: a newcomer expects
+<code>rts</code> to <em>remember</em> who called, the way a high-level language seems to. It
+remembers nothing. The pairing of a call with a return is a convention that code keeps with
+itself, and the processor enforces none of it. Motorola built one instruction that pops an
+address into the program counter; everything else is discipline.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What a subroutine call actually is</summary>
+  <div class="x-body">
+    <p>A <span class="term" data-def="A block of instructions that other code calls and that hands control back when it finishes, so the same work can be reused from many places.">subroutine</span>
+    is just a block of instructions somewhere else in the ROM that you would rather not copy and
+    paste at every place you need it. "Deleting an object" is fifteen instructions, and forty
+    different objects need to do it, so it is written once and the forty places jump to it.</p>
+    <p>The problem that creates is getting back. Forty callers jump to the same fifteen
+    instructions, so the last of those instructions cannot say "jump to caller number 17"; it has
+    no way to know which one arrived. The answer the 68000 uses is that the caller leaves a note.
+    <code>bsr</code> writes the address of its own next instruction onto the stack and then
+    jumps. When the routine finishes, <code>rts</code> reads that note back and jumps to it. The
+    note is what makes one shared routine usable by forty callers.</p>
+    <p>The part worth internalising is how little the machine invests in this. The note is four
+    ordinary bytes in ordinary RAM. It is not tagged, not protected, and not distinguishable from
+    a saved register or a piece of level data that happens to be sitting in the same place. The
+    whole call-and-return system is those four bytes plus everybody agreeing not to disturb
+    them.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>A quick reminder &middot; the stack, the program counter, and labels</summary>
+  <div class="x-body">
+    <p>Four things this page leans on constantly, each taught in full elsewhere. Pocket
+    versions:</p>
+    <p><b>Hex.</b> Every number on this page written with a leading <code>$</code> is
+    hexadecimal, base 16, where each digit stands for exactly four bits: <code>$FFFF</code> is
+    65535 and <code>$4E75</code> is one 16-bit instruction word.
+    <a href="../basics/numbers-and-notation.html#s3">Numbers &amp; Notation, section 3</a> has a
+    converter you can type into.</p>
+    <p><b>The stack</b> is a region of work RAM with one register, <code>a7</code> (also spelled
+    <code>sp</code>), pointing at its top. It grows DOWNWARD: a push subtracts from
+    <code>sp</code> then writes, a pop reads then adds. Nothing about the region is special; it is
+    RAM, and <code>sp</code> is an ordinary address register the CPU happens to use for calls.
+    <a href="programming-model.html#s5">The Programming Model page, section 5</a> owns this, and
+    hosts a stack stepper that runs <code>bsr.w</code>, <code>rts</code> and <code>rte</code> over
+    a live stack column byte by byte. If you want to watch the four bytes move, watch them there.
+    This page does not rebuild it.</p>
+    <p><b>The program counter</b> holds the address of the instruction being fetched, and steps
+    along by itself. The only instructions that write it are the ones on this page. That is
+    actually the cleanest definition of what this page covers.</p>
+    <p><b>A label</b> is a name the assembler swaps for an address at build time. When you write
+    <code>bsr.w ReadJoypads</code>, the assembled bytes contain a distance, not a name; the name
+    is gone before the ROM exists. <a href="addressing-modes.html#s1">Addressing Modes, section 1</a>
+    covers this and the <code>#</code> sign.</p>
+  </div>
+</details>
+
+<div class="instr" id="rts">
+  <h3><span class="mn">RTS</span> <span class="mnx">Return from Subroutine</span> <span class="syn">RTS</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags, so a routine's result flags survive its own return</span>
+  </div>
+
+  <div class="cost"><span class="cchip">16 cycles</span>
+    <span class="cctx">the only form; RTS has no variants</span>
+    <span class="cnote">RTS takes no operands and no size, so unlike most instructions this
+    single number IS the cost. From the M68000 User's Manual, Table 8-12.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: RTS is unsized and takes no
+  operands at all. Its one implicit source is the top of the stack, which is not a slot you can
+  write.</div>
+
+  <p>RTS pops a longword from the stack into the program counter, so execution continues at
+  whatever address those four bytes spell. Reach for it as the last instruction of any routine
+  a <code>bsr</code> or <code>jsr</code> called. It is 1,740 of the instructions in Sonic 2, and
+  the fourth most common instruction in the file.</p>
+
+  <p>The flags row above is doing more work than it looks. Because RTS touches no
+  <span class="term" data-def="One of the bits the processor sets to describe the last result, such as whether it was zero or negative. A conditional instruction reads these bits rather than looking at the values themselves.">condition code</span>,
+  a routine can set the flags on its last real instruction and let its caller branch on them
+  after the return. That is a genuine calling convention in engine code: the routine's answer
+  travels back in Z or C rather than in a register.</p>
+
+  <p>Here is a whole routine, entry to exit. It clears an object's 64 bytes of RAM so the slot
+  can be reused, and it is the single most tail-called routine in the game:</p>
+
+  <pre>DeleteObject:
+	movea.l	a0,a1
+
+<span class="c">; sub_164E8:</span>
+DeleteObject2:
+	moveq	<span class="n">#0</span>,d1
+
+	moveq	<span class="n">#bytesToLcnt(next_object)</span>,d0 <span class="c">; we want to clear up to the next object</span>
+	<span class="c">; delete the object by setting all of its bytes to 0</span>
+-	move.l	d1,(a1)+
+	dbf	d0,-
+    if object_size&amp;3
+	move.w	d1,(a1)+
+    endif
+
+	rts</pre>
+  <span class="src">s2disasm/s2.asm:30108-30123 (DeleteObject and DeleteObject2)</span>
+
+  <p>Three things in there are worth naming now, because they recur all over this page. First,
+  the routine has TWO entry points. <code>DeleteObject</code> copies <code>a0</code> into
+  <code>a1</code> and then falls straight into <code>DeleteObject2</code>, which does the actual
+  clearing. A caller that already has the right pointer in <code>a1</code> calls the second label
+  and skips the copy. Both paths end at the same <code>rts</code>, and that single
+  <code>rts</code> serves both, because it does not know or care which door you came in
+  through.</p>
+
+  <p>Second, the loop in the middle is <code>dbf</code>, the counted-loop instruction that
+  <a href="#s6">section 6</a> covers. For now: it decrements <code>d0</code> and jumps back to the
+  <code>-</code> label until the count runs out.</p>
+
+  <p>Third, the <code>if</code> and <code>endif</code> lines are not instructions. They are the
+  assembler deciding at BUILD time whether to include the <code>move.w</code>, based on whether
+  the object size divides evenly by four. Nothing in the ROM tests anything there; by the time
+  the game runs, that line either exists or it does not.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  A routine's pushes and pops must balance on EVERY exit path, not just the common one. If a
+  routine pushes a register and takes an early <code>rts</code> before the matching pop, that
+  <code>rts</code> pops the saved register into the program counter instead of the return
+  address, and the CPU jumps to a data value. There is no error and no warning; the machine did
+  exactly what you asked. The stack stepper on
+  <a href="programming-model.html#s5">the Programming Model page</a> has a mode that runs this
+  exact failure so you can watch the wrong four bytes land in the PC.</div>
+
+  <details class="refbox">
+    <summary>Encoding (one opcode word, $4E75)</summary>
+    <div class="enc-body">
+      <p>RTS has no fields at all. The whole instruction is the fixed 16-bit pattern
+      <code>0100 1110 0111 0101</code>, which is <code>$4E75</code>. Two bytes, and if you have
+      ever scrolled a hex editor over 68000 code you have seen <code>4E75</code> end routine after
+      routine.</p>
+      <p>Its neighbours in that same block are worth knowing, because they are one nibble apart
+      and mean very different things: <code>$4E73</code> is <a href="#rte">RTE</a>,
+      <code>$4E75</code> is RTS, <code>$4E77</code> is <a href="#rtr">RTR</a>.
+      <span class="enc-note">Encoding from the M68000 Programmer's Reference Manual, the RTS,
+      RTE and RTR instruction-format diagrams.</span></p>
+    </div>
+  </details>
+</div>
+
+<p>Now the convention. Because <code>rts</code> jumps to whatever is on top of the stack, a
+call is simply "push the right thing first". <code>bsr</code> and <code>jsr</code> push the
+address of the instruction immediately after themselves and then jump, so the routine they land
+in ends with an <code>rts</code> that finds exactly that address waiting. Two instructions,
+agreeing about four bytes of RAM.</p>
+
+<p>That is the whole calling mechanism, and it is why the rest of this page is possible.
+<a href="#s5">Section 5</a> ends a routine with a plain <code>bra</code> instead of a call, so the
+routine it jumps to returns to YOUR caller rather than to you. The same section overwrites those
+four bytes with <code>move.l #Elsewhere,(sp)</code> to send a return somewhere it never came
+from, and throws them away with <code>addq #4,sp</code> so a return skips a whole level. None of
+those are exotic instructions. They are all the same four bytes, edited on purpose.</p>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; Goto or call, near or anywhere</h2>
+
+<p>Four instructions send the program somewhere else without asking a question first:
+<code>bra</code>, <code>bsr</code>, <code>jmp</code>, <code>jsr</code>. They look like four
+separate things to memorise. They are not. They are two yes-or-no choices, made independently,
+and the four names are just the four combinations.</p>
+
+<p>The first choice is <b>do you intend to come back</b>. If yes, the instruction pushes a return
+address before it jumps, and it is called a call: <code>bsr</code> and <code>jsr</code>. If no,
+it just jumps, and it is a goto: <code>bra</code> and <code>jmp</code>. The second choice is
+<b>how the target is written down</b>. <code>bra</code> and <code>bsr</code> store a DISTANCE
+from themselves, counted in bytes, which is compact but limited in range and fixed at build time.
+<code>jmp</code> and <code>jsr</code> take a full effective address, which can be an absolute
+number or a value computed at run time, with no range limit at all.</p>
+
+<div class="tbl"><table class="twobytwo">
+  <tr><th></th><th>Reaches by counting bytes from itself<br>(PC-relative, limited range, fixed at build time)</th><th>Reaches by naming an address<br>(any control address, no range limit, can be computed)</th></tr>
+  <tr><th>Goto<br>(pushes nothing)</th>
+    <td><code><a href="#bra">bra</a></code><span class="tb-sub">1,097 uses in Sonic 2</span></td>
+    <td><code><a href="#jmp">jmp</a></code><span class="tb-sub">539 uses</span></td></tr>
+  <tr><th>Call<br>(pushes a 32-bit return address)</th>
+    <td><code><a href="#bsr">bsr</a></code><span class="tb-sub">1,841 uses</span></td>
+    <td><code><a href="#jsr">jsr</a></code><span class="tb-sub">520 uses</span></td></tr>
+</table></div>
+
+<p class="cctx" style="max-width:42rem;">Counts from the Sonic 2 disassembly, comment-stripped
+and matched on the first token of each line. They do NOT include the <code>jsrto</code> and
+<code>jmpto</code> macros, which are covered in <a href="#s4">section 4</a> and which add
+another 1,369 sites between them.</p>
+
+<p>Now the misconception, because it is the one that actually bites. It is natural to assume
+that reach and push are the same axis: that <code>jsr</code> "does more" than <code>bsr</code>,
+so it must push something bigger or different. It does not. <b>Both calls push the identical
+thing: the full 32-bit address of the instruction immediately after them.</b> A
+<code>bsr</code> whose target is forty bytes away and a <code>jsr</code> to a computed address
+in a completely different bank leave the same shape of note on the stack, and the same plain
+<code>rts</code> consumes either one without being able to tell which arrived. The two choices
+really are independent, which is exactly why there are four instructions and not two.</p>
+
+<p>What DOES differ between <code>bsr</code> and <code>jsr</code> is the VALUE pushed, and only
+because the two instructions are different lengths. Here the rule is worth walking a byte at a
+time, since "the address of the next instruction" sounds like arithmetic the CPU invents:</p>
+
+<div class="addrlist">
+  <div class="al-row mark"><span class="al-adr">$00021000</span><span class="al-siz">2 bytes</span><span class="al-txt">bsr.s&nbsp;&nbsp;Sub</span></div>
+  <div class="al-row"><span class="al-adr">$00021002</span><span class="al-siz">4 bytes</span><span class="al-txt">move.w&nbsp;#60,d0</span></div>
+  <div class="al-cap">The short form is one opcode word. The next instruction therefore starts at
+  $00021002, so that is what gets pushed.</div>
+</div>
+
+<div class="addrlist">
+  <div class="al-row mark"><span class="al-adr">$00021000</span><span class="al-siz">4 bytes</span><span class="al-txt">bsr.w&nbsp;&nbsp;Sub</span></div>
+  <div class="al-row"><span class="al-adr">$00021004</span><span class="al-siz">4 bytes</span><span class="al-txt">move.w&nbsp;#60,d0</span></div>
+  <div class="al-cap">The word form is an opcode word plus a displacement word. The next
+  instruction starts at $00021004, so that is what gets pushed.</div>
+</div>
+
+<p>One rule, two answers. The CPU is not adding 2 in one case and 4 in the other because it
+knows which mnemonic you typed; it pushes "where the next instruction begins", and the next
+instruction begins two bytes later or four bytes later depending on how long this one is. Every
+call on the machine follows the same rule, including <code>jsr (a1)</code>, which is two bytes
+and therefore also pushes plus two.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why a branch stores a distance instead of an address</summary>
+  <div class="x-body">
+    <p>You write <code>bra.w MainGameLoop</code>, so it feels as though the assembled instruction
+    must contain the address of <code>MainGameLoop</code>. It does not. It contains a small signed
+    number: how many bytes forward or backward to move. The assembler works that number out by
+    subtracting, and the label is gone from the ROM.</p>
+    <p>Two consequences follow, and both matter in real code. The good one: because the
+    instruction only ever says "go 300 bytes back", the whole block of code still works if you
+    load it somewhere else in memory. Everything stays relative to itself. The awkward one: a
+    signed 16-bit distance only reaches about 32K bytes either way, so you genuinely cannot
+    <code>bra</code> from one end of a 2MB ROM to the other. That is not a limitation the designers
+    overlooked; it is the price of the compactness, and <code>jmp</code> is the escape hatch when
+    you need to cross the whole map.</p>
+    <p>This is the same PC-relative idea the
+    <a href="addressing-modes.html#s5">Addressing Modes page, section 5</a> covers for data. A
+    branch is PC-relative addressing applied to code.</p>
+  </div>
+</details>
+
+<figure class="diagram">
+  <div class="movesim" id="twosim">
+    <div class="msim-instr"><code id="tw-instr">bsr.w&nbsp;&nbsp;Sub</code>
+      <span>Real assembler syntax, the same forms the excerpts below use. Press a button to run
+      that instruction. <code>a1</code> holds $00021100 throughout, which is what the two
+      any-address forms jump through.</span></div>
+    <div class="msim-ctrl">
+      <button id="tw-bra" type="button">Run bra.w Sub</button>
+      <button id="tw-bsr" type="button">Run bsr.w Sub</button>
+      <button id="tw-jmp" type="button">Run jmp (a1)</button>
+      <button id="tw-jsr" type="button">Run jsr (a1)</button>
+      <button id="tw-rts" type="button">Run rts</button>
+      <button id="tw-reset" type="button">Reset</button>
+    </div>
+    <div class="stkwrap">
+      <div class="trace" id="tw-trace"></div>
+      <div class="stkcol">
+        <p class="stk-h">The stack, in work RAM</p>
+        <div id="tw-stack"></div>
+      </div>
+      <div>
+        <div class="msim-regs">
+          <div class="mreg"><span class="mr-name">pc</span><span class="mr-val" id="tw-pc">00021000</span><span class="mr-tag">next instruction</span></div>
+          <div class="mreg"><span class="mr-name">sp</span><span class="mr-val" id="tw-sp">FFFFFF00</span><span class="mr-tag">top of stack</span></div>
+        </div>
+        <p class="msim-cost" id="tw-reach"></p>
+      </div>
+    </div>
+    <p class="msim-note" id="tw-note" aria-live="polite"></p>
+  </div>
+  <figcaption>Pushing and reaching are independent choices. <code>bra</code> and <code>jmp</code>
+  both leave the stack alone and differ only in how they name the target;
+  <code>bsr</code> and <code>jsr</code> both push a return address and differ only in the same
+  way. The pushed value is always the address of the next instruction, which is why the four-byte
+  <code>bsr.w</code> pushes $00021004 while the two-byte <code>jsr (a1)</code> pushes $00021002.
+  The <code>rts</code> button then consumes whatever is on top, without knowing which
+  instruction put it there.</figcaption>
+</figure>
+
+<div class="instr" id="bra">
+  <h3><span class="mn">BRA</span> <span class="mnx">Branch Always</span> <span class="syn">BRA.s/.w &lt;label&gt;</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags, so flags set before a bra survive it</span>
+  </div>
+
+  <div class="cost"><span class="cchip">10 cycles</span>
+    <span class="cctx">and this is the complete story: both forms cost the same</span>
+    <span class="cnote"><code>bra.s</code> is 2 bytes, <code>bra.w</code> is 4, and both take 10
+    cycles. The short form saves size, not time. From the M68000 User's Manual, Table 8-9.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: BRA takes a label, not an
+  effective address. The only choice is the displacement width, <code>.s</code> or
+  <code>.w</code>.</div>
+
+  <p>BRA jumps, unconditionally, to a label within reach, and pushes nothing. Reach for it as the
+  ordinary goto: the bottom of a loop jumping back to the top, an early exit skipping past code
+  that does not apply, or the last instruction of a routine handing off to another one (which is
+  the tail call, <a href="#s5">section 5</a>).</p>
+
+  <p>This is a nineteen-line stretch that is close to the whole subject of this page at once. It
+  is the game's outermost loop:</p>
+
+  <pre>MainGameLoop:
+	move.b	(Game_Mode).w,d0	<span class="c">; load Game Mode</span>
+	andi.w	<span class="n">#$3C</span>,d0			<span class="c">; limit Game Mode value to $3C max (change to a maximum of $7C to add more game modes)</span>
+	jsr	GameModesArray(pc,d0.w)	<span class="c">; jump to apt location in ROM</span>
+	bra.s	MainGameLoop		<span class="c">; loop indefinitely</span>
+<span class="c">; ===========================================================================</span>
+<span class="c">; loc_3A2:</span>
+GameModesArray: ;;
+GameMode_SegaScreen:	bra.w	SegaScreen		<span class="c">; SEGA screen mode</span>
+GameMode_TitleScreen:	bra.w	TitleScreen		<span class="c">; Title screen mode</span>
+GameMode_Demo:		bra.w	Level			<span class="c">; Demo mode</span>
+GameMode_Level:		bra.w	Level			<span class="c">; Zone play mode</span>
+GameMode_SpecialStage:	bra.w	SpecialStage		<span class="c">; Special stage play mode</span>
+GameMode_ContinueScreen:bra.w	ContinueScreen		<span class="c">; Continue mode</span>
+GameMode_2PResults:	bra.w	TwoPlayerResults	<span class="c">; 2P results mode</span>
+GameMode_2PLevelSelect:	bra.w	LevelSelectMenu2P	<span class="c">; 2P level select mode</span>
+GameMode_EndingSequence:bra.w	JmpTo_EndingSequence	<span class="c">; End sequence mode</span>
+GameMode_OptionsMenu:	bra.w	OptionsMenu		<span class="c">; Options mode</span>
+GameMode_LevelSelect:	bra.w	LevelSelectMenu		<span class="c">; Level select mode</span></pre>
+  <span class="src">s2disasm/s2.asm:424-442 (MainGameLoop and GameModesArray)</span>
+
+  <p>BRA is doing two completely different jobs here. The <code>bra.s MainGameLoop</code> on the
+  fifth line is the loop: run one frame's worth of whatever mode we are in, then go back and do it
+  again, forever. That branch is the reason a Genesis game never "finishes"; the console runs this
+  loop until it is switched off.</p>
+
+  <p>The eleven <code>bra.w</code> lines below <code>GameModesArray</code> are a different trick.
+  They are a table you can JUMP INTO. Every entry is exactly four bytes wide because
+  <code>bra.w</code> is four bytes, so multiplying a game mode by four lands you on one of them.
+  The <code>jsr GameModesArray(pc,d0.w)</code> above does exactly that, calling into the middle of
+  the table, and whichever <code>bra.w</code> it lands on immediately forwards it to the real
+  routine. The <code>andi.w #$3C,d0</code> above it is doing the alignment work: it forces the
+  mode to a multiple of four and clips it to $3C, so the computed landing spot is always the
+  START of an entry rather than two bytes into one. Landing mid-instruction would execute a
+  displacement word as though it were an opcode, which is one of the more entertaining ways to
+  crash a Genesis.</p>
+
+  <p>And note what happens on the way home. The <code>jsr</code> pushed a return address pointing
+  at the <code>bra.s MainGameLoop</code>. The <code>bra.w</code> it landed on pushed nothing. So
+  when <code>SegaScreen</code> eventually runs its <code>rts</code>, control returns past the
+  trampoline entirely and lands back on the loop. Those eleven branches are invisible from the
+  callee's point of view, which is the whole point of using <code>bra</code> and not
+  <code>bsr</code> for them. That is <a href="#s5">section 5</a>'s idiom, arriving early.</p>
+</div>
+
+<div class="instr" id="bsr">
+  <h3><span class="mn">BSR</span> <span class="mnx">Branch to Subroutine</span> <span class="syn">BSR.s/.w &lt;label&gt;</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags itself; whatever the callee leaves in them comes back</span>
+  </div>
+
+  <div class="cost"><span class="cchip">18 cycles</span>
+    <span class="cctx">complete: both forms cost the same, and there is no cheaper case</span>
+    <span class="cnote">The extra 8 cycles over <code>bra</code> are the stack write.
+    <code>bsr.s</code> is 2 bytes, <code>bsr.w</code> is 4. From the M68000 User's Manual,
+    Table 8-9.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: like BRA, BSR takes a label
+  rather than an effective address, and the only choice is the displacement width.</div>
+
+  <p>BSR pushes the address of the next instruction and then branches, so the routine it lands in
+  can <code>rts</code> back. Reach for it whenever you want a nearby routine's work done and then
+  want to carry on: it is the ordinary function call of 68000 code, and at 1,841 uses it is the
+  second most common instruction in Sonic 2 after <code>move</code>.</p>
+
+  <p>This is the joypad reader, and it uses <code>bsr</code> for a trick you cannot understand
+  without knowing what the instruction does to the stack:</p>
+
+  <pre>ReadJoypads:
+	lea	(Ctrl_1).w,a0	<span class="c">; address where joypad states are written</span>
+	lea	(HW_Port_1_Data).l,a1	<span class="c">; first joypad port</span>
+	bsr.s	Joypad_Read		<span class="c">; do the first joypad</span>
+	addq.w	<span class="n">#2</span>,a1			<span class="c">; do the second joypad</span>
+
+<span class="c">; sub_112A:</span>
+Joypad_Read:</pre>
+  <span class="src">s2disasm/s2.asm:1361-1368 (ReadJoypads, the controller poll)</span>
+
+  <p>Read the last three lines slowly, because there is no typo. <code>ReadJoypads</code> calls
+  <code>Joypad_Read</code>, which polls the port <code>a1</code> points at and stores two bytes
+  through <code>a0</code>. Control comes back. Then <code>addq.w #2,a1</code> steps
+  <code>a1</code> to the second controller port, and the code does not call
+  <code>Joypad_Read</code> again. It simply RUNS OFF THE END into it, because
+  <code>Joypad_Read</code> is the very next thing in the ROM.</p>
+
+  <p>So the routine's body executes twice for the price of one call plus a fall-through. The
+  first pass is a real call, and its <code>rts</code> comes back to the <code>addq</code>. The
+  second pass is not a call at all: nothing was pushed for it, so when the body reaches its
+  <code>rts</code>, the four bytes on top of the stack are whatever <code>ReadJoypads</code>'s
+  own caller left there. That <code>rts</code> returns two levels up, and it is correct that it
+  does, because there is genuinely nothing left to come back to. Here is the consumer, the
+  <code>rts</code> that both passes end on:</p>
+
+  <pre>	move.b	d1,(a0)+	<span class="c">; Store pressed controller input</span>
+	rts</pre>
+  <span class="src">s2disasm/s2.asm:1386-1387 (the end of Joypad_Read)</span>
+
+  <p>One <code>rts</code>, reached two different ways, doing the right thing both times without
+  knowing which way it was reached. This is the mechanism from
+  <a href="#s1">section 1</a> being used on purpose, and it is the same insight the tail call in
+  <a href="#s5">section 5</a> rests on.</p>
+
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  If the call is the LAST thing your routine does, do not use <code>bsr</code> followed by
+  <code>rts</code>. Use <code>bra</code> to the same target and delete the <code>rts</code>: the
+  callee's own return then goes straight to your caller. That saves 4 bytes, saves the 18-cycle
+  push and the 16-cycle pop, and keeps the stack one level shallower.
+  <a href="#s5">Section 5</a> is about exactly this.</div>
+</div>
+
+<div class="instr" id="jmp">
+  <h3><span class="mn">JMP</span> <span class="mnx">Jump</span> <span class="syn">JMP &lt;ea&gt;</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags</span>
+  </div>
+
+  <div class="cost"><span class="cchip">8 cycles</span>
+    <span class="cctx">best case, <code>jmp (An)</code>; the other forms run to 14</span>
+    <span class="cnote">JMP is unsized and its whole cost depends on how the address is named.
+    The complete table is in the box below, and it really is complete: only seven addressing
+    modes are legal.</span>
+  </div>
+
+  <div class="opgrid" role="group" aria-label="Legal operands for JMP">
+    <div class="og-row"><span class="og-side">Target</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">JMP takes a CONTROL addressing mode: one that names a place, and does not
+    move a register as a side effect. That rules out four things a newcomer reaches for.
+    <code>jmp d0</code> will not assemble, because a data register is a value and not a place;
+    put the address in an address register and write <code>jmp (a0)</code>, which is the form
+    real code uses. <code>jmp a0</code> will not assemble either, and the difference is worth
+    holding on to: <code>(a0)</code> means the memory a0 points at, which is where the code lives,
+    while a bare <code>a0</code> would mean the register itself. <code>jmp (a0)+</code> and
+    <code>jmp -(a0)</code> are refused because a jump has no business quietly editing a pointer.
+    And <code>jmp #Label</code> is refused because an immediate is a value carried inside the
+    instruction, not a location; the absolute form <code>jmp (Label).l</code> is what you want.
+    The <code>d(PC)</code> chip covers both PC-relative forms, and
+    <code>d(PC,Xn)</code> is the one that makes <a href="#s4">jump tables</a> work.</p>
+  </div>
+
+  <p>JMP continues execution at an effective address, pushing nothing. Reach for it in two
+  situations: when the target is too far away for a <code>bra</code>, and, far more interestingly,
+  when the target is not known until the game is running. That second case is
+  <a href="#s4">section 4</a>, and it is the reason this instruction exists at all.</p>
+
+  <details class="refbox">
+    <summary>Full timing and encoding (8 to 14 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+      <p>The complete list, not a representative sample, because JMP only accepts seven modes:</p>
+      <div class="tbl"><table class="tbl">
+        <tr><th>Form</th><th>What it means</th><th>Cycles</th><th>Bytes</th></tr>
+        <tr><td><code>jmp (a0)</code></td><td>the memory a0 points at</td><td>8</td><td>2</td></tr>
+        <tr><td><code>jmp d(a0)</code></td><td>a0 plus a fixed 16-bit offset</td><td>10</td><td>4</td></tr>
+        <tr><td><code>jmp d(a0,d1.w)</code></td><td>a0 plus an 8-bit offset plus a register</td><td>14</td><td>4</td></tr>
+        <tr><td><code>jmp (xxx).w</code></td><td>a 16-bit absolute address</td><td>10</td><td>4</td></tr>
+        <tr><td><code>jmp (xxx).l</code></td><td>a 32-bit absolute address</td><td>12</td><td>6</td></tr>
+        <tr><td><code>jmp d(pc)</code></td><td>here plus a fixed 16-bit offset</td><td>10</td><td>4</td></tr>
+        <tr><td><code>jmp d(pc,d1.w)</code></td><td>here plus an offset plus a register</td><td>14</td><td>4</td></tr>
+      </table></div>
+      <p>Encoding is <code>0100 1110 11</code> followed by the standard 6-bit effective-address
+      field, so the base word is <code>$4EC0</code> with the mode and register bits added.
+      <code>jmp (a3)</code> is <code>$4ED3</code>. <span class="enc-note">Timings from the M68000
+      User's Manual, Table 8-10; encoding and the legal-mode list from the M68000 Programmer's
+      Reference Manual, JMP. Cycle counts are core CPU cycles and exclude cartridge and bus wait
+      states. The per-mode price rules are the same ones the
+      <a href="addressing-modes.html#price">Addressing Modes price table</a> teaches.</span></p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="jsr">
+  <h3><span class="mn">JSR</span> <span class="mnx">Jump to Subroutine</span> <span class="syn">JSR &lt;ea&gt;</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags itself; whatever the callee leaves in them comes back</span>
+  </div>
+
+  <div class="cost"><span class="cchip">16 cycles</span>
+    <span class="cctx">best case, <code>jsr (An)</code>; the other forms run to 22</span>
+    <span class="cnote">Every JSR form is exactly its JMP form plus 8 cycles, which is the stack
+    write, the same 8 that separates <code>bsr</code> from <code>bra</code>. Full table
+    below.</span>
+  </div>
+
+  <div class="opgrid" role="group" aria-label="Legal operands for JSR">
+    <div class="og-row"><span class="og-side">Target</span>
+      <span class="og no">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og">d(PC)</span>
+    </div>
+    <p class="og-note">Identical to JMP: the same seven control modes, the same four refusals, for
+    the same reasons. The stack push is not an operand slot, so it gets no row here; it is
+    implicit and always the same 32 bits.</p>
+  </div>
+
+  <p>JSR pushes the address of the next instruction and then jumps to an effective address.
+  Reach for it when you want a call and the target is either out of branch range or not decided
+  until run time. If the target is a fixed label nearby, <code>bsr</code> does the same job in
+  fewer bytes and fewer cycles, which is why Sonic 2 has 1,841 <code>bsr</code> against 520
+  <code>jsr</code>.</p>
+
+  <details class="refbox">
+    <summary>Full timing and encoding (16 to 22 cycles, 2 to 6 bytes)</summary>
+    <div class="enc-body">
+      <p>Complete, for the same reason as JMP:</p>
+      <div class="tbl"><table class="tbl">
+        <tr><th>Form</th><th>Cycles</th><th>Bytes</th></tr>
+        <tr><td><code>jsr (a0)</code></td><td>16</td><td>2</td></tr>
+        <tr><td><code>jsr d(a0)</code></td><td>18</td><td>4</td></tr>
+        <tr><td><code>jsr d(a0,d1.w)</code></td><td>22</td><td>4</td></tr>
+        <tr><td><code>jsr (xxx).w</code></td><td>18</td><td>4</td></tr>
+        <tr><td><code>jsr (xxx).l</code></td><td>20</td><td>6</td></tr>
+        <tr><td><code>jsr d(pc)</code></td><td>18</td><td>4</td></tr>
+        <tr><td><code>jsr d(pc,d1.w)</code></td><td>22</td><td>4</td></tr>
+      </table></div>
+      <p>Encoding is <code>0100 1110 10</code> plus the 6-bit effective-address field, so the base
+      word is <code>$4E80</code>. That puts JSR and JMP one bit apart, which is a fair description
+      of the difference between them. <span class="enc-note">Timings from the M68000 User's
+      Manual, Table 8-10; encoding from the M68000 Programmer's Reference Manual, JSR. Core CPU
+      cycles, excluding wait states.</span></p>
+    </div>
+  </details>
+
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  When the target is a fixed nearby label, <code>bsr.w</code> costs 18 cycles and 4 bytes against
+  <code>jsr (xxx).l</code>'s 20 cycles and 6 bytes, and stays position independent into the
+  bargain. Prefer <code>jsr</code> only when you need the reach or the target is computed.</div>
+</div>
+
+<details class="refbox">
+  <summary>Encoding aside: BRA and BSR are Bcc with two of its condition codes</summary>
+  <div class="enc-body">
+    <p>All three branch instructions share one 16-bit shape: <code>0110 cccc dddddddd</code>,
+    where <code>cccc</code> picks the condition and <code>dddddddd</code> is the byte
+    displacement. BRA is that pattern with <code>cccc</code> = 0000 and BSR is the same pattern
+    with <code>cccc</code> = 0001. So <code>bra</code> is <code>$60xx</code>, <code>bsr</code> is
+    <code>$61xx</code>, and every conditional branch is <code>$62xx</code> through
+    <code>$6Fxx</code>.</p>
+    <p>That is also the answer to a question <a href="#s3">section 3</a> raises. The condition
+    table has sixteen entries, but only fourteen of them are available to <code>Bcc</code>. The
+    two missing ones are "always true" and "never true", encodings 0000 and 0001, and they are
+    missing because Motorola spent those two slots on BRA and BSR instead. An "always true"
+    conditional branch would have been exactly <code>bra</code>, so nothing was lost, and a call
+    was gained.</p>
+    <p><span class="enc-note">From the M68000 Programmer's Reference Manual instruction-format
+    diagrams for BRA, BSR and Bcc, read together, plus Table 3-19's note that T and F are "not
+    available for the Bcc instruction".</span></p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; Conditions: what a branch actually tests</h2>
+
+<p>Here is the reframe the whole section rests on. A conditional
+<span class="term" data-def="An instruction that changes which instruction runs next, either always or only when a condition is true. A branch reaches its target by counting bytes forward or backward from itself.">branch</span>
+does not compare anything. It cannot: it has one operand, a label, and no access to whatever you
+think you are comparing. What it does is read a few bits in the status register that some EARLIER
+instruction already set, and jump or not jump based on them.</p>
+
+<p>That sounds like a technicality and it is not, because it means <b>the instruction that set
+the flags decides what your branch means</b>. Write <code>cmp.w d1,d0</code> and then
+<code>bcs</code>, and you have asked "is d0 below d1". Write <code>lsl.b #1,d0</code> and then
+the identical <code>bcs</code>, and you have asked "did a 1 bit fall off the top". Same
+instruction, same bits, completely different question, because the carry flag got there a
+different way. A branch is a question about the flags, never about the values.</p>
+
+<p>Which instructions set which flags is the
+<a href="math-logic.html#s1">Math &amp; Logic page's business, and its flags demo</a> lets you
+run one and watch X, N, Z, V and C move. This page picks up on the other side: given flags that
+are already set, which branch reads which of them.</p>
+
+<p>One consequence is worth stating before anything else, because it is a hazard rather than a
+nicety: since the branch reads flags rather than values, <b>any flag-setting instruction slipped
+in between the comparison and the branch silently changes what the branch means.</b> The two
+lines still sit next to each other on the page and nothing warns you. That is why every
+instruction entry in this wiki tells you what it does to the flags, and why instructions that
+deliberately leave them alone, such as <code>lea</code> and <code>movea</code>, are the safe
+ones to use in that gap.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why the comparison and the branch are two separate instructions</summary>
+  <div class="x-body">
+    <p>In most languages you write <code>if (a &lt; b)</code> and the comparison and the decision
+    are one thought. In 68000 assembly they are two instructions, and the join between them is
+    invisible. <code>cmp.w d1,d0</code> subtracts d1 from d0, THROWS THE ANSWER AWAY, and keeps
+    only the five flag bits describing what the subtraction was like: was the result zero, was it
+    negative, did it need to borrow. Then <code>blo</code> looks at one of those bits.</p>
+    <p>Two useful things fall out of the split. The first is that anything which sets flags can
+    feed a branch, not just comparisons. A <code>subq</code> that decrements a timer already
+    reports whether the result went negative, so the code can branch on it without comparing
+    anything, and real engine code does this constantly to save an instruction.</p>
+    <p>The second is the hazard. Because the join is invisible, ANY flag-setting instruction
+    slipped in between the compare and the branch silently changes what the branch means. There
+    is no warning and nothing to see; the two lines still sit next to each other on the page.
+    This is why entries all over this wiki tell you whether an instruction touches the flags, and
+    why instructions like <code>lea</code> and <code>movea</code>, which deliberately leave the
+    flags alone, are useful in the gap.</p>
+  </div>
+</details>
+
+<div class="instr" id="bcc">
+  <h3><span class="mn">Bcc</span> <span class="mnx">Branch Conditionally</span> <span class="syn">Bcc.s/.w &lt;label&gt; &nbsp;|&nbsp; where cc is one of the 14 conditions below</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">reads the flags, changes none of them, so several branches can test one comparison in a row</span>
+  </div>
+
+  <div class="cost"><span class="cchip">8 cycles</span>
+    <span class="cctx">best case: a SHORT branch that is not taken</span>
+    <span class="cnote">The full picture is only four numbers, and it is worth carrying: taken
+    costs 10 whichever width you used; not taken costs 8 if the branch was <code>.s</code> and 12
+    if it was <code>.w</code>. So a short branch is cheaper when it falls through and a word
+    branch is dearer when it falls through, which is the opposite of what most people guess.
+    From the M68000 User's Manual, Table 8-9.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: like BRA and BSR, a conditional
+  branch takes a label rather than an effective address. <code>.s</code> is 2 bytes and reaches
+  about 128 bytes either way; <code>.w</code> is 4 bytes and reaches about 32K bytes either way.</div>
+
+  <p>Bcc jumps to a label if the named condition is true of the current flags, and otherwise
+  carries on to the next instruction. It is the single most common thing 68000 code does after
+  moving data: all fourteen conditions together account for 5,843 instructions in Sonic 2.</p>
+</div>
+
+<p>Here is the complete set. Fourteen conditions, each a fixed question about the four flags N,
+Z, V and C. The same fourteen serve <a href="#dbcc">DBcc</a> and <a href="#scc">Scc</a>, so
+reading this table once covers every conditional instruction on the CPU.</p>
+
+<div class="tbl"><table class="cond">
+  <tr><th>Branch</th><th>Taken when</th><th>Flag test</th><th>Kind</th><th>Encoding</th></tr>
+  <tr id="c-hi" class="k-unsigned"><td class="cmn">bhi<br><span class="cenc">High</span></td><td>C is clear AND Z is clear</td><td class="cex"><span class="bar">C</span> &and; <span class="bar">Z</span></td><td>unsigned &gt;</td><td class="cenc">0010</td></tr>
+  <tr id="c-ls" class="k-unsigned"><td class="cmn">bls<br><span class="cenc">Low or Same</span></td><td>C is set OR Z is set</td><td class="cex">C &or; Z</td><td>unsigned &le;</td><td class="cenc">0011</td></tr>
+  <tr id="c-cc" class="k-unsigned"><td class="cmn">bcc<br>bhs<br><span class="cenc">Carry Clear<br>High or Same</span></td><td>C is clear</td><td class="cex"><span class="bar">C</span></td><td>unsigned &ge;</td><td class="cenc">0100</td></tr>
+  <tr id="c-cs" class="k-unsigned"><td class="cmn">bcs<br>blo<br><span class="cenc">Carry Set<br>Lower</span></td><td>C is set</td><td class="cex">C</td><td>unsigned &lt;</td><td class="cenc">0101</td></tr>
+  <tr id="c-ne" class="k-either"><td class="cmn">bne<br><span class="cenc">Not Equal</span></td><td>Z is clear</td><td class="cex"><span class="bar">Z</span></td><td>either</td><td class="cenc">0110</td></tr>
+  <tr id="c-eq" class="k-either"><td class="cmn">beq<br><span class="cenc">Equal</span></td><td>Z is set</td><td class="cex">Z</td><td>either</td><td class="cenc">0111</td></tr>
+  <tr id="c-vc" class="k-flag"><td class="cmn">bvc<br><span class="cenc">Overflow Clear</span></td><td>V is clear</td><td class="cex"><span class="bar">V</span></td><td>one flag</td><td class="cenc">1000</td></tr>
+  <tr id="c-vs" class="k-flag"><td class="cmn">bvs<br><span class="cenc">Overflow Set</span></td><td>V is set</td><td class="cex">V</td><td>one flag</td><td class="cenc">1001</td></tr>
+  <tr id="c-pl" class="k-flag"><td class="cmn">bpl<br><span class="cenc">Plus</span></td><td>N is clear</td><td class="cex"><span class="bar">N</span></td><td>one flag</td><td class="cenc">1010</td></tr>
+  <tr id="c-mi" class="k-flag"><td class="cmn">bmi<br><span class="cenc">Minus</span></td><td>N is set</td><td class="cex">N</td><td>one flag</td><td class="cenc">1011</td></tr>
+  <tr id="c-ge" class="k-signed"><td class="cmn">bge<br><span class="cenc">Greater or Equal</span></td><td>N and V are the same</td><td class="cex">N&and;V &or; <span class="bar">N</span>&and;<span class="bar">V</span></td><td>signed &ge;</td><td class="cenc">1100</td></tr>
+  <tr id="c-lt" class="k-signed"><td class="cmn">blt<br><span class="cenc">Less Than</span></td><td>N and V differ</td><td class="cex">N&and;<span class="bar">V</span> &or; <span class="bar">N</span>&and;V</td><td>signed &lt;</td><td class="cenc">1101</td></tr>
+  <tr id="c-gt" class="k-signed"><td class="cmn">bgt<br><span class="cenc">Greater Than</span></td><td>Z is clear AND N and V are the same</td><td class="cex">N&and;V&and;<span class="bar">Z</span> &or; <span class="bar">N</span>&and;<span class="bar">V</span>&and;<span class="bar">Z</span></td><td>signed &gt;</td><td class="cenc">1110</td></tr>
+  <tr id="c-le" class="k-signed"><td class="cmn">ble<br><span class="cenc">Less or Equal</span></td><td>Z is set, OR N and V differ</td><td class="cex">Z &or; N&and;<span class="bar">V</span> &or; <span class="bar">N</span>&and;V</td><td>signed &le;</td><td class="cenc">1111</td></tr>
+</table></div>
+
+<p class="kindkey"><b class="ku">unsigned: reads C and Z</b> <b class="ks">signed: reads N against V</b>
+<b class="ke">either: reads Z alone</b> <b>one flag: not a comparison at all</b></p>
+
+<p class="notn" style="max-width:42rem; color:var(--dim);">Notation, following the manual: a bar
+over a letter means "not", so <span class="bar">C</span> is "C is clear". <span class="notn">&and;</span>
+is AND and <span class="notn">&or;</span> is OR. The "Taken when" column says the same thing in
+words, so you never need the formulas unless you want them. The four-bit encoding is the
+<code>cccc</code> field from <a href="#s2">section 2</a>'s encoding aside.</p>
+
+<p>Two encodings are missing from the table, 0000 and 0001, which would be "always true" and
+"never true". Those are the two slots Motorola spent on <a href="#bra">BRA</a> and
+<a href="#bsr">BSR</a>, which is why the manual's own condition table marks them "not available
+for the Bcc instruction". <a href="#dbcc">DBcc</a> and <a href="#scc">Scc</a> do get them, and
+both use them constantly, so the sixteen-versus-fourteen split matters later on this page.</p>
+
+<h3 style="margin-top:2.4rem;">The pairing that causes real bugs</h3>
+
+<p>Look at the Kind column again. There are two complete sets of "is it bigger" branches, not
+one. <code>bhs</code>, <code>blo</code>, <code>bhi</code> and <code>bls</code> answer for
+UNSIGNED values, where a byte runs 0 to 255. <code>bge</code>, <code>blt</code>,
+<code>bgt</code> and <code>ble</code> answer for SIGNED values, where the same byte runs -128 to
+127. They read different flags because unsigned and signed comparison genuinely produce their
+answers in different places: an unsigned compare puts it in the carry, a signed compare puts it
+in the relationship between N and V.</p>
+
+<p>Now the wrong model, stated plainly so it can be knocked down: <b>it is natural to assume
+these are stylistic alternatives, and that a comparison is a comparison.</b> They are not, and
+it is not. The bits being compared are identical; the two families give genuinely different
+answers about them, and each is correct for its own reading. Picking the wrong family is a real
+bug that assembles cleanly, runs, and produces wrong behaviour only for certain values.</p>
+
+<p>The clearest case is one byte pattern. Suppose <code>d0</code> holds 1 and you compare it
+against -1:</p>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	cmp.w	<span class="n">#-1</span>,d0		<span class="c">; d0 holds 1. This leaves N=0, Z=0, V=0, C=1</span>
+	bhs.s	Bigger		<span class="c">; unsigned: NOT taken. As unsigned, -1 is $FFFF = 65535</span>
+	bge.s	Bigger		<span class="c">; signed:   TAKEN.     As signed, 1 is greater than -1</span></pre>
+</div>
+
+<p>Both branches are reading the flags left by the same comparison of the same bits. One says
+d0 is smaller, one says d0 is bigger, and neither is wrong: <code>$FFFF</code> really is 65535
+when read as unsigned and really is -1 when read as signed. The flags carry both answers at once,
+in different bits, and your choice of branch is the choice of which reading is in force. If you
+have not met two's complement, the
+<a href="../basics/numbers-and-notation.html#s7">Numbers &amp; Notation page, section 7</a>
+teaches it; the one-line version is that $FFFF and -1 are the same sixteen bits and the
+difference is entirely in who is looking.</p>
+
+<p>This is not a rare edge case. Across every possible pair of 16-bit values,
+<code>bcs</code> and <code>blt</code> disagree about half the time. They agree perfectly on
+small positive numbers, which is exactly why the bug survives testing: it works on every value
+you tried and fails the first time a coordinate goes negative or a size passes 32767.</p>
+
+<div class="gotcha"><span class="g-tag">Gotcha</span>
+Pick the family from the DATA, not from which mnemonic reads better in English. Sonic's position
+and velocity are signed, so comparisons on them want <code>bge</code>, <code>blt</code>,
+<code>bgt</code>, <code>ble</code>. Addresses, sizes, counters and array indices are unsigned, so
+they want <code>bhs</code>, <code>blo</code>, <code>bhi</code>, <code>bls</code>. Mixing them
+assembles without a murmur. <code>beq</code> and <code>bne</code> are safe either way, since
+equality of bits does not depend on how you read them.</div>
+
+<figure class="diagram">
+  <div class="movesim" id="condsim">
+    <div class="msim-instr"><code id="cd-instr">cmp.w&nbsp;&nbsp;#5,d0</code>
+      <span>Set the four flags by hand, or pick a comparison that produces them. All fourteen
+      conditions answer at once, so you can see where the signed and unsigned pairs part
+      company.</span></div>
+    <div class="msim-ctrl">
+      <span class="msim-ctrl" style="gap:.3rem;"><label>Flags</label></span>
+      <span class="flagtog">
+        <button id="cd-N" type="button" aria-pressed="false">N 0</button>
+        <button id="cd-Z" type="button" aria-pressed="false">Z 0</button>
+        <button id="cd-V" type="button" aria-pressed="false">V 0</button>
+        <button id="cd-C" type="button" aria-pressed="false">C 0</button>
+      </span>
+    </div>
+    <div class="msim-ctrl">
+      <label>Or load a comparison:</label>
+      <span class="fpick">
+        <button type="button" class="cd-pre" data-a="3" data-b="5">cmp.w #5,d0 with d0=3</button>
+        <button type="button" class="cd-pre" data-a="1" data-b="65535">cmp.w #-1,d0 with d0=1</button>
+        <button type="button" class="cd-pre" data-a="5" data-b="5">cmp.w #5,d0 with d0=5</button>
+        <button type="button" class="cd-pre" data-a="32767" data-b="65535">cmp.w #-1,d0 with d0=32767</button>
+      </span>
+      <button id="cd-reset" type="button">Reset</button>
+    </div>
+    <div class="condgrid">
+      <div class="cg-pair"><p class="cg-ph">Unsigned compare</p><div id="cd-g-unsigned"></div></div>
+      <div class="cg-pair"><p class="cg-ph">Signed compare</p><div id="cd-g-signed"></div></div>
+      <div class="cg-pair"><p class="cg-ph">Either</p><div id="cd-g-either"></div></div>
+      <div class="cg-pair"><p class="cg-ph">One flag, not a comparison</p><div id="cd-g-flag"></div></div>
+    </div>
+    <p class="msim-note" id="cd-note" aria-live="polite"></p>
+  </div>
+  <figcaption>A condition is a question about flags, and the signed and unsigned answers to "is
+  it smaller" differ on the very same bits. Load the second preset, <code>cmp.w #-1,d0</code>
+  with <code>d0</code>=1, and read the two comparison columns side by side: the unsigned column
+  says d0 is lower, the signed column says d0 is greater, and both are correct readings of
+  N=0 Z=0 V=0 C=1. This toy READS flags; the
+  <a href="math-logic.html#s1">flags demo on the Math &amp; Logic page</a> is the one that SETS
+  them by running instructions.</figcaption>
+</figure>
+
+<h3 style="margin-top:2.4rem;">Same instruction, two spellings: bcc/bhs and bcs/blo</h3>
+
+<p>You will now go and grep the disassembly for <code>bcc</code>, and you will find about a
+quarter of them. This is the layer of confusion underneath the signed and unsigned split, and it
+is worth a section of its own because it will otherwise waste an afternoon.</p>
+
+<p>The assembler accepts <code>bhs</code> as another name for <code>bcc</code>, and
+<code>blo</code> as another name for <code>bcs</code>. Not similar instructions: the same
+instruction. There is one encoding for each (0100 and 0101 in the table above), and the assembler
+turns either spelling into the same two bytes. Nothing in the ROM records which name you typed.</p>
+
+<p>So why two names? Because the one instruction has two honest descriptions, and which one is
+true depends on what set the carry. After a comparison, "carry clear" means "the first value was
+higher or the same", so <code>bhs</code> says what the code MEANS. After a shift or a rotate,
+carry is just the bit that fell off the end and there is no comparison anywhere, so
+<code>bcc</code> says what the code means. The s2disasm authors used the spellings deliberately
+to record which of those two situations each site is, and once you know that, the choice of
+spelling is a useful comment rather than noise.</p>
+
+<p>The cost of not knowing is concrete:</p>
+
+<div class="tbl"><table class="synon">
+  <tr><th>Instruction</th><th>Spelled as the carry test</th><th>Spelled as the magnitude test</th><th>Total</th></tr>
+  <tr><td class="sy-mn">encoding 0100</td><td class="sy-n"><code>bcc</code> 140</td><td class="sy-n"><code>bhs</code> 367</td><td class="sy-n">507</td></tr>
+  <tr><td class="sy-mn">encoding 0101</td><td class="sy-n"><code>bcs</code> 80</td><td class="sy-n"><code>blo</code> 406</td><td class="sy-n">486</td></tr>
+</table></div>
+
+<p>Grep Sonic 2 for <code>bcc</code> and you find 140 of its 507 real uses, which is 28 per cent.
+Grep for <code>bcs</code> and you find 80 of 486, under 17 per cent. Neither search is broken and
+neither result is wrong; you simply asked for one of the two spellings. Say this out loud once
+and it stops being a trap: <b>this is a convention of the disassembly, not a distinction the
+hardware makes.</b> The CPU has never heard of <code>bhs</code>.</p>
+
+<h3 style="margin-top:2.4rem;">Four real conditions, and what set the flags in each</h3>
+
+<p>The point of every one of these is the same: look at what precedes the branch, because that is
+what the branch is really about.</p>
+
+<p>First, a loop condition and an equality test in seven lines. This is the boot-time checksum,
+adding up every word of the ROM:</p>
+
+<pre>	movea.l	<span class="n">#EndOfHeader</span>,a0	<span class="c">; start checking bytes after the header ($200)</span>
+	movea.l	<span class="n">#ROMEndLoc</span>,a1	<span class="c">; stop at end of ROM</span>
+	move.l	(a1),d0
+	moveq	<span class="n">#0</span>,d1
+<span class="c">; loc_338:</span>
+ChecksumLoop:
+	add.w	(a0)+,d1
+	cmp.l	a0,d0
+	bhs.s	ChecksumLoop
+	movea.l	<span class="n">#Checksum</span>,a1	<span class="c">; read the checksum</span>
+	cmp.w	(a1),d1		<span class="c">; compare correct checksum to the one in ROM</span>
+	bne.w	ChecksumError	<span class="c">; if they don't match, branch</span></pre>
+<span class="src">s2disasm/s2.asm:382-393 (ChecksumLoop, the boot-time ROM checksum)</span>
+
+<p>The <code>bhs.s</code> is the loop: keep going while the end address in <code>d0</code> is
+still higher than or the same as the walking pointer <code>a0</code>. Those are ADDRESSES, so
+unsigned is the correct family, and the author spelled it <code>bhs</code> rather than
+<code>bcc</code> to say so. The <code>bne.w</code> three lines later is the equality test, and it
+reads the flags from <code>cmp.w (a1),d1</code> directly above it. Two branches, two different
+comparisons, each sitting immediately under the instruction that armed it.</p>
+
+<p>Second, a branch with no comparison in front of it at all, which is the case most likely to
+confuse. This decrements an animation timer:</p>
+
+<pre>	subq.b	<span class="n">#1</span>,anim_frame_duration(a0)	<span class="c">; subtract 1 from frame duration</span>
+	bpl.s	+	<span class="c">; rts</span></pre>
+<span class="src">s2disasm/s2.asm:25212-25213 (BigRingFlash_Animate)</span>
+
+<p>There is no <code>cmp</code> and no <code>tst</code>. The <code>subq.b</code> subtracted one
+and set N as a side effect of doing so, and <code>bpl</code> asks "is N clear", meaning "did that
+subtraction leave a result that is not negative". So the pair reads as: count down, and if we
+have not gone past zero yet, leave. One instruction does the work and reports on it, and the
+branch just reads the report. This is the single most common shape in engine code, and it is
+invisible until you stop expecting to see a comparison.</p>
+
+<p>That <code>; rts</code> is a s2disasm convention rather than anything the CPU sees, and since
+it appears 273 times in the file it is worth decoding now. The branch target is <code>+</code>,
+an anonymous local label meaning "the next <code>+</code> line below". The annotation tells you
+what is waiting there, so you do not have to go and look. In this case the target really is a
+lone <code>rts</code>:</p>
+
+<pre>+	rts</pre>
+<span class="src">s2disasm/s2.asm:25227 (the target of that bpl, fourteen lines below it)</span>
+
+<p>Third, a test that exists purely to set flags. Nothing is being computed here:</p>
+
+<pre>	tst.b	(Graphics_Flags).w <span class="c">; are we on a Japanese Mega Drive?</span>
+	bmi.s	SegaScreen_Contin <span class="c">; if not, branch</span></pre>
+<span class="src">s2disasm/s2.asm:4145-4146 (the SEGA screen, checking the region flag)</span>
+
+<p><code>tst.b</code> reads the byte, sets N and Z from it, and stores nothing anywhere.
+<code>bmi</code> then asks whether N is set, which for a byte means whether its top bit was set.
+So the pair is really "is bit 7 of Graphics_Flags set", written as a compare-and-branch because
+that is cheaper than a <code>btst</code> for the top bit specifically. The flags are the entire
+output of the first instruction, which is why <code>tst</code> exists at all.</p>
+
+<p>Fourth, the interesting one: a carry test where no comparison happened and the value being
+tested is a bitfield. This is inside the Enigma decompressor:</p>
+
+<pre>	move.w	a3,d3		<span class="c">; store starting art tile</span>
+	move.b	d4,d1		<span class="c">; store PCCVH bitfield</span>
+	add.b	d1,d1		<span class="c">; priority bit set ?</span>
+	bcc.s	.skippriority	<span class="c">; if d4 was &lt; $80</span></pre>
+<span class="src">s2disasm/s2.asm:2462-2465 (EniDec_GetInlineCopyVal, testing the priority bit)</span>
+
+<p><code>add.b d1,d1</code> adds a byte to itself, which doubles it, which shifts every bit one
+place left. The bit that falls off the top lands in the carry. So this is not arithmetic at all;
+it is a one-instruction way of asking "was bit 7 set", and the answer arrives in C. The branch
+is spelled <code>bcc</code> and not <code>bhs</code> for exactly the reason the previous section
+gave: there is no magnitude comparison here, the carry really is just a bit that fell out, and
+the spelling records that. The disassembly's own comment, "if d4 was &lt; $80", is telling you the
+same thing from the other direction.</p>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	<span class="c">; BVC and BVS appear ZERO times in the Sonic 2, Sonic 3 and Knuckles,</span>
+	<span class="c">; and Sonic Clean Engine disassemblies, so there is no real one to show.</span>
+	<span class="c">; The job they exist for looks like this: clamping a signed add.</span>
+	add.w	d1,d0		<span class="c">; d0 = d0 + d1, as signed words</span>
+	bvc.s	.ok		<span class="c">; V clear means the answer really fits in 16 bits</span>
+	move.w	<span class="n">#$7FFF</span>,d0	<span class="c">; it did not, so pin d0 at the largest signed word</span>
+.ok</pre>
+</div>
+
+<p>Those two are in the table for completeness, and their absence is itself informative. V is set
+when a signed calculation produced an answer too big for its size, and game code overwhelmingly
+prefers to prevent that by choosing ranges carefully rather than to detect it afterwards. Sonic's
+velocities are kept well inside a signed word, so nothing ever needs to ask.</p>
+
+<details class="refbox">
+  <summary>Encoding (one word, $6xxx, plus an optional displacement word)</summary>
+  <div class="enc-body">
+    <p><code>0110 cccc dddddddd</code>: the top nibble 6 marks the whole branch family,
+    <code>cccc</code> is the four-bit condition from the table above, and
+    <code>dddddddd</code> is a signed byte displacement. A displacement of <code>$00</code> is
+    reserved: it means the real displacement is a signed word in the next two bytes, which is how
+    <code>bcc.w</code> is encoded. That reservation is also why the short form cannot encode a
+    displacement of zero, though a branch to the very next instruction would be pointless
+    anyway.</p>
+    <p>The displacement counts from the branch instruction's address PLUS TWO, not from the
+    instruction itself. So <code>beq</code> is <code>$67xx</code>, <code>bne</code> is
+    <code>$66xx</code>, and <code>beq.s</code> to the instruction 8 bytes further on assembles as
+    <code>$6706</code>. <span class="enc-note">From the M68000 Programmer's Reference Manual, Bcc
+    and Table 3-19. The 32-bit displacement form the manual also describes is MC68020 and later,
+    and does not exist on the 68000.</span></p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s4">4 &middot; Dispatch: calling something computed</h2>
+
+<p><a href="#s2">Section 2</a> gave <code>jmp</code> and <code>jsr</code> a reason to exist that
+was true but boring: they reach further than a branch. This is the real reason. A branch's target
+is frozen into the instruction when the ROM is built and can never be anything else.
+<code>jmp</code> and <code>jsr</code> take an effective address, and an effective address can be
+worked out while the game is running. That one difference is what lets an object hold a number
+saying which of its behaviours it is currently doing, and lets the engine turn that number into a
+jump.</p>
+
+<p>The mechanism is called
+<span class="term" data-def="Choosing which routine to run by looking its address up at run time instead of naming it in the instruction.">dispatch</span>,
+and it is why an engine's object code is a table of routine addresses rather than a chain of
+comparisons. Without it, running the right one of six behaviours means six compares and six
+branches, and the cost depends on which one you wanted. With it, it is one table read and one
+jump, the same cost every time, and adding a seventh behaviour means adding a table row rather
+than editing a chain.</p>
+
+<details class="explain">
+  <summary>New here? &middot; How a number turns into a jump</summary>
+  <div class="x-body">
+    <p>Every Sonic object has a byte in its 64 bytes of RAM called <code>routine</code>. It is
+    just a small number: 0 while the object is setting itself up, 2 once it is running, 4 while
+    it is exploding, and so on. Nothing about the number is special. The trick is entirely in how
+    the code uses it.</p>
+    <p>Next to the object's code sits a
+    <span class="term" data-def="A list of addresses held in memory, one per case, that code indexes into so it can jump to the entry matching a value it is holding.">jump table</span>:
+    a plain list, one entry per behaviour, in the same order as the numbers. Because every entry
+    is the same width, the number times that width is exactly how far into the list the right
+    entry sits. So the code reads <code>routine</code>, uses it to index the table, gets an
+    address out, and jumps there. Six behaviours, one jump.</p>
+    <p>The one thing this buys that a chain of comparisons cannot is that the object CHOOSES its
+    own next behaviour simply by writing a different number into that byte. It does not have to
+    know where any of the code lives. You will see <code>addq.b #2,routine(a0)</code> all over
+    engine code, and it always means "advance to my next state"; the increment is 2 rather than 1
+    because each table entry is a word wide.</p>
+  </div>
+</details>
+
+<p>Here is the idiom, complete, with both ends on one screen. This is the object that runs the
+"start" banner in the Special Stage:</p>
+
+<pre>Obj5F:
+	moveq	<span class="n">#0</span>,d0
+	move.b	routine(a0),d0
+	move.w	Obj5F_Index(pc,d0.w),d1
+	jmp	Obj5F_Index(pc,d1.w)
+<span class="c">; ===========================================================================</span>
+<span class="c">; off_70FE:</span>
+Obj5F_Index:	offsetTable
+		offsetTableEntry.w Obj5F_Init	<span class="c">;  0</span>
+		offsetTableEntry.w Obj5F_Main	<span class="c">;  2</span>
+		offsetTableEntry.w loc_71B4	<span class="c">;  4</span>
+		offsetTableEntry.w loc_710A	<span class="c">;  6</span>
+		offsetTableEntry.w return_723E	<span class="c">;  8</span>
+		offsetTableEntry.w loc_7218	<span class="c">; $A</span></pre>
+<span class="src">s2disasm/s2.asm:9617-9630 (Obj5F, the Special Stage start banner)</span>
+
+<p>Four instructions. <code>moveq #0,d0</code> clears the whole register, then
+<code>move.b</code> drops the one-byte state number into the bottom of it, so the top of
+<code>d0</code> is known to be zero and the register can safely be used as an index. Then the two
+steps that matter.</p>
+
+<p><code>move.w Obj5F_Index(pc,d0.w),d1</code> reads a word from <code>d0</code> bytes past the
+table's start. <code>jmp Obj5F_Index(pc,d1.w)</code> then jumps to <code>d1</code> bytes past the
+table's start. So the table does not hold addresses at all: it holds OFFSETS from its own
+beginning, which is what the <code>offsetTableEntry</code> macro builds (it assembles to
+<code>dc.w</code> of the target minus the table label). Read an offset, then jump that far from
+the table.</p>
+
+<p>Two things are bought by the extra step. Each entry is a word rather than a longword, halving
+the table. And because nothing in the table or in either instruction is an absolute address, the
+whole object can be assembled anywhere in the ROM and still work; the <code>(pc,...)</code> form
+means every address is worked out relative to where the code currently is. That form is the
+<a href="addressing-modes.html#mode-pcindex">program-counter-with-index mode</a>, and the
+Addressing Modes page has the full derivation of how it computes its address, which this page
+does not repeat.</p>
+
+<p>Note also that this is a <code>jmp</code> and not a <code>jsr</code>. Nothing is pushed.
+<code>Obj5F</code> does not want control back; whichever routine the table sends it to will run
+that state's behaviour and <code>rts</code> straight to whoever called <code>Obj5F</code>. That
+is the tail call, and <a href="#s5">section 5</a> is about doing it deliberately.</p>
+
+<p>The second shape is a plain function pointer held in a register, with no table at all. This
+is the Nemesis art decompressor, which has to write each decoded row somewhere, and which of four
+ways it writes depends on how it was entered:</p>
+
+<pre>NemDec:
+	movem.l	d0-a1/a3-a5,-(sp)
+	lea	(NemDec_WriteAndStay).l,a3 <span class="c">; write all data to the same location</span>
+	lea	(VDP_data_port).l,a4	   <span class="c">; specifically, to the VDP data port</span>
+	bra.s	NemDecMain</pre>
+<span class="src">s2disasm/s2.asm:1806-1810 (NemDec, the entry that decompresses straight to VRAM)</span>
+
+<p>A second entry point a few lines below loads a different routine into <code>a3</code>, and
+<code>NemDecMain</code> may then add a fixed offset to <code>a3</code> to select an
+exclusive-or variant. By the time the inner loop runs, <code>a3</code> holds one of four
+addresses, and the loop just does this:</p>
+
+<pre>	<span class="c">; writes the row to its destination with the appropriately determined function</span>
+	jmp	(a3) <span class="c">; dynamic jump! to NemDec_WriteAndStay, NemDec_WriteAndAdvance, NemDec_WriteAndStay_XOR, or NemDec_WriteAndAdvance_XOR</span></pre>
+<span class="src">s2disasm/s2.asm:1896-1897 (NemDec, and the disassembly's own comment names all four targets)</span>
+
+<p>The comment is the disassembly author's, exclamation mark and all, and it is a fair reaction:
+this single instruction can go to four different places, and reading the line tells you none of
+them. The decision was made once, at entry, and then thousands of decoded rows all jump through
+the same two bytes. That is the whole appeal of a function pointer, and it is also why code like
+this is hard to follow without a debugger. If you are tracing it, <code>a3</code> is the thing to
+watch.</p>
+
+<p>Third, the case where the call really does need to come back. This is the vertical interrupt
+handler, which runs sixty times a second and picks a different routine depending on what the game
+is currently doing:</p>
+
+<pre>	move.b	(Vint_routine).w,d0
+	move.b	<span class="n">#VintID_Lag</span>,(Vint_routine).w
+	move.w	<span class="n">#1</span>,(Hint_flag).w	<span class="c">; allows horizontal interrupt code to run</span>
+	andi.w	<span class="n">#$3E</span>,d0
+	move.w	Vint_SwitchTbl(pc,d0.w),d0
+	jsr	Vint_SwitchTbl(pc,d0.w)
+
+VintRet:
+	addq.l	<span class="n">#1</span>,(Vint_runcount).w
+	movem.l	(sp)+,d0-a6
+	rte</pre>
+<span class="src">s2disasm/s2.asm:500-510 (V_Int, the vertical interrupt handler's dispatch and its tail)</span>
+
+<p>Same two-step table read as <code>Obj5F</code>, with the same <code>andi.w</code> alignment
+guard <a href="#s2">section 2</a> described (masking to $3E keeps the index even, so it can only
+land on the start of a word-wide entry). But this one is a <code>jsr</code>, and the three lines
+after <code>VintRet</code> are exactly why.</p>
+
+<p>Whatever routine the table picked, this handler still has bookkeeping to do afterwards: bump
+the frame counter, restore the fifteen registers it saved on entry, and return from the
+interrupt. If the dispatch were a <code>jmp</code>, none of that would happen, the registers
+would stay trashed, and the interrupted code would resume with a corrupted stack. So the rule is
+not "tables use jmp"; it is the ordinary one. Use the goto when the current routine has nothing
+left to do, and the call when it has.</p>
+
+<div class="gotcha"><span class="g-tag">Gotcha</span>
+A computed jump is only as safe as the arithmetic feeding it. Every dispatch above masks its
+index first (<code>andi.w #$3C</code>, <code>andi.w #$3E</code>) so the value can only land on an
+entry boundary and cannot run off the end of the table. Nothing in the hardware checks this: if a
+state byte is ever set to a number the table has no row for, or an odd number when the entries
+are words, the <code>jmp</code> will happily go to the resulting address and execute whatever is
+there. An odd address is at least loud, because the 68000 raises an address error the moment it
+tries to fetch an instruction from one. A wrong but even address is silent, and is one of the
+classic ways a modified object crashes several frames after the actual mistake.</div>
+
+<details class="explain">
+  <summary>Reading real listings &middot; jsrto and jmpto are not instructions</summary>
+  <div class="x-body">
+    <p>Open s2disasm and you will meet <code>jsrto</code> and <code>jmpto</code> constantly, 749
+    and 620 times. They are not 68000 instructions and you will not find them in any manual. They
+    are macros the disassembly defines, and each one expands to one of two things depending on a
+    build switch:</p>
+    <pre>jsrto macro indirectaddr
+	if removeJmpTos
+		!jsr (extractJmpToName("indirectaddr")).l	<span class="c">; jump directly to address</span>
+	else
+		!bsr.w indirectaddr	<span class="c">; otherwise, branch to an indirect JmpTo</span>
+	endif
+    endm</pre>
+    <span class="src">s2disasm/s2.macrosetup.asm:284-291 (the jsrto macro; jmpto directly below it is the same shape for jmp and bra)</span>
+    <p>The reason they exist is the reach limit from <a href="#s2">section 2</a>. The original ROM
+    is split into banks, and code in one bank often needs to call a routine too far away for a
+    <code>bsr.w</code>. Sega's build solved this with trampolines: a short <code>bsr.w</code> to a
+    nearby stub, which then does the long <code>jmp</code>. The macro lets the disassembly
+    reproduce the original ROM byte for byte when the switch is off, and produce tidier, faster
+    code that calls directly when it is on.</p>
+    <p>The practical consequence for a reader is a counting one. Every frequency number on this
+    page counts real <code>jsr</code> and <code>jmp</code> lines only, so the 539 and 520 quoted
+    in <a href="#s2">section 2</a> understate what the ROM actually does by up to another 1,369
+    sites, depending on how the build switch is set. If you ever grep a disassembly for how often
+    it calls something, remember to grep for the macros too.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s5">5 &middot; The tail call, and other deliberate abuse</h2>
+
+<p><a href="#s1">Section 1</a> said <code>rts</code> jumps to whatever four bytes are on top of
+the stack and has no memory of who called. That was the mechanism. This is what you can do with
+it, and the answer is: quite a lot, because "whatever four bytes are on top of the stack" is
+something your code is allowed to arrange.</p>
+
+<p>Start with the commonest case. Suppose the last thing your routine does is call another one
+and then return:</p>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	bsr.w	Inner		<span class="c">; push a return address, go and run Inner</span>
+	rts			<span class="c">; Inner came back to here; now go back to OUR caller</span></pre>
+</div>
+
+<p>Look at what those two instructions accomplish between them. The <code>bsr</code> pushes an
+address whose only purpose is to reach an <code>rts</code> that immediately pops the previous
+address and leaves. Four bytes are written and read back for nothing. So delete both instructions
+and write one:</p>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	bra.w	Inner		<span class="c">; go and run Inner, pushing nothing at all</span></pre>
+</div>
+
+<p>Nothing was pushed, so when <code>Inner</code> reaches its own <code>rts</code>, the four
+bytes waiting on top of the stack are the ones YOUR caller left. <code>Inner</code> returns
+straight past you to whoever called you. It cannot tell the difference and does not need to: it
+pops four bytes and jumps, exactly as it always does.</p>
+
+<p>This is the <span class="term" data-def="Ending a routine by jumping to another routine instead of calling it, so that when the second one finishes it hands control straight back to whoever called the first.">tail call</span>,
+and it is free in every direction. Two instructions become one, so 4 bytes of ROM are saved. The
+18-cycle push and the 16-cycle pop both vanish. The stack stays one level shallower for the whole
+of <code>Inner</code>'s run. And there is no catch, provided you genuinely had nothing left to do
+afterwards.</p>
+
+<p>If you have read <a href="moving-data.html#pea">the PEA entry on the Moving Data page</a>, you
+have already met this idea from the other end. There, <code>pea</code> pushes an address that no
+call put there, so a later <code>rts</code> "returns" somewhere it was never called from: a fake
+call, built by writing the stack by hand. Here, a call declines to push, so an <code>rts</code>
+returns further back than it should. Both work for one reason, that <code>rts</code> does not
+check anything, and running into the pair from opposite directions is what usually makes the
+mechanism click.</p>
+
+<p>Here is the best six lines in the disassembly for this. It is the object that draws the score
+numbers that pop out when you destroy a badnik:</p>
+
+<pre>Obj29_Main:
+	tst.w	y_vel(a0)		<span class="c">; test speed</span>
+	bpl.w	DeleteObject		<span class="c">; if it's positive (&gt;= 0), delete the object</span>
+	bsr.w	ObjectMove		<span class="c">; move the points</span>
+	addi.w	<span class="n">#$18</span>,y_vel(a0)		<span class="c">; slow down</span>
+	bra.w	DisplaySprite</pre>
+<span class="src">s2disasm/s2.asm:24790-24795 (Obj29_Main, the floating score numbers)</span>
+
+<p>Read the last line, then read the whole routine again looking for an <code>rts</code>.
+<b>There is not one.</b> This routine can never return under its own power, and it is completely
+correct.</p>
+
+<p>Every exit is a tail call. If the number has stopped rising, <code>bpl.w DeleteObject</code>
+leaves for good, and <code>DeleteObject</code>'s <code>rts</code> (the one from
+<a href="#s1">section 1</a>) returns to whoever called <code>Obj29_Main</code>. Otherwise the
+routine moves the sprite, slows it, and <code>bra.w DisplaySprite</code> leaves for good, and
+<code>DisplaySprite</code>'s <code>rts</code> does the same job. The one ordinary
+<code>bsr.w</code> in the middle is the only call here that expects to come back, because there
+really is work after it.</p>
+
+<p>Note the contrast that line makes, since it is sitting right there: <code>bsr.w
+ObjectMove</code> and <code>bra.w DisplaySprite</code> are the same distance, the same width, and
+differ only in whether the routine wanted control back. That is <a href="#s2">section 2</a>'s
+first axis, chosen twice in four lines for two different reasons.</p>
+
+<h3 style="margin-top:2.4rem;">Conditional tail calls, and why they read as jumps into nowhere</h3>
+
+<p>That <code>bpl.w DeleteObject</code> deserves its own beat, because it is the form most likely
+to stop a reader. A conditional branch whose target is a different ROUTINE is a tail call wearing
+a branch's clothes. There is no <code>bsr</code>, no <code>jsr</code>, and nothing that looks
+like a call at all; a line that appears to be a local "skip ahead if positive" is in fact this
+routine's entire exit path.</p>
+
+<p>It reads as a jump into nowhere until you know the idiom, and it is not rare: counting only
+branches whose target is one of the five common shared routines, there are 21 of them in Sonic 2.
+The tell is the target name. <code>bpl.s +</code> is a local skip; <code>bpl.w
+DeleteObject</code> is an exit.</p>
+
+<p>The same trick stacks. <code>MarkObjGone</code> is the standard "unload me if I have gone off
+screen" routine, and eleven places in the file reach it by <code>bra.w</code> rather than calling it:</p>
+
+<pre>MarkObjGone:
+	tst.w	(Two_player_mode).w	<span class="c">; is it two player mode?</span>
+	beq.s	+			<span class="c">; if not, branch</span>
+	bra.w	DisplaySprite
++
+	move.w	x_pos(a0),d0
+	andi.w	<span class="n">#$FF80</span>,d0
+	sub.w	(Camera_X_pos_coarse).w,d0
+	cmpi.w	<span class="n">#$80+320+$40+$80</span>,d0	<span class="c">; This gives an object $80 pixels of room offscreen before being unloaded (the $40 is there to round up 320 to a multiple of $80)</span>
+	bhi.w	+
+	bra.w	DisplaySprite
+
++	lea	(Object_Respawn_Table).w,a2
+	moveq	<span class="n">#0</span>,d0
+	move.b	respawn_index(a0),d0
+	beq.s	+
+	bclr	<span class="n">#7</span>,Obj_respawn_data-Object_Respawn_Table(a2,d0.w)
++
+	bra.w	DeleteObject</pre>
+<span class="src">s2disasm/s2.asm:29993-30011 (MarkObjGone, the standard offscreen-unload routine)</span>
+
+<p>Nineteen lines with no <code>rts</code> either. Every one of its three exits is a
+<code>bra.w</code> to another routine. So a chain forms: an object tail-calls
+<code>MarkObjGone</code>, which tail-calls <code>DeleteObject</code>, which finally executes the
+one real <code>rts</code>, and control lands back in the object manager that called the object in
+the first place. Three routines deep in source terms, one stack level in fact, and one
+<code>rts</code> unwinding all of it. If you set a breakpoint on that <code>rts</code> and looked
+at the stack expecting three return addresses, you would find one.</p>
+
+<figure class="diagram">
+  <div class="movesim" id="tailsim">
+    <div class="msim-instr"><code id="tc-instr">bsr.w&nbsp;&nbsp;Middle</code>
+      <span>Three routines. Caller calls Middle; Middle finishes by reaching Inner. The toggle
+      picks how Middle finishes, and everything else is identical.</span></div>
+    <div class="msim-ctrl">
+      <label>Middle ends with</label>
+      <span class="fpick">
+        <button type="button" id="tc-m-call" class="tc-mode" data-m="call" aria-pressed="true">bsr.w Inner then rts</button>
+        <button type="button" id="tc-m-tail" class="tc-mode" data-m="tail" aria-pressed="false">jmp Inner (tail call)</button>
+      </span>
+    </div>
+    <div class="msim-ctrl">
+      <button id="tc-step" type="button">Step</button>
+      <button id="tc-surg-over" type="button">Run move.l #Elsewhere,(sp)</button>
+      <button id="tc-surg-drop" type="button">Run addq.l #4,sp</button>
+      <button id="tc-reset" type="button">Reset</button>
+    </div>
+    <div class="stkwrap">
+      <div class="trace" id="tc-trace"></div>
+      <div class="stkcol">
+        <p class="stk-h">The stack, in work RAM</p>
+        <div id="tc-stack"></div>
+        <div class="msim-regs" style="margin-top:.6rem;">
+          <div class="mreg"><span class="mr-name">pc</span><span class="mr-val" id="tc-pc">00021000</span><span class="mr-tag">next instruction</span></div>
+          <div class="mreg"><span class="mr-name">sp</span><span class="mr-val" id="tc-sp">FFFFFF00</span><span class="mr-tag">top of stack</span></div>
+        </div>
+        <p class="msim-cost" id="tc-depth"></p>
+      </div>
+    </div>
+    <p class="msim-note" id="tc-note" aria-live="polite"></p>
+  </div>
+  <figcaption>The callee's return goes wherever the top four bytes point, so skipping your own
+  frame costs nothing. Step through both modes and compare: with <code>bsr.w Inner then rts</code>
+  the stack reaches two levels deep and Inner's return lands back inside Middle, while with
+  <code>jmp Inner</code> it never goes past one level and Inner's return lands directly in Caller.
+  The two surgery buttons then edit those four bytes by hand:
+  <code>move.l #Elsewhere,(sp)</code> sends the next return to a routine nobody called, and
+  <code>addq.l #4,sp</code> throws the return address away so the next <code>rts</code> comes out
+  a level higher than it went in.</figcaption>
+</figure>
+
+<h3 style="margin-top:2.4rem;">Return-address surgery</h3>
+
+<p>A reader working through the PEA entry asked the question that opens this part, and it is
+exactly the right one: <b>is there something like PEA, but it overwrites?</b></p>
+
+<p>There is no such instruction, and there does not need to be. A return address is four bytes of
+RAM at the address <code>sp</code> holds. Reaching them needs no special instruction because
+<code>(sp)</code> is an ordinary address-register-indirect operand and every instruction that can
+write memory can write there. So:</p>
+
+<ul style="max-width:42rem;">
+  <li><code>move.l #Elsewhere,(sp)</code> replaces the return address, and the next
+  <code>rts</code> goes to <code>Elsewhere</code> instead of home.</li>
+  <li><code>addq.l #4,sp</code> throws the return address away without reading it, so the next
+  <code>rts</code> pops the address BELOW it and returns one level higher than it was called
+  from.</li>
+</ul>
+
+<p>The second of those is the one real engine code actually uses, and it uses it 20 times in
+Sonic 2. It is worth framing as an idiom rather than a curiosity: it is how a routine says
+"whatever my caller was going to do after calling me, do not do it."</p>
+
+<pre><span class="c">; sub_13D10:</span>
+Obj34_Wait:
+	subq.b	<span class="n">#1</span>,anim_frame_duration(a0)	<span class="c">; subtract 1</span>
+	bne.s	+				<span class="c">; if it's not 0, branch</span>
+	move.b	<span class="n">#1</span>,anim_frame_duration(a0)	<span class="c">; reset to 1</span>
+	rts
+<span class="c">; ---------------------------------------------------------------------------</span>
++	addq.w	<span class="n">#4</span>,sp	<span class="c">; don't run the code after the call to this routine</span>
+	rts</pre>
+<span class="src">s2disasm/s2.asm:27161-27169 (Obj34_Wait, part of the title card)</span>
+
+<p>The comment states the contract in plain English, which is unusual and welcome. This routine
+has two ways of finishing. If the timer has not run out, the plain <code>rts</code> on the sixth
+line returns normally and the caller carries on. If it HAS run out, the <code>addq.w #4,sp</code>
+discards the caller's return address and then <code>rts</code> pops the one underneath, so
+control leaves the caller entirely.</p>
+
+<p>Here is one of its five callers, so you can see what gets skipped:</p>
+
+<pre><span class="c">; loc_13D58:</span>
+Obj34_BottomPartIn:	<span class="c">; the yellow part at the bottom, coming in</span>
+	jsr	Obj34_Wait(pc)
+	move.w	titlecard_location(a0),d0
+	bmi.w	Obj34_MoveTowardsTargetPosition</pre>
+<span class="src">s2disasm/s2.asm:27199-27203 (Obj34_BottomPartIn, one of Obj34_Wait's five callers)</span>
+
+<p>On the ordinary path, <code>Obj34_Wait</code> returns and the two lines after the
+<code>jsr</code> run. On the timer-expired path, they do not: the whole of
+<code>Obj34_BottomPartIn</code> after the call is skipped, and control returns to whoever called
+IT. Five callers get that behaviour without any of them containing a test for it, which is the
+point. The check lives in one place, and the way it reports "and stop" is by editing the
+stack.</p>
+
+<p>The price is that the trick is invisible from the call site. Read
+<code>Obj34_BottomPartIn</code> on its own and nothing about <code>jsr Obj34_Wait(pc)</code>
+suggests the two lines after it might never run. That is a real hazard when you are modifying
+code you did not write, and it is why all three sites in this section carry a comment saying what
+they are doing. If you write this idiom, comment it.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why would a routine ever want to cancel its caller?</summary>
+  <div class="x-body">
+    <p>It looks rude, and the first reaction is usually that the caller should just check the
+    answer itself. So why not do the obvious thing: have <code>Obj34_Wait</code> return a
+    yes-or-no, and have each caller test it?</p>
+    <p>Because there are five callers. The obvious version means five copies of the same test and
+    branch, five chances to get one of them wrong, and five places to edit when the rule changes.
+    The surgery version puts the decision in the routine that owns it, once, and the callers stay
+    as short as they were. What the routine is really saying is not "here is an answer" but "we
+    are done for this frame", and that is a statement about the whole call chain rather than
+    about one return value.</p>
+    <p>The reason it is available at all is the theme of this page. In a language with real
+    function calls you would need an exception or an early return that the compiler understands.
+    Here the return address is four bytes of RAM, so "do not go back there" is just an
+    instruction that moves a pointer. The machine offers no protection and also asks no
+    permission.</p>
+    <p>The cost is that it is invisible from the call site. Reading
+    <code>Obj34_BottomPartIn</code> on its own, nothing suggests the two lines after the
+    <code>jsr</code> might not run. That is a real maintenance hazard, which is why both of the
+    other sites in this section carry a comment saying what they are doing, and why this one's
+    comment states the contract in English. If you write this idiom, comment it.</p>
+  </div>
+</details>
+
+<div class="gotcha"><span class="g-tag">Gotcha</span>
+<code>addq.w #4,sp</code> and <code>addq.l #4,sp</code> are the same instruction here, and both
+spellings really do appear in Sonic 2 (this site uses <code>.w</code>; the two below use
+<code>.l</code>). That is not sloppiness: when the destination is an address register, the manual
+states that "the entire destination address register is used regardless of the operation size",
+so a word-sized ADDQ still adds to all 32 bits of <code>sp</code>. The size suffix is decoration
+in this one position. Do not carry that habit anywhere else, because for a data register
+destination <code>.w</code> and <code>.l</code> are genuinely different instructions.</div>
+
+<p>Two more sites, both confirming this is a technique rather than a one-off. The first is in the
+Oil Ocean scroll code, and its comment names the routine it is refusing to return to:</p>
+
+<pre>	<span class="c">; If we've reach 224 lines, bail.</span>
+	subq.w	<span class="n">#1</span>,d6
+	bmi.s	+
+
+	<span class="c">; Do the next line.</span>
+	dbf	d1,.doLines
+
+	rts
+<span class="c">; ===========================================================================</span>
++
+	<span class="c">; Do not return to 'SwScrl_OOZ'.</span>
+	addq.l	<span class="n">#4</span>,sp
+	rts</pre>
+<span class="src">s2disasm/s2.asm:16394-16406 (the Oil Ocean scroll routine, bailing out of its caller)</span>
+
+<p>The second is the Big Ring flash from <a href="#s3">section 3</a>, and it shows why a routine
+would ever want this. Once the flash has deleted the player object, the caller's remaining work
+is to display a sprite for an object that no longer makes sense to display:</p>
+
+<pre>	addq.b	<span class="n">#2</span>,routine(a0)
+	move.w	<span class="n">#0</span>,(MainCharacter).w		<span class="c">; delete the player object</span>
+	addq.l	<span class="n">#4</span>,sp
+	rts</pre>
+<span class="src">s2disasm/s2.asm:25230-25233 (BigRingFlash_Animate, discarding its return)</span>
+
+<pre>BigRingFlash_Main:
+	bsr.s	BigRingFlash_Animate
+	move.w	x_pos(a0),d0
+	andi.w	<span class="n">#$FF80</span>,d0
+	sub.w	(Camera_X_pos_coarse).w,d0
+	cmpi.w	<span class="n">#$280</span>,d0
+	bhi.w	DeleteObject
+	bra.w	DisplaySprite</pre>
+<span class="src">s2disasm/s2.asm:25199-25206 (BigRingFlash_Main, the caller whose last six lines get skipped)</span>
+
+<p>Those six skipped lines are an offscreen check ending in two tail calls. Discarding the return
+address cancels all of it. And notice the caller's own last two lines are the idiom from earlier
+in this section, so the two techniques are stacked one inside the other in eight lines of shipped
+code.</p>
+
+<p>The overwrite form, <code>move.l #Elsewhere,(sp)</code>, does not appear anywhere in Sonic 2,
+which is why the toy above is the place to try it. It does appear in modern engine code, and the
+clearest instance rewrites where a V-interrupt will return to:</p>
+
+<pre>		move.l	$42(sp),d0							<span class="c">; check address V-int is supposed to rte to</span>
+		cmpi.l	<span class="n">#Process_KosPlus_Queue.Main</span>,d0
+		blo.s	.Done
+		cmpi.l	<span class="n">#Process_KosPlus_Queue.Done</span>,d0
+		bhs.s	.Done
+		move.l	d0,(KosPlus_decomp_bookmark).w
+		move.l	<span class="n">#Backup_KosPlus_Registers</span>,$42(sp)				<span class="c">; force V-int to rte here instead if needed</span></pre>
+<span class="src">Engine/Decompression/Kosinski Plus Moduled Decompression.asm:204-210 (Sonic Clean Engine, not Sonic 2)</span>
+
+<p>The routine looks at the address the interrupt is going to resume at, and if that address
+falls inside the decompressor, it writes a different one over the top so the interrupt resumes in
+a routine that saves the decompressor's registers first. It is <code>$42(sp)</code> rather than
+<code>(sp)</code> only because a good deal has been pushed on top by then, so the address sits
+$42 bytes down; the principle is identical. And this is not a saved return address from a
+<code>bsr</code>, it is the PC an <a href="#rte">RTE</a> will use, which is the same four bytes
+serving a different instruction. Nothing marks either kind, which is the whole theme of this
+page.</p>
+
+<!-- ================================================================ -->
+<h2 id="s6">6 &middot; Loops</h2>
+
+<p>You can build a loop out of what you already have: a counter, a <code>subq</code>, and a
+<code>bne</code> back to the top. The 68000 also gives you one instruction that does all three,
+and Sonic 2 uses it 412 times. It is also the instruction on this page most often described
+wrongly, so it is worth being exact.</p>
+
+<div class="instr" id="dbcc">
+  <h3><span class="mn">DBcc</span> <span class="mnx">Test Condition, Decrement and Branch</span> <span class="syn">DBcc Dn,&lt;label&gt;</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">changes no flags even though it decrements a register, which is the fact the dbeq example below depends on</span>
+  </div>
+
+  <div class="cost"><span class="cchip">10 cycles</span>
+    <span class="cctx">best case: the looping iteration, condition false and the count still running</span>
+    <span class="cnote">Three cases, not two, and it is worth knowing all three: 10 when it loops,
+    12 when the CONDITION ended the loop, 14 when the COUNTER ended it. So the exit is slightly
+    dearer than the iterations, and the two kinds of exit cost different amounts. Always 4 bytes.
+    From the M68000 User's Manual, Table 8-9.</span>
+  </div>
+
+  <div class="opgrid" role="group" aria-label="Legal operands for DBcc">
+    <div class="og-row"><span class="og-side">Counter</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og no">(An)</span><span class="og no">(An)+</span><span class="og no">-(An)</span><span class="og no">d(An)</span><span class="og no">d(An,Xn)</span><span class="og no">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Nine crosses and one chip: the counter must be a data register, and only its
+    LOW WORD is used. A counter in memory, in an address register, or as an immediate will not
+    assemble. The target is a label, always a signed 16-bit displacement, so a DBcc loop body can
+    be up to about 32K bytes long but the instruction has no short form. The size is fixed at word
+    and you cannot write <code>dbf.l</code>.</p>
+  </div>
+
+  <p>DBcc runs a counted loop. Reach for it whenever you know how many times to go round: it
+  replaces a decrement and a branch with one 4-byte instruction, and it is the standard shape for
+  copying a table, clearing a block of RAM, or walking a list. The version you will actually meet
+  is <code>dbf</code>, which is 411 of those 412 uses.</p>
+
+  <details class="explain">
+    <summary>New here? &middot; What this loop looks like if you build it by hand</summary>
+    <div class="x-body">
+      <p>Nothing forces you to use DBcc. A counted loop out of parts you already have looks like
+      this, and it is worth writing out once so you can see exactly what the one instruction is
+      replacing:</p>
+      <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	moveq	<span class="n">#24</span>,d1	<span class="c">; 24 here really does mean 24 times</span>
+.loop:
+	<span class="c">; ...the body...</span>
+	subq.w	<span class="n">#1</span>,d1	<span class="c">; count one off</span>
+	bne.s	.loop		<span class="c">; not zero yet, go round again</span></pre>
+      </div>
+      <p>Two instructions at the bottom instead of one, so 6 bytes instead of 4, and roughly 12
+      cycles a pass instead of 10. Those are small numbers until you notice this shape appears
+      hundreds of times in a ROM, which is why Motorola gave the loop its own instruction.</p>
+      <p>But the difference that actually matters is the third one, and it is not about size at
+      all. <code>subq.w</code> SETS THE FLAGS, which is how <code>bne</code> knows what to do. So
+      a hand-built loop destroys any comparison the body made, and a body that wants to report
+      something back has to stash it somewhere before reaching the bottom of the loop. DBcc
+      changes no flags at all, so whatever the body last compared is still readable after the
+      loop ends. The <code>dbeq</code> example further down this section is built entirely on
+      that difference.</p>
+      <p>Notice too that the hand-built version counts to ZERO and the DBcc version counts to
+      MINUS ONE. That is the whole source of the off-by-one below: the two loops are not the same
+      loop with different syntax, they stop on different values.</p>
+    </div>
+  </details>
+
+  <p>Here is the order of operations, in the manual's own order, because getting it in the wrong
+  order is the usual mistake:</p>
+
+  <ol style="max-width:42rem;">
+    <li><b>Test the condition first.</b> If it is TRUE, stop. Fall through to the next
+    instruction, and do not touch the counter at all.</li>
+    <li>If it is false, <b>subtract 1 from the low word of Dn</b>.</li>
+    <li>If the result is <b>-1</b>, stop and fall through.</li>
+    <li>Otherwise <b>branch</b> back to the label.</li>
+  </ol>
+
+  <p>Two things in that sequence surprise people. The first is that <b>the condition is a reason
+  to STOP, not a reason to continue.</b> This is backwards from <a href="#bcc">Bcc</a>, where the
+  condition is a reason to branch. The manual's own gloss is the clearest way to hold it:
+  <code>DBMI</code> reads as "decrement and branch UNTIL minus". So <code>dbeq</code> means "loop
+  until equal", not "loop while equal".</p>
+
+  <p>The second is what makes <code>dbf</code> the one you see. F is the condition that is never
+  true, so step 1 never stops the loop and only the counter ever can. <code>dbf</code> is
+  therefore a pure counted loop with no condition at all, which is what you usually want. The
+  manual notes that most assemblers also accept <code>DBRA</code> as a spelling of
+  <code>DBF</code>; the Sonic disassemblies do not use it, and <code>dbra</code> appears nowhere
+  in any of the three trees.</p>
+
+  <p>And the third is the counting. Because the branch happens when the result is not -1, the
+  loop runs one more time than the number you loaded.</p>
+
+  <figure class="diagram">
+    <div class="movesim" id="dbfsim">
+      <div class="msim-instr"><code id="db-instr">dbf&nbsp;&nbsp;&nbsp;&nbsp;d1,Loop</code>
+        <span>Load a starting count, then step the loop and watch the register. The body runs
+        once per pass, and the loop only ends when the decrement produces $FFFF, which is
+        -1.</span></div>
+      <div class="msim-ctrl">
+        <label for="db-seed">Load d1 with</label>
+        <input id="db-seed" type="text" value="3" size="4" aria-label="starting count for d1">
+        <button id="db-load" type="button">Run moveq #n,d1</button>
+        <button id="db-step" type="button">Step one pass</button>
+        <button id="db-runall" type="button">Run to the end</button>
+        <button id="db-reset" type="button">Reset</button>
+      </div>
+      <div class="msim-regs">
+        <div class="mreg"><span class="mr-name">d1 (low word)</span><span class="mr-val" id="db-d1">0003</span><span class="mr-tag" id="db-d1s">= 3</span></div>
+        <div class="mreg"><span class="mr-name">body ran</span><span class="mr-val" id="db-runs">0</span><span class="mr-tag">times</span></div>
+      </div>
+      <p class="msim-cost" id="db-tally"></p>
+      <p class="msim-note" id="db-note" aria-live="polite"></p>
+    </div>
+    <figcaption>A DBcc loop runs one more time than the number you load, because the exit test is
+    "did the decrement produce -1" rather than "did it produce zero". Load 3 and run to the end:
+    the body runs 4 times, with d1 passing through 2, 1, 0 and only then $FFFF. That is why source
+    code that wants N iterations loads N-1, and why every table-length constant in the Sonic
+    disassembly has a <code>-1</code> written into it.</figcaption>
+  </figure>
+
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  <b>Load N-1 to run N times.</b> Work it through once and it stops being a rule to memorise:
+  load <code>d1</code> with 3, and the body runs, then the decrement gives 2 (not -1, so loop);
+  body runs, decrement gives 1 (loop); body runs, decrement gives 0 (still not -1, so loop);
+  body runs a fourth time, decrement gives -1, and only now does it fall through. Four passes from
+  a 3. The zero pass is the one people lose, because a loop that ends on zero is what every other
+  processor and every high-level language has trained you to expect. Loading 0 runs the body
+  ONCE; if you want a loop that might run zero times, you have to test before entering it.</div>
+
+  <p>Real code makes the subtraction visible rather than leaving it to be remembered. This is the
+  VDP register setup at boot:</p>
+
+  <pre>	moveq	<span class="n">#VDPInitValues_End-VDPInitValues-1</span>,d1 <span class="c">; run the following loop $18 times</span>
+<span class="c">; loc_23E:</span>
+VDPInitLoop:
+	move.b	(a5)+,d5	<span class="c">; add $8000 to value</span>
+	move.w	d5,(a4)		<span class="c">; move value to VDP register</span>
+	add.w	d7,d5		<span class="c">; next register</span>
+	dbf	d1,VDPInitLoop</pre>
+  <span class="src">s2disasm/s2.asm:220-226 (VDPInitLoop, writing the VDP's registers at boot)</span>
+
+  <p>The count is not a number at all, it is arithmetic the assembler does: the end label minus
+  the start label gives the table's length in bytes, and the <code>-1</code> is the off-by-one
+  written down where you can see it. The comment then states the real answer, $18, which is 24.
+  So 23 goes into <code>d1</code> and the body runs 24 times. Writing it this way means that
+  adding a row to <code>VDPInitValues</code> changes the loop count automatically, with no number
+  anywhere to forget to update. This is a good habit to copy.</p>
+
+  <p>The smallest possible use is a loop with no body at all:</p>
+
+  <pre>	move.w	<span class="n">#$700</span>,d0
+-	dbf	d0,- <span class="c">; wait here in a loop doing nothing for a while...</span></pre>
+  <span class="src">s2disasm/s2.asm:496-497 (V_Int, the PAL timing delay)</span>
+
+  <p>The <code>-</code> is an anonymous label and the branch target is the <code>dbf</code>
+  itself, so this is one instruction looping on its own 1,793 times purely to burn time. At 10
+  cycles a pass it costs roughly 18,000 cycles, which is a visible slice of a frame. It exists
+  because the machine is PAL and the code wants to arrive at a particular moment.</p>
+
+  <p>Finally, the one instruction in Sonic 2 that justifies the whole DBcc family existing. There
+  are 412 DBcc instructions in the file and 411 of them are <code>dbf</code>. This is the other
+  one:</p>
+
+  <pre>	lea	OilSlides_Chunks_End(pc),a2
+
+	moveq	<span class="n">#OilSlides_Chunks_End-OilSlides_Chunks-1</span>,d1
+-	cmp.b	-(a2),d0
+	dbeq	d1,-
+
+	beq.s	loc_4712</pre>
+  <span class="src">s2disasm/s2.asm:5551-5557 (Oil Ocean, searching a chunk list)</span>
+
+  <p>This is a table search, and it can end two different ways: it found the byte, or it ran out
+  of table. <code>dbeq</code> handles both in one instruction. The condition EQ stops the loop the
+  moment <code>cmp.b</code> reports a match, and the counter stops it if the table is exhausted.
+  Neither exit needs its own branch.</p>
+
+  <p>Which leaves the question the last line answers: after the loop, which of the two happened?
+  The <code>beq.s</code> can still tell, because <b>DBcc changes no flags</b>. The Z flag sitting
+  there is still the one <code>cmp.b</code> set on the final pass, untouched by the decrement and
+  by the loop exit. So <code>beq.s</code> means "we left because we found it". A loop built by
+  hand out of <code>subq</code> and <code>bne</code> could not do this: the <code>subq</code>
+  would have overwritten Z, and the code would need to stash the comparison's answer somewhere
+  first.</p>
+
+  <p>Note also the <code>-(a2)</code>. The pointer was loaded with the END of the table and each
+  <code>cmp.b</code> steps it backwards one byte before reading, so the search runs from the last
+  entry to the first. Predecrement and DBcc compose naturally for a reverse walk, because both
+  count downward, and reversing the direction costs nothing here since a search does not care
+  which end it starts from.</p>
+
+  <details class="refbox">
+    <summary>Encoding (one word, $5xC8 through $5FCF, plus a displacement word)</summary>
+    <div class="enc-body">
+      <p><code>0101 cccc 11001 rrr</code> followed by a 16-bit displacement, where
+      <code>cccc</code> is the same four-bit condition as <a href="#s3">section 3</a>'s table and
+      <code>rrr</code> picks the counter register. So <code>dbf d1,Loop</code> is
+      <code>$51C9</code> plus a displacement word: condition 0001 (false), register 001.</p>
+      <p>Unlike Bcc, DBcc gets all SIXTEEN conditions, including the 0000 and 0001 that Bcc lacks,
+      because the encoding space here is not being shared with anything. <code>dbf</code> is
+      condition 0001 and <code>dbt</code> is 0000, and <code>dbt</code> is close to useless: the
+      condition is always true, so it stops immediately every time and the loop never runs.
+      <span class="enc-note">From the M68000 Programmer's Reference Manual, DBcc, whose own
+      condition list includes T and F where the Bcc list does not.</span></p>
+    </div>
+  </details>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s7">7 &middot; The return family, and the instruction that does not branch</h2>
+
+<p>There are three return instructions and they are not interchangeable. All three pop a program
+counter off the stack; they differ in what else they pop, and getting that wrong does not produce
+a wrong answer, it produces a jump to a number that was never an address.</p>
+
+<div class="tbl"><table class="tbl">
+  <tr><th>Instruction</th><th>Pops</th><th>Bytes off the stack</th><th>Restores flags?</th><th>Privileged?</th><th>Cycles</th></tr>
+  <tr><td><code><a href="#rts">rts</a></code></td><td>PC</td><td>4</td><td>no</td><td>no</td><td>16</td></tr>
+  <tr><td><code><a href="#rtr">rtr</a></code></td><td>CCR, then PC</td><td>6</td><td>yes, the five condition codes</td><td>no</td><td>20</td></tr>
+  <tr><td><code><a href="#rte">rte</a></code></td><td>SR, then PC</td><td>6</td><td>yes, and the system half of the status register too</td><td>yes</td><td>20</td></tr>
+</table></div>
+
+<p>Read the "bytes off the stack" column and the failure mode writes itself. Use
+<code>rte</code> where an <code>rts</code> belonged and the CPU pops six bytes for a frame that is
+only four: the top word becomes the status register, and the program counter is assembled from
+the remaining two bytes plus whatever happened to be underneath. Use <code>rts</code> where an
+<code>rte</code> belonged and it pops four bytes from a six-byte frame, so the saved status word
+becomes the top half of the program counter. Both jump somewhere arbitrary, and neither reports
+anything. This is the same class of failure as the unbalanced stack in
+<a href="#s1">section 1</a>, wearing a different costume: the bytes were fine, the count was
+wrong.</p>
+
+<div class="instr" id="rtr">
+  <h3><span class="mn">RTR</span> <span class="mnx">Return and Restore Condition Codes</span> <span class="syn">RTR</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="X: set from the stack"><span class="fl-name">X</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="N: set from the stack"><span class="fl-name">N</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="Z: set from the stack"><span class="fl-name">Z</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="V: set from the stack"><span class="fl-name">V</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="C: set from the stack"><span class="fl-name">C</span><span class="fl-state">from stack</span></span>
+    <span class="fl-caption">all five come back from the stack; this is the only return that restores them</span>
+  </div>
+
+  <div class="cost"><span class="cchip">20 cycles</span>
+    <span class="cctx">the only form, 4 more than RTS for the extra word</span>
+    <span class="cnote">From the M68000 User's Manual, Table 8-12. Two bytes of instruction, six
+    bytes off the stack.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: RTR is unsized and takes no
+  operands, like RTS.</div>
+
+  <p>RTR pops a WORD into the condition codes, then a longword into the program counter: six
+  bytes in that order, so the word sits on top. Only the low byte of that word matters, the five
+  condition codes; the manual is explicit that the supervisor half of the status register is left
+  alone. Reach for it when a routine must return with the flags exactly as some earlier moment
+  left them, and you have arranged for a matching word to be on the stack. That is rare, and RTR
+  appears zero times in Sonic 2.</p>
+
+  <p>It does appear in modern engine code, in the one situation that genuinely calls for it:
+  resuming something that was interrupted partway through. This decompressor can be cut off by
+  the vertical interrupt, and when it restarts it must come back to the exact machine state it
+  left, flags included, because a carry bit halfway through a bit-stream read is real data:</p>
+
+  <pre>		movem.w	(KosPlus_decomp_stored_registers).w,d0/d2/d4-d7
+		movem.l	(KosPlus_decomp_stored_registers+(2*6)).w,a0-a1/a5
+		move.l	(KosPlus_decomp_bookmark).w,-(sp)
+		move.w	(KosPlus_decomp_stored_SR).w,-(sp)
+		rtr									<span class="c">; restore ccr</span></pre>
+  <span class="src">Engine/Decompression/Kosinski Plus Moduled Decompression.asm:225-229 (Sonic Clean Engine, not Sonic 2)</span>
+
+  <p>Nothing called this routine, so there is no return address anywhere: the code BUILDS a
+  six-byte frame and then returns into it. The saved address is pushed first as a longword, then
+  the saved status word on top of it, which is exactly the order <code>rtr</code> will read them
+  back. Two <code>move</code>s and an <code>rtr</code> restore the program counter and the flags
+  in a single indivisible step, which is why this is better than jumping and then trying to
+  restore the flags afterwards: any instruction you used to jump would clobber the flags you were
+  trying to restore.</p>
+
+  <p>That "build a frame then return into it" move is the <a href="moving-data.html#pea">PEA fake
+  call</a> from <a href="#s5">section 5</a>, one word wider. There is no such thing as a return
+  that checks it was called.</p>
+</div>
+
+<div class="instr" id="rte">
+  <h3><span class="mn">RTE</span> <span class="mnx">Return from Exception</span> <span class="syn">RTE &nbsp;|&nbsp; supervisor mode only</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="X: set from the stack"><span class="fl-name">X</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="N: set from the stack"><span class="fl-name">N</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="Z: set from the stack"><span class="fl-name">Z</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="V: set from the stack"><span class="fl-name">V</span><span class="fl-state">from stack</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" aria-label="C: set from the stack"><span class="fl-name">C</span><span class="fl-state">from stack</span></span>
+    <span class="fl-caption">the whole status register is restored, so the interrupt mask and the supervisor bit come back too</span>
+  </div>
+
+  <div class="cost"><span class="cchip">20 cycles</span>
+    <span class="cctx">the only form</span>
+    <span class="cnote">From the M68000 User's Manual, Table 8-12.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: unsized, no operands. It is
+  PRIVILEGED, which means executing it outside supervisor mode does not return at all, it raises
+  a privilege-violation exception.</div>
+
+  <p>RTE ends an exception handler. On the 68000 an exception pushes six bytes, the status
+  register as a word and then the program counter as a longword, and RTE pops both back. That is
+  the same shape as RTR and it is a different thing: RTR restores the five condition codes, RTE
+  restores the ENTIRE status register, including the interrupt priority mask and the supervisor
+  bit. Restoring the mask is the point, because that is how the machine stops being inside an
+  interrupt.</p>
+
+  <p>You have already seen the only kind of RTE a Genesis game contains, at the end of the
+  vertical interrupt handler in <a href="#s4">section 4</a>: <code>movem.l (sp)+,d0-a6</code> to
+  put the registers back, then <code>rte</code>. There are four <code>rte</code> instructions in
+  the whole of Sonic 2, one per interrupt handler, and that is the normal number.</p>
+
+  <p>This page deliberately stops here. Which exceptions exist, what the vector table is, what the
+  CPU pushes when things go wrong, and how a handler reads the frame are all covered on
+  <a href="programming-model.html#s6">the Programming Model page, section 6</a>, and RTE's full
+  treatment belongs with the rest of the system-control instructions on the System page, which is
+  not built yet. What this page owes you is the comparison at the top of this section: it is a
+  return, it pops more than RTS, and swapping the two is a crash.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  An exception handler's stack must be exactly as the CPU left it when the <code>rte</code>
+  runs, and handlers are the easiest place to get that wrong because they are entered without
+  being called. Every register the handler saves must be restored, along any path out. The
+  <code>movem</code> pair at the top and bottom of Sonic 2's V-int handler is doing that job, and
+  if any branch inside skipped the second <code>movem</code>, the <code>rte</code> would read six
+  bytes of saved register data as a status register and a program counter. The
+  <a href="programming-model.html#s5">stack stepper on the Programming Model page</a> has an
+  exception-and-rte mode that walks the six bytes one at a time.</div>
+</div>
+
+<div class="instr" id="scc">
+  <h3><span class="mn">Scc</span> <span class="mnx">Set According to Condition</span> <span class="syn">Scc &lt;ea&gt; &nbsp;|&nbsp; byte only; cc is any of the 16 conditions</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="X: unaffected"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="V: unaffected"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">reads the flags and leaves every one of them alone, which the example below depends on</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 cycles</span>
+    <span class="cctx">best case: a data register, condition FALSE</span>
+    <span class="cnote">Into a data register it is 4 cycles when the condition is false and 6 when
+    it is true, which is the rare case of an instruction whose cost depends on the answer. Into
+    memory it is 8 plus the addressing mode either way, because the 68000 reads a memory
+    destination before writing it whichever value it is about to store. From the M68000 User's
+    Manual, Table 8-6.</span>
+  </div>
+
+  <div class="opgrid" role="group" aria-label="Legal operands for Scc">
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
+    </div>
+    <p class="og-note">Data alterable modes: anywhere you can write a byte, except an address
+    register. <code>sne a0</code> will not assemble, and neither will the PC-relative forms, since
+    you cannot write into the ROM you are executing. Note there is no SOURCE row at all: the
+    source is the condition codes, and they are named in the mnemonic rather than in an
+    operand.</p>
+  </div>
+
+  <p>Scc writes a single byte: <code>$FF</code> if the condition is true, <code>$00</code> if it
+  is false. It is the odd one out on this page, because it is the only conditional instruction
+  that does not change where execution goes. Reach for it when you want the ANSWER to a condition
+  as a value you can keep, rather than a fork in the road, which saves you a branch and two
+  labels.</p>
+
+  <p>That is the instruction as designed. In practice, Sonic 2 uses it 96 times and 88 of those
+  are <code>st</code> or <code>sf</code>, whose conditions are the constants "always" and
+  "never". A constant condition is not a condition, so those 88 sites are really just a compact
+  way of writing "store $FF here" and "store $00 here": <code>st</code> is two bytes where
+  <code>move.b #$FF,</code> would be four. Both readings are true, and knowing only the first
+  will make you misread nearly every real use.</p>
+
+  <p>Here is one of the eight that is genuinely conditional, and it demonstrates the single most
+  useful fact about Scc for free:</p>
+
+  <pre>Obj34_BackgroundIn:	<span class="c">; the blue background (green when playing as Knuckles), coming in</span>
+	moveq	<span class="n">#$10</span>,d0
+	moveq	<span class="n">#8</span>,d1
+	tst.w	(Two_player_mode).w	<span class="c">; if two-player mode is on (1)</span>
+	sne	d6			<span class="c">; then set d6 to $FF, else set d6 to $00</span>
+	beq.s	+
+	moveq	<span class="n">#$20</span>,d0
+	moveq	<span class="n">#7</span>,d1</pre>
+  <span class="src">s2disasm/s2.asm:27174-27181 (Obj34_BackgroundIn, the title card background)</span>
+
+  <p>Look at the <code>beq.s</code>. It comes AFTER the <code>sne</code>, and it is still testing
+  the flags that <code>tst.w</code> set two lines earlier, because Scc changes no flags at all.
+  So those four lines do two things with one test: they leave a $FF or $00 in <code>d6</code> for
+  later use, AND they branch on the same answer immediately. If Scc set flags the way most
+  instructions do, this would need the test repeated, or the answer stashed and reloaded.</p>
+
+  <p>It is worth reading the pair in the right order, because the mnemonics are opposites and
+  that looks like a contradiction at first glance. <code>sne</code> stores $FF when Z is CLEAR,
+  which here means two-player mode is on. <code>beq.s</code> then branches when Z is SET, which
+  means it is off. Same flag, two instructions asking for opposite answers, both correct.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Scc is byte only. There is no <code>seq.w</code> and no <code>seq.l</code>, and the assembler
+  will refuse them. That matters when the destination is a field the surrounding code treats as
+  wider: s2.asm:27224 writes <code>seq titlecard_location(a0)</code> into an offset that the lines
+  around it read and write with <code>move.w</code> and <code>cmpi.w</code>. The 68000 is
+  big-endian, so the byte at that offset is the HIGH byte of the word, and the result of the
+  <code>seq</code> is a word holding $FF00 or $0000 rather than $00FF or $0000. If you are
+  reading code and the arithmetic afterwards looks like it is off by a factor of 256, this is
+  usually why.</div>
+
+  <div class="kin"><span class="k-tag">Cheaper cousins</span>
+  If you want 1 and 0 rather than $FF and $00, the manual's own suggestion is to follow the Scc
+  with a <code>neg.b</code> on the same destination: $FF is -1, so negating it gives 1, and
+  negating 0 gives 0. And if the condition is a constant, prefer <code>st</code> or
+  <code>sf</code> over <code>move.b #$FF,</code> or <code>clr.b</code> for a byte destination:
+  two bytes instead of four, which is exactly the trade those 88 sites are making.</div>
+
+  <details class="refbox">
+    <summary>Encoding (one word, $5xC0 plus the effective address)</summary>
+    <div class="enc-body">
+      <p><code>0101 cccc 11</code> followed by the 6-bit effective-address field, so
+      <code>st d0</code> is <code>$50C0</code> and <code>sf d0</code> is <code>$51C0</code>.
+      Compare that with <a href="#dbcc">DBcc</a>'s <code>0101 cccc 11001 rrr</code>: Scc and DBcc
+      share the same top ten bits, and DBcc lives inside the corner of Scc's address field that
+      would otherwise mean "address register direct", which Scc cannot use anyway. That is the
+      same trick that put BRA and BSR inside Bcc's condition field, and it is why both
+      instructions get all sixteen conditions while Bcc gets fourteen.
+      <span class="enc-note">From the M68000 Programmer's Reference Manual, Scc and DBcc
+      instruction formats.</span></p>
+    </div>
+  </details>
+</div>
+
+<p style="margin-top:2.5rem;">That is the whole of flow control on the 68000: two ways to reach a
+target, two ways to decide whether to, one counted loop, one way to keep an answer instead of
+acting on it, and three returns that differ only in how many bytes they take off the stack. The
+system-control instructions that talk to the CPU itself, TRAP, CHK, LINK, STOP and the rest, are
+a separate page and are not built yet.</p>
+
+<p>If there is one thing to carry away, it is the sentence from <a href="#s1">section 1</a>:
+nothing marks those four bytes as a return address. Every idiom on this page, from the trampoline
+table to the tail call to the six-byte frame built by hand for an <code>rtr</code>, is code
+taking that fact seriously.</p>
+
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-25 &middot;
+Previous: <a href="shifts-bits.html">Shifts &amp; Bits</a> &middot; Next: System (coming) &middot;
+<a href="../index.html">Back to hub</a></footer>
+
+<script>
+function expandAll(btn){
+  var open = btn.dataset.open !== 'true';
+  Array.prototype.forEach.call(document.querySelectorAll('details.explain'), function(d){ d.open = open; });
+  btn.dataset.open = open ? 'true' : 'false';
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* T2: the two-by-two. Lesson: pushing and reaching are independent choices. */
+(function(){
+  var TOP = 0xFFFFFF00;              // stack starts empty here; it grows downward
+  var CALLER = 0x00021000;           // where the instruction being run lives
+  var SUB    = 0x00021100;           // the routine every form targets
+  var A1     = 0x00021100;           // a1 holds that same address for the jmp/jsr forms
+  var pc = CALLER, sp = TOP, stack = [];   // stack: [{adr, val, tag}], held ACROSS runs
+  var pcEl=document.getElementById('tw-pc'), spEl=document.getElementById('tw-sp');
+  var stEl=document.getElementById('tw-stack'), trEl=document.getElementById('tw-trace');
+  var noteEl=document.getElementById('tw-note'), instrEl=document.getElementById('tw-instr');
+  var reachEl=document.getElementById('tw-reach');
+  if(!pcEl) return;
+
+  function hex(v,n){ var s=(v>>>0).toString(16).toUpperCase(); while(s.length<n) s='0'+s; return s; }
+  function adr(v){ return '$'+hex(v,8); }
+
+  var FORMS = {
+    bra: {syn:'bra.w  Sub',  size:4, push:false, txt:'bra.w  Sub',
+          reach:'PC-relative. The instruction holds the distance to Sub, not its address, so it reaches about 32K bytes either way.'},
+    bsr: {syn:'bsr.w  Sub',  size:4, push:true,  txt:'bsr.w  Sub',
+          reach:'PC-relative. Same reach as bra.w, and the same 4 bytes; the only difference is the push.'},
+    jmp: {syn:'jmp    (a1)', size:2, push:false, txt:'jmp    (a1)',
+          reach:'Any control address. The target came out of a1 at run time, so there is no range limit at all.'},
+    jsr: {syn:'jsr    (a1)', size:2, push:true,  txt:'jsr    (a1)',
+          reach:'Any control address, same as jmp. Only 2 bytes, because the address lives in a1 rather than in the instruction.'}
+  };
+
+  function drawTrace(cur){
+    var rows = [
+      {a:CALLER, t:(cur&&FORMS[cur]?FORMS[cur].txt:'bra.w  Sub'), k:''},
+      {a:CALLER+(cur&&FORMS[cur]?FORMS[cur].size:4), t:'move.w #60,d0', k:''},
+      {a:null,   t:'', k:''},
+      {a:SUB,    t:'Sub:', k:'lbl'},
+      {a:SUB,    t:'  ...body...', k:''},
+      {a:SUB+8,  t:'  rts', k:''}
+    ];
+    trEl.innerHTML = rows.map(function(r){
+      if(r.a===null) return '<div class="tr-row"><span class="tr-adr"></span><span class="tr-txt"></span></div>';
+      var here = (pc===r.a && r.t.indexOf('Sub:')<0) ? ' here' : '';
+      return '<div class="tr-row'+(r.k?' '+r.k:'')+here+'"><span class="tr-adr">'+adr(r.a)+
+             '</span><span class="tr-txt">'+r.t.replace(/ /g,'&nbsp;')+'</span></div>';
+    }).join('');
+  }
+
+  function drawStack(freshAdr){
+    var out='';
+    for(var i=0;i<3;i++){
+      var slotAdr = TOP-4*(i+1);
+      var held = null;
+      for(var j=0;j<stack.length;j++) if(stack[j].adr===slotAdr) held=stack[j];
+      var cls = 'stk-slot' + (held?'':' empty') + (held&&held.adr===sp?' sp':'') +
+                (freshAdr===slotAdr?' fresh':'');
+      out += '<div class="'+cls+'"><span class="sk-at">at '+adr(slotAdr)+'</span>'+
+             '<span class="sk-hold">holds '+(held?adr(held.val):'nothing yet')+'</span>'+
+             (held?'<span class="sk-tag">'+held.tag+'</span>':'')+'</div>';
+    }
+    if(!stack.length) out += '<p class="msim-cost">sp is above every slot shown, so the stack is empty.</p>';
+    stEl.innerHTML = out;
+  }
+
+  function paint(cur, freshAdr){
+    pcEl.textContent = hex(pc,8); spEl.textContent = hex(sp,8);
+    if(cur && FORMS[cur]){ instrEl.textContent = FORMS[cur].syn.replace(/ /g,' '); reachEl.textContent = FORMS[cur].reach; }
+    drawTrace(cur); drawStack(freshAdr);
+  }
+
+  function flash(el){ if(!el) return; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
+
+  function run(kind){
+    var f = FORMS[kind];
+    if(pc !== CALLER){
+      // already jumped; make the reader reset rather than pretending we are back at the call
+      noteEl.textContent = 'The pc is at '+adr(pc)+', not at the call site any more. Run rts to come back if there is a return address on the stack, or press Reset to start over.';
+      paint(kind, null); return;
+    }
+    var next = CALLER + f.size, freshAdr = null;
+    if(f.push){
+      sp -= 4; freshAdr = sp;
+      stack.push({adr:sp, val:next, tag:'return address'});
+    }
+    pc = SUB;
+    paint(kind, freshAdr);
+    flash(pcEl); if(f.push) flash(spEl);
+    noteEl.textContent = f.syn.replace(/\s+/g,' ') + ': the pc is now ' + adr(SUB) + '. ' +
+      (f.push
+        ? 'It pushed ' + adr(next) + ', the address of the NEXT instruction, so sp dropped 4 to ' + adr(sp) + '. This form is ' + f.size + ' bytes long, which is the only reason the pushed value is call site plus ' + f.size + '.'
+        : 'The stack did not move: this form pushes nothing, so there is no way back. ' + (kind==='jmp' ? 'It reached the target through a1 rather than by counting bytes, but that made no difference to the stack.' : 'It reached the target by counting bytes from itself, but that made no difference to the stack.'));
+  }
+
+  function runRts(){
+    if(!stack.length){
+      noteEl.textContent = 'rts pops four bytes into the pc, but nothing has been pushed, so there is no return address to find. On real hardware it would pop whatever bytes happened to be there and jump to that number. Run bsr or jsr first.';
+      paint(null, null); return;
+    }
+    var slot = stack.pop();
+    pc = slot.val; sp += 4;
+    paint(null, null); flash(pcEl); flash(spEl);
+    noteEl.textContent = 'rts popped ' + adr(slot.val) + ' into the pc and moved sp back up to ' + adr(sp) +
+      '. Note what it did NOT do: it never checked whether those four bytes were a return address, and it could not tell whether a bsr or a jsr had put them there.';
+  }
+
+  function reset(){
+    pc = CALLER; sp = TOP; stack = [];
+    paint('bsr', null);
+    instrEl.textContent = 'bsr.w  Sub';
+    noteEl.textContent = 'Reset. The pc is at the call site and the stack is empty. Run any of the four and watch two things: where the pc went, and whether the stack moved.';
+  }
+
+  document.getElementById('tw-bra').addEventListener('click', function(){ run('bra'); });
+  document.getElementById('tw-bsr').addEventListener('click', function(){ run('bsr'); });
+  document.getElementById('tw-jmp').addEventListener('click', function(){ run('jmp'); });
+  document.getElementById('tw-jsr').addEventListener('click', function(){ run('jsr'); });
+  document.getElementById('tw-rts').addEventListener('click', runRts);
+  document.getElementById('tw-reset').addEventListener('click', reset);
+  reset();
+})();
+
+/* T1: the condition tester. Lesson: a condition is a question about flags, and the
+   signed and unsigned answers to "is it smaller" differ on the very same bits. */
+(function(){
+  var N=0, Z=0, V=0, C=0;                      // the state, held across every interaction
+  var noteEl=document.getElementById('cd-note'), instrEl=document.getElementById('cd-instr');
+  if(!noteEl) return;
+
+  // Rows are ordered so the unsigned and signed columns line up: >=, <, >, <=
+  var GROUPS = {
+    unsigned: [
+      ['bhs','C clear',      function(){ return !C; },              'unsigned &ge;'],
+      ['blo','C set',        function(){ return !!C; },             'unsigned &lt;'],
+      ['bhi','C and Z clear',function(){ return !C && !Z; },        'unsigned &gt;'],
+      ['bls','C or Z set',   function(){ return !!C || !!Z; },      'unsigned &le;']
+    ],
+    signed: [
+      ['bge','N same as V',  function(){ return N===V; },           'signed &ge;'],
+      ['blt','N differs V',  function(){ return N!==V; },           'signed &lt;'],
+      ['bgt','Z clr, N==V',  function(){ return !Z && N===V; },     'signed &gt;'],
+      ['ble','Z set or N!=V',function(){ return !!Z || N!==V; },    'signed &le;']
+    ],
+    either: [
+      ['beq','Z set',        function(){ return !!Z; },             'equal'],
+      ['bne','Z clear',      function(){ return !Z; },              'not equal']
+    ],
+    flag: [
+      ['bpl','N clear',      function(){ return !N; },              'top bit clear'],
+      ['bmi','N set',        function(){ return !!N; },             'top bit set'],
+      ['bvc','V clear',      function(){ return !V; },              'no signed overflow'],
+      ['bvs','V set',        function(){ return !!V; },             'signed overflow']
+    ]
+  };
+
+  function drawGroup(key){
+    var el = document.getElementById('cd-g-'+key);
+    el.innerHTML = GROUPS[key].map(function(r){
+      var taken = r[2]();
+      return '<div class="cg-item"><span class="cg-mn">'+r[0]+'</span>'+
+             '<span class="cg-ex">'+r[1]+'</span>'+
+             '<span class="cg-r'+(taken?' taken':'')+'">'+(taken?'TAKEN':'not taken')+'</span></div>';
+    }).join('');
+  }
+
+  function drawFlags(){
+    [['cd-N',N,'N'],['cd-Z',Z,'Z'],['cd-V',V,'V'],['cd-C',C,'C']].forEach(function(f){
+      var b=document.getElementById(f[0]);
+      b.setAttribute('aria-pressed', f[1]?'true':'false');
+      b.textContent = f[2]+' '+(f[1]?1:0);
+    });
+  }
+
+  function divergence(){
+    var u = [!C, !!C, (!C&&!Z), (!!C||!!Z)];
+    var s = [N===V, N!==V, (!Z&&N===V), (!!Z||N!==V)];
+    var names = ['is it greater or equal','is it less','is it greater','is it less or equal'];
+    var diff = [];
+    for(var i=0;i<4;i++) if(u[i]!==s[i]) diff.push(names[i]);
+    return diff;
+  }
+
+  function paint(lead){
+    drawFlags();
+    Object.keys(GROUPS).forEach(drawGroup);
+    var d = divergence();
+    var tail = d.length
+      ? ' On these flags the unsigned and signed families DISAGREE about ' + d.join(', ') +
+        '. Same bits, two correct answers: only you know which reading is meant.'
+      : ' On these flags the unsigned and signed families happen to agree on all four questions, which is why the wrong choice survives testing on small positive numbers.';
+    noteEl.textContent = (lead||('Flags are now N='+(N?1:0)+' Z='+(Z?1:0)+' V='+(V?1:0)+' C='+(C?1:0)+'.')) + tail;
+  }
+
+  function toggle(which){
+    if(which==='N') N=N?0:1; else if(which==='Z') Z=Z?0:1;
+    else if(which==='V') V=V?0:1; else C=C?0:1;
+    instrEl.textContent = 'flags set by hand';
+    paint('You set '+which+' to '+((which==='N'?N:which==='Z'?Z:which==='V'?V:C)?1:0)+
+          ', so the flags are N='+(N?1:0)+' Z='+(Z?1:0)+' V='+(V?1:0)+' C='+(C?1:0)+'.');
+  }
+
+  // cmp.w #b,d0 with d0 = a: computes a - b as words and reports on it.
+  function loadCmp(a, b){
+    var r = (a - b) & 0xFFFF;
+    var sa = a >= 0x8000 ? a - 0x10000 : a;
+    var sb = b >= 0x8000 ? b - 0x10000 : b;
+    var sr = r >= 0x8000 ? r - 0x10000 : r;
+    N = (r & 0x8000) ? 1 : 0;
+    Z = (r === 0) ? 1 : 0;
+    V = ((sa - sb) !== sr) ? 1 : 0;
+    C = (a < b) ? 1 : 0;
+    var bs = '#' + (sb < 0 ? sb : b);
+    instrEl.textContent = 'cmp.w  ' + bs + ',d0';
+    paint('Ran cmp.w '+bs+',d0 with d0 = '+a+' (which as signed is '+sa+'). It subtracted, threw the answer away, and left N='+
+          N+' Z='+Z+' V='+V+' C='+C+'.');
+  }
+
+  ['N','Z','V','C'].forEach(function(f){
+    document.getElementById('cd-'+f).addEventListener('click', function(){ toggle(f); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.cd-pre'), function(b){
+    b.addEventListener('click', function(){ loadCmp(parseInt(b.dataset.a,10), parseInt(b.dataset.b,10)); });
+  });
+  document.getElementById('cd-reset').addEventListener('click', function(){
+    N=Z=V=C=0; instrEl.textContent='cmp.w  #5,d0';
+    paint('Reset. All four flags are clear. Toggle them by hand, or load one of the comparisons above to see what a real cmp leaves behind.');
+  });
+  loadCmp(3,5);
+})();
+
+/* T3: the tail call. Lesson: the callee's return goes wherever the top four bytes point,
+   so skipping your own frame is free, and editing those bytes redirects the return. */
+(function(){
+  var TOP=0xFFFFFF00, CALLER=0x00021000, HOME=0x00021004,
+      MIDDLE=0x00021100, MIDRET=0x00021104, INNER=0x00021200, INNEND=0x00021208,
+      ELSEWHERE=0x00021400;
+  var noteEl=document.getElementById('tc-note'); if(!noteEl) return;
+  var pcEl=document.getElementById('tc-pc'), spEl=document.getElementById('tc-sp'),
+      stEl=document.getElementById('tc-stack'), trEl=document.getElementById('tc-trace'),
+      dpEl=document.getElementById('tc-depth'), inEl=document.getElementById('tc-instr');
+
+  var STEPS = {
+    call: [
+      {adr:CALLER, txt:'bsr.w  Middle', act:'push', val:HOME,   to:MIDDLE},
+      {adr:MIDDLE, txt:'bsr.w  Inner',  act:'push', val:MIDRET, to:INNER},
+      {adr:INNER,  txt:'...body...',    act:'none',             to:INNEND},
+      {adr:INNEND, txt:'rts',           act:'pop'},
+      {adr:MIDRET, txt:'rts',           act:'pop'}
+    ],
+    tail: [
+      {adr:CALLER, txt:'bsr.w  Middle', act:'push', val:HOME, to:MIDDLE},
+      {adr:MIDDLE, txt:'jmp    Inner',  act:'none',           to:INNER},
+      {adr:INNER,  txt:'...body...',    act:'none',           to:INNEND},
+      {adr:INNEND, txt:'rts',           act:'pop'}
+    ]
+  };
+
+  var mode='call', i=0, pc=CALLER, sp=TOP, stack=[], maxDepth=0, done=false;
+
+  function hex(v,n){ var s=(v>>>0).toString(16).toUpperCase(); while(s.length<n) s='0'+s; return s; }
+  function adr(v){ return '$'+hex(v,8); }
+  function name(v){
+    if(v===HOME) return 'back in Caller';
+    if(v===MIDRET) return 'back in Middle';
+    if(v===ELSEWHERE) return 'in Elsewhere, which nobody called';
+    return 'at '+adr(v);
+  }
+
+  function listing(){
+    // si is the step index this line corresponds to in the current mode
+    var rows=[
+      {a:CALLER, t:'Caller:', lbl:true},
+      {a:CALLER, t:'  bsr.w  Middle', si:0},
+      {a:HOME,   t:'  move.w #60,d0'},
+      {a:null},
+      {a:MIDDLE, t:'Middle:', lbl:true},
+      {a:MIDDLE, t:mode==='call' ? '  bsr.w  Inner' : '  jmp    Inner', si:1}
+    ];
+    if(mode==='call') rows.push({a:MIDRET, t:'  rts', si:4});
+    rows.push({a:null});
+    rows.push({a:INNER,  t:'Inner:', lbl:true});
+    rows.push({a:INNER,  t:'  ...body...', si:2});
+    rows.push({a:INNEND, t:'  rts', si:3});
+    rows.push({a:null});
+    rows.push({a:ELSEWHERE, t:'Elsewhere:', lbl:true});
+    rows.push({a:ELSEWHERE, t:'  move.w #1,d7'});
+    return rows;
+  }
+
+  function draw(){
+    var running = !done && i < STEPS[mode].length;
+    trEl.innerHTML = listing().map(function(r){
+      if(r.a===null) return '<div class="tr-row"><span class="tr-adr"></span><span class="tr-txt"></span></div>';
+      // while running, mark the instruction about to execute; once finished, mark where the pc landed
+      var here = running ? (r.si === i) : (!r.lbl && r.a === pc);
+      return '<div class="tr-row'+(r.lbl?' lbl':'')+(here?' here':'')+
+             '"><span class="tr-adr">'+adr(r.a)+'</span><span class="tr-txt">'+
+             r.t.replace(/ /g,'&nbsp;')+'</span></div>';
+    }).join('');
+
+    var out='';
+    for(var s=0;s<3;s++){
+      var slotAdr = TOP-4*(s+1), held=null;
+      for(var j=0;j<stack.length;j++) if(stack[j].adr===slotAdr) held=stack[j];
+      var cls='stk-slot'+(held?'':' empty')+(held&&held.adr===sp?' sp':'');
+      out += '<div class="'+cls+'"><span class="sk-at">at '+adr(slotAdr)+'</span><span class="sk-hold">holds '+
+             (held?adr(held.val):'nothing yet')+'</span>'+(held?'<span class="sk-tag">'+held.tag+'</span>':'')+'</div>';
+    }
+    stEl.innerHTML=out;
+    pcEl.textContent=hex(pc,8); spEl.textContent=hex(sp,8);
+    dpEl.textContent='Stack depth now '+stack.length+' level'+(stack.length===1?'':'s')+
+      ', deepest so far '+maxDepth+'.';
+    inEl.textContent = running ? STEPS[mode][i].txt : '(run finished)';
+  }
+
+  function step(){
+    var list=STEPS[mode];
+    if(i>=list.length){
+      noteEl.textContent='The run is over. Switch the toggle or press Reset to run it again.';
+      return;
+    }
+    var s=list[i], msg;
+    if(s.act==='push'){
+      sp-=4; stack.push({adr:sp, val:s.val, tag:'return address'});
+      if(stack.length>maxDepth) maxDepth=stack.length;
+      pc=s.to;
+      msg=s.txt.replace(/\s+/g,' ')+' pushed '+adr(s.val)+' and jumped to '+adr(s.to)+'.';
+    } else if(s.act==='pop'){
+      if(!stack.length){
+        pc=0; msg='rts tried to pop, but the stack is empty. On real hardware it would read whatever bytes were there and jump to that number.';
+      } else {
+        var slot=stack.pop(); pc=slot.val; sp+=4;
+        msg='rts popped '+adr(slot.val)+' and landed '+name(slot.val)+'. It never checked what those four bytes were.';
+      }
+    } else {
+      pc=s.to;
+      msg=s.txt.replace(/\s+/g,' ')+' jumped to '+adr(s.to)+' and pushed NOTHING, so the stack is untouched.';
+    }
+    i++;
+    if(i>=list.length){
+      done=true;
+      msg += ' That was the last step: '+(mode==='tail'
+        ? 'one push, one pop, one stack level, and the rts inside Inner took control straight back to Caller.'
+        : 'two pushes and two pops, two stack levels, and Inner returned into Middle so Middle could return again.');
+    }
+    draw(); noteEl.textContent=msg;
+  }
+
+  function surgery(kind){
+    if(!stack.length){
+      noteEl.textContent='There is nothing on the stack to operate on yet. Press Step at least once first.';
+      return;
+    }
+    var top=stack[stack.length-1];
+    if(kind==='over'){
+      var was=top.val; top.val=ELSEWHERE; top.tag='overwritten';
+      draw();
+      noteEl.textContent='move.l #Elsewhere,(sp) wrote '+adr(ELSEWHERE)+' over the '+adr(was)+
+        ' that was there. sp did not move and nothing was pushed; four bytes of RAM simply hold a different number now. The next rts will go to Elsewhere.';
+    } else {
+      var dropped=stack.pop(); sp+=4;
+      draw();
+      noteEl.textContent='addq.l #4,sp threw away the '+adr(dropped.val)+
+        ' at the top without reading it. The next rts will pop whatever is underneath instead, so it returns one level higher than it was called from. This is the 20-times idiom below.';
+    }
+  }
+
+  function reset(keepMode){
+    if(!keepMode) mode='call';
+    i=0; pc=CALLER; sp=TOP; stack=[]; maxDepth=0; done=false;
+    Array.prototype.forEach.call(document.querySelectorAll('.tc-mode'), function(b){
+      b.setAttribute('aria-pressed', b.dataset.m===mode ? 'true':'false');
+    });
+    draw();
+    noteEl.textContent='Ready. Middle ends with '+(mode==='call'
+      ? 'bsr.w Inner then rts, the ordinary call.'
+      : 'jmp Inner, the tail call.')+' Press Step and watch the stack column and the depth line.';
+  }
+
+  document.getElementById('tc-step').addEventListener('click', step);
+  document.getElementById('tc-reset').addEventListener('click', function(){ reset(true); });
+  document.getElementById('tc-surg-over').addEventListener('click', function(){ surgery('over'); });
+  document.getElementById('tc-surg-drop').addEventListener('click', function(){ surgery('drop'); });
+  Array.prototype.forEach.call(document.querySelectorAll('.tc-mode'), function(b){
+    b.addEventListener('click', function(){ mode=b.dataset.m; reset(true); });
+  });
+  reset(false);
+})();
+
+/* T4: the dbf counter. Lesson: the loop runs one more time than the number you load,
+   because the exit test is "did the decrement produce -1", not "did it reach zero". */
+(function(){
+  var noteEl=document.getElementById('db-note'); if(!noteEl) return;
+  var d1El=document.getElementById('db-d1'), sEl=document.getElementById('db-d1s'),
+      runsEl=document.getElementById('db-runs'), tallyEl=document.getElementById('db-tally'),
+      seedEl=document.getElementById('db-seed');
+  var d1=3, runs=0, seeded=3, finished=false, trail=[];   // state held ACROSS steps
+
+  function hex4(v){ var s=(v&0xFFFF).toString(16).toUpperCase(); while(s.length<4) s='0'+s; return s; }
+  function signed(v){ v&=0xFFFF; return v>=0x8000 ? v-0x10000 : v; }
+
+  function paint(){
+    d1El.textContent=hex4(d1);
+    sEl.textContent='= '+signed(d1);
+    runsEl.textContent=String(runs);
+    tallyEl.textContent = trail.length
+      ? 'd1 has gone: '+trail.join(', ')+(finished?'  (that $FFFF is -1, so the loop ended)':'')
+      : 'Press Step to run one pass of the body.';
+  }
+
+  function readSeed(){
+    var t=(seedEl.value||'').trim();
+    var v=/^\$/.test(t) ? parseInt(t.slice(1),16) : parseInt(t,10);
+    if(isNaN(v)) v=0;
+    return ((v%65536)+65536)%65536;
+  }
+
+  function load(){                       // seeding happens ONLY here and on reset, never mid-run
+    seeded=readSeed(); d1=seeded; runs=0; finished=false; trail=[hex4(d1)];
+    paint();
+    noteEl.textContent='moveq #'+signed(seeded)+',d1 loaded '+hex4(seeded)+
+      ' into the low word of d1. Nothing has run yet. Predict how many times the body will run before you press Step.';
+  }
+
+  function step(){
+    if(finished){
+      noteEl.textContent='The loop has already ended: d1 reached $FFFF, so the dbf fell through. Load a count again to run it once more.';
+      return;
+    }
+    runs++;                              // the body runs BEFORE the dbf is reached
+    var before=d1;
+    d1=(d1-1)&0xFFFF;
+    trail.push(hex4(d1));
+    if(d1===0xFFFF){
+      finished=true; paint();
+      noteEl.textContent='Pass '+runs+': the body ran, then dbf decremented d1 from '+hex4(before)+
+        ' to $FFFF. $FFFF IS -1, so the loop stops here and execution carries on past the dbf. The body ran '+
+        runs+' times from a starting count of '+signed(seeded)+'.';
+    } else {
+      paint();
+      noteEl.textContent='Pass '+runs+': the body ran, then dbf decremented d1 from '+hex4(before)+' to '+hex4(d1)+
+        ' ('+signed(d1)+'). That is not -1, so it branched back and the body will run again.'+
+        (d1===0 ? '  Note that d1 is now ZERO and the loop did NOT stop. Zero is not the exit value; -1 is.' : '');
+    }
+  }
+
+  function runAll(){
+    if(finished){ noteEl.textContent='Already finished. Load a count to run it again.'; return; }
+    var guard=0;
+    while(!finished && guard++ < 70000) step();
+    noteEl.textContent='Ran to the end. From a starting count of '+signed(seeded)+', the body ran '+runs+
+      ' times, which is one more than the number loaded. d1 finished at $FFFF, the value that ends the loop.';
+    if(trail.length>12) tallyEl.textContent='d1 went '+trail.slice(0,6).join(', ')+' ... '+
+      trail.slice(-3).join(', ')+'  (that $FFFF is -1, so the loop ended)';
+  }
+
+  document.getElementById('db-load').addEventListener('click', load);
+  document.getElementById('db-step').addEventListener('click', step);
+  document.getElementById('db-runall').addEventListener('click', runAll);
+  document.getElementById('db-reset').addEventListener('click', function(){
+    seedEl.value='3'; load();
+    noteEl.textContent='Reset, with 3 loaded into d1. Step four times and watch it pass through 2, 1, 0 and then $FFFF.';
+  });
+  seedEl.addEventListener('focus', function(){ seedEl.select(); });
+  load();
+})();
+<!--TOYS-->
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+</div>
+
+</body>
+</html>
