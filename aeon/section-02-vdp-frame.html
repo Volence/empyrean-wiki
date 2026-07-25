@@ -359,7 +359,11 @@ sprites, bit 15), a 2-bit palette select (bits 14-13, which of the four 16-color
 vertical flip (bit 12), horizontal flip (bit 11), and an 11-bit tile index (bits 10-0, 0-2047,
 which is exactly why the unified art pool tops out where it does). Every bit of the word is
 spoken for; none are unused. The composer below lets you build one of
-these words by hand and watch both the bits and the picture update together.</p>
+these words by hand and watch both the bits and the picture update together; it reports the result
+as four hex digits, one digit per four of those sixteen bits, which is the whole reason hardware
+values on this page are written in hex at all. If that spelling is unfamiliar, the
+<a href="../basics/numbers-and-notation.html">Numbers &amp; Notation</a>
+page has a converter that turns any value between hex, binary and decimal live.</p>
 
 <figure class="diagram">
   <div class="ntcomposer">
@@ -547,8 +551,10 @@ page is about using it well.</p>
       </div>
     </div>
   </div>
-  <figcaption>One frame as scanlines, widths proportional (reprised from §0.7 with this page's
-  numbers): everything in section 4 below must finish inside the sliver, 38 blank lines of 262 on
+  <figcaption>One frame as scanlines, widths proportional (reprised with this page's numbers from
+  §0.7 of <a href="section-0-boot.html">01 Boot
+  &amp; Hardware Init</a>, where the same strip sits in the section on how boot wires the two
+  interrupt vectors): everything in section 4 below must finish inside the sliver, 38 blank lines of 262 on
   NTSC, 89 of 313 on PAL. PAL's sliver is well over double NTSC's, which is exactly why the DMA
   budget in section 5 is region-specific, not a single fixed number.</figcaption>
 </figure>
@@ -562,8 +568,12 @@ frame that simply never got its work done at all (section 4's lag frame).</p>
 <h2 id="s4">4 · The VBlank pipeline</h2>
 
 <p>IRQ6 fires once per frame, at the start of the sliver, and <code>VBlank_Handler</code> is the
-first thing that runs. It saves every register, checks one flag, and picks one of exactly two
-paths:</p>
+first thing that runs. It saves every register in a single instruction: <code>movem.l</code> copies
+a whole named list of registers out to the stack, stepping the stack pointer down before each write
+(that is what <code>-(sp)</code> means), and the <code>.l</code> suffix says each one travels as a
+full 32-bit longword rather than just its low half. MOVEM and the size suffixes both belong to
+<a href="../m68k/moving-data.html">68000: Moving Data</a>.
+Then the handler checks one flag and picks one of exactly two paths:</p>
 
 <pre><span class="k">VBlank_Handler</span>:
         movem.l d0-a6, -(sp)
@@ -697,7 +707,11 @@ which sets the flag, so the wait falls straight through with no real sync at all
 <code>VInt_Level</code> and drain a plane buffer the main loop is still mid-fill on. This is
 exactly the kind of Genesis-timing gotcha that only shows up under load, and the fix (commit
 <code>b96c861</code>) is a few dozen cycles of interrupt masking around the pair, on a
-once-per-frame path where the cost is free:</p>
+once-per-frame path where the cost is free. "Masking" here is three bits and nothing more: the
+68000's status register carries an interrupt-level field, and writing <code>$2700</code> into that
+register raises the level high enough that IRQ6 is held off until the saved value is restored. The
+<a href="../m68k/programming-model.html">68000 Programming
+Model</a> page draws the whole status register out bit by bit, this field included:</p>
 
 <pre>        move.w  sr, -(sp)
         move.w  <span class="n">#$2700</span>, sr             <span class="c">; mask: the pair below must be atomic</span>
@@ -871,11 +885,26 @@ DMAEntry endstruct
         rts</pre>
 <span class="src">engine/system/dma_queue.asm:232</span>
 
+<p>Both excerpts lean on operand forms worth naming. <code>jmp .jump_table(a1)</code> jumps to
+<code>.jump_table</code> offset by whatever a1 holds, the displacement baked in at assembly time and
+the register supplied at run time; <code>move.l (a0)+, (a5)</code> copies through the address a0
+holds and then steps a0 past what it just read, which is how the drain walks an entry without
+counting anything. Those forms, and the cycle price of each, are the subject of
+<a href="../m68k/addressing-modes.html">68000: Addressing
+Modes</a>.</p>
+
 <p>Note the check order: the budget is tested before the current entry is charged against it, not
 after checking whether the entry fits. An entry larger than what is left still drains fully, so
 the budget can go negative by up to one entry's size before the next entry's check catches it and
 defers that one to the next frame. The queue is not a hard limit; it can overshoot by one entry
-per VBlank, by design.</p>
+per VBlank, by design. The test itself needs no explicit comparison: the <code>move.w</code> that
+loads the remaining budget also sets the CPU's condition flags from the value it just moved, and
+<code>ble.s</code> branches on those flags alone. The loop's exit at the bottom works the same way,
+where <code>cmpa.l</code> sets the flags by comparing the walked pointer against the queue's end
+address and <code>bhi.s</code> reads them.
+<a href="../m68k/math-logic.html">68000: Math &amp;
+Logic</a> hosts a demo that runs that produce-a-value-then-report-on-it step on any operands you
+type.</p>
 
 <p>When the budget runs dry mid-queue, entries are not dropped. <code>.out_of_budget</code> falls
 into <code>.compact</code>, which shifts the undrained tail down to the queue base so those
@@ -1024,6 +1053,17 @@ just a macro-driven copy.</p>
         bsr.w   .build_entry</pre>
 <span class="src">engine/system/buffers.asm:36</span>
 
+<p>That first line looks like a typo and is not. <code>moveq</code>'s immediate is a <em>signed</em>
+byte, so the marker byte <code>$94</code> cannot be written as 148; the same eight bits read as a
+signed number are -108, which is <code>-$6C</code>. The CPU then sign-extends, meaning it copies
+that top bit up through the rest of the register, so d0 ends up holding <code>$FFFFFF94</code> with
+the wanted <code>$94</code> sitting in the low byte where the entry builder reads it. Two pages own
+the halves of that sentence:
+<a href="../m68k/moving-data.html#signext">Moving Data's
+sign-extension toy</a> lets you watch which digits get repainted, and
+<a href="../basics/numbers-and-notation.html">Numbers &amp;
+Notation</a> explains why one byte can be 148 and -108 at the same time.</p>
+
 <p>Seven entries, not five: four palette lines, one sprite table, and two HScroll variants
 (per-cell and per-line, picked by whichever parallax mode is active). All seven exist before the
 game loop ever runs.</p>
@@ -1140,6 +1180,16 @@ the whole buffer is terminated by a zero address:</p>
         jbra    .next</pre>
 <span class="src">engine/level/plane_buffer.emp:381</span>
 
+<p>The bit twiddling between the register write and the drain loop is rearranging a VRAM address into
+the shape the control port wants (section 2). Three of those mechanisms are worth carrying in your
+pocket: <code>lsl.l</code> slides every bit left and feeds zeros in at the bottom,
+<code>ror.w</code> rotates the low word around so bits falling off one end reappear at the other,
+and <code>swap</code> exchanges the register's two 16-bit halves in place.
+<a href="../m68k/shifts-bits.html">68000: Shifts &amp;
+Bits</a> owns the shifts and rotates, with a visualizer for what falls out and what fills in;
+<code>swap</code> lives with the other movers on
+<a href="../m68k/moving-data.html">Moving Data</a>.</p>
+
 <p>Each producer checks remaining capacity before writing (worst case for a column: two headers
 plus 64 data words). On overflow, the update is silently dropped for that frame; the routines'
 own header comments say so directly (<code>Out: none (silently drops if buffer full)</code>),
@@ -1209,7 +1259,11 @@ can corrupt the data in flight. Every reference engine follows this rule literal
 </details>
 
 <p>Aeon's sound-on build does not. Holding the Z80 for the whole VBlank pipeline starves the
-sound driver of the steady feed its <span class="term" data-def="The raw-sample channel on the FM chip: it plays recorded audio (like drums) one byte at a time, in place of FM channel six.">DAC</span> drum channel depends on, audibly: sampled drums skip. So instead of
+sound driver of the steady feed its <span class="term" data-def="The raw-sample channel on the FM chip: it plays recorded audio (like drums) one byte at a time, in place of FM channel six.">DAC</span> drum channel depends on, audibly: sampled drums skip. That driver is a
+program in its own right, running on a CPU with its own 8-bit register file, its own flag byte, and
+a second shadow set of registers it can swap in, all of which
+<a href="../z80/programming-model.html">Z80: The Programming
+Model</a> lays out. So instead of
 a held fence, <code>VInt_Level</code> and <code>VInt_Lag</code> both bracket the whole VDP/DMA
 window with a single flag in Z80 RAM, <code>SND_CTRL_DMA_ACTIVE</code>. Raising that flag at the
 start and clearing it at the end each need a momentary <code>stopZ80</code>, just long enough to

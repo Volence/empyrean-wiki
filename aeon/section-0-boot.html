@@ -379,6 +379,11 @@ page is just what the code at that second address chooses to do.</p>
 assembled at address zero) is pure data until
 address $200 (vectors, then the ROM header), so even the trivial <code>rte</code> instruction
 behind <code>NullInterrupt</code> is emitted later in the ROM, not squeezed between the tables.
+That instruction is the interrupt-time counterpart of a subroutine return: when an interrupt
+fires the CPU pushes a status word and a return address onto the stack, and <code>rte</code>
+pops both back and resumes the interrupted code, the same push-and-pop discipline a normal call
+uses. The <a href="../m68k/programming-model.html">68000
+programming model</a> steps through that stack frame byte by byte.
 Here is the real top of the file:</p>
 
 <pre><span class="k">Vectors</span>:
@@ -436,7 +441,13 @@ DEBUG), so a crash on real hardware is a readable screen, never a silent freeze.
 <p>Before the decisions below, it helps to see the terrain they live in. The 68000 addresses
 16MB, and every piece of hardware this page touches sits at a fixed spot inside that space;
 "talking to the VDP" or "copying a program into the Z80" just means writing to the right
-addresses. Click a region to see what lives there and where this page uses it.</p>
+addresses. Click a region to see what lives there and where this page uses it. Every address and
+value on this page is written in hexadecimal, base 16, marked by a leading <code>$</code> that is
+notation and never part of the number itself; one hex digit stands for exactly four bits, so the
+six digits of <code>$FF0000</code> are 24 bits of address. If you would rather read any of these
+numbers in decimal or binary, the
+<a href="../basics/numbers-and-notation.html">numbers and
+notation page</a> has a live converter.</p>
 
 <figure class="diagram">
   <div class="mmap" id="mmap">
@@ -459,7 +470,11 @@ addresses. Click a region to see what lives there and where this page uses it.</
   <strong>Initial stack pointer = $FFFFFF00, not $00000000.</strong> The stack grows downward
   from near the top of Work RAM, far from game data at low RAM addresses, and the top 256 bytes
   ($FFFFFF00-$FFFFFFFF) stay out of the stack's path (Aeon parks its cold-boot marker at
-  $FFFFFF00). A common alternative is SSP = $0: the first push predecrements $00000000 to
+  $FFFFFF00). A common alternative is SSP = $0. That SSP is the <em>supervisor</em> stack
+  pointer, and on this hardware it is the only stack pointer that matters: the 68000 comes out of
+  reset in its privileged supervisor mode and Genesis game code never leaves it, so this single
+  register is the stack pointer for everything the engine ever does. Starting it at zero works
+  because the first push predecrements $00000000 to
   $FFFFFFFC, which the 68000's 24-bit bus addresses as $FFFFFC, the top of work RAM, so the
   stack simply lives at the very top of RAM (the same address wrap this boot code uses on
   purpose for the RAM clear in section 5). Several shipping games do exactly this. Aeon instead
@@ -511,7 +526,12 @@ addresses. Click a region to see what lives there and where this page uses it.</
 revisions ship with the Trademark Security System (TMSS): if the hardware revision nibble is
 non-zero, the boot code must write the ASCII longword <code>"SEGA"</code> to $A14000, or the
 next access to the <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> data port hangs the CPU permanently. Revision 0 machines (early Model 1s)
-have no TMSS and no such register, so the write is gated on the revision check.</p>
+have no TMSS and no such register, so the write is gated on the revision check. The excerpt below
+spells that longword as <code>#$53454741</code>, which is the same four bytes: $53, $45, $47 and
+$41 are the character codes for S, E, G and A, and a longword is four bytes side by side, so
+"text" and "number" here are two readings of one value rather than two different things. The
+<a href="../basics/numbers-and-notation.html">numbers and
+notation page</a> teaches that reading, and its converter will take any of these digits apart.</p>
 
 <details class="explain">
   <summary>New here? · Why did Sega put a lock on its own console?</summary>
@@ -615,7 +635,13 @@ fill in section 5 can start immediately).</p>
 </details>
 
 <p>The table below shows the values the code ships. Click a row (or Tab to it
-and press Enter) to pin a highlight while you cross-reference.</p>
+and press Enter) to pin a highlight while you cross-reference. Several of those values are bit
+fields rather than quantities: register $01's <code>$14</code> is a row of independent on/off
+switches packed into one byte, which is why the Setting column reads as a list of switches and not
+as a number. Testing and flipping single bits like those is the day job of the
+<code>btst</code>/<code>bset</code>/<code>bclr</code> family, covered on
+<a href="../m68k/shifts-bits.html">68000: Shifts
+&amp; Bits</a>.</p>
 
 <div class="tbl">
 <table id="vdpregs">
@@ -727,6 +753,15 @@ lives on its own 8KB of RAM and drives the <span class="term" data-def="The six-
 power-on the Z80 is executing garbage, the PSG may be shrieking, and the FM chip's state is
 undefined. Boot has to bring all three to a known, silent state.</p>
 
+<p>It is a genuinely different processor, not a smaller 68000: an 8-bit CPU whose working
+registers are an accumulator <code>A</code> plus <code>B</code>, <code>C</code>, <code>D</code>,
+<code>E</code>, <code>H</code> and <code>L</code>, which pair up so that <code>B</code> and
+<code>C</code> together <em>are</em> the 16-bit <code>BC</code>, and it carries a shadow bank of
+<code>BC</code>/<code>DE</code>/<code>HL</code> that a single <code>exx</code> swaps in. The
+<a href="../z80/programming-model.html">Z80 programming
+model</a> lays all of that state out and lets you pair the registers yourself; this section only
+needs to get it running.</p>
+
 <details class="explain">
   <summary>New here? · Why does a Genesis have two CPUs?</summary>
   <div class="x-body">
@@ -758,7 +793,12 @@ directly.</p>
 the assembled Z80 blob is physically embedded <em>inside</em> the boot data table, between the
 DMA fill command and the PSG silence bytes. Boot reads that table strictly sequentially through
 <code>(a5)+</code>, so when the copy loop starts, <code>a5</code> is already pointing at the
-first driver byte. No address to load, nothing to look up.</p>
+first driver byte. No address to load, nothing to look up. (<code>(a5)+</code> is one addressing
+mode doing two jobs: read the memory <code>a5</code> points at, then step <code>a5</code> past
+what was just read, by one, two or four bytes depending on the operand's size. That mode and the
+other eleven ways a 68000 instruction can name where its operand lives are the subject of
+<a href="../m68k/addressing-modes.html">68000: Addressing
+Modes</a>.)</p>
 <span class="src">engine/system/boot.asm:268</span>
 
 <p>The idle program is a curiosity worth two lines: after clearing Z80 RAM and its registers,
@@ -864,7 +904,13 @@ bytes). The naive order is serial: clear one, then the next. Aeon overlaps them.
 
 <p>The VDP register table already primed a fill (register $17's fill mode, length $FFFF), so
 starting it takes four instructions: set auto-increment to 1 for the byte-wise fill, aim the
-command at <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span> address 0, and write the fill byte:</p>
+command at <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span> address 0, and write the fill byte. That last step reaches for
+<code>moveq</code>, which never writes only the byte you typed: its 8-bit immediate is
+sign-extended across all 32 bits of the destination, so <code>moveq #0, d0</code> clears the whole
+register, not just the byte the VDP will read as the fill value. The
+<a href="../m68k/moving-data.html#signext">sign-extension
+toy</a> on the Moving Data page repaints the digits one size at a time if you want to watch it
+happen:</p>
 
 <pre>        <span class="c">; Start VRAM DMA fill (§0.7) - runs in background on VDP clock</span>
         move.w  <span class="n">#vdpReg($0F, $01)</span>, (a4)    <span class="c">; auto-increment = 1 for byte-by-byte DMA fill</span>
@@ -875,9 +921,19 @@ command at <span class="term" data-def="The VDP's private 64KB of video memory h
 
 <p>While the VDP fills, the CPU does the entire previous section's work (the Z80 bus dance,
 the driver copy, the YM-safe reset), then clears its own 64KB of work RAM, then silences the
-PSG. The RAM clear itself is a lovely idiom: start the address register at $00000000 and write
-longwords with pre-decrement, letting 32-bit address arithmetic wrap around to $FFFFFFFC and
-walk down through all of RAM:</p>
+PSG. Two facts make the RAM clear's idiom legal, and both belong to pages below this one. First,
+an address register holds a full 32 bits but only the low 24 of them reach the bus, so the top
+byte is dropped on every access and $FFFFFFFC and $FFFFFC are the same place, high work RAM, not
+some address four bytes below zero (the
+<a href="../m68k/programming-model.html">programming
+model</a> owns the 32-stored/24-decoded story, and it is also why work RAM was put at the top of
+the map). Second, subtracting 4 from $00000000 wraps to $FFFFFFFC the way a car odometer rolls
+from 000000 back to 999996, the same wrap that makes small negative numbers look like enormous
+hex values (the
+<a href="../basics/numbers-and-notation.html">numbers page</a>
+teaches that odometer). Given both, the clear is a lovely idiom: start the address register at
+$00000000 and write longwords with pre-decrement, letting 32-bit address arithmetic wrap around
+to $FFFFFFFC and walk down through all of RAM:</p>
 
 <pre>        <span class="c">; Clear Work RAM - 64KB (§0.7)</span>
         movea.l d0, a6                      <span class="c">; a6 = 0</span>
@@ -886,6 +942,12 @@ walk down through all of RAM:</p>
         move.l  d0, -(a6)                   <span class="c">; wraps: $00000000 → $FFFFFFFC → ... → $FFFF0000</span>
         dbf     d2, .clear_ram</pre>
 <span class="src">engine/system/boot.asm:86</span>
+
+<p>The <code>-(a6)</code> in that loop is the predecrement mode: it subtracts the operand's size
+from <code>a6</code> <em>first</em> and writes at the new address, which is what lets one
+instruction both step and store, and why the very first write lands at $FFFFFFFC instead of at
+zero. <a href="../m68k/addressing-modes.html">68000:
+Addressing Modes</a> prices every mode, this one included.</p>
 
 <p>Only after all that does boot poll the VDP status register's DMA-busy bit, and by then the
 fill is typically already done, so the "wait" costs almost nothing. Auto-increment goes back to
@@ -998,6 +1060,13 @@ once; there is no runtime re-checking of the region bit on hot paths:</p>
 </table>
 </div>
 
+<p><code>DMA_Budget_Default</code> is not advice: the VBlank DMA queue spends it in bytes every
+frame and stops issuing transfers once the allowance is gone, and the entries that did not fit are
+compacted to the front of the queue for the next frame rather than dropped. The queue that does
+that spending is
+<a href="section-02-vdp-frame.html#s5">section 5 of the
+VDP page</a>; boot's whole share of it is choosing which of the two numbers to write.</p>
+
 <p>(Frame-timing figures like "262 vs 313 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanlines</span>" and "~18,600 vs ~43,500 <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span> cycles" are
 hardware background you'll find in a Genesis reference; the engine deliberately does not
 carry them as named constants.)</p>
@@ -1052,7 +1121,11 @@ asymmetry is the design.</p>
 
 <p>Seen as scanlines, a frame is mostly picture. On NTSC, 224 of the 262 lines are active
 display; VInt fires at the start of line 224, and the remaining 38 lines are the whole window
-before the next frame begins:</p>
+before the next frame begins. That window is thin enough to have earned a name of its own, the
+sliver, and it is the only stretch of the frame in which nothing is being drawn and video memory
+can be rewritten without tearing;
+<a href="section-02-vdp-frame.html#s3">section 3 of the
+VDP page</a> measures it in bytes rather than lines. Here it is to proportion:</p>
 
 <figure class="diagram">
   <div class="lanes fstrip">
@@ -1096,7 +1169,12 @@ register is paid for on every line:</p>
 <span class="src">engine/system/hblank.asm:12</span>
 
 <p>Boot installs <code>HBlank_Null</code>, a bare <code>rts</code>, so the dispatch costs a
-handful of cycles until a level section wants more.</p>
+handful of cycles until a level section wants more. The dispatch is two addressing modes doing all
+the work: <code>(HBlank_Handler_Ptr).w</code> fetches the pointer out of RAM by short absolute
+address, and <code>jsr (a0)</code> then calls the address <code>a0</code> <em>holds</em> rather
+than <code>a0</code> itself, which is exactly the distinction
+<a href="../m68k/addressing-modes.html">68000: Addressing
+Modes</a> works through mode by mode.</p>
 
 <p><strong>VBlank: ROM entry, RAM-selected body, built-in lag detection.</strong> The handler
 saves everything, then checks <code>VBlank_Ready</code>, a flag the main loop sets when it
@@ -1144,6 +1222,15 @@ flag, so the "wait" falls straight through with no real vsync, while Ready is le
 <em>next</em> VBlank to fully drain a plane buffer the main loop is still writing. The fix costs
 a few dozen cycles on a once-per-frame path: mask interrupts across the pair, then wait with
 them live.</p>
+
+<p>Masking is one write. <code>move.w #$2700, sr</code> loads the status register, the 16-bit word
+where the CPU keeps its own mode and its condition flags, with a supervisor bit and an interrupt
+mask of level 7, which shuts out both IRQ4 and IRQ6, the two interrupts this engine runs on; the
+push and pop of <code>sr</code> around the pair then restore whatever mask was in force before,
+instead of guessing at it. The
+<a href="../m68k/programming-model.html">programming
+model</a> draws that register as a 16-bit ruler with every position labelled, worked through on the
+near-identical example value $2704.</p>
 
 <pre>        move.w  sr, -(sp)
         move.w  <span class="n">#$2700</span>, sr             <span class="c">; mask: the pair below must be atomic</span>

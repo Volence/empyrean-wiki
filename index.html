@@ -179,6 +179,13 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   border-color:var(--accent);}
 .wikisearch .s-count{font-family:var(--mono); font-size:.7rem; color:var(--dim); margin:.4rem 0 0;}
 .s-hide{display:none !important;}
+
+/* acknowledgments (hub tier: the wiki's single credit spot) */
+.thanks{max-width:44rem; margin:.6rem 0 0;}
+.thanks p{font-size:.86rem; color:var(--dim); line-height:1.6; margin:.7rem 0 0;}
+.thanks strong{color:var(--ink); font-weight:600;}
+.thanks .thanks-note{border-left:2px solid var(--line); padding-left:.7rem;
+  margin-top:1.1rem; font-size:.82rem;}
 </style>
 </head>
 <body>
@@ -529,7 +536,41 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   </div>
 </div>
 
-<footer class="page">The Empyrean wiki · last updated 2026-07-17</footer>
+<p class="hub-h" id="thanks">With thanks</p>
+<p class="hub-sub">This wiki teaches the Genesis in its own words, but almost nothing here was
+discovered here. Two generations of documentation and reverse engineering made the machine
+knowable, and the debt is worth naming in one place.</p>
+
+<div class="thanks">
+  <p><strong>The hardware, documented.</strong> Sik's plutiedev is the reference this wiki leans on
+  most, and the friendliest door the scene has. Charles MacDonald's hardware notes and Kabuto's notes
+  mapped behavior the official manuals left out. Nemesis's work runs deeper still: the Exodus
+  emulator, its technical-documentation archive, and the die-level YM2612 research that finally
+  explained the FM chip. Rasterscroll's graphics writing covers planes, sprites and raster effects
+  with unusual care, and Sean Young's "The Undocumented Z80 Documented" is the record for everything
+  Zilog's manual left silent.</p>
+
+  <p><strong>The teaching that came first.</strong> MarkeyJester's 68000 tutorial has been the way
+  people learn this CPU for over a decade. Where our instruction pages sequence a topic well, that
+  order was very often proved out there first.</p>
+
+  <p><strong>The code we read and quote.</strong> The Sonic 2 and Sonic 3 &amp; Knuckles
+  disassemblies, and the Sonic Retro and SpritesMind communities that built and maintain them, are
+  why this wiki can show real shipped code instead of invented examples. Vladikcomper's MD Debugger
+  and Mega PCM, Flamewing's compression tools and Ultra DMA Queue, sikthehedgehog's Echo, and
+  ValleyBell's SMPS research are each the reason some page here could describe a real technique
+  rather than guess at one. Hidden Palace's preservation work put first-party Sega and Yamaha
+  documentation back in reach.</p>
+
+  <p><strong>The original documents.</strong> Sega's developer manuals, technical bulletins and
+  sound documentation, and Yamaha's YM2612 documentation, remain the source of record. Motorola's and
+  Zilog's processor manuals are the last word on the two CPUs.</p>
+
+  <p class="thanks-note">Any error on these pages is ours, not theirs. Where this wiki and a source
+  disagree, the source is probably right.</p>
+</div>
+
+<footer class="page">The Empyrean wiki · last updated 2026-07-24</footer>
 
 
 <script>
