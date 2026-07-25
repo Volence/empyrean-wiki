@@ -52,14 +52,29 @@ code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
   letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
 
 /* explainer (collapsible, learner layer) */
-details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
-  max-width:42rem; background:rgba(68,204,136,.05);}
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
 details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
   font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
 details.explain summary::before{content:"▸ ";}
 details.explain[open] summary::before{content:"▾ ";}
 details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
 details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
 
 /* invented teaching example - visually distinct from real excerpts */
 .teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
@@ -161,6 +176,14 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   details.explain .x-body{animation:fade .18s ease;}
   @keyframes fade{from{opacity:0}to{opacity:1}}
 }
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+
 /* ============================================================
    Page-specific styles: Instructions - Moving Data
    (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
@@ -203,10 +226,6 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
   margin-left:.3rem;}
 
 /* gotcha note */
-.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
-  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
-.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
-  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
 
 /* MOVEM stack-push diagram */
 .stackdiag{display:flex; gap:2rem; align-items:flex-start; min-width:34rem; flex-wrap:wrap;}
@@ -372,125 +391,60 @@ memory <em>at</em> an address (<code>(a0)</code> is what a0 points at, not a0 it
 <a href="addressing-modes.html">Addressing Modes page</a>
 carries the full notation key.</p>
 
-<details class="explain">
-  <summary>New here? &middot; What do .b, .w, and .l mean?</summary>
-  <div class="x-body">
-    <p>Almost every 68000 instruction can be told how much data to move: a <code>.b</code> byte
-    (8 bits), a <code>.w</code> word (16 bits), or a <code>.l</code> longword (32 bits). The suffix
-    goes right after the mnemonic, so <code>move.b</code> copies one byte, <code>move.w</code>
-    copies two, and <code>move.l</code> copies four. Registers are always 32 bits wide internally,
-    but an instruction sized <code>.b</code> or <code>.w</code> only touches the low part of that
-    32 bits and leaves the rest of the register alone, which is a common source of stale-data bugs
-    for anyone assuming a byte operation clears the whole register the way it might on other
-    chips.</p>
-    <p>Picking the size that fits the job matters on real hardware, but not the way beginners often assume.
-    A register-to-register move is 2 bytes and 4 cycles at <em>every</em> size, so the suffix alone does not
-    make it smaller or faster. Where size pays off is memory and long immediates: a byte or word transfer
-    to memory moves less across the bus (fewer cycles) than a long, and a long immediate costs two
-    extension words where a byte or word immediate costs one (and MOVEQ costs none).</p>
-  </div>
-</details>
+<p style="margin-top:1rem;">Six more things the examples lean on are taught in full elsewhere in this wiki, so
+rather than re-teach them here, here are the pocket versions: one clause each, enough to keep reading without
+opening anything, with a link to the page that owns the full story.</p>
 
-<details class="explain" id="negatives">
-  <summary>New here? &middot; How can a register hold a negative number?</summary>
-  <div class="x-body">
-    <p>There is no minus sign in hardware; a register only holds bits. Negative numbers work by
-    wrap-around, like a car odometer rolling backwards. A byte counts 0, 1, 2, up to $FF (255),
-    and then wraps back to 0; run it the other way and 0 minus 1 wraps to $FF. So the bit pattern
-    <code>$FF</code> means 255 <em>or</em> -1 depending entirely on how the code chooses to read
-    it: the bits themselves do not know. This scheme is called two's complement, and every number
-    on the 68000 uses it. The tell is the top bit: read as signed, $00-$7F are 0 to 127, and
-    $80-$FF run from -128 up to -1. That top bit is exactly what the N flag copies.</p>
-    <p>And here is the part that trips everyone once: the same negative number needs different
-    digits at different sizes. Think of the odometer again: roll 5 below zero on a three-digit
-    odometer and it reads 995; roll the same 5 below zero on a four-digit odometer and it reads
-    9995. Those leading 9s are what the leading F digits are in hex. So -128 written as a byte is
-    <code>$80</code>, the same -128 written as a word is <code>$FF80</code>, and as a long it is
-    <code>$FFFFFF80</code>. The FF digits are not decoration and they do not change the value;
-    they are simply what that value looks like with more room. Keeping them correct when a small
-    value moves into a bigger slot is called sign extension, and the EXT instruction at the end
-    of this page exists to do exactly that.</p>
-  </div>
-</details>
+<p><strong>The size suffixes.</strong> A <code>.b</code>, <code>.w</code>, or <code>.l</code> after the
+mnemonic says how much data to touch: one byte, two bytes (a word), or four (a longword). A data register is
+32 bits wide either way, so a <code>.b</code> or <code>.w</code> operation writes only the low part of it and
+leaves the higher bits exactly as they were, which is where stale-data bugs come from. Size is not a speed
+dial either: a register-to-register move is 2 bytes and 4 cycles at every size, and it is trips to memory and
+long immediates that make the choice cost something. Full story:
+<a href="programming-model.html#s1">the Programming Model page's register file</a>.</p>
 
-<details class="explain">
-  <summary>New here? &middot; What is an "effective address"?</summary>
-  <div class="x-body">
-    <p>Almost every instruction on this page names its source or destination as an
-    <strong>effective address</strong> (often abbreviated <code>&lt;ea&gt;</code> in syntax), which
-    is really a small grammar for "where the value lives," not just a single number. It might be a
-    register itself (<code>d0</code>), a plain memory address (<code>(Some_Label).w</code>), an
-    address held in a register with a symbol added to it (<code>x_pos(a0)</code>, the classic
-    "struct field" pattern), or an immediate constant baked right into the instruction
-    (<code>#4</code>). The 68000 supports fourteen addressing modes, twelve of them general
-    effective-address forms; this page uses several of them in its examples without dwelling on
-    the mechanics of each, since the
-    <a href="addressing-modes.html">Addressing Modes
-    page</a> covers exactly how every form resolves to a real address.</p>
-  </div>
-</details>
+<p id="negatives"><strong>Negative numbers.</strong> There is no minus sign in hardware, only bits. Negatives
+work by wrap-around, the way a car odometer rolls backwards past zero, so the byte <code>$FF</code> means 255
+<em>or</em> -1 depending entirely on how the code chooses to read it, and the top bit is the tell. The scheme
+is called two's complement: the full treatment is on
+<a href="../basics/numbers-and-notation.html#s7">the Numbers &amp; Notation page</a>, and how the 68000's
+condition flags report it is on <a href="programming-model.html#s2">the Programming Model page</a>. The part
+that belongs on this page is what happens when a negative changes size: the same value needs more digits in a
+bigger slot, so -128 is <code>$80</code> as a byte, <code>$FF80</code> as a word, and <code>$FFFFFF80</code> as
+a long. Those leading F digits are not decoration and they do not change the value. Keeping them right when a
+small value moves into a bigger one is called <a href="#signext">sign extension</a>, and
+<a href="#ext">EXT</a> at the end of this page is the instruction that does it.</p>
 
-<details class="explain">
-  <summary>New here? &middot; What's an immediate value?</summary>
-  <div class="x-body">
-    <p>An <strong>immediate</strong> is a constant baked directly into the instruction's own bytes
-    in ROM, written with a leading <code>#</code>, like <code>#0</code>, <code>#60</code>, or <code>#$100</code>.
-    It is the opposite of an address: <code>move.l #4,d0</code> puts the number 4 into d0, while
-    <code>move.l 4,d0</code> (no <code>#</code>) would instead read whatever four-byte value sits
-    at memory address 4. Mixing these up is one of the most common typos in 68000 code, and one
-    the assembler cannot catch for you, since both are syntactically legal instructions that just
-    do very different things.</p>
-  </div>
-</details>
+<p><strong>Effective address.</strong> Almost every instruction here names its source or destination as an
+<strong>effective address</strong> (written <code>&lt;ea&gt;</code> in the syntax lines), which is a small
+grammar for "where the value lives" rather than one fixed kind of thing: a register (<code>d0</code>), a plain
+memory address (<code>(Some_Label).w</code>), an address held in a register with an offset added
+(<code>x_pos(a0)</code>, the classic struct-field pattern), or a constant baked into the instruction
+(<code>#4</code>). Full story: <a href="addressing-modes.html#ea">the Addressing Modes page</a>, which resolves
+every form to a real address and prices each one.</p>
 
-<details class="explain" id="labels">
-  <summary>New here? &middot; What is a label, and who decides its address?</summary>
-  <div class="x-body">
-    <p>A label like <code>Score</code>, <code>Return_Here</code>, or <code>ObjCC</code> is just a
-    name for a spot: a place in the code, or a slot in RAM. You do not hand it a number yourself (you
-    <em>can</em> bind a name to a value directly with <code>equ</code> or <code>=</code>, but a location
-    label like these is a different tool). The assembler works out its address at build time, by plain
-    bookkeeping: it walks the source top to bottom,
-    adds up the size of everything it emits, and whatever address the count has reached when it
-    meets your label IS that label's value from then on. Write the same code with one extra
-    instruction above the label and the label's address quietly moves; nobody edits it by hand.</p>
-    <p>So when an example says "Return_Here is at $00020010," that number came from the
-    assembler's bookkeeping, not from anyone declaring it. And the <code>(pc)</code> suffix in
-    <code>pea Return_Here(pc)</code> changes none of this: it only tells the assembler to ENCODE
-    the reach as "this many bytes ahead of the current instruction" instead of as the full
-    address, arithmetic it likewise does itself. Either way, you write the name and the assembler
-    does the numbers.</p>
-    <p>So why ever write the <code>(pc)</code>? Both forms are legal and reach the same place;
-    the difference is cost and survival. The full-address form spends two extension words
-    (<code>pea (Label).l</code>: 6 bytes, 20 cycles); the distance form spends one
-    (<code>pea Label(pc)</code>: 4 bytes, 16 cycles), and because it says "this far from me"
-    rather than "at this fixed spot," it keeps working if the whole block of code is moved
-    somewhere else in ROM. The catch is reach: the distance field is 16 bits signed, so
-    <code>(pc)</code> only works for labels within 32KB of the instruction, which is also why work-RAM
-    variables in Genesis code cannot use it: the code runs from ROM, and RAM is nowhere near it. Hence the
-    pattern all over Sonic-era source: nearby code labels get <code>(pc)</code>, work-RAM variables in the
-    high <code>$FFxxxx</code> range get <code>(xxx).w</code> (those addresses sign-extend from a single
-    word), far-away data gets <code>(xxx).l</code>.</p>
-  </div>
-</details>
+<p><strong>Immediates.</strong> The <code>#</code> above marks an <strong>immediate</strong>: a constant stored
+in the instruction's own bytes in ROM, not an address to go and read. <code>move.l #4,d0</code> puts the number
+4 into d0, while <code>move.l 4,d0</code> reads whatever four bytes sit at memory address 4. Both are legal
+instructions, so the assembler cannot catch the mix-up for you. Full story:
+<a href="addressing-modes.html#mode-imm">the immediate mode entry</a>.</p>
 
-<details class="explain" id="pc">
-  <summary>New here? &middot; What is the program counter?</summary>
-  <div class="x-body">
-    <p>The program counter (PC) is the CPU's finger on the page: a special register holding the
-    address of the next instruction to fetch. Execute an instruction and the finger has already
-    slid past it; that is the entire mechanism of "running a program." It is not one of the
-    d0-d7 / a0-a7 registers and you cannot MOVE into it: the only instructions allowed to write
-    the PC are the jumps, branches, calls, and returns, which exist precisely to do that one job.
-    A <code>jmp ($00020010).l</code> is the 68000's way of spelling "move this address into the
-    PC," and rts is "pop 4 bytes into the PC."</p>
-    <p>The PC also moonlights as an addressing base: a <code>d(PC)</code> operand like
-    <code>SetupValues(pc)</code> means "this far from where the PC is right now," which is what
-    lets code find its own tables no matter where in ROM it ends up. The
-    <a href="programming-model.html">Programming Model page</a>
-    covers the full register set.</p>
-  </div>
-</details>
+<p id="labels"><strong>Labels.</strong> A name like <code>Score</code>, <code>Return_Here</code>, or
+<code>ObjCC</code> is just a label for a spot, a place in the code or a slot in RAM, and you never type its
+number: the assembler works the address out at build time from where the label sits in the source, so adding
+one instruction above a label quietly moves it. Full story:
+<a href="programming-model.html#labels">the Programming Model page</a>.</p>
+
+<p id="pc"><strong>The program counter.</strong> The PC is the CPU's finger on the page, a special register
+holding the address of the next instruction to fetch; running a program is that finger advancing. It is not
+one of d0-d7 or a0-a7 and you cannot MOVE into it, because the only instructions allowed to write it are the
+jumps, branches, calls, and returns. It doubles as an addressing base, which is what a
+<code>SetupValues(pc)</code> operand measures from: naming a spot by its distance from the PC costs
+fewer bytes than naming it by its full address and keeps working if the code is moved, at the price of
+only reaching 32KB either way. Full story:
+<a href="programming-model.html#s3">the Programming Model page's program counter section</a>, plus
+<a href="addressing-modes.html#s5">PC-relative versus absolute</a> on the Addressing Modes page for
+which one to write.</p>
 
 <div class="instr" id="move">
   <h3><span class="mn">MOVE</span> <span class="mnx">Move</span> <span class="syn">MOVE.b/.w/.l &lt;ea&gt;,&lt;ea&gt;</span></h3>

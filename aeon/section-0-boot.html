@@ -52,14 +52,29 @@ code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
   letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
 
 /* explainer (collapsible, learner layer) */
-details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
-  max-width:42rem; background:rgba(68,204,136,.05);}
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
 details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
   font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
 details.explain summary::before{content:"▸ ";}
 details.explain[open] summary::before{content:"▾ ";}
 details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
 details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
 
 /* invented teaching example - visually distinct from real excerpts */
 .teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
@@ -161,10 +176,19 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   details.explain .x-body{animation:fade .18s ease;}
   @keyframes fade{from{opacity:0}to{opacity:1}}
 }
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+
 /* ============================================================
    Page-specific styles: §0 Boot & Hardware Init
    (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
    ============================================================ */
+
 
 /* interactive vector-table grid */
 .vgrid{display:grid; grid-template-columns:repeat(8,3.2rem); gap:3px; width:max-content;}
@@ -372,7 +396,11 @@ page is just what the code at that second address chooses to do.</p>
     <span class="l-irqv">IRQ6 VBlank</span>
     <span class="l-trap">TRAP / tail reserved → ErrorTrap</span>
   </div>
-  <figcaption>The 64 vectors at $000000-$0000FF (one cell per longword slot)</figcaption>
+  <figcaption>The 64 vectors at $000000-$0000FF (one cell per longword slot). Clicking a cell
+  names that slot and the routine Aeon points it at, and the lesson survives skipping the widget
+  entirely: all 64 slots are filled, two by boot, ten by named CPU exceptions, two by the
+  interrupts this engine runs on, and every one of the rest by an error handler or an immediate
+  return.</figcaption>
 </figure>
 
 <p>The table itself is plain data, and deliberately so. The org-0 image (the ROM bytes
@@ -402,8 +430,14 @@ Here is the real top of the file:</p>
 First, exceptions do not all funnel into one monolithic <code>ExceptionHandler</code>: each CPU
 exception gets its own label (<code>BusError</code>, <code>AddressError</code>,
 <code>ZeroDivide</code>, …), the reserved vectors up through the spurious-interrupt slot go to
-<code>ErrorExcept</code>, and all sixteen TRAPs plus the tail reserved block go to
-<code>ErrorTrap</code>. Per-vector labels let the debug error handler name exactly what fired.
+<code>ErrorExcept</code> (a spurious interrupt is one whose source vanished before the CPU could
+ask who raised it), and all sixteen TRAPs plus the tail reserved block go to
+<code>ErrorTrap</code>; no TRAP is assigned to a job yet. Per-vector labels let the debug error
+handler name exactly what fired. The interrupt levels split the same way. Aeon runs on two of
+them, IRQ4 and IRQ6. The other five (IRQ1, IRQ2 from the EXT port, IRQ3, IRQ5, and the
+non-maskable IRQ7) are not wired to anything this engine uses, so they point at
+<code>NullInterrupt</code>, which does nothing but <code>rte</code> straight back to whatever was
+interrupted.
 Second, the ROM header at $100-$1FF is not a hardcoded block: it is emitted by a
 <code>gameHeader</code> macro from game-declared strings, and every field width is asserted at
 build time (more on that in section 9).</p>
@@ -418,7 +452,7 @@ counter, the <span class="term" data-def="A small storage slot inside a chip. CP
 build appends to every ROM. On the error screen, button B shows an exception backtrace and
 button A decodes the address registers. This is not a debug-build luxury: the handler ships in
 <em>release</em> builds too (only assertions and the KDebug logging interface are gated to
-DEBUG), so a crash on real hardware is a readable screen, never a silent freeze.</p>
+DEBUG), so an exception on real hardware is a readable screen, never a silent freeze.</p>
 <span class="src">engine/debug/error_handler.asm:31 · engine/engine.inc:450</span>
 
 <details class="explain">
@@ -463,8 +497,34 @@ notation page</a> has a live converter.</p>
     <button type="button" class="mmr m-ram"><span class="a">$FF0000-$FFFFFF</span><span class="nm">work RAM (64KB)</span></button>
   </div>
   <div class="vcap" id="mmcap" aria-live="polite">Click a region to see what it is and where this page uses it. The dashed gaps are clickable too, and answer a fair question: what happens when you read a hole?</div>
-  <figcaption>The 68000 address map, low addresses at the top (not to scale)</figcaption>
+  <figcaption>The 68000 address map, low addresses at the top (not to scale). Clicking a region
+  names what lives there and where this page uses it, and the lesson without a single click is
+  that every chip in this console is just a fixed range of 68000 addresses, with dashed gaps
+  between them that are not spare room: they answer with garbage or hang the machine, as the
+  paragraphs below spell out.</figcaption>
 </figure>
+
+<p>Those gaps deserve their own paragraph, because "unmapped" is not the same as "harmless".
+$400000-$7FFFFF is reserved for expansion hardware: an attached Sega CD maps itself into that
+range, and on a bare cartridge console it is a hole. Where a read of a hole answers at all, what
+comes back is open-bus garbage, and it is garbage with a specific shape: the top byte of the
+68000's own next prefetched instruction, with the low byte zero. Writes into a hole vanish.
+Nothing traps either case, no exception fires and no vector runs, which is why a stray-pointer bug
+on this hardware corrupts quietly instead of announcing itself on the error screen. Address
+decoding is partial as well, so the real chips answer at many more addresses than their canonical
+ones: work RAM repeats over and over through the top of the map, and the VDP ports have mirrors of
+their own. Every access on this page uses the canonical address, which is the habit worth
+keeping.</p>
+
+<div class="gotcha"><span class="g-tag">Gotcha</span>
+  <strong>Parts of this map do not answer at all: they hang the console.</strong> Reads at some
+  addresses in $A10020-$BFFFFF hang it outright, and the off-map range $800000-$9FFFFF (reserved
+  for what became the 32X) locks up on any access. Two more sharp edges sit right beside addresses
+  this page does use: the PSG port is write-only, and reading any PSG address hangs the console, as
+  does writing the read-only H/V counter at $C00008. A few malformed accesses to the VDP's mirror
+  addresses can freeze it too. None of these fires a vector, so the error handler described above
+  never gets its chance and there is nothing to read afterwards; the machine simply stops.
+</div>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>Initial stack pointer = $FFFFFF00, not $00000000.</strong> The stack grows downward
@@ -612,8 +672,10 @@ reset. The address reservation is real, and the preservation mechanism will buil
 <h2 id="s3">3 · Programming the video chip</h2>
 
 <p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> has 24 configuration registers, $00 through $17, and after a reset their contents are
-undefined. Aeon writes all 24 from a compile-time table in one tight loop: 24 bytes of data,
-five instructions of code. Two properties of the chosen values matter for everything that
+undefined. You reach the chip through a small block of ports in the 68000's map: the data port at
+$C00000, the control port at $C00004, where these register writes land, and the read-only H/V
+counter at $C00008. Aeon writes all 24 from a compile-time table in one tight loop: 24 bytes of
+data, five instructions of code. Two properties of the chosen values matter for everything that
 follows: the display is OFF (nothing ugly is visible while we work) and DMA is ON (so the <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>
 fill in section 5 can start immediately).</p>
 
@@ -778,7 +840,9 @@ needs to get it running.</p>
 </details>
 
 <p>The bus dance is precise. The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. All engine logic runs here.">68000</span> asserts the <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz. In Aeon it runs the entire sound driver autonomously, leaving the 68000 free.">Z80</span>'s reset line, requests the shared bus,
-releases reset, and polls until the bus is granted. Only then can it copy a program into Z80
+releases reset, and polls until the bus is granted. Both of those lines are just addresses to
+write: $A11200 holds or releases the Z80's reset, and $A11100 requests or releases its bus. Only
+then can it copy a program into Z80
 RAM, byte by byte, because Z80 RAM cannot take a 16-bit write: a word-sized store writes only
 its upper byte and silently drops the lower one, so a word copy would corrupt every other
 byte. What gets copied is the

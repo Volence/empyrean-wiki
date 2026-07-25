@@ -52,14 +52,29 @@ code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
   letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
 
 /* explainer (collapsible, learner layer) */
-details.explain{border:1px solid var(--learn); border-radius:4px; margin:1rem 0;
-  max-width:42rem; background:rgba(68,204,136,.05);}
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
 details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
   font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
 details.explain summary::before{content:"▸ ";}
 details.explain[open] summary::before{content:"▾ ";}
 details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
 details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
 
 /* invented teaching example - visually distinct from real excerpts */
 .teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
@@ -161,6 +176,14 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   details.explain .x-body{animation:fade .18s ease;}
   @keyframes fade{from{opacity:0}to{opacity:1}}
 }
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+
 /* ============================================================
    Page-specific styles: 02 The VDP & the Frame
    (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
