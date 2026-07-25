@@ -325,7 +325,7 @@ shape, at the right time.</p>
   <div class="x-body">
     <p>A tile is the Genesis's atomic unit of picture: an 8&times;8 block of pixels, and nothing
     the VDP draws is any smaller than one. Each pixel in a tile is 4 bits, not a full color, a
-    number from 0 to 15 that means "slot 15 of whichever palette this tile is told to use." That
+    number from 0 to 15 that means "that slot of whichever palette this tile is told to use." That
     indirection is the whole trick: the same 32 bytes of tile data can look like four different
     things depending which of the four 16-color palettes gets attached to it at draw time.</p>
     <p>32 bytes per tile (8 rows &times; 8 pixels &times; 4 bits, packed two pixels per byte) is
@@ -909,7 +909,7 @@ entries are still there, at the front, next VBlank:</p>
 </div>
 <span class="src">engine/constants.asm:123</span>
 
-<p><code>7,200</code> is not a soft target chosen for comfort: about 7 KB, roughly 230 tiles, is
+<p><code>7,200</code> is not a soft target chosen for comfort: about 7 KB, exactly 225 tiles, is
 all a real NTSC VBlank can DMA to VRAM at all, so the budget sits right at the hardware ceiling.
 PAL's near-double budget follows PAL's far larger blanking window: more dead lines, more transfer
 time.</p>
