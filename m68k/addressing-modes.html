@@ -447,7 +447,8 @@ operand you pick, so they never appear in the grid.</p>
     <tr><td>Immediate</td><td><code>#n</code>, plus quick immediate</td><td>2</td></tr>
     <tr><td>Implied</td><td>the register named inside a mnemonic (SR, USP, SP, PC)</td><td>1</td></tr>
   </table></div>
-  <p class="enc-note">That is 2 + 5 + 2 + 2 + 2 + 1 = 14. The first four rows are the twelve
+  <p class="enc-note">That is 2 + 5 + 2 + 2 + 2 + 1 = 14. The first four rows come to eleven, and
+  plain <code>#n</code> from the immediate row makes the twelve
   effective-address forms this page prices. The two extras are: <strong>quick immediate</strong>, the
   tiny constant baked into a handful of instructions (<code>moveq #n,Dn</code> carries a signed 8-bit
   value, <code>addq</code>/<code>subq</code> carry a 1-to-8 value) rather than passed as a normal
@@ -1112,7 +1113,7 @@ variables, bakes in constants, and finds its own tables.</p>
   <h3><span class="mn">d(PC,Xn)</span> <span class="syn">Program counter with index</span></h3>
   <div class="mmeta">
     <div class="row bd"><span class="lbl">You write</span><span class="val"><code>Vint_SwitchTbl(pc,d0.w)</code>, a PC-relative label, plus an index register.</span></div>
-    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = <code>PC</code> + <code>d0</code> (as a word) + an 8-bit signed displacement (zero here).</span></div>
+    <div class="row bd"><span class="lbl">Under the hood</span><span class="val">Effective address = <code>PC</code> + <code>d0</code> (as a word) + an 8-bit signed displacement (<code>$08</code> here).</span></div>
     <div class="row bd"><span class="lbl">You work with</span><span class="val">The value at that address, the table entry the runtime index selects.</span></div>
     <div class="row"><span class="lbl">Price</span><span class="val"><a href="#price-pcindex">10 cycles for a byte or word, 14 for a long, 2 extension bytes</a>, the same as <code>d(An,Xn)</code>.</span></div>
     <div class="row"><span class="lbl">Reach for</span><span class="val">Position-independent jump and lookup tables: pick an entry of a code-space table by a runtime index without pinning the table to a fixed address. The classic dispatch idiom.</span></div>
