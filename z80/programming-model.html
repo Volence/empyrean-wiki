@@ -345,7 +345,7 @@ of its own; you name it to use it.</p>
 low; press EXX to swap in the shadow BC'/DE'/HL' set, or EX AF,AF' to swap AF with AF'. Static fallback:
 A is the accumulator; B, C, D, E, H, L are 8-bit general registers that pair up (B with C, D with E, H
 with L) into the 16-bit BC, DE, HL; F is the flag register whose bits (S, Z, H, P/V, N, C, plus two
-unused) record the last result; IX and IY are index registers, SP the stack pointer, PC the program
+undocumented bits) record the last result; IX and IY are index registers, SP the stack pointer, PC the program
 counter; and a dimmed shadow set (AF', BC', DE', HL') can only be swapped in, never named directly.
 Selecting any slot names its width and role.</figcaption>
 </figure>
@@ -559,9 +559,9 @@ to; the notes below explain the bits that need care.</p>
   <tbody>
     <tr><td><code>7</code></td><td><code>S</code> (Sign)</td><td>A copy of the result's top bit. When a value is read as signed, <code>S</code> = 1 means the result is negative.</td></tr>
     <tr><td><code>6</code></td><td><code>Z</code> (Zero)</td><td>Set to 1 when the result is zero. The most-tested flag by far.</td></tr>
-    <tr><td><code>5</code></td><td><span style="color:var(--dim);">unused</span></td><td>Undocumented; not a flag you set out to use.</td></tr>
+    <tr><td><code>5</code></td><td><span style="color:var(--dim);">undoc.</span></td><td>Undocumented. Most flag-writing instructions copy bit 5 of their result here; see the note below. Not a flag you set out to use.</td></tr>
     <tr><td><code>4</code></td><td><code>H</code> (Half-carry)</td><td>Set when a carry or borrow crosses between bit 3 and bit 4 for 8-bit arithmetic (for a 16-bit add it is the carry between bit 11 and bit 12). The Z80 uses it to fix up binary-coded-decimal arithmetic. Not directly testable by a branch.</td></tr>
-    <tr><td><code>3</code></td><td><span style="color:var(--dim);">unused</span></td><td>Undocumented; not a flag you set out to use.</td></tr>
+    <tr><td><code>3</code></td><td><span style="color:var(--dim);">undoc.</span></td><td>Undocumented. Most flag-writing instructions copy bit 3 of their result here; see the note below. Not a flag you set out to use.</td></tr>
     <tr><td><code>2</code></td><td><code>P/V</code> (Parity/Overflow)</td><td>Dual-purpose. After logic operations it reports parity; after arithmetic it reports signed overflow. See the note below.</td></tr>
     <tr><td><code>1</code></td><td><code>N</code> (Add/Subtract)</td><td>0 after an add, 1 after a subtract. The Z80 uses it, together with <code>H</code>, to correct binary-coded-decimal results. Not directly testable by a branch.</td></tr>
     <tr><td><code>0</code></td><td><code>C</code> (Carry)</td><td>The carry out of an add, or the borrow from a subtract. The other heavily-tested flag.</td></tr>
@@ -580,8 +580,14 @@ calculation, the calculation sets flags, and the jump inspects a flag.</p>
 <p>The remaining two, <span class="term" data-def="A flag set when an add or subtract carries between bit 3 and bit 4 of a byte; the Z80 uses it to fix up binary-coded-decimal arithmetic.">half-carry</span> (<code>H</code>) and add/subtract (<code>N</code>), you never branch
 on; there is no conditional jump that reads them. Instructions set them as a side effect, and the
 <code>DAA</code> instruction reads both to correct binary-coded-decimal arithmetic (a decimal digit
-packed into each nibble of a byte). Until you do decimal math you can leave them be. Bits 5 and 3 carry
-no defined meaning at all; their value is not guaranteed, so portable code must not rely on them.</p>
+packed into each nibble of a byte). Until you do decimal math you can leave them be. Bits 5 and 3 are
+undocumented rather than random: Zilog's manual gives them no meaning, but on real silicon most
+flag-writing instructions copy bits 5 and 3 of their result into them, and a few copy from the operand
+or from <code>A</code> instead (community references name them YF and XF; "The Undocumented Z80
+Documented" is the standard write-up). The one genuinely unpredictable case is
+<code>BIT n,(HL)</code>, which fills them from a hidden internal register. Nothing documented ever
+tests them, and the only way to even see them is to push <code>AF</code> and inspect the
+stacked byte, so well-behaved code treats them as if they did not exist.</p>
 
 <p>One rule underlies all of this: each instruction decides for itself which flags it updates and which
 it leaves untouched. Not every operation rewrites all six. Many arithmetic and logic instructions on
@@ -603,7 +609,8 @@ instructions later. Each instruction page spells out precisely which flags its e
     two positive numbers and landing on a "negative" result is the classic overflow it catches.</p>
     <p>So the honest one-line description is "parity after logic, overflow after arithmetic," never just
     one of the two. (It also carries a couple of special-case meanings, such as reflecting the interrupt
-    state after <code>LD A,I</code>, but the parity/overflow split is the part you use.)</p>
+    state after <code>LD A,I</code> or <code>LD A,R</code>, but the parity/overflow split is the part
+    you use.)</p>
   </div>
 </details>
 
@@ -778,7 +785,10 @@ can honestly claim to describe the complete Z80.</p>
     handler pointers. So <code>I</code> chooses <em>which page</em> of memory that table lives on, and
     the device chooses the entry within it.</p>
     <p><strong><code>R</code>, the Memory Refresh register.</strong> Also 8 bits, and mostly the CPU's
-    own business. Its low 7 bits increment automatically after every instruction fetch; the Z80 was
+    own business. Its low 7 bits count opcode fetches: a plain instruction adds 1, an instruction that
+    starts with a prefix byte (<code>CB</code>, <code>ED</code>, <code>DD</code>, or <code>FD</code>)
+    adds 2 because the prefix is fetched like an opcode, and a repeating block instruction such as
+    <code>LDIR</code> adds 2 on every pass because the CPU re-fetches it each time. The Z80 was
     designed to drive dynamic RAM, which forgets its contents unless periodically refreshed, and this
     counter walks through the rows to keep them alive. Bit 7 is not part of that count: it holds
     whatever was last written by <code>LD R,A</code>. Because the low bits keep changing on their own,
@@ -786,9 +796,13 @@ can honestly claim to describe the complete Z80.</p>
     number. It is not a real random-number generator (its pattern is entirely predictable), so it is
     fine for a shimmer effect and wrong for anything that needs true randomness.</p>
     <p><strong>Interrupt-enable state and mode.</strong> Two internal flip-flops, <code>IFF1</code> and
-    <code>IFF2</code>, hold whether maskable interrupts are currently enabled; <code>EI</code> enables
-    and <code>DI</code> disables them, and <code>IFF2</code> keeps a copy of the state across an interrupt
-    so it can be restored. Separately, the interrupt <em>mode</em>, chosen with <code>IM 0</code>,
+    <code>IFF2</code>, hold whether maskable interrupts are currently enabled; <code>EI</code> sets both
+    and <code>DI</code> clears both. The second flip-flop exists for the <em>non-maskable</em> interrupt
+    (NMI, a separate interrupt line that cannot be turned off): accepting an NMI clears
+    <code>IFF1</code> but leaves <code>IFF2</code> alone, so the handler's closing <code>RETN</code> can
+    restore the enable state from the surviving copy. Accepting an ordinary maskable interrupt clears
+    both flip-flops, so <code>IFF2</code> preserves nothing there. Separately, the interrupt
+    <em>mode</em>, chosen with <code>IM 0</code>,
     <code>IM 1</code>, or <code>IM 2</code>, selects how the CPU responds to a maskable interrupt. Aeon's
     sound driver runs in <code>IM 1</code>, where an interrupt jumps to the fixed address
     <code>$0038</code>; <code>IM 2</code> is the mode that builds the handler address from <code>I</code>
@@ -934,7 +948,7 @@ function expandAll(btn){
     'flag-pv':'<b>P/V</b> is parity after logic, overflow after arithmetic.',
     'flag-n':'<b>N</b> is add/subtract, for BCD.',
     'flag-c':'<b>C</b> is carry/borrow.',
-    'flag-unused':'<b>An undocumented flag bit</b>: its value is not guaranteed, so portable code must not rely on it.',
+    'flag-unused':'<b>An undocumented flag bit</b>: most instructions copy the matching bit of their result here, but no documented behavior depends on it, so code must not rely on it.',
     'index':'<b>%NM%</b> is a 16-bit index register for (%NM%+d) addressing.',
     'sp':'<b>SP</b> is the 16-bit stack pointer; the stack grows downward.',
     'pc':'<b>PC</b> is the 16-bit program counter; jumps and calls rewrite it, you do not.',

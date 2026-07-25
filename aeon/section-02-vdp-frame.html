@@ -430,7 +430,7 @@ to reach VRAM every frame, and reliably.</p>
 <h2 id="s2">2 · Two ports and a shadow table</h2>
 
 <p>The CPU cannot address <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>, <span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>, or the VDP's 24 configuration <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span> directly. Every access goes through two
-16-bit mail slots at fixed addresses: the data port (where words and longwords actually flow, never single bytes) and the
+16-bit mail slots at fixed addresses: the data port (where Aeon moves words and longwords only; the hardware does accept a byte write, but duplicates the byte into both halves of a word, so a byte-sized write still writes a full word) and the
 control port (where you first say where those bytes are going, or, using a different write
 pattern, which register to set). A "register write" is really a magic word sent to the control
 port; there is no address named "register 5", only the convention that a control-port word shaped
@@ -502,7 +502,7 @@ not something the engine itself does.</p>
 <!-- ================================================================ -->
 <h2 id="s3">3 · The frame and its sliver</h2>
 
-<p>A television doesn't receive a picture all at once; it receives one <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 312.">scanline</span> at a time,
+<p>A television doesn't receive a picture all at once; it receives one <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span> at a time,
 top to bottom, and then the beam has to fly back up to start over. On NTSC, 224 of 262 lines per
 frame are actually visible; the remaining 38 are dead time from the display's point of view, but
 they are the only window where the CPU can safely rewrite video memory without the change tearing
@@ -542,14 +542,14 @@ page is about using it well.</p>
     <div class="lane">
       <span class="ln">PAL</span>
       <div class="track">
-        <div class="tseg t-act" style="width:71.8%;">active display · lines 0-223</div>
-        <div class="tseg t-blank" style="width:28.2%;">vblank · lines 224-311</div>
+        <div class="tseg t-act" style="width:71.6%;">active display · lines 0-223</div>
+        <div class="tseg t-blank" style="width:28.4%;">vblank · lines 224-312</div>
       </div>
     </div>
   </div>
   <figcaption>One frame as scanlines, widths proportional (reprised from §0.7 with this page's
   numbers): everything in section 4 below must finish inside the sliver, 38 blank lines of 262 on
-  NTSC, 88 of 312 on PAL. PAL's sliver is nearly double NTSC's, which is exactly why the DMA
+  NTSC, 89 of 313 on PAL. PAL's sliver is well over double NTSC's, which is exactly why the DMA
   budget in section 5 is region-specific, not a single fixed number.</figcaption>
 </figure>
 
@@ -717,7 +717,7 @@ lag path deliberately instead of bolting it on afterward.</p>
 <h2 id="s5">5 · The DMA queue</h2>
 
 <p>Steps 5, 8, and 9 of the pipeline above all drain from the same structure: a 32-slot,
-three-priority <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could, while the CPU keeps working.">DMA</span> queue that the main loop feeds all frame long and VBlank empties in one pass. Nothing in
+three-priority <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span> queue that the main loop feeds all frame long and VBlank empties in one pass. Nothing in
 the game loop ever DMAs directly; it enqueues a request (source, destination, length) and moves
 on, so a slow VBlank never stalls gameplay logic, only graphics delivery.</p>
 
@@ -911,7 +911,7 @@ entries are still there, at the front, next VBlank:</p>
 
 <p><code>7,200</code> is not a soft target chosen for comfort: about 7 KB, roughly 230 tiles, is
 all a real NTSC VBlank can DMA to VRAM at all, so the budget sits right at the hardware ceiling.
-PAL's near-double figure follows PAL's near-double blanking window: more dead lines, more transfer
+PAL's near-double budget follows PAL's far larger blanking window: more dead lines, more transfer
 time.</p>
 
 <p>Boot writes the region-appropriate constant into <code>DMA_Budget_Default</code>, and step 7
@@ -1297,7 +1297,10 @@ as the default:</p>
 
 <p>That "does nothing" handler is not free: the dispatch overhead plus the interrupt entry and
 exit, movem save, jsr, rts, movem restore, rte, runs roughly 180 cycles per scanline, not the 20
-or so you might assume from reading the handler itself. A proposed
+or so you might assume from reading the handler itself. For scale, the blanking gap is only about
+90 of the roughly 490 68000 cycles a scanline lasts, so even the do-nothing dispatch spills past
+HBlank into the next visible line; a handler that must land its write inside the gap has almost
+no room left after the overhead. A proposed
 RAM-trampoline fix, not yet applied, would shortcut the indirect call for the common empty-table
 case and bring that down to roughly 76 cycles. Today, H-interrupts are disabled at boot (VDP
 register $00 = $04, HInt off) and nothing in the shipped engine turns them back on, so this

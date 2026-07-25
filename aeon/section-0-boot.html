@@ -535,7 +535,7 @@ have no TMSS and no such register, so the write is gated on the revision check.<
 <p>Two footnotes to the handshake. The magic register is only half of TMSS: the console also
 checks that the ROM header's first field, the console-name string at $100 (which
 <code>gameHeader</code> emits from the game's <code>GAME_CONSOLE</code> symbol), begins with
-<code>"SEGA"</code>. And on <span class="term" data-def="The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.">TMSS</span> machines the cartridge is not actually the first thing to run:
+<code>"SEGA"</code> (the boot ROM also accepts <code>" SEGA"</code> with a leading space). And on <span class="term" data-def="The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.">TMSS</span> machines the cartridge is not actually the first thing to run:
 the console's internal boot ROM executes before <code>EntryPoint</code>, performs those checks,
 and draws the license splash. By the time Aeon's first instruction runs, the player has already
 been looking at that screen.</p>
@@ -577,7 +577,7 @@ been looking at that screen.</p>
 .no_tmss:</pre>
 <span class="src">engine/system/boot.asm:6</span>
 
-<p>Note the fall-through at the end of <code>Warm_Boot</code>: it waits for any in-flight <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could, while the CPU keeps working.">DMA</span>
+<p>Note the fall-through at the end of <code>Warm_Boot</code>: it waits for any in-flight <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span>
 to finish, then continues straight into <code>Cold_Boot</code>. A soft reset runs the same full
 hardware initialization as power-on, including the 64KB RAM wipe; the only thing "warm" about
 it is the DMA wait.</p>
@@ -744,7 +744,9 @@ undefined. Boot has to bring all three to a known, silent state.</p>
 
 <p>The bus dance is precise. The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. All engine logic runs here.">68000</span> asserts the <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz. In Aeon it runs the entire sound driver autonomously, leaving the 68000 free.">Z80</span>'s reset line, requests the shared bus,
 releases reset, and polls until the bus is granted. Only then can it copy a program into Z80
-RAM, byte by byte, because Z80 RAM tolerates only byte writes. What gets copied is the
+RAM, byte by byte, because Z80 RAM cannot take a 16-bit write: a word-sized store writes only
+its upper byte and silently drops the lower one, so a word copy would corrupt every other
+byte. What gets copied is the
 <strong>full sound driver</strong> in the default build (<code>SOUND_DRIVER_ENABLED</code> is
 on by default); only sound-off builds load the tiny idle program instead. Then reset is asserted
 again and held for ~264 cycles of the 68K clock before the Z80 is released to run. The YM2612,
@@ -888,7 +890,7 @@ walk down through all of RAM:</p>
 <p>Only after all that does boot poll the VDP status register's DMA-busy bit, and by then the
 fill is typically already done, so the "wait" costs almost nothing. Auto-increment goes back to
 2 (restored from a trailing word in the boot data table), and the CPU hand-clears CRAM and
-VSRAM with short loops (<span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could, while the CPU keeps working.">DMA</span> fill only works on VRAM; for
+VSRAM with short loops (<span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span> fill only works on VRAM; for
 208 bytes total, a CPU loop is the right tool anyway).</p>
 
 <div class="teach"><span class="t-tag">Teaching example · not engine code</span>
@@ -975,10 +977,10 @@ matters: NTSC or PAL.</p>
     times. Since nearly every 90s game ran its physics once per TV frame, a game tuned for NTSC
     and shipped to Europe unchanged simply ran at 5/6 speed: Sonic jogged, music dragged, and
     European players genuinely got a 17% slower game. Some studios compensated; many didn't.</p>
-    <p>PAL has a consolation prize, though: with 312 scanlines per frame instead of 262 but the
+    <p>PAL has a consolation prize, though: with 313 scanlines per frame instead of 262 but the
     same 224 visible, the invisible gap between frames (the window where it's safe to blast
-    data into video memory) is nearly <em>twice</em> as long. A PAL console can move almost
-    double the graphics data per frame. That's why Aeon stores a per-region DMA budget, not
+    data into video memory) is well over <em>twice</em> as long. A PAL console can move more
+    than double the graphics data per frame. That's why Aeon stores a per-region DMA budget, not
     just a speed factor.</p>
   </div>
 </details>
@@ -996,8 +998,8 @@ once; there is no runtime re-checking of the region bit on hot paths:</p>
 </table>
 </div>
 
-<p>(Frame-timing figures like "262 vs 312 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 312.">scanlines</span>" and "~18,500 vs ~35,100 <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span> cycles" are
-hardware background you'll find in any Genesis reference; the engine deliberately does not
+<p>(Frame-timing figures like "262 vs 313 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanlines</span>" and "~18,600 vs ~43,500 <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span> cycles" are
+hardware background you'll find in a Genesis reference; the engine deliberately does not
 carry them as named constants.)</p>
 
 <div class="decision"><span class="d-tag">Decision</span>
@@ -1068,13 +1070,13 @@ before the next frame begins:</p>
     <div class="lane">
       <span class="ln">PAL</span>
       <div class="track">
-        <div class="tseg t-act" style="width:71.8%;">active display · lines 0-223</div>
-        <div class="tseg t-blank" style="width:28.2%;">vblank · lines 224-311</div>
+        <div class="tseg t-act" style="width:71.6%;">active display · lines 0-223</div>
+        <div class="tseg t-blank" style="width:28.4%;">vblank · lines 224-312</div>
       </div>
     </div>
   </div>
   <figcaption>One frame as scanlines, widths proportional. Everything in this section's VInt
-  pipeline must finish inside the sliver: 38 blank lines of 262 on NTSC, 88 of 312 on PAL (the
+  pipeline must finish inside the sliver: 38 blank lines of 262 on NTSC, 89 of 313 on PAL (the
   bigger sliver behind section 6's per-region DMA budget). This window is why the DMA budget
   exists.</figcaption>
 </figure>
@@ -1468,9 +1470,9 @@ function expandAll(btn){
      "On this page: section 4 (the bus dance, and every stopZ80/startZ80 bracket)."],
     ["The Trademark Security System register: newer consoles demand the longword \"SEGA\" here before the VDP will respond.",
      "On this page: section 2 (the handshake)."],
-    ["Nothing is wired here at all. Touching a hole does not crash: reads return open-bus garbage (often the last word the CPU fetched), writes vanish, and nothing traps it, which is why stray-pointer bugs corrupt silently.",
+    ["Nothing is wired here, but this hole is not harmless: reads at some addresses in $A10020-$BFFFFF hang the console outright, and the off-map range $800000-$9FFFFF (reserved for what became the 32X) locks up on any access. Where a read does answer, it returns open-bus garbage (the top byte of the CPU's own next prefetched instruction, low byte zero), writes vanish, and nothing traps it, which is why stray-pointer bugs corrupt silently.",
      "On this page: nothing, and that silence is the point."],
-    ["The video chip's mail slots: data port $C00000, control port $C00004, H/V counter $C00008, and the PSG's write port at $C00011.",
+    ["The video chip's mail slots: data port $C00000, control port $C00004, H/V counter $C00008, and the PSG's write port at $C00011. Two sharp edges: the PSG port is write-only (reading any PSG address hangs the console), and so does writing the read-only H/V counter.",
      "On this page: section 3 (the register writes) and section 5 (the DMA fill, the CRAM/VSRAM clears, the PSG silence)."],
     ["Partial address decoding: the VDP ports and work RAM answer at many addresses beyond their canonical ones (work RAM repeats through the top of the map), and a few malformed VDP-mirror accesses can freeze the console.",
      "On this page: nothing. Every access on this page uses the canonical addresses."],
