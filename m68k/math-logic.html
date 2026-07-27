@@ -2345,7 +2345,7 @@ function expandAll(btn){
     a0e.textContent=hex8(a0); a0e.classList.remove('mr-flash'); void a0e.offsetWidth; a0e.classList.add('mr-flash');
     note.textContent = w>=0x8000
       ? 'adda.w #$'+w.toString(16).toUpperCase().padStart(4,'0')+',a0: the word has its top bit set, so it sign-extends to $'+((sx>>>0).toString(16).toUpperCase().padStart(8,'0'))+' ('+sx+'), and a0 moves BACKWARD to '+hex8(a0)+'. No flag moved.'
-      : 'adda.w #$'+w.toString(16).toUpperCase().padStart(4,'0')+',a0: a0 advances to '+hex8(a0)+'. No flag moved (that is ADDA’s whole point). Try a value $8000 or higher to see the sign-extension trap.';
+      : 'adda.w #$'+w.toString(16).toUpperCase().padStart(4,'0')+',a0: a0 advances to '+hex8(a0)+'. No flag moved (that is ADDA\'s whole point). Try a value $8000 or higher to see the sign-extension trap.';
   });
   reset.addEventListener('click',function(){ a0=A0; src.value='0010'; a0e.textContent=hex8(a0); note.textContent='Reset. a0 = $00FF0000. Add $0010, or try $FFFF to watch it move backward.'; });
 })();
@@ -2363,7 +2363,7 @@ function expandAll(btn){
       var lo=((d0&0xFFFF)+n)&0xFFFF; d0=((d0&0xFFFF0000)>>>0 | lo)>>>0;
       d0e.textContent=hex8(d0); d0d.textContent='.w = '+(d0&0xFFFF);
       d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
-      note.textContent='addq.w #'+n+',d0 added '+n+' in a single 2-byte opcode. d0’s low word is now $'+lo.toString(16).toUpperCase().padStart(4,'0')+'.';
+      note.textContent='addq.w #'+n+',d0 added '+n+' in a single 2-byte opcode. d0\'s low word is now $'+lo.toString(16).toUpperCase().padStart(4,'0')+'.';
     } else {
       note.textContent='#'+(isNaN(n)?'?':n)+' is outside the quick range 1 to 8, so this cannot be an ADDQ at all. The assembler falls back to ADDI (4 bytes, 8 cycles). The quick field stops at 8.';
     }

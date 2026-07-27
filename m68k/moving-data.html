@@ -1663,7 +1663,7 @@ function expandAll(btn){
     d1e.classList.remove('mr-flash'); void d1e.offsetWidth; d1e.classList.add('mr-flash');
     var N=(moved&TOP[sz])!==0, Z=moved===0;
     setFlag(fN,'N',N); setFlag(fZ,'Z',Z);
-    note.textContent='Copied $'+moved.toString(16).toUpperCase().padStart(DIG[sz],'0')+' into d1’s '+PART[sz]
+    note.textContent='Copied $'+moved.toString(16).toUpperCase().padStart(DIG[sz],'0')+' into d1\'s '+PART[sz]
       +(sz==='l'?'':'; the rest of d1 kept its old bits')
       +'. d0 is unchanged. N='+(N?'1 (top bit set, reads as negative)':'0')
       +', Z='+(Z?'1 (the value was zero)':'0')+', V and C forced to 0.';

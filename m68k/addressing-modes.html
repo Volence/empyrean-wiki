@@ -1322,11 +1322,11 @@ function expandAll(btn){
     if(m === 'dn'){
       operand = IDX & 0xFFFF;
       fetchWord(operand);
-      msg = 'Mode Dn: no address is computed at all. The operand is the data register itself; move.w d1,d0 copies d1’s low word ' + hx4(operand) + ' straight into d0. Registers cost 0 cycles.';
+      msg = 'Mode Dn: no address is computed at all. The operand is the data register itself; move.w d1,d0 copies d1\'s low word ' + hx4(operand) + ' straight into d0. Registers cost 0 cycles.';
     } else if(m === 'an'){
       operand = a0 & 0xFFFF;
       fetchWord(operand);
-      msg = 'Mode An: again no memory address. The operand is a0 itself, used as a value: move.w a0,d0 copies a0’s low word ' + hx4(operand) + ' into d0. Compare with (a0) next door, which reads the memory AT that address; this mode reads the address itself.';
+      msg = 'Mode An: again no memory address. The operand is a0 itself, used as a value: move.w a0,d0 copies a0\'s low word ' + hx4(operand) + ' into d0. Compare with (a0) next door, which reads the memory AT that address; this mode reads the address itself.';
     } else if(m === 'anind'){
       ea = a0; operand = memAt(ea); fetchWord(operand);
       msg = 'Mode (a0): the effective address is simply whatever a0 holds, ' + hx8(ea) + '. The CPU reads the word there, ' + (operand === null ? 'outside the cells shown' : hx4(operand)) + ', into d0. No offset, one memory trip.';
