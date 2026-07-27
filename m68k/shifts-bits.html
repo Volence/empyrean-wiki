@@ -287,6 +287,9 @@ code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em
 .mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
 .mr-val b{color:#CC66AA; font-weight:normal;}
 .mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-dec{font-family:var(--mono); font-size:.62rem; letter-spacing:.04em; color:var(--dim);
+  text-align:center; line-height:1.35; max-width:16ch;}   /* the paired decimal reading:
+  not uppercase like .mr-tag, because it carries words ("signed") and a number meant to be read */
 .mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
 .msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
 .mr-flash{background:transparent;}
@@ -415,9 +418,9 @@ before and after, which bit fell out into C and X, and what filled the vacated e
     <button type="button" id="sh-reset">Reset</button>
   </div>
   <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
-    <div>before <span class="mr-val" id="sh-vb" style="font-size:.95rem;">0110 1100</span></div>
-    <div>after&nbsp; <span class="mr-val" id="sh-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="sh-rh">$6C</span></div>
-    <div>C <span class="mr-val" id="sh-c" style="font-size:.95rem;">0</span> &nbsp; X <span class="mr-val" id="sh-x" style="font-size:.95rem;">0</span> &nbsp;<span style="color:var(--dim);">(last bit shifted out)</span></div>
+    <div>before <span class="mr-val" id="sh-vb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="sh-vh">$6C</span> <span class="mr-dec" id="sh-vd">= 108</span></div>
+    <div>after&nbsp; <span class="mr-val" id="sh-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="sh-rh">$6C</span> <span class="mr-dec" id="sh-rd">= 108</span></div>
+    <div>C <span class="mr-val" id="sh-c" style="font-size:.95rem;">&middot;</span> &nbsp; X <span class="mr-val" id="sh-x" style="font-size:.95rem;">&middot;</span> &nbsp;<span style="color:var(--dim);">(last bit shifted out)</span></div>
   </div>
   <p class="msim-note" id="sh-note" aria-live="polite">lsl.b #1,$6C: every bit steps left, a 0 enters at the bottom, and the old top bit 0 falls into C and X. $6C becomes $D8 (108 doubled is 216). lsl by n multiplies by 2^n; switch to lsr (unsigned divide by 2^n), asr (signed divide, copies the sign into the top), or asl (like lsl but sets V on signed overflow).</p>
 </div>
@@ -745,7 +748,7 @@ draws the X cell next to the byte so you can watch a bit park in X and re-enter 
   <div class="msim-regs" style="font-family:var(--mono); font-size:.8rem; flex-direction:column; align-items:flex-start; gap:.35rem;">
     <div id="ro-beforeline">before <span class="mr-val" id="ro-vb" style="font-size:.95rem;">1011 0100</span> <span class="v" id="ro-xb" style="margin-left:.4rem;">X 0</span></div>
     <div id="ro-afterline">after&nbsp; <span class="mr-val" id="ro-rb" style="font-size:.95rem;">1011 0100</span> <span class="v" id="ro-xa" style="margin-left:.4rem;">X 1</span> &nbsp;=&nbsp; <span class="mr-val" id="ro-rh">$B4</span></div>
-    <div>C <span class="mr-val" id="ro-c" style="font-size:.95rem;">1</span> &nbsp;<span style="color:var(--dim);">(wrapped bit for ROL/ROR, new X for ROXL/ROXR)</span></div>
+    <div>C <span class="mr-val" id="ro-c" style="font-size:.95rem;">&middot;</span> &nbsp;<span style="color:var(--dim);">(wrapped bit for ROL/ROR, new X for ROXL/ROXR)</span></div>
   </div>
   <p class="msim-note" id="ro-note" aria-live="polite">roxl.b #1,$B4 with X=0: the top bit 1 moves into X, the old X 0 enters at the bottom. Byte becomes $68, X and C are now 1. Nine cells, one step around. Run it again and the new X threads back in.</p>
 </div>
@@ -1062,7 +1065,7 @@ a later <code>bclr</code> both act on the current value.</p>
     <div>before <span class="mr-val" id="bp-vb" style="font-size:.95rem;">0110 1100</span></div>
     <div style="padding-left:3.9rem;"><span class="mr-val" id="bp-mark" style="font-size:.95rem; color:var(--accent);">&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;^&nbsp;&nbsp;&nbsp;&nbsp;</span> <span style="color:var(--dim);">(selected bit)</span></div>
     <div>after&nbsp; <span class="mr-val" id="bp-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="bp-rh">$6C</span></div>
-    <div>Z <span class="mr-val" id="bp-z" style="font-size:1.1rem;">0</span> &nbsp;<span style="color:var(--dim);">(the COMPLEMENT of the tested bit's OLD value: Z=1 iff the bit was clear)</span></div>
+    <div>Z <span class="mr-val" id="bp-z" style="font-size:1.1rem;">&middot;</span> &nbsp;<span style="color:var(--dim);">(the COMPLEMENT of the tested bit's OLD value: Z=1 iff the bit was clear)</span></div>
   </div>
   <p class="msim-note" id="bp-note" aria-live="polite">btst #2,d0: bit 2 of $6C is 1, so Z becomes 0 (the bit was set); the byte is unchanged because BTST only tests. After btst, beq branches when the bit was 0.</p>
 </div>
@@ -1363,6 +1366,7 @@ function expandAll(btn){
   var val=document.getElementById('sh-val'); if(!val) return;
   var cnt=document.getElementById('sh-cnt'), instr=document.getElementById('sh-instr'), note=document.getElementById('sh-note'),
       vb=document.getElementById('sh-vb'), rb=document.getElementById('sh-rb'), rh=document.getElementById('sh-rh'),
+      rd=document.getElementById('sh-rd'), vh=document.getElementById('sh-vh'), vd=document.getElementById('sh-vd'),
       ce=document.getElementById('sh-c'), xe=document.getElementById('sh-x'),
       run=document.getElementById('sh-run'), reset=document.getElementById('sh-reset');
   var op='lsl', byte=0x6C;              // byte held across runs; seeded from input only on edit/reset
@@ -1375,12 +1379,21 @@ function expandAll(btn){
   function hex2(n){ return '$'+(n&0xFF).toString(16).toUpperCase().padStart(2,'0'); }
   function s8(n){ n&=0xFF; return n>=0x80 ? n-0x100 : n; }
   function curSyn(){ var n=rdCnt(); return NAME[op]+'.b #'+n+',d0'; }
+  // the decimal reading the CURRENT shift is in force for (LEARNING.md BASE PAIRING, decision 2):
+  // lsl/lsr are unsigned multiply/divide, asr is a signed divide, and asl is the one place both
+  // readings belong at once, because V=1 means precisely that they have diverged.
+  function decOf(n){
+    n&=0xFF; var sv=s8(n);
+    if(op==='asr') return sv<0 ? '= '+sv+' signed' : '= '+n;
+    if(op==='asl' && sv<0) return '= '+n+' unsigned, '+sv+' signed';
+    return '= '+n;
+  }
   // at rest nothing has run, so the "after" row must mirror "before" and the flag cells must
   // not claim a bit fell out. Called on load, on reset, and whenever an input changes, so the
   // display can never show a result belonging to a different instruction than the one on screen.
   function pending(){
-    vb.textContent=bin8(byte);
-    rb.textContent=bin8(byte); rh.textContent=hex2(byte);
+    vb.textContent=bin8(byte); vh.textContent=hex2(byte); vd.textContent=decOf(byte);
+    rb.textContent=bin8(byte); rh.textContent=hex2(byte); rd.textContent=decOf(byte);
     ce.textContent='\u00B7'; xe.textContent='\u00B7';
   }
   function sync(){
@@ -1406,8 +1419,8 @@ function expandAll(btn){
     var before=byte;
     var r=shift(before,n);
     byte=r.res;                          // hold the result across runs
-    vb.textContent=bin8(before);
-    rb.innerHTML=bin8hl(byte,before); rh.textContent=hex2(byte);
+    vb.textContent=bin8(before); vh.textContent=hex2(before); vd.textContent=decOf(before);
+    rb.innerHTML=bin8hl(byte,before); rh.textContent=hex2(byte); rd.textContent=decOf(byte);
     ce.textContent=r.last; xe.textContent=r.last;
     ce.classList.remove('mr-flash'); void ce.offsetWidth; ce.classList.add('mr-flash');
     rb.classList.remove('mr-flash'); void rb.offsetWidth; rb.classList.add('mr-flash');

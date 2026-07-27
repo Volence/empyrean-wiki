@@ -271,6 +271,9 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .mr-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
 .mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
 .mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-dec{font-family:var(--mono); font-size:.62rem; letter-spacing:.04em; color:var(--dim);
+  text-align:center; line-height:1.35; max-width:16ch;}   /* the paired decimal reading:
+  not uppercase like .mr-tag, because it carries words ("signed") and a number meant to be read */
 .mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
 .msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
 .mr-flash{background:transparent;}
@@ -917,10 +920,10 @@ lea     8(a1,d0.w),a0   <span class="c">; load the calculated address itself</sp
       <button type="button" id="le-reset">Reset</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">Score</span><span class="mr-val" id="le-cell">$1068</span><span class="mr-tag">memory cell at $00FF1000</span></span>
+      <span class="mreg"><span class="mr-name">Score</span><span class="mr-val" id="le-cell">$1068</span><span class="mr-tag">memory cell at $00FF1000</span><span class="mr-dec" id="le-celld">= 4200</span></span>
       <span class="mr-arrow" aria-hidden="true">read by</span>
       <span class="mreg"><span class="mr-name">a0</span><span class="mr-val" id="le-a0">$00000000</span><span class="mr-tag">lea: the address</span></span>
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="le-d0">$00000000</span><span class="mr-tag">move.w: the contents</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="le-d0">$00000000</span><span class="mr-tag">move.w: the contents</span><span class="mr-dec" id="le-d0d">= 0</span></span>
     </div>
     <p class="msim-note" id="le-note" aria-live="polite">Score lives at address $00FF1000 and currently holds $1068 (4200). Run lea and a0 gets the house number $00FF1000; run move.w and d0 gets what is inside, $1068. Change the contents and only move.w notices.</p>
   </div>
@@ -1540,7 +1543,7 @@ loc_1ECD4:
       <button type="button" id="xl">Run ext.l d0</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="xd0">$DDDDDD80</span><span class="mr-tag">watch the repainted digits</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="xd0">$DDDDDD80</span><span class="mr-tag">watch the repainted digits</span><span class="mr-dec" id="xd0d">.b = -128 signed</span></span>
     </div>
     <p class="msim-note" id="xnote" aria-live="polite">d0 holds your byte with $DD junk above it, the exact situation EXT exists for. Run ext.w, then ext.l. Then reload and try ext.l FIRST, and see what goes wrong.</p>
   </div>
@@ -1677,7 +1680,7 @@ function expandAll(btn){
 /* sign-extension toy: run ext.w / ext.l on a register holding junk above your byte */
 (function(){
   var i=document.getElementById('xsrc'); if(!i) return;
-  var d0e=document.getElementById('xd0'), note=document.getElementById('xnote');
+  var d0e=document.getElementById('xd0'), d0d=document.getElementById('xd0d'), note=document.getElementById('xnote');
   var load=document.getElementById('xload'), bw=document.getElementById('xw'), bl=document.getElementById('xl');
   var d0=0xDDDDDD80;
   function show(paint){
@@ -1685,6 +1688,14 @@ function expandAll(btn){
     if(paint==='w'){ d0e.innerHTML='$'+h.slice(0,4)+'<b>'+h.slice(4,6)+'</b>'+h.slice(6); }
     else if(paint==='l'){ d0e.innerHTML='$<b>'+h.slice(0,4)+'</b>'+h.slice(4); }
     else { d0e.textContent='$'+h; }
+    // EXT's whole lesson is that the NUMBER does not change, only how many digits hold it, and
+    // that is invisible in hex. So read only the part that is meaningful at this stage: the byte
+    // before extending, the word after ext.w, the long after ext.l. Doing ext.l first then shows
+    // the junk as a plainly WRONG number rather than merely as unexpected digits.
+    var b=d0&0xFF, w=d0&0xFFFF;
+    if(paint==='w')      d0d.textContent='.w = '+((w&0x8000)?w-0x10000:w)+' signed';
+    else if(paint==='l') d0d.textContent='.l = '+(d0|0)+' signed';
+    else                 d0d.textContent='.b = '+((b&0x80)?b-256:b)+' signed';
     d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
   }
   function byteVal(){
@@ -1815,17 +1826,20 @@ function expandAll(btn){
 (function(){
   var src=document.getElementById('le-src'); if(!src) return;
   var cell=document.getElementById('le-cell'), a0e=document.getElementById('le-a0'), d0e=document.getElementById('le-d0');
+  // a0 gets no decimal on purpose: it holds an ADDRESS, and '$00FF1000 = 16715776' would teach
+  // nothing while fighting the value-versus-address distinction this very toy exists to draw.
+  var celld=document.getElementById('le-celld'), d0d=document.getElementById('le-d0d');
   var blea=document.getElementById('le-lea'), bmv=document.getElementById('le-move'), brs=document.getElementById('le-reset'), note=document.getElementById('le-note');
   var ADDR=0x00FF1000, a0=0, d0=0;
   function hx(n){ return (n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
   function paint(el,val,prev){ var h=hx(val),p=hx(prev),o='$'; for(var i=0;i<8;i++){ o += h[i]!==p[i] ? '<b>'+h[i]+'</b>' : h[i]; } el.innerHTML=o; el.classList.remove('mr-flash'); void el.offsetWidth; el.classList.add('mr-flash'); }
   function cont(){ var v=(src.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); src.value=v; return parseInt(v||'0',16)&0xFFFF; }
   function w4(n){ return (n&0xFFFF).toString(16).toUpperCase().padStart(4,'0'); }
-  function showCell(){ cell.textContent='$'+w4(cont()); }
+  function showCell(){ var c=cont(); cell.textContent='$'+w4(c); celld.textContent='= '+c; }
   src.addEventListener('input',showCell);
   blea.addEventListener('click',function(){ var p=a0; a0=ADDR>>>0; paint(a0e,a0,p); note.textContent='lea Score,a0 wrote the address itself, $00FF1000, into a0. It never read the cell, so changing the contents would not change this at all: lea gives the house number, not what is inside.'; });
-  bmv.addEventListener('click',function(){ var c=cont(); var p=d0; d0=(((d0&0xFFFF0000)>>>0)|c)>>>0; paint(d0e,d0,p); note.textContent='move.w Score,d0 walked into the cell and copied what is inside, $'+w4(c)+' ('+c+'), into d0. Note there is no # here: a bare Score means the memory AT that label, while move.w #Score,d0 would load the address itself as a plain number (the # rule from the immediate explainer in section 1).'; });
-  brs.addEventListener('click',function(){ a0=0; d0=0; a0e.textContent='$00000000'; d0e.textContent='$00000000'; note.textContent='Reset. Score still lives at $00FF1000. Run lea for the address, move.w for the contents.'; });
+  bmv.addEventListener('click',function(){ var c=cont(); var p=d0; d0=(((d0&0xFFFF0000)>>>0)|c)>>>0; paint(d0e,d0,p); d0d.textContent='= '+c; note.textContent='move.w Score,d0 walked into the cell and copied what is inside, $'+w4(c)+' ('+c+'), into d0. Note there is no # here: a bare Score means the memory AT that label, while move.w #Score,d0 would load the address itself as a plain number (the # rule from the immediate explainer in section 1).'; });
+  brs.addEventListener('click',function(){ a0=0; d0=0; a0e.textContent='$00000000'; d0e.textContent='$00000000'; d0d.textContent='= 0'; note.textContent='Reset. Score still lives at $00FF1000. Run lea for the address, move.w for the contents.'; });
   showCell();
 })();
 

@@ -287,6 +287,9 @@ code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em
 .mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
 .mr-val b{color:#CC66AA; font-weight:normal;}
 .mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-dec{font-family:var(--mono); font-size:.62rem; letter-spacing:.04em; color:var(--dim);
+  text-align:center; line-height:1.35; max-width:16ch;}   /* the paired decimal reading:
+  not uppercase like .mr-tag, because it carries words ("signed") and a number meant to be read */
 .mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
 .msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
 .mr-flash{background:transparent;}
@@ -429,8 +432,8 @@ all five flags update, with the note spelling out both readings of the result.</
     <button type="button" id="fs-reset">Reset</button>
   </div>
   <div class="msim-regs">
-    <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="fs-d0">$0000FFFF</span><span class="mr-tag">destination</span></span>
-    <span class="mreg" id="fs-srcreg"><span class="mr-name">d1</span><span class="mr-val" id="fs-d1">$00000001</span><span class="mr-tag">source</span></span>
+    <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="fs-d0">$0000FFFF</span><span class="mr-tag">destination</span><span class="mr-dec" id="fs-d0d">.w = 65535 unsigned, -1 signed</span></span>
+    <span class="mreg" id="fs-srcreg"><span class="mr-name">d1</span><span class="mr-val" id="fs-d1">$00000001</span><span class="mr-tag">source</span><span class="mr-dec" id="fs-d1d">.w = 1</span></span>
   </div>
   <div class="msim-fl" aria-label="Condition codes after the operation">
     <span class="fl-label">Flags after</span>
@@ -802,7 +805,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
       <button type="button" id="aq-reset">Reset d0</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="aq-d0">$00000032</span><span class="mr-tag">destination</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="aq-d0">$00000032</span><span class="mr-tag">destination</span><span class="mr-dec" id="aq-d0d">.w = 50</span></span>
     </div>
     <p class="msim-note" id="aq-note" aria-live="polite">d0 holds $0032 (50). Add 1 through 8 and it climbs in a single-word instruction. Type 9 and the line will not assemble as ADDQ at all, the quick field only reaches 8; the assembler needs ADDI for anything bigger.</p>
   </div>
@@ -1130,7 +1133,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
       <button type="button" id="ng-reset">Reset d0</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="ng-d0">$00000005</span><span class="mr-tag">destination</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="ng-d0">$00000005</span><span class="mr-tag">destination</span><span class="mr-dec" id="ng-d0d">.w = 5</span></span>
     </div>
     <div class="msim-fl" aria-label="Condition codes after NEG">
       <span class="fl-label">Flags after</span>
@@ -1520,9 +1523,9 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
       <button type="button" id="mu-reset">Reset</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="mu-d0">$00000140</span><span class="mr-tag">factor / product</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="mu-d0">$00000140</span><span class="mr-tag">factor / product</span><span class="mr-dec" id="mu-d0d">.w = 320</span></span>
       <span class="mr-arrow" aria-hidden="true">x d1</span>
-      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="mu-d1">$00000040</span><span class="mr-tag">factor</span></span>
+      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="mu-d1">$00000040</span><span class="mr-tag">factor</span><span class="mr-dec" id="mu-d1d">.w = 64</span></span>
     </div>
     <p class="msim-note" id="mu-note" aria-live="polite">$0140 x $0040 = $00005000, which still fits the low word. Now try $FFFF x $FFFF: the product $FFFE0001 fills the ENTIRE register, and if you read only d0's low word afterward you would see $0001 and lose the rest.</p>
   </div>
@@ -1661,9 +1664,9 @@ and divide has two ways to go wrong that you must guard against yourself.</p>
       <button type="button" id="dv-reset">Reset</button>
     </div>
     <div class="msim-regs">
-      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="dv-d0">$00000064</span><span class="mr-tag">dividend / result</span></span>
+      <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="dv-d0">$00000064</span><span class="mr-tag">dividend / result</span><span class="mr-dec" id="dv-d0d">.l = 100</span></span>
       <span class="mr-arrow" aria-hidden="true">/ d1</span>
-      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="dv-d1">$00000006</span><span class="mr-tag">divisor</span></span>
+      <span class="mreg"><span class="mr-name">d1</span><span class="mr-val" id="dv-d1">$00000006</span><span class="mr-tag">divisor</span><span class="mr-dec" id="dv-d1d">.w = 6</span></span>
     </div>
     <p class="msim-note" id="dv-note" aria-live="polite">100 / 6 = 16 remainder 4, so d0 becomes $0004 0010: remainder $0004 in the high word, quotient $0010 in the low word. Try divisor 0 (divide-by-zero exception) or a dividend like $00200000 with divisor 1 (quotient too big, overflow).</p>
   </div>
@@ -2213,6 +2216,7 @@ function expandAll(btn){
   var dst=document.getElementById('fs-dst'), src=document.getElementById('fs-src');
   if(!dst) return;
   var d0e=document.getElementById('fs-d0'), d1e=document.getElementById('fs-d1');
+  var d0d=document.getElementById('fs-d0d'), d1d=document.getElementById('fs-d1d');
   var instr=document.getElementById('fs-instr'), note=document.getElementById('fs-note');
   var srcreg=document.getElementById('fs-srcreg'), srclab=document.getElementById('fs-srclab');
   var run=document.getElementById('fs-run'), reset=document.getElementById('fs-reset');
@@ -2235,6 +2239,16 @@ function expandAll(btn){
     el.value=v; return parseInt(v||'0',16)>>>0;
   }
   function isBin(){ return !!BIN[op]; }
+  // the decimal reading each operand is in force for (LEARNING.md BASE PAIRING, decision 2).
+  // AND/OR/EOR/NOT make a BIT PATTERN rather than a quantity, so they get no decimal at all;
+  // otherwise show both readings wherever they diverge, which for CMP is the whole lesson: the
+  // branch that follows reads C for the unsigned answer and N/V for the signed one.
+  function decW(n){
+    var u=n&0xFFFF, sv=s16(u);
+    if(op==='and'||op==='or'||op==='eor'||op==='not') return '';
+    if(op==='neg') return sv<0 ? '.w = '+sv+' signed' : '.w = '+u;
+    return sv<0 ? '.w = '+u+' unsigned, '+sv+' signed' : '.w = '+u;
+  }
   function sync(){
     instr.textContent=SYN[op];
     run.textContent='Run '+SYN[op];
@@ -2242,6 +2256,7 @@ function expandAll(btn){
     srclab.style.display = isBin() ? '' : 'none';
     src.style.display = isBin() ? '' : 'none';
     d0e.textContent=hex8(d0); d1e.textContent=hex8(d1);
+    d0d.textContent=decW(d0); d1d.textContent=decW(d1);
   }
   function run1(){
     d0=readIn(dst); if(isBin()) d1=readIn(src);
@@ -2261,6 +2276,8 @@ function expandAll(btn){
     N=((nz&0x8000)!==0); Z=(nz===0);
     if(wrote){ d0=((d0&0xFFFF0000)>>>0 | out)>>>0; }
     d0e.textContent=hex8(d0);
+    d0d.textContent=decW(d0);
+    if(isBin()){ d1e.textContent=hex8(d1); d1d.textContent=decW(d1); }
     d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
     // flags display
     if(touchX){ setFlag(fx,'X',null,C?1:0); } else { setFlag(fx,'X','unaff'); }
@@ -2336,7 +2353,7 @@ function expandAll(btn){
 /* ADDQ toy: the 1-to-8 range wall */
 (function(){
   var inp=document.getElementById('aq-n'); if(!inp) return;
-  var d0e=document.getElementById('aq-d0'), run=document.getElementById('aq-run'), reset=document.getElementById('aq-reset'), note=document.getElementById('aq-note'), instr=document.getElementById('aq-instr');
+  var d0e=document.getElementById('aq-d0'), d0d=document.getElementById('aq-d0d'), run=document.getElementById('aq-run'), reset=document.getElementById('aq-reset'), note=document.getElementById('aq-note'), instr=document.getElementById('aq-instr');
   var D0=0x00000032, d0=D0;
   function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
   inp.addEventListener('input',function(){ var t=(inp.value||'').replace(/[^0-9]/g,''); instr.textContent='addq.w #'+(t||'?')+',d0'; });
@@ -2344,19 +2361,20 @@ function expandAll(btn){
     var n=parseInt((inp.value||'').replace(/[^0-9]/g,'')||'0',10);
     if(n>=1 && n<=8){
       var lo=((d0&0xFFFF)+n)&0xFFFF; d0=((d0&0xFFFF0000)>>>0 | lo)>>>0;
-      d0e.textContent=hex8(d0); d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+      d0e.textContent=hex8(d0); d0d.textContent='.w = '+(d0&0xFFFF);
+      d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
       note.textContent='addq.w #'+n+',d0 added '+n+' in a single 2-byte opcode. d0’s low word is now $'+lo.toString(16).toUpperCase().padStart(4,'0')+'.';
     } else {
       note.textContent='#'+(isNaN(n)?'?':n)+' is outside the quick range 1 to 8, so this cannot be an ADDQ at all. The assembler falls back to ADDI (4 bytes, 8 cycles). The quick field stops at 8.';
     }
   });
-  reset.addEventListener('click',function(){ d0=D0; inp.value='1'; instr.textContent='addq.w #1,d0'; d0e.textContent=hex8(d0); note.textContent='Reset. d0 = $0032 (50). Add 1 to 8, or try 9 to hit the range wall.'; });
+  reset.addEventListener('click',function(){ d0=D0; inp.value='1'; instr.textContent='addq.w #1,d0'; d0e.textContent=hex8(d0); d0d.textContent='.w = '+(d0&0xFFFF); note.textContent='Reset. d0 = $0032 (50). Add 1 to 8, or try 9 to hit the range wall.'; });
 })();
 
 /* NEG toy: two's-complement flip, X/C for nonzero, V for $8000 */
 (function(){
   var src=document.getElementById('ng-src'); if(!src) return;
-  var d0e=document.getElementById('ng-d0'), run=document.getElementById('ng-run'), reset=document.getElementById('ng-reset'), note=document.getElementById('ng-note');
+  var d0e=document.getElementById('ng-d0'), d0d=document.getElementById('ng-d0d'), run=document.getElementById('ng-run'), reset=document.getElementById('ng-reset'), note=document.getElementById('ng-note');
   var fx=document.getElementById('ng-fx'), fn=document.getElementById('ng-fn'), fz=document.getElementById('ng-fz'), fv=document.getElementById('ng-fv'), fc=document.getElementById('ng-fc');
   var D0=0x00000005, d0=D0;
   function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
@@ -2369,10 +2387,11 @@ function expandAll(btn){
     var N=(res&0x8000)!==0, Z=res===0, V=a===0x8000, C=a!==0;
     sf(fx,'X',C); sf(fn,'N',N); sf(fz,'Z',Z); sf(fv,'V',V); sf(fc,'C',C);
     var sgn=res>=0x8000?res-0x10000:res;
+    d0d.textContent = sgn<0 ? '.w = '+sgn+' signed' : '.w = '+res;   // NEG's lesson IS the signed flip
     note.textContent='neg.w d0: 0 - $'+a.toString(16).toUpperCase().padStart(4,'0')+' = $'+res.toString(16).toUpperCase().padStart(4,'0')+' ('+sgn+' signed). '
       +(C?'X and C set (input nonzero). ':'X and C clear (input was zero). ')+(V?'V set: negating $8000 overflows a signed word.':'');
   });
-  reset.addEventListener('click',function(){ d0=D0; src.value='0005'; d0e.textContent=hex8(d0);
+  reset.addEventListener('click',function(){ d0=D0; src.value='0005'; d0e.textContent=hex8(d0); d0d.textContent='.w = 5';
     [['ng-fx','X'],['ng-fn','N'],['ng-fz','Z'],['ng-fv','V'],['ng-fc','C']].forEach(function(p){ var e=document.getElementById(p[0]); e.textContent=p[1]+' -'; e.className='sfchip'; });
     note.textContent='Reset. d0 = $0005 (5). Negate it, then try $8000 and $0000.'; });
 })();
@@ -2381,37 +2400,47 @@ function expandAll(btn){
 (function(){
   var ai=document.getElementById('mu-a'); if(!ai) return;
   var bi=document.getElementById('mu-b'), d0e=document.getElementById('mu-d0'), d1e=document.getElementById('mu-d1'),
+      d0d=document.getElementById('mu-d0d'), d1d=document.getElementById('mu-d1d'),
       run=document.getElementById('mu-run'), reset=document.getElementById('mu-reset'), note=document.getElementById('mu-note');
   function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
   function rd(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); el.value=v; return parseInt(v||'0',16)&0xFFFF; }
   run.addEventListener('click',function(){
     var a=rd(ai), b=rd(bi), p=(a*b)>>>0;
     d0e.textContent=hex8(p); d1e.textContent=hex8(b);
+    // the size label carries MULU's lesson: two .w factors go in, a .l product comes out
+    d0d.textContent='.l = '+p; d1d.textContent='.w = '+b;
     d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
     note.textContent='mulu.w d1,d0: $'+a.toString(16).toUpperCase().padStart(4,'0')+' x $'+b.toString(16).toUpperCase().padStart(4,'0')+' = '+hex8(p)+' ('+p+'). '
       +(p>0xFFFF?'The product needs more than 16 bits, so it fills the WHOLE register; read d0 as a long or you lose the top half.':'This one happens to fit the low word, but many products do not, which is why the destination is a full long.');
   });
-  reset.addEventListener('click',function(){ ai.value='0140'; bi.value='0040'; d0e.textContent='$00000140'; d1e.textContent='$00000040'; note.textContent='Reset. Try $FFFF x $FFFF to watch the product fill all 32 bits.'; });
+  reset.addEventListener('click',function(){ ai.value='0140'; bi.value='0040'; d0e.textContent='$00000140'; d1e.textContent='$00000040';
+    d0d.textContent='.w = 320'; d1d.textContent='.w = 64'; note.textContent='Reset. Try $FFFF x $FFFF to watch the product fill all 32 bits.'; });
 })();
 
 /* DIVU toy: quotient low / remainder high, plus the divide-by-zero and overflow traps */
 (function(){
   var ai=document.getElementById('dv-a'); if(!ai) return;
   var bi=document.getElementById('dv-b'), d0e=document.getElementById('dv-d0'), d1e=document.getElementById('dv-d1'),
+      d0d=document.getElementById('dv-d0d'), d1d=document.getElementById('dv-d1d'),
       run=document.getElementById('dv-run'), reset=document.getElementById('dv-reset'), note=document.getElementById('dv-note');
   function hex8(n){ return '$'+(n>>>0).toString(16).toUpperCase().padStart(8,'0'); }
   function rdL(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,8).toUpperCase(); el.value=v; return parseInt(v||'0',16)>>>0; }
   function rdW(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,4).toUpperCase(); el.value=v; return parseInt(v||'0',16)&0xFFFF; }
   run.addEventListener('click',function(){
-    var a=rdL(ai), b=rdW(bi); d1e.textContent=hex8(b);
+    var a=rdL(ai), b=rdW(bi); d1e.textContent=hex8(b); d1d.textContent='.w = '+b;
     if(b===0){ note.textContent='divu.w d1,d0 with a zero divisor does not set a flag: it takes the ZERO-DIVIDE EXCEPTION (vector 5) and jumps to the error handler mid-instruction. Guard the divisor against zero before dividing.'; return; }
     var q=Math.floor(a/b), r=a%b;
     if(q>0xFFFF){ note.textContent='divu.w: the quotient '+q+' ($'+q.toString(16).toUpperCase()+') will not fit 16 bits, so DIVU sets V, leaves d0 UNCHANGED at '+hex8(a)+', and does NOT trap. You have to test V yourself or you will use a stale value.'; return; }
     var res=(((r&0xFFFF)<<16)>>>0 | (q&0xFFFF))>>>0;
-    d0e.textContent=hex8(res); d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
+    d0e.textContent=hex8(res);
+    // NEVER one decimal here: d0 now holds TWO numbers packed into one register, so reading
+    // $00040010 as 262160 would be arithmetic the instruction never computed.
+    d0d.textContent='quotient '+q+', remainder '+r;
+    d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
     note.textContent='divu.w d1,d0: '+a+' / '+b+' = '+q+' remainder '+r+'. d0 becomes '+hex8(res)+': remainder $'+(r&0xFFFF).toString(16).toUpperCase().padStart(4,'0')+' in the high word, quotient $'+(q&0xFFFF).toString(16).toUpperCase().padStart(4,'0')+' in the low word.';
   });
-  reset.addEventListener('click',function(){ ai.value='00000064'; bi.value='0006'; d0e.textContent='$00000064'; d1e.textContent='$00000006'; note.textContent='Reset. 100 / 6. Try divisor 0 for the exception, or dividend $00200000 with divisor 1 for overflow.'; });
+  reset.addEventListener('click',function(){ ai.value='00000064'; bi.value='0006'; d0e.textContent='$00000064'; d1e.textContent='$00000006';
+    d0d.textContent='.l = 100'; d1d.textContent='.w = 6'; note.textContent='Reset. 100 / 6. Try divisor 0 for the exception, or dividend $00200000 with divisor 1 for overflow.'; });
 })();
 
 /* Bitwise visualizer: AND / OR / EOR / NOT shown on the actual bits */
