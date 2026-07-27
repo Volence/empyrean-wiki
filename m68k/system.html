@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>68000: System</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E⚙️%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+
+/* ============================================================
+   Page-specific styles: Instructions - System
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+details.refbox summary::-webkit-details-marker{display:none;}
+
+/* mini-index: chip row of this page's mnemonics */
+nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
+nav.mini a{font-family:var(--mono); font-size:.76rem; letter-spacing:.02em;
+  color:var(--ink); text-decoration:none; border:1px solid var(--accent);
+  border-radius:3px; padding:.22rem .55rem; background:rgba(68,102,238,.1);}
+nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outline:none;}
+.mini-h{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); width:100%; margin:.5rem 0 -.1rem;}
+
+/* instruction entry header: mnemonic + syntax */
+.instr{margin:2.2rem 0 0; padding-top:.2rem;}
+.instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
+.mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
+.syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+.mnx{font-size:.82rem; color:var(--ink); font-style:italic; font-weight:normal;}
+
+/* flags indicator */
+.flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
+.flags .fl-label{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin-right:.3rem;}
+.flags .fchip{display:flex; flex-direction:column; align-items:center; gap:.15rem;
+  width:2.1rem; padding:.25rem 0; border-radius:3px; border:1px solid var(--line);
+  font-family:var(--mono); font-size:.7rem; cursor:help;}
+.flags .fchip:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.flags .fchip .fl-name{font-weight:bold;}
+.flags .fchip .fl-state{font-size:.55rem; letter-spacing:.05em; color:var(--dim);
+  text-transform:uppercase;}
+.flags .fchip.f-set{border-color:var(--gold); background:rgba(238,170,0,.14); color:var(--gold);}
+.flags .fchip.f-set .fl-state{color:var(--gold);}
+.flags .fchip.f-clear{border-color:#CC66AA; background:rgba(204,102,170,.12); color:#CC66AA;}
+.flags .fchip.f-clear .fl-state{color:#CC66AA;}
+.flags .fchip.f-none{border-color:var(--line); color:var(--dim); opacity:.6;}
+.flags .fl-caption{font-family:var(--mono); font-size:.68rem; color:var(--dim);
+  margin-left:.3rem;}
+
+/* gotcha note */
+
+/* instruction cost, operands, encoding */
+.cost,.operands{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:.6rem 0; max-width:42rem;}
+.cost .cchip{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent);
+  color:var(--ink); background:rgba(68,102,238,.14); border-radius:3px; padding:.1rem .45rem;
+  font-variant-numeric:tabular-nums;}
+.cost .cnote,.operands .onote{font-size:.8rem; color:var(--dim); max-width:38rem;}
+.cost .cctx{font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.03em;}
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* operand legality grid: which addressing modes each side accepts */
+.opgrid{margin:.6rem 0 .2rem; max-width:42rem;}
+.og-row{display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; margin:.3rem 0;}
+.og-side{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); min-width:6.4rem;}
+.og{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent); border-radius:3px;
+  padding:.12rem .45rem; background:rgba(68,102,238,.14); color:var(--ink);}
+.og.no{border-color:var(--line); background:transparent; color:var(--dim); opacity:.55;
+  text-decoration:line-through;}
+.og-note{font-size:.78rem; color:var(--dim); max-width:40rem; margin:.35rem 0 .6rem;}
+
+/* cheaper cousins: the see-also that names the better tool */
+.kin{border-left:3px solid var(--accent); background:rgba(68,102,238,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.kin .k-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.2rem;}
+
+/* a data VALUE (contents of a register/memory) vs a bare address */
+code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em; font-weight:600;}
+
+/* before/after simulator shell (shared by the flags demo and the per-instruction toys) */
+.movesim{display:flex; flex-direction:column; gap:.8rem;}
+.msim-instr{font-family:var(--mono); display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;}
+.msim-instr code{font-size:1rem; color:var(--gold); background:var(--code-bg);
+  border:1px solid var(--line); border-radius:3px; padding:.2rem .55rem;}
+.msim-instr span{font-size:.72rem; color:var(--dim); max-width:32rem;}
+.msim-ctrl{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.75rem;}
+.msim-ctrl label{color:var(--dim);}
+.msim-ctrl input{font-family:var(--mono); font-size:.85rem; width:4.5rem; background:var(--panel);
+  color:var(--gold); border:1px solid var(--line); border-radius:3px; padding:.25rem .4rem; text-transform:uppercase;}
+.msim-ctrl input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-ctrl button{font-family:var(--mono); font-size:.72rem; padding:.3rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.msim-ctrl button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-regs{display:flex; flex-wrap:wrap; align-items:center; gap:1rem;}
+.mreg{display:inline-flex; flex-direction:column; gap:.2rem; align-items:center; border:1px solid var(--line);
+  border-radius:4px; padding:.5rem .8rem; background:var(--panel2); min-width:5.5rem;}
+.mr-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
+.mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.mr-val b{color:#CC66AA; font-weight:normal;}
+.mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.mr-dec{font-family:var(--mono); font-size:.62rem; letter-spacing:.04em; color:var(--dim);
+  text-align:center; line-height:1.35; max-width:16ch;}   /* the paired decimal reading:
+  not uppercase like .mr-tag, because it carries words ("signed") and a number meant to be read */
+
+/* ---- status-register explorer (section 1) ------------------------------ */
+.flagtog{display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;}
+.flagtog button{font-family:var(--mono); font-size:.8rem; min-width:3.4rem; padding:.3rem .5rem;
+  cursor:pointer; border-radius:3px; background:var(--panel); color:var(--dim); border:1px solid var(--line);}
+.flagtog button[aria-pressed="true"]{background:rgba(238,170,0,.18); border-color:var(--gold); color:var(--gold);}
+.flagtog button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.flagtog button.fixed{cursor:default; opacity:.45; min-width:2.1rem;}
+/* the two halves of the register are the whole point, so they are drawn apart */
+.srhalf{border:1px solid var(--line); border-radius:4px; padding:.5rem .6rem; background:var(--panel2);}
+.srhalf + .srhalf{margin-top:.5rem;}
+.srhl{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); display:block; margin-bottom:.4rem;}
+.srhalf.sys{border-color:var(--gold);}
+.srread{display:flex; flex-wrap:wrap; gap:1rem; align-items:baseline; margin-top:.6rem;}
+.srdec{font-family:var(--mono); font-size:.78rem; line-height:1.7; color:var(--ink);}
+.srdec b{color:var(--gold); font-weight:600;}
+.srmask{font-family:var(--mono); font-size:.78rem; color:var(--learn);}
+
+/* ---- absence chart (section 2): the page's thesis, drawn ---------------- */
+.absw{overflow-x:auto;}
+table.abs{border-collapse:collapse; font-family:var(--mono); font-size:.72rem; min-width:34rem;}
+table.abs th{font-weight:400; color:var(--dim); font-size:.58rem; letter-spacing:.08em;
+  text-transform:uppercase; padding:.3rem .45rem; text-align:center; border-bottom:1px solid var(--line);}
+table.abs th.rh{text-align:left; min-width:8.5rem;}
+table.abs td{padding:.28rem .45rem; text-align:center; border-bottom:1px solid rgba(68,68,102,.4);}
+table.abs td.rh{text-align:left; color:var(--ink); white-space:nowrap;}
+/* a zero is deliberately quiet: the eye should land on the exceptions */
+table.abs td.z{color:#444466;}
+table.abs td.hit{color:var(--gold); background:rgba(238,170,0,.13); font-weight:600;}
+table.abs tr.grp td{background:var(--panel); color:var(--gold); text-align:left;
+  font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; padding:.4rem .45rem;}
+table.abs th.soft{color:#8888aa;}
+.abskey{display:flex; flex-wrap:wrap; gap:1rem; margin-top:.6rem; font-size:.72rem; color:var(--dim);}
+.abskey b{color:var(--gold);}
+.mr-arrow{font-family:var(--mono); font-size:.68rem; color:var(--accent); letter-spacing:.08em;}
+.msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
+.mr-flash{background:transparent;}
+@media (prefers-reduced-motion: no-preference){
+  .mr-flash{animation:mrflash .5s ease;}
+  @keyframes mrflash{from{background:rgba(68,102,238,.4);}to{background:transparent;}}
+}
+
+/* live flag readout inside a simulator */
+.msim-fl{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; font-family:var(--mono); font-size:.72rem;}
+.sfchip{border:1px solid var(--line); border-radius:3px; padding:.15rem .5rem; color:var(--dim);}
+.sfchip.on{border-color:var(--gold); color:var(--gold); background:rgba(238,170,0,.14);}
+.sfchip.forced{border-color:#CC66AA; color:#CC66AA;}
+.sfchip.unaff{opacity:.55;}
+.msim-cost{font-family:var(--mono); font-size:.72rem; color:var(--dim); margin:0; max-width:38rem;}
+
+/* size + instruction pickers (reused button-group look) */
+.szgrp{display:inline-flex; gap:.25rem; flex-wrap:wrap;}
+.msim-ctrl .szbtn[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick{display:flex; flex-wrap:wrap; gap:.3rem; margin:.1rem 0;}
+.fpick button{font-family:var(--mono); font-size:.74rem; padding:.25rem .55rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.fpick button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+/* this page's fallback captions run long; sentence case reads better than the
+   theme's small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / 68000 ASSEMBLY / SYSTEM</p>
+  <p class="eyebrow">68000 Assembly</p>
+  <h1>Instructions: System</h1>
+  <p class="sub">These are the instructions that talk to the machine rather than to your data: halting
+  the CPU, resetting the hardware, switching between privilege levels, and deliberately causing an
+  exception. One of them is in every Genesis game ever written. Most of the rest appear <b>zero</b>
+  times in any of the disassemblies, and that is not a gap in the games, it is a fact about what a
+  cartridge console is. This page is the last of the 68000 instruction reference, and it is mostly an
+  argument: you learn what a games console actually is by seeing which instructions it makes
+  pointless.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>The one you will actually meet</a>
+  <a href="#s2"><span class="n">2</span>What the rest of this page is about</a>
+  <a href="#s3"><span class="n">3</span>Nobody here needs scratch paper</a>
+  <a href="#s4"><span class="n">4</span>No operating system to complain to</a>
+  <a href="#s5"><span class="n">5</span>The two that arrived late</a>
+  <a href="#s6"><span class="n">6</span>NOP, the exception that is everywhere</a>
+</nav>
+
+<nav class="mini" aria-label="Mini-index of this page's instructions">
+  <span class="mini-h">Privilege</span>
+  <a href="#movesr">MOVE SR</a><a href="#moveccr">MOVE CCR</a><a href="#moveusp">MOVE USP</a>
+  <span class="mini-h">Frames</span>
+  <a href="#link">LINK</a><a href="#unlk">UNLK</a><a href="#stop">STOP</a>
+  <span class="mini-h">Operating system</span>
+  <a href="#chk">CHK</a><a href="#trapv">TRAPV</a><a href="#reset">RESET</a><a href="#illegal">ILLEGAL</a>
+  <span class="mini-h">Late arrivals</span>
+  <a href="#tas">TAS</a><a href="#trap">TRAP</a>
+  <span class="mini-h">Everywhere</span>
+  <a href="#nop">NOP</a>
+</nav>
+
+<main>
+
+<h2 id="s1">1 &middot; The one you will actually meet</h2>
+
+<p>Almost every instruction on this page is one you will never see in a Genesis game. This first one
+is the opposite: it is in all of them. Counted across seven codebases, <code>move</code> to or from
+the status register appears 4 times in Sonic 1, 47 in Sonic 2, 111 in Sonic 3 and Knuckles, 35 in the
+Sonic Hack engine, 13 in Aeon, and 48 in MarkeyJester's homebrew Mega Drive operating system. It is
+ordinary, everyday code, and it is worth understanding before anything else here.</p>
+
+<p>What it touches is the <span class="term" data-def="A 16-bit register holding the CPU&#39;s own state. Its low byte is the condition codes (X N Z V C) that ordinary instructions set; its high byte is the supervisor half, holding the trace bit, the supervisor bit, and the interrupt mask.">status register</span>,
+and that register has two halves that behave completely differently. You already know the low half:
+it is the condition codes, <code>X N Z V C</code>, the flags that <code>cmp</code> and <code>add</code>
+set and that <code>beq</code> reads. Every earlier page on this track has been quietly working with
+it. The high half you have not met, and it is where this page lives.</p>
+
+<figure class="diagram">
+  <div class="movesim" id="srsim">
+    <div class="msim-instr"><code id="sr-instr">move&nbsp;&nbsp;#$2700,sr</code>
+      <span>Click any named bit to flip it, or load a real line of code. Nothing here runs an
+      instruction: you are looking at one register and reading what its bits currently mean.</span></div>
+
+    <div class="srhalf sys">
+      <span class="srhl">System byte, bits 15 to 8 &middot; writing this is privileged</span>
+      <div class="flagtog" role="group" aria-label="System byte bits">
+        <button type="button" id="sr-T" aria-pressed="false">T 0</button>
+        <button type="button" class="fixed" tabindex="-1" aria-hidden="true">0</button>
+        <button type="button" id="sr-S" aria-pressed="true">S 1</button>
+        <button type="button" class="fixed" tabindex="-1" aria-hidden="true">0</button>
+        <button type="button" class="fixed" tabindex="-1" aria-hidden="true">0</button>
+        <button type="button" id="sr-I2" aria-pressed="true">I2 1</button>
+        <button type="button" id="sr-I1" aria-pressed="true">I1 1</button>
+        <button type="button" id="sr-I0" aria-pressed="true">I0 1</button>
+      </div>
+    </div>
+
+    <div class="srhalf">
+      <span class="srhl">User byte, bits 7 to 0 &middot; the condition codes you already know</span>
+      <div class="flagtog" role="group" aria-label="User byte bits">
+        <button type="button" class="fixed" tabindex="-1" aria-hidden="true">0</button>
+        <button type="button" class="fixed" tabindex="-1" aria-hidden="true">0</button>
+        <button type="button" class="fixed" tabindex="-1" aria-hidden="true">0</button>
+        <button type="button" id="sr-X" aria-pressed="false">X 0</button>
+        <button type="button" id="sr-N" aria-pressed="false">N 0</button>
+        <button type="button" id="sr-Z" aria-pressed="false">Z 0</button>
+        <button type="button" id="sr-V" aria-pressed="false">V 0</button>
+        <button type="button" id="sr-C" aria-pressed="false">C 0</button>
+      </div>
+    </div>
+
+    <div class="srread">
+      <span class="mreg"><span class="mr-name">sr</span><span class="mr-val" id="sr-hex">$2700</span><span class="mr-dec" id="sr-bin">0010 0111 0000 0000</span></span>
+      <span class="srdec" id="sr-words">Trace <b>off</b>. Supervisor mode <b>on</b>.<br>Interrupt mask <b>7</b>.</span>
+    </div>
+    <p class="srmask" id="sr-maskline">The three mask bits are one number, not three switches: I2 I1 I0 read as 111 in binary, which is <b>7</b>. At 7 the CPU ignores every interrupt level from 1 to 7, so nothing gets through.</p>
+
+    <div class="msim-ctrl">
+      <label>Load a real line:</label>
+      <span class="fpick">
+        <button type="button" class="sr-pre" data-v="9984">move #$2700,sr</button>
+        <button type="button" class="sr-pre" data-v="8192">move #$2000,sr</button>
+        <button type="button" class="sr-pre" data-v="9472">stop #$2500</button>
+        <button type="button" class="sr-pre" data-v="0">move #$0000,sr</button>
+      </span>
+      <button type="button" id="sr-reset">Reset</button>
+    </div>
+    <p class="msim-note" id="sr-note" aria-live="polite">This is the value Sonic 2 writes into the status register on the fourth instruction after power-on. Supervisor mode on, tracing off, and the interrupt mask slammed to 7 so nothing can interrupt the boot sequence before the hardware is ready.</p>
+  </div>
+  <figcaption>The 68000 status register, both halves. Static fallback: the low byte holds the condition
+  codes X N Z V C at bits 4 down to 0; the high byte holds the trace bit T at 15, the supervisor bit S
+  at 13, and a three-bit interrupt mask at bits 10 to 8 which reads as a single number from 0 to 7.
+  Bits 14, 12, 11, 7, 6 and 5 are unused and always read 0. The boot value $2700 means supervisor on,
+  tracing off, interrupt mask 7; $2000 is the same with the mask at 0, which lets every interrupt
+  through.</figcaption>
+</figure>
+
+
+<p>The three instructions in this section are the ones that read and write those two halves. They
+are also where the 68000 gets asymmetric in a way worth knowing about, because the two halves are
+not equally protected.</p>
+
+<div class="teach"><span class="t-tag">Teach</span>
+<p><b>Why this page states no cycle counts.</b> Every other instruction page on this track gives you
+timings. This one does not, and that is deliberate rather than an oversight: the sources we trust for
+68000 timing do not cover these instructions, so any number here would be one we could not stand
+behind. Byte sizes are given, because those follow directly from how the instruction is encoded. It
+matters less than it would elsewhere, because nothing on this page sits on a hot path. That is the
+whole point of the page.</p></div>
+
+<details class="refbox">
+  <summary>Why a CPU has two privilege levels at all, and why this console never uses the feature</summary>
+  <div class="enc-body">
+  <p>The 68000 has two modes because it was built for machines where the CPU is shared. On a workstation
+  or an Amiga, an operating system is in charge and the programs it runs are not trusted: one of them
+  crashing, or writing over another one's memory, or switching interrupts off and never switching them
+  back on, must not be able to take the machine down. So the CPU offers a lower gear. In user mode the
+  dangerous instructions are simply refused, and refusing them raises an exception, which hands control
+  back to the operating system, which gets to decide what to do about it.</p>
+  <p>That is the entire purpose of the S bit in the status register, and of the separate user stack
+  pointer, and of the word "privileged" appearing on half the instructions on this page. It is a
+  mechanism for not trusting the program that is running.</p>
+  <p><b>A Genesis cartridge is the trusted program.</b> It boots in supervisor mode, it is the only
+  program on the machine, and there is nothing above it to hand control back to. So it stays in
+  supervisor mode from power-on until the console is switched off, every instruction is permitted to it
+  at all times, and the second gear is never engaged. You can watch this in the
+  <a href="#s1">explorer above</a>: clear the S bit and the CPU is in user mode, which on this hardware
+  is a state nothing ever deliberately enters.</p>
+  <p>This is worth holding on to, because it explains most of the rest of the page in advance. An
+  instruction whose job is to report a problem upwards has nowhere to report to. An instruction that
+  asks permission has nobody to ask. The privilege system is not broken here and it is not unused
+  because anyone dislikes it. There is simply only one program, and it is already trusted.</p>
+  </div>
+</details>
+
+<div class="instr" id="movesr">
+  <h3><span class="mn">MOVE SR</span> <span class="mnx">Move Status Register</span> <span class="syn">MOVE SR,&lt;ea&gt; &nbsp;|&nbsp; MOVE &lt;ea&gt;,SR &nbsp;<span style="color:var(--dim);">(word only)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVE SR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none" aria-label="X unaffected reading, overwritten writing"><span class="fl-name">X</span><span class="fl-state">see note</span></span>
+    <span class="fchip f-none" aria-label="N unaffected reading, overwritten writing"><span class="fl-name">N</span><span class="fl-state">see note</span></span>
+    <span class="fchip f-none" aria-label="Z unaffected reading, overwritten writing"><span class="fl-name">Z</span><span class="fl-state">see note</span></span>
+    <span class="fchip f-none" aria-label="V unaffected reading, overwritten writing"><span class="fl-name">V</span><span class="fl-state">see note</span></span>
+    <span class="fchip f-none" aria-label="C unaffected reading, overwritten writing"><span class="fl-name">C</span><span class="fl-state">see note</span></span>
+    <span class="fl-caption">Reading the SR leaves the flags alone. WRITING it replaces all five, because the flags live inside the thing you just overwrote</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of MOVE SR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cchip">4 bytes with an immediate</span>
+    <span class="cctx">register or immediate forms; a memory destination adds its own address words.</span>
+  </div>
+  <p>Reading is the safe direction and the common one. <code>move sr,d0</code> copies the whole
+  16-bit register into a data register so you can put it back later, which is what code does when it
+  wants to change one thing about the machine's state and then undo it.</p>
+  <p>Writing is <span class="term" data-def="An instruction the 68000 will only execute in supervisor mode. Attempting one in user mode raises an exception instead. STOP, RESET, MOVE to SR and MOVE USP are all privileged.">privileged</span>,
+  and this is the single most useful thing on this page to actually remember: <code>move #$2700,sr</code>
+  is how Genesis code turns interrupts off, and <code>move #$2000,sr</code> is how it turns them back
+  on. That is what those 111 uses in Sonic 3 and Knuckles mostly are. When you see either line in a
+  disassembly, read it as "no interruptions from here" and "interruptions allowed again".</p>
+  <p>Here it is at the very end of Sonic 2's boot sequence, in code Sega distributed rather than
+  anything a hacker wrote. The line before it clears every register; the line after it jumps into the
+  game:</p>
+<pre>	move.w	d0,(a2)
+	movem.l	(a6),d0-a6	<span class="c">; clear all registers</span>
+	move	#$2700,sr	<span class="c">; set the sr</span></pre>
+  <span class="src">s2disasm/s2.asm:271-273</span>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  On a 68000, <b>reading</b> the SR is not privileged, which looks like an oversight and is one. User
+  code can read the supervisor bit and find out whether it is being supervised. Motorola closed that
+  hole on the 68010 by making <code>MOVE from SR</code> privileged too, which then created a new
+  problem and a new instruction; see <a href="#moveccr">MOVE to CCR</a> below.
+  </div>
+</div>
+
+<div class="instr" id="moveccr">
+  <h3><span class="mn">MOVE to CCR</span> <span class="mnx">Move to Condition Codes</span> <span class="syn">MOVE &lt;ea&gt;,CCR &nbsp;<span style="color:var(--dim);">(word source, low byte used)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVE to CCR">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set"><span class="fl-name">X</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">C</span><span class="fl-state">written</span></span>
+    <span class="fl-caption">All five come straight from the low byte of the source. This instruction exists to set flags without computing anything</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of MOVE to CCR">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cchip">4 bytes with an immediate</span>
+    <span class="cctx">writes only the low byte of the status register, so it is not privileged.</span>
+  </div>
+  <p>This is the unprivileged way to write flags: it touches the user half of the status register and
+  leaves the system half alone, so user code is allowed to do it. Games use it to <em>restore</em>
+  flags they saved earlier, and the best example in any of the disassemblies is the Kosinski
+  decompressor, which has to carry a carry bit across code that would destroy it:</p>
+<pre>	move.b	(a0)+,(sp)
+	move.w	(sp),d5	<span class="c">; get next description field if needed</span>
+	moveq	#$F,d4	<span class="c">; reset bit counter</span>
+
+.chkbit:
+	move	d6,ccr
+	bcc.s	Kos_RLE</pre>
+  <span class="src">s2disasm/s2.asm:2596-2602</span>
+  <p>Read the pairing rather than the single line: somewhere earlier this routine did
+  <code>move sr,d6</code> to stash the flags, and here it does <code>move d6,ccr</code> to put them
+  back, and only then does <code>bcc</code> ask its question. The instruction that answers is three
+  lines away from the instruction that set up the answer. That is a protocol, not a statement.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  <b>There is no MOVE <em>from</em> CCR on a 68000.</b> You can write the condition codes on their own,
+  but you cannot read them on their own: to read them you must read the whole status register, and on
+  later CPUs that became privileged. Motorola noticed and added the missing instruction on the 68010,
+  and the reason is worth reading in full because it explains both halves of the asymmetry: making
+  <code>MOVE from SR</code> privileged closed the loophole above, but it also left user code with no
+  way to see its own flags, so <code>MOVE from CCR</code> was invented to give that back. Our
+  disassemblies show the asymmetry without needing the manual: across Sonic 1, 2 and 3 and Knuckles
+  there are 15 writes to CCR and not one read, because a read would not assemble.
+  </div>
+</div>
+
+<div class="instr" id="moveusp">
+  <h3><span class="mn">MOVE USP</span> <span class="mnx">Move User Stack Pointer</span> <span class="syn">MOVE.l An,USP &nbsp;|&nbsp; MOVE.l USP,An &nbsp;<span style="color:var(--dim);">(privileged)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by MOVE USP">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">Moves an address, touches no flags</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of MOVE USP">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">always; both directions.</span>
+  </div>
+  <p>The 68000 has two stack pointers, and <code>a7</code> means whichever one is currently in force:
+  the supervisor stack pointer while the S bit is set, the user stack pointer while it is clear. Since
+  a Genesis game never leaves supervisor mode, it never uses the user stack pointer for anything, and
+  the only way to touch it at all is this instruction.</p>
+  <p>Which makes what the disassemblies contain almost funny. There are four uses of
+  <code>MOVE USP</code> across every codebase measured, and they are all the same line:</p>
+<pre>	move.l	a6,usp	<span class="c">; set usp to $0</span></pre>
+  <span class="src">s2disasm/s2.asm:218</span>
+  <p>The identical instruction, with the identical comment, appears in Sonic 1, in Sonic 2, in both
+  Sonic 3 and Knuckles trees, and in the Sonic Hack engine. It is boot-time hygiene inherited by
+  copying: <code>a6</code> holds zero at that moment, so the line parks the unused stack pointer at
+  address 0 and nothing ever reads it again. Every single use is a write; nobody has ever needed to
+  read it back.</p>
+</div>
+
+<h2 id="s2">2 &middot; What the rest of this page is about</h2>
+
+<p>Everything from here on is an instruction that the 68000 offers and that Genesis games, almost
+without exception, refuse. Rather than assert that, here it is counted. Seven codebases: the three
+original Sonic disassemblies, the Sonic Clean Engine and the Sonic Hack engine that descend from them,
+Aeon, and MarkeyJester's homebrew Mega Drive operating system, which is on the list precisely because
+an operating system is the one thing on this platform that would have reason to use these.</p>
+
+<figure class="diagram">
+  <div class="absw">
+  <table class="abs">
+    <tr><th class="rh">Instruction</th><th>Sonic 1</th><th>Sonic 2</th><th>S3&amp;K</th><th class="soft">S.C.E.</th><th class="soft">Sonic Hack</th><th class="soft">Aeon</th><th class="soft">MD-OS</th><th class="rh">&nbsp;</th></tr>
+    <tr class="grp"><td colspan="9">Used constantly. This is section 1.</td></tr>
+    <tr><td class="rh">MOVE SR</td><td class="hit">4</td><td class="hit">47</td><td class="hit">111</td><td class="hit">14</td><td class="hit">35</td><td class="hit">13</td><td class="hit">48</td><td class="rh" style="color:var(--dim);font-size:.68rem;">turning interrupts off and on</td></tr>
+    <tr><td class="rh">NOP</td><td class="hit">38</td><td class="hit">37</td><td class="hit">102</td><td class="hit">15</td><td class="hit">36</td><td class="hit">10</td><td class="hit">71</td><td class="rh" style="color:var(--dim);font-size:.68rem;">three real jobs; section 6</td></tr>
+    <tr><td class="rh">MOVE to CCR</td><td class="hit">2</td><td class="hit">5</td><td class="hit">8</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="hit">4</td><td class="rh" style="color:var(--dim);font-size:.68rem;">restoring saved flags</td></tr>
+    <tr><td class="rh">MOVE USP</td><td class="hit">1</td><td class="hit">1</td><td class="hit">2</td><td class="hit">1</td><td class="hit">1</td><td class="z">0</td><td class="hit">5</td><td class="rh" style="color:var(--dim);font-size:.68rem;">the same boot line, copied</td></tr>
+    <tr class="grp"><td colspan="9">Silence one: nobody here needs scratch paper. Section 3.</td></tr>
+    <tr><td class="rh">LINK</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="rh" style="color:var(--dim);font-size:.68rem;">open a stack frame</td></tr>
+    <tr><td class="rh">UNLK</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="rh" style="color:var(--dim);font-size:.68rem;">close it again</td></tr>
+    <tr><td class="rh">STOP</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="rh" style="color:var(--dim);font-size:.68rem;">halt until an interrupt</td></tr>
+    <tr class="grp"><td colspan="9">Silence two: there is no operating system to complain to. Section 4.</td></tr>
+    <tr><td class="rh">CHK</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="rh" style="color:var(--dim);font-size:.68rem;">trap if an index is out of range</td></tr>
+    <tr><td class="rh">TRAPV</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="rh" style="color:var(--dim);font-size:.68rem;">trap if the last sum overflowed</td></tr>
+    <tr><td class="rh">RESET</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="rh" style="color:var(--dim);font-size:.68rem;">pulse the reset line to the chips</td></tr>
+    <tr><td class="rh">ILLEGAL</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="hit">1</td><td class="rh" style="color:var(--dim);font-size:.68rem;">deliberately crash</td></tr>
+    <tr class="grp"><td colspan="9">Arrived about twenty years late. Section 5.</td></tr>
+    <tr><td class="rh">TAS</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="hit">1</td><td class="hit">1</td><td class="hit">1</td><td class="hit">5</td><td class="rh" style="color:var(--dim);font-size:.68rem;">test and set a byte</td></tr>
+    <tr><td class="rh">TRAP</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="hit">1</td><td class="z">0</td><td class="hit">1</td><td class="z">0</td><td class="rh" style="color:var(--dim);font-size:.68rem;">raise an exception on purpose</td></tr>
+  </table>
+  </div>
+  <p class="abskey"><span><b>Gold</b> = at least one real use.</span><span>Grey zero = not once, anywhere in that codebase.</span><span>The four right-hand columns are modern engines and a homebrew OS, not 1990s Sega code.</span></p>
+  <figcaption>Every instruction on this page, counted across seven codebases. Static fallback: MOVE SR,
+  NOP, MOVE to CCR and MOVE USP are in real use; LINK, UNLK, STOP, CHK, TRAPV and RESET appear zero
+  times in all seven; ILLEGAL appears once and only in the homebrew operating system; TAS and TRAP
+  appear only in engines written decades after the original games. What is counted is SOURCE LINES,
+  meaning how many times a programmer reached for the instruction, not how many instructions the
+  assembler emitted: Aeon's single TRAP sits under a repeat directive that emits five, and its single
+  TAS is inside a macro that expands wherever the macro is used.</figcaption>
+</figure>
+
+<div class="teach"><span class="t-tag">Teach</span>
+<p><b>Read the zeros twice.</b> The obvious reading is "these instructions are useless", and that is
+wrong. Every one of them is useful, on the machine it was designed for. The 68000 went into
+workstations and Amigas and Macintoshes, where an operating system shares one CPU between programs
+that do not trust each other, and where a compiler emits code for functions it has never seen. On
+that machine LINK and CHK and TRAP are ordinary.</p>
+<p>A Genesis cartridge is the opposite of that machine. It owns every byte of memory, it is the only
+program running, there is nothing to ask permission from and nothing to protect itself against, and it
+was written by a human who knew exactly where everything was. The zeros are not a judgement on the
+instructions. They are a description of the console.</p></div>
+
+<p>Two of those zeros come with an honesty warning, and it is worth reading before section 3 makes an
+argument out of them. All seven codebases here are Sonic-family or homebrew, which means they share
+habits. A row of zeros across seven relatives is weaker evidence than it looks. Section 3 tests one of
+these claims against a completely unrelated 1992 commercial game, and the claim does not entirely
+survive.</p>
+
+
+<h2 id="s3">3 &middot; Nobody here needs scratch paper</h2>
+
+<p>LINK and UNLK exist to give a routine a private block of memory that lasts exactly as long as the
+routine does. Ask for sixteen bytes on the way in, use them, hand them back on the way out. If you have
+written in C, this is where your local variables live, and a compiler emits these two instructions
+around almost every function it compiles.</p>
+
+<p>Zero uses across all seven codebases. So does a Genesis game just not need temporary memory?</p>
+
+<p>That was the conclusion, until the claim got tested against a game with no relationship to Sonic at
+all. <b>Thunder Force IV</b>, by Technosoft, shipped in 1992, the same year as Sonic 2. It uses stack
+frames throughout: thirteen of them, with sizes running from 16 bytes up to 256.</p>
+
+<pre>        movem.l    d2-d3/a0-a1/a6, -(a7)
+        link.w     a6, #$ff80
+        movea.l    a7, a0
+        movea.l    a0, a1
+        lea.l      $14cbc.l, a2
+        moveq      #$7, d2
+        move.w     (a2)+, d3
+        add.w      d1, d3
+        move.w     d3, (a1)+
+        move.l     (a2)+, (a1)+
+        move.w     (a2)+, d3
+        add.w      d0, d3
+        move.w     d3, (a1)+
+        dbra       d2, $c9ec
+        move.w     #$f800, d0
+        move.w     #$20, d1
+        bsr.w      $1219e
+        unlk       a6
+        movem.l    (a7)+, d2-d3/a0-a1/a6
+        rts        </pre>
+  <span class="src">thunderforce4_disasm/code/disasm.asm:9926-9945</span>
+
+<p>Save the registers, <code>link</code> to carve off 128 bytes, do the work, <code>unlk</code> to give
+them back, restore the registers, return. That is a textbook frame, and it means the flat claim was
+simply wrong: a Genesis game absolutely can use stack frames, and one of the best-regarded shooters on
+the console does.</p>
+
+<div class="gotcha"><span class="g-tag">Honesty</span>
+The Thunder Force IV code on this page is held to a lower standard of evidence than everything else
+here, and you should know which is which. The Sonic disassemblies are hand-maintained: humans have
+labelled and commented them for years. The Thunder Force IV listing is a first-pass automated
+disassembly with machine-generated labels, which is why the code above says <code>bsr.w $1219e</code>
+instead of a routine name. An automated pass also mistakes data for instructions, so isolated
+findings from it cannot be trusted.
+<br><br>
+What makes <em>this</em> finding safe is that it is not isolated: thirteen LINKs and thirteen UNLKs
+that pair up, frame sizes that fall on sensible round numbers, and a prologue and epilogue in the
+right order around a body that reads as deliberate code. Data misread as instructions does not
+produce that. Take the pattern as solid and the exact line numbers as provisional.
+</div>
+
+<div class="teach"><span class="t-tag">Teach</span>
+<p><b>So what is the real difference?</b> Not the era, and not the console. Look at what Thunder Force
+IV does with the frame: it points <code>a0</code> at the fresh 128 bytes and streams a list into them,
+builds something there, uses it, and throws it away. It wants memory <em>with a lifetime</em>.</p>
+<p>The Sonic engines never want that, because every buffer they use already exists at a fixed address
+that was decided once and written down. If you own the whole machine and have already mapped every byte
+of it, you never need to ask for scratch space; you just use the scratch space you named years ago. The
+question LINK answers is "may I have some memory for a moment", and a program that owns everything never
+has to ask.</p></div>
+
+<div class="instr" id="link">
+  <h3><span class="mn">LINK</span> <span class="mnx">Link and Allocate</span> <span class="syn">LINK An,#displacement</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by LINK">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">Pure bookkeeping on the stack pointer; no flags move</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of LINK">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">the displacement is a word, so it always costs an extension word.</span>
+  </div>
+  <p>Three things happen, in this order. The address register you name is pushed onto the stack. The
+  stack pointer is then copied into that register. Finally the displacement is added to the stack
+  pointer, and because you want to <em>allocate</em>, the displacement you write is negative:
+  <code>#$ff80</code> is -128, so the stack pointer drops 128 bytes and those bytes are now yours.</p>
+  <p>The register you named is now a
+  <span class="term" data-def="An address register left pointing at a stack frame, so the routine can find its temporary values at fixed offsets even as the stack pointer moves.">frame pointer</span>,
+  sitting at a fixed spot in the middle of the arrangement so you can reach your locals at known
+  offsets from it no matter what else you push afterwards.</p>
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  Thunder Force IV never uses the frame pointer. Across all thirteen of its frames there is not one
+  reference to <code>a6</code> as a base register: it takes the 128 bytes and reaches them through
+  <code>a7</code> instead, and lets the frame pointer it just set up go unused. So it is not using LINK
+  the way a compiler would, and this is not compiled C. It is using LINK as a two-instruction way to
+  say "move the stack pointer down by 128 and remember where it was", which is the useful half.
+  <br><br>
+  This is the same joke as <a href="#tas">TAS</a> in section 5, and it is worth noticing twice: the
+  instruction is kept for a side effect, and the thing it was named for is discarded.
+  </div>
+</div>
+
+<div class="instr" id="unlk">
+  <h3><span class="mn">UNLK</span> <span class="mnx">Unlink</span> <span class="syn">UNLK An</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by UNLK">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">No flags</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of UNLK">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">always.</span>
+  </div>
+  <p>Exactly LINK backwards, and only two steps because it does not need the displacement: copy the
+  frame pointer into the stack pointer, which discards the whole frame in one move however big it was,
+  then pop the saved register back. The frame is gone and the stack looks like it did before.</p>
+  <p><b>Never read one without the other.</b> A LINK with no matching UNLK leaks the stack a little on
+  every call, and since the return address is on that same stack, a routine that gets this wrong does
+  not fail politely. In Thunder Force IV they match exactly, thirteen and thirteen.</p>
+</div>
+
+<div class="instr" id="stop">
+  <h3><span class="mn">STOP</span> <span class="mnx">Load Status Register and Stop</span> <span class="syn">STOP #immediate &nbsp;<span style="color:var(--dim);">(privileged)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by STOP">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-set"><span class="fl-name">X</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">V</span><span class="fl-state">written</span></span>
+    <span class="fchip f-set"><span class="fl-name">C</span><span class="fl-state">written</span></span>
+    <span class="fl-caption">The immediate is written into the WHOLE status register, so it sets the flags as a side effect of setting the interrupt mask</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of STOP">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">4 bytes</span>
+    <span class="cctx">opcode plus the immediate word.</span>
+  </div>
+  <p>STOP loads the immediate into the status register and then halts the processor. It stays halted
+  until an interrupt arrives that the new
+  <span class="term" data-def="Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 7 blocks everything and a mask of 0 permits everything.">interrupt mask</span>
+  permits, and then it resumes at the next instruction. Both halves are one instruction on purpose: if
+  you set the mask first and halted second, an interrupt could arrive in the gap.</p>
+  <p>Zero uses in all seven codebases here. But Thunder Force IV uses it seven times, and this is what
+  it looks like:</p>
+<pre>        move.w     #$400, $f100.w
+        stop       #$2500
+        bsr.w      $1956</pre>
+  <span class="src">thunderforce4_disasm/code/disasm.asm:178-180</span>
+  <p>Try <code>$2500</code> in the <a href="#s1">status-register explorer</a> and it decodes as
+  supervisor on, mask 5. Mask 5 blocks interrupt levels 1 to 5 and permits 6 and 7, and VBlank on this
+  hardware is level 6. So that line means: <b>stop the CPU dead until the next frame begins.</b></p>
+  <p>The Sonic engines want the same thing and get it the other way, by spinning in a loop until a
+  VBlank handler changes a flag in RAM. Both wait for the frame. One of them burns every cycle of the
+  wait, and one of them stops the clock. Same goal, and the instruction that does it in one line is the
+  one that appears zero times in every Sonic codebase.</p>
+</div>
+
+
+<h2 id="s4">4 &middot; No operating system to complain to</h2>
+
+<p>Section 3's silence turned out to be about a habit, and a game written differently broke it. This
+section's silence is a different kind, and it holds. These four instructions are zero in every codebase
+measured, including Thunder Force IV, which just refuted the other claim, and including a homebrew
+operating system that had every reason to want them.</p>
+
+<p>They share a shape: each one is a way of <em>reporting a problem to somebody else</em>. And on a
+cartridge there is no somebody else.</p>
+
+<div class="instr" id="chk">
+  <h3><span class="mn">CHK</span> <span class="mnx">Check Register Against Bounds</span> <span class="syn">CHK &lt;ea&gt;,Dn</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by CHK">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">undef.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">undef.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">undef.</span></span>
+    <span class="fl-caption">N reflects the comparison; Z, V and C are left undefined, so do not read them</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of CHK">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">plus any words the source operand needs.</span>
+  </div>
+  <p>CHK compares a data register against an upper bound and, if the register is negative or greater
+  than the bound, raises an
+  <span class="term" data-def="A forced detour: the CPU stops what it is doing, looks up an address in the vector table, and jumps there. Caused by hardware (an interrupt) or by the program itself (a trap, a bad instruction, a bad address).">exception</span>
+  instead of continuing. It is an array bounds check in one instruction, and it exists because the 68000
+  was designed with high-level languages in mind: a compiler for a language that checks its subscripts
+  can emit CHK and let the CPU do the comparing.</p>
+  <p>Nobody on this platform uses it, and the reason is not that Genesis programmers were careless about
+  array bounds. It is that CHK's response to a bad index is to raise an exception, and an exception is
+  only useful if something is waiting to catch it and do something sensible. On a cartridge, the thing
+  waiting is a crash handler whose entire job is to stop the game and print an error. A programmer who
+  already knows the index is fine does not want the check; a programmer who is not sure would rather
+  <code>cmp</code> and branch and handle it, because then the handling is theirs.</p>
+</div>
+
+<div class="instr" id="trapv">
+  <h3><span class="mn">TRAPV</span> <span class="mnx">Trap on Overflow</span> <span class="syn">TRAPV</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by TRAPV">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">Reads V and changes nothing</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of TRAPV">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">no operands at all.</span>
+  </div>
+  <p>One job: if the V flag is set, raise an exception; otherwise do nothing and carry on. It is the
+  overflow equivalent of CHK, meant to sit after arithmetic in a language that promises to notice when a
+  sum does not fit.</p>
+  <p>Zero uses, for the same reason as CHK plus a sharper one. Genesis code does not merely tolerate
+  overflow, it <em>relies</em> on it: angles wrap around a byte because 256 units is exactly one
+  revolution, and counters are allowed to roll over because the roll is the behaviour you wanted. An
+  instruction whose whole purpose is to complain about wrapping is not much use in a program built on
+  wrapping.</p>
+</div>
+
+<div class="instr" id="reset">
+  <h3><span class="mn">RESET</span> <span class="mnx">Reset External Devices</span> <span class="syn">RESET &nbsp;<span style="color:var(--dim);">(privileged)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by RESET">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">Touches the outside world, not the CPU's own state</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of RESET">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">no operands.</span>
+  </div>
+  <p>RESET asserts the CPU's reset line, which is wired to the other chips. It resets
+  <em>them</em> and deliberately not itself: the 68000 keeps running, its registers intact, on the
+  instruction after. It is the one instruction here whose effect is entirely outside the processor.</p>
+  <p>The clearest statement of why you will never see it comes from a 68000 textbook written in 1988,
+  four years before Sonic 2, with no knowledge of this console at all:</p>
+  <div class="teach"><span class="t-tag">Teach</span>
+  <p>"The RESET instruction can only be used in supervisor mode. When it is executed it asserts the
+  hardware reset line. This normally causes all external devices to be reset. [...] Normally this
+  instruction is executed by the operating system to ensure an initialized state for all external
+  devices. <b>Unless you are writing an operating system, you should never have need for this
+  instruction.</b>"</p>
+  <p style="color:var(--dim);font-size:.8rem;">Thomas P. Skinner, <i>Assembly Language Programming for
+  the 68000 Family</i>, John Wiley and Sons, 1988.</p>
+  </div>
+  <p>That is the whole argument of this page in one sentence, made by somebody who was not making it.
+  A Genesis game boots the VDP and the sound chips itself, one register at a time, because it knows
+  exactly which state it wants them in. Pulsing a line that resets all of them to their defaults is a
+  blunter tool than anything a game needs, and it would undo work the game had just done.</p>
+</div>
+
+<div class="instr" id="illegal">
+  <h3><span class="mn">ILLEGAL</span> <span class="mnx">Take Illegal Instruction Trap</span> <span class="syn">ILLEGAL</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by ILLEGAL">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">The exception saves them; the instruction itself changes nothing</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of ILLEGAL">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">the fixed opcode word $4AFC.</span>
+  </div>
+  <p>An instruction whose defined behaviour is to be invalid. The 68000 reserves the bit pattern
+  <code>$4AFC</code>, guarantees it will never mean anything, and takes the illegal-instruction
+  exception when it meets one. It exists so a program can crash <em>on purpose</em>, at a spot it chose,
+  rather than waiting to crash by accident somewhere it did not.</p>
+  <p>One use across everything measured, and fittingly it is in the operating system rather than in any
+  game. What happens after it, meaning what the CPU pushes on the stack and how a handler reads it back
+  to tell you where you died, is the subject of its own page and not this one.</p>
+</div>
+
+
+<h2 id="s5">5 &middot; The two that arrived late</h2>
+
+<p>The last two are different from everything above. They are not absent from the Genesis; they are
+absent from the <em>1990s</em>. Neither appears in any Sega-era disassembly, and both turn up in engines
+written by hobbyists two decades later, each solving one specific problem. And in both cases the
+instruction is being used for something other than the thing it is named after.</p>
+
+<div class="instr" id="tas">
+  <h3><span class="mn">TAS</span> <span class="mnx">Test and Set</span> <span class="syn">TAS &lt;ea&gt; &nbsp;<span style="color:var(--dim);">(byte only)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by TAS">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-set"><span class="fl-name">Z</span><span class="fl-state">set</span></span>
+    <span class="fchip f-clear"><span class="fl-name">V</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+    <span class="fl-caption">N and Z come from the byte's value BEFORE the set, which is the whole idea: you learn what it was and change it in one go</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of TAS">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">on a data register; a memory operand adds its address words.</span>
+  </div>
+
+  <p><b>Start with what it does, because that is all you need to read the code below.</b> TAS looks at
+  one byte, sets N and Z from the value it found, and then sets that byte's top bit to 1. Two things in
+  one instruction: you find out what the bit was, and you make it 1.</p>
+
+  <p><b>Why it exists is a story about a machine this is not.</b> If two processors share memory, they
+  need a way to agree on who owns something, and the danger is both checking at the same moment, both
+  finding it free, and both taking it. TAS closes that gap by doing the checking and the claiming
+  without letting go in between. A Genesis cartridge has one 68000 and nothing to negotiate with, so
+  this purpose never comes up here at all.</p>
+
+  <p><b>And here is where it actually appears.</b> Both the Sonic Hack engine and Aeon contain exactly
+  one TAS, in the macro that builds a VDP command word:</p>
+<pre>    if ((type)&amp;(rwd))&amp;$FC = $20
+        tas.b   reg
+    elseif ((type)&amp;(rwd))&amp;$FC &lt;&gt; 0
+        ori.w   #(((type)&amp;(rwd))&amp;$FC)&lt;&lt;2, reg
+    endif
+        endm</pre>
+  <span class="src">aeon/engine/macros.asm:274-279</span>
+  <p>Read the two branches against each other. The <code>elseif</code> is the ordinary way to set some
+  bits: <code>ori.w</code> with an immediate, which costs 4 bytes. The <code>if</code> above it fires
+  when the bits needed happen to be exactly bit 7 of the low byte, and in that one case
+  <code>tas.b</code> does the same job in 2 bytes, because setting bit 7 is what TAS does on its way
+  past.</p>
+  <p>So the instruction survives here as a two-byte way to set a bit. The test half is ignored, the
+  flags it sets are never read, and the multiprocessor problem it was invented for is not in the
+  building.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha</span>
+  <b>On a Mega Drive, TAS aimed at memory does not work.</b> Sega documented this themselves, in the
+  Genesis Software Development Manual Complement of July 1991: "The TAS command is not supported on the
+  GENESIS. [...] If this command is issued, the test is executed and completed, but the setting will be
+  ignored and not be written." The read happens; the write is thrown away.
+  <br><br>
+  Which makes the code above quietly lucky, or quietly wise. Its operand is a data register, and a
+  register lives inside the CPU, so no outside chip gets a say and the bit really is set. The register
+  form is the only form of TAS on this machine that does what the manual says it does. Note that the
+  engines do not comment the line, so this is an observation about the code and not a claim about what
+  the author was thinking.
+  </div>
+
+  <details class="refbox">
+    <summary>Why the write is discarded, and which consoles differ</summary>
+    <div class="enc-body">
+    <p>TAS is the 68000's only
+    <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back, without letting go of the bus in between. TAS is the 68000&#39;s only one, and the Genesis does not honour its write.">read-modify-write</span>
+    instruction, and it holds the bus for the read and the write together so nothing can slip between
+    them. That indivisibility is the point, and it is also what the Genesis hardware does not handle.</p>
+    <p>The most detailed explanation available is by Nemesis, author of the Exodus emulator, in a source
+    comment from 2011. His reading is that the address strobe stays asserted across the whole operation,
+    and that the VDP works out its write-enable outputs once, at the start, when the operation still
+    looks like a read, and never revisits them; so when the write half arrives, the lines that would
+    tell the memory chips to store something are never raised. <b>He marks this as inference rather than
+    measurement</b>, says "most likely", and notes the memory datasheets would need checking to
+    confirm it. We have found nobody who has put a probe on the hardware to settle it, so treat it as
+    the best available explanation and not as established fact.</p>
+    <p>The behaviour also differs by console revision. Emulator authors who test against hardware treat
+    every model as discarding the write except one late Genesis 3 board revision, which performs it
+    correctly. That sounds like an improvement and broke games: at least one commercial title,
+    Gargoyles, depends on the write being thrown away, so it works on the machines of its era and
+    misbehaves on the one that got TAS right. Emulators suppress the write by default for exactly this
+    reason. A tidy correction to a documented defect, twelve years too late to be welcome.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="trap">
+  <h3><span class="mn">TRAP</span> <span class="mnx">Trap</span> <span class="syn">TRAP #vector &nbsp;<span style="color:var(--dim);">(0 to 15)</span></span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by TRAP">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">The flags are saved as part of the status register and come back on return</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of TRAP">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">the vector number is packed into the opcode, so no extension word.</span>
+  </div>
+  <p><code>trap #n</code> raises an exception on purpose. There are sixteen of them, numbered 0 to 15,
+  and each has its own slot in the
+  <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens: one slot per kind of exception.">vector table</span>:
+  <code>trap #0</code> goes through the slot at <code>$80</code>, <code>trap #1</code> through
+  <code>$84</code>, and so on. The CPU saves where it was, switches to supervisor mode, and jumps to
+  whatever address it finds there.</p>
+  <p>That mechanism is how a program on a normal computer asks its operating system for something:
+  cheap, two bytes, and the operating system decides what each number means. On a Genesis there is
+  nothing to ask, so the sixteen slots have nothing to point at. Here is what Aeon does with all of
+  them:</p>
+<pre>    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $80-$8C: TRAP 0-3</span>
+    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $90-$9C: TRAP 4-7</span>
+    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $A0-$AC: TRAP 8-11</span>
+    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $B0-$BC: TRAP 12-15</span></pre>
+  <span class="src">aeon/engine/system/vectors.asm:40-43</span>
+  <p>All sixteen go to the same crash handler. The engine is not reserving them for later; it is
+  declaring that arriving here at all is a bug. MarkeyJester's homebrew Mega Drive operating system,
+  which has threads and a window manager and is the one program on this platform with a real reason to
+  want a system call, contains <b>zero</b> TRAPs and reaches its services another way entirely.</p>
+  <p>And Aeon's single actual <code>trap</code> is not a system call either:</p>
+<pre>.jump_table:
+        bra.w   .done
+        rept 5
+        trap    #0
+        endr</pre>
+  <span class="src">aeon/engine/system/dma_queue.asm:164-168</span>
+  <p>This is a jump table. The first entry needs to fill the same number of bytes as every other entry,
+  <code>bra.w</code> supplies four of them, and the remaining ten are five <code>trap #0</code>
+  instructions rather than five <code>nop</code>s. Both would pad. The difference is what happens if the
+  dispatch ever computes a wrong offset and lands in the middle of an entry: NOPs would let it slide
+  quietly onward into whatever came next, and traps stop it dead and hand it to the crash handler.</p>
+  <p><b>So the only TRAP in the engine is a landmine for a bug</b>, which is exactly what a vector table
+  pointing sixteen slots at one crash handler already told you. The instruction designed for asking an
+  operating system a question is being used here to make sure a certain kind of mistake cannot go
+  unnoticed.</p>
+</div>
+
+
+<h2 id="s6">6 &middot; NOP, the exception that is everywhere</h2>
+
+<p>One instruction left, and it breaks the pattern completely: 38 uses in Sonic 1, 37 in Sonic 2, 102 in
+Sonic 3 and Knuckles, 71 in the homebrew operating system. NOP does nothing, which sounds like it should
+be the most pointless instruction on a page about pointless instructions, and instead it is the busiest.</p>
+
+<p>Doing nothing turns out to be three completely different jobs, and all three are in Sonic 2.</p>
+
+<div class="instr" id="nop">
+  <h3><span class="mn">NOP</span> <span class="mnx">No Operation</span> <span class="syn">NOP</span></h3>
+  <div class="flags" role="group" aria-label="Condition codes affected by NOP">
+    <span class="fl-label">Flags</span>
+    <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">Changes nothing at all. That is the specification, not a simplification</span>
+  </div>
+  <div class="cost" role="group" aria-label="Size of NOP">
+    <span class="fl-label">Cost</span>
+    <span class="cchip">2 bytes</span>
+    <span class="cctx">and it spends time doing nothing, which is the point of the first use below.</span>
+  </div>
+  <p>NOP changes no register, no flag, and no memory. It advances the program counter and consumes
+  time. Both of those nothings are useful.</p>
+
+  <p><b>Job one: spending time on purpose.</b> Reading the controller needs a pause between telling the
+  port what you want and reading back what it says, because the hardware needs a moment to settle. The
+  pause is the instruction:</p>
+<pre>	move.b	#0,(a1)	<span class="c">; Poll controller data port</span>
+	nop
+	nop
+	move.b	(a1),d0	<span class="c">; Get controller port data (start/A)</span></pre>
+  <span class="src">s2disasm/s2.asm:1369-1372</span>
+  <p>Two NOPs of deliberate patience, and then the read. Delete them and the code
+  is faster and wrong. This is the one place on this page where an instruction that does nothing is
+  doing something no other instruction could.</p>
+
+  <p><b>Job two: filling the hole where code used to be.</b> This one is a fossil, and the disassembly
+  keeps it on display:</p>
+<pre>    if 0
+	<span class="c">; Sonic 2 Beta 4 reveals that these were the original instructions.</span>
+	<span class="c">; The original source code may have been able to produce debug builds with this enabled.</span>
+	move.w	#$101,(Level_select_flag).w
+	move.w	#$101,(Debug_mode_flag).w
+    else
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+    endif</pre>
+  <span class="src">s2disasm/s2.asm:4422-4434</span>
+  <p>Two instructions that switched on level select and debug mode were removed before release. They
+  were three words each, so six words had to be filled, and six NOPs is exactly what fills them. Count
+  them: the arithmetic is visible. Somebody disabled a feature by writing over it with nothing, and
+  because the replacement had to be the same size as the original, the shape of what was deleted is
+  still legible in the shape of what replaced it. The comment above is a later reader working that out
+  from a beta cartridge.</p>
+
+  <p><b>Job three, and the best one: a question nobody reads the answer to.</b></p>
+<pre>	lea	(Timer).w,a1
+	cmpi.l	#(9&lt;&lt;(8*2))|(59&lt;&lt;(8*1))|(59&lt;&lt;(8*0)),(a1)+
+	nop			<span class="c">; You can&#x27;t get a Time Over in Debug Mode, so this branch is dummied-out</span>
+	addq.b	#1,-(a1)</pre>
+  <span class="src">s2disasm/s2.asm:87310-87313</span>
+  <p>The <code>cmpi.l</code> is still there. It still runs, every frame, comparing the timer against
+  9 minutes 59 seconds and 59 frames, and it still sets the flags according to the answer. What used to
+  be on the next line was a branch that acted on those flags, and it is now a NOP. So the comparison
+  happens and <em>nobody asks</em>.</p>
+
+  <div class="teach"><span class="t-tag">Teach</span>
+  <p>That last one is the whole track in four lines, so it is worth saying plainly.</p>
+  <p><b>The machine has no idea what anything is for.</b> The <code>cmpi.l</code> does not know it was
+  supposed to be a Time Over check. It does not know the branch is gone, it cannot tell that its answer
+  is now unread, and it will keep computing that answer forever without complaint. The flags it sets
+  are correct. They are simply not a question anymore, because the only thing that made them a question
+  was the instruction that used to follow.</p>
+  <p>This is the same fact that explains the whole page. LINK does not know it made a frame. TAS does
+  not know it is for two processors. TRAP does not know it is for asking an operating system. Purpose
+  never lived in the instructions; it lived in the discipline of the code around them, and where that
+  discipline is absent, or has been deleted, the instruction carries on doing its small exact thing to
+  no end whatsoever.</p></div>
+</div>
+
+<div class="teach"><span class="t-tag">Where next</span>
+<p>This is the last page of the 68000 instruction reference. Two things this page deliberately handed
+onward: what the CPU actually pushes when an exception fires, and how to read it back to find out where
+a crash happened, which needs a page of its own; and the extended-precision and decimal instructions
+(ADDX, SUBX and the BCD family), which are the only rows left unlinked in the
+<a href="programming-model.html">instruction index</a>.</p></div>
+
+
+</main>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-27 &middot; <a href="../index.html">Back to hub</a><br>
+<span class="fnote">Instruction semantics verified against the Motorola M68000 Programmer's Reference Manual,
+corroborated against Kelly-Bootle and Fowler (1985) and Skinner (1988). Genesis-specific behaviour
+verified against Sega's own Genesis Software Development Manual Complement (1991). Usage counts measured
+across seven codebases; the counting method is stated in section 2.</span></footer>
+
+
+<script>
+/* ---- status-register explorer: both halves of the SR, and what a value MEANS ---- */
+(function(){
+  var hexEl=document.getElementById('sr-hex'); if(!hexEl) return;
+  var binEl=document.getElementById('sr-bin'), wordsEl=document.getElementById('sr-words'),
+      maskEl=document.getElementById('sr-maskline'), instr=document.getElementById('sr-instr'),
+      note=document.getElementById('sr-note'), reset=document.getElementById('sr-reset');
+  var BOOT=0x2700, sr=BOOT;
+  // bit number for each named button; the unused bits have no button and always read 0
+  var BITS={T:15,S:13,I2:10,I1:9,I0:8,X:4,N:3,Z:2,V:1,C:0};
+  function hex4(n){ return '$'+(n&0xFFFF).toString(16).toUpperCase().padStart(4,'0'); }
+  function bin16(n){ var b=(n&0xFFFF).toString(2).padStart(16,'0');
+    return b.slice(0,4)+' '+b.slice(4,8)+' '+b.slice(8,12)+' '+b.slice(12); }
+  function mask(){ return (sr>>8)&7; }
+  function render(){
+    for(var k in BITS){
+      var el=document.getElementById('sr-'+k); if(!el) continue;
+      var on=(sr>>BITS[k])&1;
+      el.textContent=k+' '+on; el.setAttribute('aria-pressed', on?'true':'false');
+    }
+    hexEl.textContent=hex4(sr);
+    // BASE PAIRING: the SR is a BIT PATTERN, so it pairs with BINARY, never a decimal.
+    // "$2700 = 9984" would be a true number and a useless one.
+    binEl.textContent=bin16(sr);
+    var m=mask();
+    wordsEl.innerHTML='Trace <b>'+(((sr>>15)&1)?'on':'off')+'</b>. '
+      +(((sr>>13)&1)?'Supervisor mode <b>on</b>':'<b>User</b> mode')+'.<br>Interrupt mask <b>'+m+'</b>.';
+    // T7: say out loud that the three bits are ONE NUMBER, and what that number does
+    maskEl.innerHTML='The three mask bits are one number, not three switches: I2 I1 I0 read as '
+      +((sr>>8)&7).toString(2).padStart(3,'0')+' in binary, which is <b>'+m+'</b>. '
+      +(m===7 ? 'At 7 the CPU ignores every interrupt level from 1 to 7, so nothing gets through.'
+       : m===0 ? 'At 0 nothing is masked, so every interrupt level gets through, including VBlank at 6.'
+       : 'At '+m+' the CPU ignores interrupt levels 1 to '+m+' and allows '+(m+1)+' to 7, so VBlank at level 6 '
+         +(m>=6?'is blocked':'still gets through')+'.');
+    instr.innerHTML='move&nbsp;&nbsp;#'+hex4(sr)+',sr';
+  }
+  function say(t){ note.textContent=t; }
+  Object.keys(BITS).forEach(function(k){
+    var el=document.getElementById('sr-'+k); if(!el) return;
+    el.addEventListener('click',function(){
+      sr ^= (1<<BITS[k]); sr&=0xFFFF; render();
+      if(k==='S') say(((sr>>13)&1)
+        ? 'Supervisor bit set. Every instruction on this page is now legal, and the CPU is using the supervisor stack pointer. This is how a Genesis cartridge runs from power-on to power-off.'
+        : 'Supervisor bit clear, so the CPU is in user mode. STOP, RESET, MOVE to SR and MOVE USP would now be refused and raise an exception instead. On a Genesis nothing puts the CPU here, because there is no operating system that would want to.');
+      else if(k==='T') say(((sr>>15)&1)
+        ? 'Trace bit set: the CPU will take an exception after EVERY instruction, which is how a debugger single-steps. Games leave it clear.'
+        : 'Trace bit clear, which is normal. Set it and the CPU traps after every single instruction.');
+      else if(k.charAt(0)==='I') say('Interrupt mask is now '+mask()+'. Read the three bits as one number, not as three separate switches.');
+      else say('You flipped '+k+', one of the condition codes in the low byte. Ordinary instructions like cmp and add write these constantly; this page is about the OTHER half of the register.');
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.sr-pre'),function(b){
+    b.addEventListener('click',function(){
+      sr=parseInt(b.dataset.v,10)&0xFFFF; render();
+      var t=b.textContent;
+      if(sr===0x2700) say('This is the value Sonic 2 writes into the status register on the fourth instruction after power-on. Supervisor mode on, tracing off, and the interrupt mask slammed to 7 so nothing can interrupt the boot sequence before the hardware is ready.');
+      else if(sr===0x2000) say('Supervisor mode on, mask 0. This is the normal running state of a game: interrupts fully enabled, so VBlank at level 6 arrives every frame.');
+      else if(sr===0x2500) say('Mask 5, which is the value Thunder Force IV loads with stop #$2500. It masks levels 1 to 5 and permits 6 and 7, so the CPU halts and the very next VBlank wakes it. See section 3.');
+      else say('Mask 0 and the supervisor bit CLEAR, so this would drop the CPU into user mode. Writing this value is itself a privileged act, and once it lands the CPU could not write the register again.');
+    });
+  });
+  reset.addEventListener('click',function(){
+    sr=BOOT; render();
+    say('Reset to $2700, the value Sonic 2 boots with.');
+  });
+  render();
+})();
+</script>
+
+</div>
+
+</body>
+</html>
