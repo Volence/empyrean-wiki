@@ -422,7 +422,7 @@ before and after, which bit fell out into C and X, and what filled the vacated e
     <div>after&nbsp; <span class="mr-val" id="sh-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="sh-rh">$6C</span> <span class="mr-dec" id="sh-rd">= 108</span></div>
     <div>C <span class="mr-val" id="sh-c" style="font-size:.95rem;">&middot;</span> &nbsp; X <span class="mr-val" id="sh-x" style="font-size:.95rem;">&middot;</span> &nbsp;<span style="color:var(--dim);">(last bit shifted out)</span></div>
   </div>
-  <p class="msim-note" id="sh-note" aria-live="polite">lsl.b #1,$6C: every bit steps left, a 0 enters at the bottom, and the old top bit 0 falls into C and X. $6C becomes $D8 (108 doubled is 216). lsl by n multiplies by 2^n; switch to lsr (unsigned divide by 2^n), asr (signed divide, copies the sign into the top), or asl (like lsl but sets V on signed overflow).</p>
+  <p class="msim-note" id="sh-note" aria-live="polite">Nothing has run yet, so after shows the same bits as before and no bit has fallen into C or X. Press Run lsl.b #1,d0 to shift them.</p>
 </div>
 <figcaption>The four shifts, shown on the actual bits. Static fallback: lsl.b #1 doubles a byte (a 0 enters
 at the bottom, the top bit exits into C and X); lsr.b #1 halves it as an unsigned value (a 0 enters at the
@@ -750,7 +750,7 @@ draws the X cell next to the byte so you can watch a bit park in X and re-enter 
     <div id="ro-afterline">after&nbsp; <span class="mr-val" id="ro-rb" style="font-size:.95rem;">1011 0100</span> <span class="v" id="ro-xa" style="margin-left:.4rem;">X 1</span> &nbsp;=&nbsp; <span class="mr-val" id="ro-rh">$B4</span></div>
     <div>C <span class="mr-val" id="ro-c" style="font-size:.95rem;">&middot;</span> &nbsp;<span style="color:var(--dim);">(wrapped bit for ROL/ROR, new X for ROXL/ROXR)</span></div>
   </div>
-  <p class="msim-note" id="ro-note" aria-live="polite">roxl.b #1,$B4 with X=0: the top bit 1 moves into X, the old X 0 enters at the bottom. Byte becomes $68, X and C are now 1. Nine cells, one step around. Run it again and the new X threads back in.</p>
+  <p class="msim-note" id="ro-note" aria-live="polite">Nothing has run yet, so after shows the same bits as before and X has not moved. Press Run roxl.b #1,d0 to rotate them.</p>
 </div>
 <figcaption>Plain rotate versus rotate-with-extend, shown on the actual bits. Static fallback: ROL wraps
 end to end (an 8-bit ring) and copies the wrapped bit to C, leaving X untouched; ROR does the same to the
@@ -1067,7 +1067,7 @@ a later <code>bclr</code> both act on the current value.</p>
     <div>after&nbsp; <span class="mr-val" id="bp-rb" style="font-size:.95rem;">0110 1100</span> &nbsp;=&nbsp; <span class="mr-val" id="bp-rh">$6C</span></div>
     <div>Z <span class="mr-val" id="bp-z" style="font-size:1.1rem;">&middot;</span> &nbsp;<span style="color:var(--dim);">(the COMPLEMENT of the tested bit's OLD value: Z=1 iff the bit was clear)</span></div>
   </div>
-  <p class="msim-note" id="bp-note" aria-live="polite">btst #2,d0: bit 2 of $6C is 1, so Z becomes 0 (the bit was set); the byte is unchanged because BTST only tests. After btst, beq branches when the bit was 0.</p>
+  <p class="msim-note" id="bp-note" aria-live="polite">Nothing has run yet, so after shows the same bits as before and Z has not been set. Press Run btst #2,d0 to test bit 2.</p>
 </div>
 <figcaption>The four single-bit ops, shown on the actual bits. Static fallback: all four set Z from the
 tested bit's OLD value (Z=1 if the bit was clear, Z=0 if it was set), so btst then beq branches when the bit
