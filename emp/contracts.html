@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>.emp: Contracts</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E📜%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+/* ============================================================
+   Page-specific styles: Contracts (the .emp language)
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE;
+    rgba components from 0/34/68/102/136/170/204/238)
+   ============================================================ */
+:root{ --err:#EE4444; }
+
+/* a clause name called out in prose */
+.clause{font-family:var(--mono); color:var(--gold); font-size:.9em;}
+
+/* the contract-checker toy */
+.chk{max-width:44rem;}
+.chk-code{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.55;
+  font-family:var(--mono); white-space:pre; margin:0 0 .8rem; color:var(--ink);}
+.chk-code .add{color:var(--err); background:rgba(238,68,68,.12); display:inline-block;
+  width:100%;}
+.chk-code .cut{color:var(--dim); text-decoration:line-through; opacity:.6;
+  display:inline-block; width:100%;}
+.chk-code .cl{color:var(--gold);}
+.chk-code .cm{color:#668866;}
+.chk-edits{display:flex; flex-direction:column; gap:.4rem; margin:.2rem 0 .9rem;}
+.chk-edits label{font-size:.85rem; display:flex; gap:.5rem; align-items:flex-start;
+  cursor:pointer; max-width:42rem;}
+.chk-edits input{margin-top:.25rem; flex:0 0 auto;}
+.chk-btns{display:flex; gap:.6rem; flex-wrap:wrap; margin:.2rem 0 .9rem;}
+.chk-btns button{font-family:var(--mono); font-size:.74rem; letter-spacing:.06em;
+  padding:.42rem .95rem; cursor:pointer; border-radius:4px; background:transparent;}
+.chk-run{color:var(--learn); border:1px solid var(--learn);}
+.chk-reset{color:var(--dim); border:1px solid var(--line);}
+.chk-btns button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.chk-out{border:1px solid var(--line); border-radius:4px; padding:.7rem .9rem;
+  min-height:2.6rem; background:var(--panel2);}
+.chk-out.green{border-color:var(--learn); background:rgba(68,204,136,.08);}
+.chk-out.red{border-color:var(--err); background:rgba(238,68,68,.08);}
+.chk-out .headline{font-family:var(--mono); font-size:.78rem; letter-spacing:.06em;
+  display:block; margin-bottom:.15rem;}
+.chk-out.green .headline{color:var(--learn);}
+.chk-out.red .headline{color:var(--err);}
+.chk-out .rest{color:var(--dim); font-family:var(--mono); font-size:.78rem;}
+.diag{font-family:var(--mono); font-size:.76rem; line-height:1.5; margin:.55rem 0 0;
+  padding:.5rem .7rem; border-radius:3px; background:var(--code-bg); overflow-x:auto;
+  white-space:pre-wrap; word-break:break-word;}
+.diag .tier{display:inline-block; font-size:.62rem; letter-spacing:.14em;
+  text-transform:uppercase; padding:.05rem .4rem; border-radius:3px; margin-right:.4rem;
+  vertical-align:.08em;}
+.diag .tier.error{color:var(--err); border:1px solid var(--err);}
+.diag .tier.warn{color:var(--gold); border:1px solid var(--gold);}
+.diag .body{color:var(--ink);}
+.diag .body b{color:var(--gold); font-weight:normal;}
+
+/* the two-clocks static diagram */
+.clocks{display:grid; grid-template-columns:1fr 1fr; gap:.8rem;}
+.clocks .col{border:1px solid var(--line); border-radius:5px; background:var(--code-bg);
+  padding:.75rem .9rem;}
+.clocks .col.build{border-color:var(--accent);}
+.clocks .col.run{border-color:var(--learn);}
+.clocks .when{font-family:var(--mono); font-size:.7rem; letter-spacing:.12em;
+  text-transform:uppercase; display:block; margin-bottom:.35rem;}
+.clocks .col.build .when{color:var(--accent);}
+.clocks .col.run .when{color:var(--learn);}
+.clocks .kw{font-family:var(--mono); color:var(--gold); font-size:.9rem;}
+.clocks p{font-size:.85rem; margin:.35rem 0 0; max-width:none;}
+.clocks .fail{font-family:var(--mono); font-size:.74rem; margin-top:.5rem; color:var(--dim);}
+@media (max-width: 34rem){ .clocks{grid-template-columns:1fr;} }
+
+/* a "who reads this" mini legend for out-clauses */
+.reads{border-left:3px solid var(--accent); background:rgba(68,102,238,.07);
+  padding:.55rem .85rem; margin:.8rem 0; max-width:42rem; font-size:.9rem;}
+.reads .r-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.2rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / THE .EMP LANGUAGE / CONTRACTS</p>
+  <p class="eyebrow">The .emp language</p>
+  <h1>Contracts: what a procedure promises</h1>
+  <p class="sub">Every routine in the engine makes promises to the code that calls it: these
+  registers come back untouched, that one holds the answer, this one is scratch you can
+  ignore. In hand-written assembly those promises live in a comment, and the machine never
+  reads the comment. In .emp they live in the procedure header, and the build fails the
+  moment the code stops keeping them. This page teaches how to read one of those headers,
+  clause by clause, and shows the checker refusing real mistakes from the shipping engine.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>The problem contracts solve</a>
+  <a href="#clobbers"><span class="n">2</span>clobbers: the honest list</a>
+  <a href="#preserves"><span class="n">3</span>preserves: a promise with a proof</a>
+  <a href="#out"><span class="n">4</span>Arguments and results with names</a>
+  <a href="#requires"><span class="n">5</span>requires: promises about the world</a>
+  <a href="#ensure"><span class="n">6</span>ensure and assert: two clocks</a>
+  <a href="#war-stories"><span class="n">7</span>When the checker catches you</a>
+  <a href="#s8"><span class="n">8</span>Escape hatches, and what refuses them</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">New to .emp entirely?
+Read <a href="reading-emp.html">Reading .emp</a> first: it walks a whole engine file top to
+bottom and names every kind of line. This page assumes you can already tell a
+<code>module</code> header from a <code>proc</code> from an instruction, and goes deep on
+just the procedure header.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; The problem contracts solve</h2>
+
+<p>Start with the one fact the whole wiki keeps coming back to: <b>the machine has no idea
+what anything is for.</b> A <span class="term" data-def="A block of instructions that other code calls and that hands control back when it finishes, so the same work can be reused from many places.">subroutine</span>
+does not know which <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span>
+holds its input and which is scratch. The caller does not know which registers the routine
+will quietly stomp. None of that lives in the hardware. It lives entirely in an agreement
+between two pieces of code, and the only place that agreement is written down, in classic
+assembly, is a comment a human typed.</p>
+
+<p>Here is a real one, from the Sonic 2 disassembly. It is the entry point for Nemesis art
+decompression, a routine the whole game leans on:</p>
+
+<pre><span class="c">; Nemesis decompression to RAM</span>
+<span class="c">; input: a0 = art address, a4 = starting address of destination</span>
+NemDecToRAM:
+        movem.l d0-a1/a3-a5,-(sp)
+        lea     (NemDec_WriteAndAdvance).l,a3</pre>
+<span class="src">s2disasm/s2.asm:1814</span>
+
+<p>Read what that comment does and does not tell you. It names two inputs. It says nothing
+about which registers survive the call, even though the very next line saves thirteen of them
+onto the stack because they do not. A caller has to read the body to learn that. And nothing
+anywhere checks the comment: if someone later adds a line that trashes <code>a2</code>, the
+comment still says what it always said, the build still succeeds, and the bug ships. The
+comment cannot rot loudly. It can only rot silently.</p>
+
+<div class="decision">
+  <span class="d-tag">Design decision &middot; contracts are checked, or they are comments</span>
+  <p><b>What:</b> .emp takes the sentence a good assembly programmer already writes in a
+  header comment and moves it into the procedure header, where the assembler parses it and
+  proves it against the body.</p>
+  <p><b>Why:</b> a promise the tool cannot read is a promise nothing keeps. The engine had
+  hundreds of these register agreements; a comment is the right place to explain intent and
+  the wrong place to store a fact the build depends on. The taste behind the whole language
+  is that a correctness feature is honest or it is absent, so if a claim can be checked, it
+  becomes a contract, and if it genuinely cannot, it stays an ordinary comment and makes no
+  promise it cannot back.</p>
+  <p><b>The cost, honestly:</b> you write the contract, and sometimes the checker refuses
+  code you believe is fine because it cannot yet prove the shape you used. That friction is
+  the price, and the rest of this page is mostly about where it lands.</p>
+</div>
+
+<details class="explain">
+  <summary>New here? &middot; What is "the checker"?</summary>
+  <div class="x-body">
+    <p>When these pages say <em>the checker</em>, they mean one part of the .emp assembler: a
+    pass that runs at build time, reads every procedure header, and compares each promise
+    against what the instructions in the body actually do. It is not a separate tool you run
+    and it is not a runtime test. It is the same program that turns your source into ROM
+    bytes, and it refuses to finish that job if a header lies. So "the checker caught it"
+    always means "the build stopped and printed a message," never "a test failed later" or
+    "someone noticed in review."</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; What is a register contract even for?</summary>
+  <div class="x-body">
+    <p>A routine and its callers share a small number of registers. For them to cooperate
+    they have to agree on who owns what: which register carries the argument in, which one
+    carries the answer back, and which ones the routine is free to trample. That agreement is
+    a <em>register contract</em>. It is not something the CPU enforces; the CPU will happily
+    let a routine overwrite a register its caller was counting on, and the caller will happily
+    read the garbage. Every classic assembly crash where "a value changed on its own" is one
+    of these unwritten agreements getting broken. A .emp contract just writes the agreement
+    down somewhere the build can hold both sides to it.</p>
+  </div>
+</details>
+
+<p>The .emp move is small to state and large in effect. Write the same sentence you would
+have put in the comment, but write it where the assembler can read it, and let the build
+fail when the code stops keeping it. The rest of this page is the vocabulary for that
+sentence: which registers die (<span class="clause">clobbers</span>), which survive
+(<span class="clause">preserves</span>), which carry answers (<span class="clause">out</span>),
+what the routine needs to be true before it runs (<span class="clause">requires</span>), and
+the two kinds of check that guard the build itself (<span class="clause">ensure</span> and
+<span class="clause">assert</span>).</p>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not engine code</span>
+  <p style="max-width:42rem;">The failure mode in miniature. Suppose a routine's comment says
+  <code>; d3 preserved</code>, and a year later someone adds <code>move.w #0, d3</code> in the
+  middle of it. In assembly, both the comment and the new line assemble without complaint, and
+  the next caller that trusted <code>d3</code> now reads a zero it never expected. The comment
+  did not change, so nothing warned anyone. The whole point of a contract is to make that exact
+  edit refuse to build. By the end of section 3 you will watch it do so.</p>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="clobbers">2 &middot; clobbers: the honest list</h2>
+
+<p>Start with the simplest clause, because it is one dumb mechanism. <span class="clause">clobbers(...)</span>
+lists the registers a routine destroys. Everything not on the list, and not an argument, and
+not a declared result, is promised to come back exactly as it went in. That last part is the
+half people miss: <b>the list of what dies is also, by omission, the list of what lives.</b>
+An empty <code>clobbers()</code> is a strong promise, not a lazy one. It says this routine
+destroys no caller register at all.</p>
+
+<p>Two real headers from the engine. The first posts a byte to the sound driver and swears it
+leaves every data and address register alone:</p>
+
+<pre>pub proc Sound_PostByte (d0: u16, a0: *u8) <span class="k">clobbers</span>() <span class="k">preserves</span>(sr) {</pre>
+<span class="src">aeon/engine/sound/sound_api.emp:104</span>
+
+<p>The second decompresses a block and is honest that it burns two data registers as scratch
+while protecting the rest:</p>
+
+<pre>pub proc ZX0_Decompress (a0: *u8, a1: *u8) <span class="k">clobbers</span>(d0-d1) <span class="k">out</span>(a0, a1) <span class="k">preserves</span>(d2/a2) {</pre>
+<span class="src">aeon/engine/compression/zx0.emp:58</span>
+
+<p>Read the second one as a caller. It tells you, without opening the body, that
+<code>d0</code> and <code>d1</code> come back as garbage, that <code>a0</code> and
+<code>a1</code> hold results you are meant to use, and that <code>d2</code> and
+<code>a2</code> are untouched. That is the entire value of the clause: you schedule your own
+register use around it having read one line.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why is leaving a register OUT of the list also a promise?</summary>
+  <div class="x-body">
+    <p>Because the checker treats every register a proc writes as needing a reason. There are
+    only three legal reasons: it is listed in <code>clobbers</code> (destroyed on purpose), it
+    is an argument or a declared <code>out</code> result, or it is saved and restored so it
+    ends the call unchanged. A register that is none of those and still gets written has no
+    home, and the checker says so. So an omitted register is not "unspecified," the way an
+    omitted comment would be. It is a positive claim: this one survives. The clause you did
+    not write is doing as much work as the clause you did.</p>
+  </div>
+</details>
+
+<p>So what happens when the body breaks that? Say a routine declares <code>clobbers(d1)</code>
+and then writes <code>d3</code>, which is neither a clobber nor an argument. The checker
+prints this and the build carries a warning:</p>
+
+<div class="diag"><span class="tier warn">Warning</span><span class="body">[proc.clobber-undeclared] `Sfx_Post` writes `d3`, which is not in its `clobbers(...)` set or parameter list (heuristic lint - full register dataflow is deferred to S2-D6)</span></div>
+
+<p>Two things about that message are worth naming, because the page is honest about them and
+you will meet both again. First, it is a <b>warning</b>, not a hard error. The proof it rests
+on is a heuristic: the assembler recognises the write forms it can, and full register
+dataflow is deliberately deferred, so an undeclared clobber is flagged loudly rather than
+made unbuildable. Second, it still names the exact register and the exact routine. Notice the
+name in the message is <code>Sfx_Post</code>, not one of the real procs above. That is the
+routine in the interactive checker two sections down, which is where you will toggle this
+mistake on and watch the message appear.</p>
+
+<div class="decision">
+  <span class="d-tag">Design decision &middot; the honest default is "survives"</span>
+  <p><b>What:</b> a register you never mention is presumed preserved, and writing it without
+  declaring it is what draws the warning. The default is the safe, strong claim, not the
+  permissive one.</p>
+  <p><b>Why:</b> the language's stance is explicit-by-default and release-ready: the reading
+  that protects a caller should be the one you get for free, and the destructive reading
+  should be the one you have to spell out. A default of "anything might be trashed" would make
+  every clause meaningless, because a caller could rely on nothing.</p>
+  <p><b>The cost, honestly:</b> because full dataflow is future work, the undeclared-write
+  check is a warning today, so a lying <code>clobbers</code> can technically still assemble.
+  The stricter, provable half of the trichotomy is <span class="clause">preserves</span>,
+  which is next, and it is a hard error.</p>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="preserves">3 &middot; preserves: a promise with a proof</h2>
+
+<p>Every register a proc touches is exactly one of three things: <span class="clause">preserves</span>
+(comes back untouched), <span class="clause">clobbers</span> (destroyed scratch), or
+<span class="clause">out</span> (a result the caller reads). We have seen the middle one.
+<span class="clause">preserves(...)</span> is the interesting one, because unlike a bare
+clobber list it is a claim the checker <b>proves</b> rather than trusts. It holds only if, on
+every path out of the routine, each listed register carries the same value it had on entry.</p>
+
+<p>Almost always the proof is the save-and-restore bracket you already write by hand: push the
+register at the top, pop it at the bottom. The checker recognises the pair and, if the value
+that comes back is the one that went in, the promise stands.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is a save/restore bracket?</summary>
+  <div class="x-body">
+    <p>If a routine needs a register that its caller is using, the polite move is to borrow it:
+    copy the old value somewhere safe on entry, use the register, and copy the old value back
+    before returning. On the 68000 that "somewhere safe" is the stack, and the two halves are
+    usually a <code>movem</code> push at the top and a matching <code>movem</code> pop at the
+    bottom. The two together are a bracket around the borrowing. <code>preserves</code> is the
+    checker verifying that the bracket is actually closed on every way out, so the register a
+    caller lent really does come home. If you have not met the stack yet, the 68000 track's
+    <a href="../m68k/programming-model.html#s5">stack section</a> teaches it in full.</p>
+  </div>
+</details>
+
+<p>Here is the bracket doing exactly that, protecting two registers across a decompression
+loop:</p>
+
+<pre>pub proc ZX0_Decompress (a0: *u8, a1: *u8) clobbers(d0-d1) out(a0, a1) <span class="k">preserves</span>(d2/a2) {</pre>
+<span class="src">aeon/engine/compression/zx0.emp:58</span>
+
+<p>Now the part that makes <span class="clause">preserves</span> a hard error rather than a
+warning. If a register is on the preserve list, gets written in the body, and is
+<em>not</em> brought back to its entry value, the checker refuses to build the ROM:</p>
+
+<div class="diag"><span class="tier error">Error</span><span class="body">[proc.preserves-unverifiable] `Sfx_Post` declares `preserves(d2)` but `d2` is written and not restored</span></div>
+
+<p>The diagnostic code names the stance: <em>unverifiable</em>. The checker is not claiming
+your routine is definitely wrong; it is refusing to certify a promise it cannot prove. The
+language's rule, stated in the checker's own source, is that a wrong contract is worse than
+no contract, so an unprovable preserve fails hard. It is better to have written nothing than
+to have written a promise the caller will trust and the code will break.</p>
+
+<h3>The status register is two promises, not one</h3>
+
+<p>One register on the 68000 deserves its own treatment: the
+<span class="term" data-def="A 16-bit register holding the CPU's own state. Its low byte is the condition codes (X N Z V C) that ordinary instructions set; its high byte is the supervisor half, holding the trace bit, the supervisor bit, and the interrupt mask.">status register</span>.
+It packs two unrelated things into one word. Its low half holds the
+<span class="term" data-def="One of the bits the processor sets to describe the last result, such as whether it was zero or negative. A conditional instruction reads these bits rather than looking at the values themselves.">condition codes</span>
+(the X N Z V C flags an ordinary instruction sets), and its high half holds the
+<span class="term" data-def="Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 7 blocks everything and a mask of 0 permits everything.">interrupt mask</span>
+among the supervisor bits. A routine very often wants to promise one half and not the other,
+so .emp lets you name them separately: <code>preserves(sr.mask)</code> is a promise about the
+interrupt half alone, <code>preserves(sr.ccr)</code> about the flags alone, and
+<code>preserves(sr)</code> covers both.</p>
+
+<p>This routine keeps the interrupt mask exactly where it found it while treating the
+condition-code flags as scratch it is allowed to change:</p>
+
+<pre>pub proc Sound_DrainSfxRing () clobbers(d0-d1/a0/<span class="k">sr.ccr</span>) <span class="k">preserves</span>(<span class="k">sr.mask</span>) {</pre>
+<span class="src">aeon/engine/sound/sound_api.emp:349</span>
+
+<p>The two halves can even land in different clauses of the same header, as above: the flags
+are clobbered, the mask is preserved, and because they are genuinely different bits the
+checker is happy to see one on each side. The reason this precision earns its keep is section
+7's third war story, where a routine claimed to preserve the whole status register while
+quietly returning an answer in the carry flag, which lives inside the half it swore not to
+touch.</p>
+
+<div class="decision">
+  <span class="d-tag">Design decision &middot; the status register splits into mask and ccr</span>
+  <p><b>What:</b> <code>preserves</code> and <code>clobbers</code> accept <code>sr.mask</code>
+  and <code>sr.ccr</code> as separate tokens, and the two halves are checked independently, so
+  <code>preserves(sr.mask) clobbers(sr.ccr)</code> is a legal, non-contradictory header.</p>
+  <p><b>Why:</b> preserving the flags and preserving the interrupt mask are different jobs
+  with different proofs, and folding them into one <code>sr</code> token forced routines to
+  over-claim. A routine that legitimately changes flags but carefully protects the interrupt
+  level could not say so, and the honest thing it did every day had no honest spelling.</p>
+  <p><b>The cost, honestly:</b> a bare <code>preserves(sr)</code> now has to earn both halves.
+  When the checker cannot prove the flags come back intact, it downgrades that claim to a
+  warning and suggests <code>sr.mask</code>, which is the checker nudging you toward the
+  smaller promise you can actually keep.</p>
+</div>
+
+<h3>Try it: the contract checker</h3>
+
+<p>Everything so far is easier to believe once you have broken it yourself. Below is a short
+procedure, adapted and simplified from the sound driver's post-byte path, with a real contract
+header. Turn on any of the three edits, each a different class of mistake, then press
+<b>Run the checker</b>. The verdict uses the checker's actual message wording. Turn the edits
+back off and it goes green. Nothing is shown until you run it, the same as the real build.</p>
+
+<figure class="diagram">
+  <div class="chk">
+    <pre class="chk-code" id="chk-code" aria-label="The procedure the checker reads"></pre>
+    <div class="chk-edits">
+      <label><input type="checkbox" id="ed-a"> <span>Add <code>move.w d0, d3</code>, a write to <code>d3</code>, which the header never declares.</span></label>
+      <label><input type="checkbox" id="ed-b"> <span>Delete the <code>movem.l (sp)+, d2</code> restore, so the save stays but the bring-back is gone.</span></label>
+      <label><input type="checkbox" id="ed-c"> <span>Add an early <code>rts</code> inside the <code>with ints_off</code> bracket, a return before the release runs.</span></label>
+    </div>
+    <div class="chk-btns">
+      <button type="button" class="chk-run" id="chk-run" aria-describedby="chk-out">Run the checker</button>
+      <button type="button" class="chk-reset" id="chk-reset">Reset</button>
+    </div>
+    <div class="chk-out" id="chk-out" role="status" aria-live="polite">
+      <span class="rest">Press Run the checker to see the verdict.</span>
+    </div>
+  </div>
+  <figcaption>The contract checker. A proc with a real header; toggle a mistake and run to see
+  the checker's own verdict, with the message text it prints. With no edits, the header holds
+  and the build is green. The <code>with ints_off</code> bracket in the third edit is a context,
+  which section 5 explains; here it is enough that a return inside it skips the release.</figcaption>
+</figure>
+
+<!-- ================================================================ -->
+<h2 id="out">4 &middot; Arguments and results with names</h2>
+
+<p>A contract has two more sides: what goes in, and what comes back. Both get names.</p>
+
+<p>The inputs are the <b>typed parameter list</b> right after the proc name. When a header reads
+<code>(d0: u16, a0: *u8)</code>, that is the input contract in full: <code>d0</code> carries an
+unsigned word, <code>a0</code> carries a pointer to bytes. There is no separate keyword for
+inputs; the typed parameters <em>are</em> the input clause. If you go looking for an
+<code>in(...)</code> clause because some other systems have one, there isn't one here, and that
+is deliberate.</p>
+
+<p>The outputs are the <span class="clause">out(...)</span> clause. It lists registers the
+routine produces for the caller to read, and it can also name a <b>flag</b> as a result. That
+last form is the one worth dwelling on, because a flag carrying an answer is where the "these
+are just comments" idea dies hardest.</p>
+
+<details class="explain">
+  <summary>New here? &middot; How can a flag be a result?</summary>
+  <div class="x-body">
+    <p>A routine does not have to return its answer in a register. Sometimes the answer is a
+    single yes-or-no, and the cheapest place to put a yes-or-no is a
+    <span class="term" data-def="One of the bits the processor sets to describe the last result, such as whether it was zero or negative. A conditional instruction reads these bits rather than looking at the values themselves.">condition code</span>:
+    the routine sets or clears the carry flag on its way out, and the caller immediately does a
+    <code>bcs</code> or <code>bcc</code> to react. It is the same trick a <code>cmp</code>
+    followed by a branch uses, except the "compare" is a whole routine's worth of work. .emp
+    lets the header say so: <code>out(carry: full)</code> means the carry flag comes back
+    carrying a real answer, and <code>full</code> is just a caller-facing name for what a set
+    carry means here. The flags themselves are taught on the
+    <a href="../m68k/math-logic.html#s1">Math &amp; Logic</a> page.</p>
+  </div>
+</details>
+
+<p>Here is the page's clearest example, and it is best read as a pair. First the producer: a
+routine that appends a ring to a shared buffer and reports back, in the carry flag, whether the
+buffer was full.</p>
+
+<pre>pub proc RingBuffer_Add (d0: u16, d1: u16, d2: u8, d3: u8) clobbers(d4, a0) <span class="k">out</span>(<span class="k">carry: full</span>) {
+        moveq   #0, d4
+        move.b  Ring_Count, d4
+        cmpi.b  #MAX_RING_BUFFER, d4
+        bhs     .full
+        <span class="c">// ... append the entry, then:</span>
+        andi.b  #$FE, ccr               <span class="c">// clear carry</span>
+        rts
+    .full:
+        addq.b  #1, Ring_Add_Dropped
+        ori.b   #1, ccr                 <span class="c">// set carry</span>
+        rts
+}</pre>
+<span class="src">aeon/engine/objects/rings.emp:57</span>
+
+<p>The header promises a flag answer, and the two <code>rts</code> paths deliver it: the
+success path clears carry, the full path sets it. Now the consumer, in the routine that offers
+one ring to the buffer and has to know whether it landed:</p>
+
+<pre>        jbsr    RingBuffer_Add          <span class="c">// clobbers d4, a0</span>
+        <span class="k">bcs</span>     .gated                  <span class="c">// full - no bit; re-scan/populate retries</span>
+        moveq   #0, d0
+        move.b  EntityScanState.ess_entry_idx(a1), d0
+        <span class="c">// ... success path: set the loaded bit</span>
+        jbsr    EntityLoaded_Set
+    .gated:</pre>
+<span class="src">aeon/engine/objects/entity_window.emp:1022</span>
+
+<p>The <code>bcs .gated</code> on the line right after the call is the whole reason the flag
+result exists. The caller branches on the carry the callee promised. Producer and consumer
+sit in two different files, and the contract is the only thing tying them together: the header
+says an answer rides home in carry, and the caller reads exactly that. Move the answer to a
+different flag without updating the header and the two halves disagree, which is precisely the
+kind of drift the checker exists to catch.</p>
+
+<div class="reads">
+  <span class="r-tag">Named misconception &middot; "the types are for the assembler's benefit"</span>
+  <p style="max-width:42rem;">It is tempting to read <code>(d0: u16, a0: *u8)</code> as
+  bookkeeping the assembler wants. It is the opposite. The assembler does not need the word
+  "u16" to emit a <code>move</code>; the instruction already encodes its size. The parameter
+  types and the <code>out</code> clause are written for two readers: a human, who now learns
+  the calling convention from one line instead of from the body, and the checker, which holds
+  callers to it. The names are the point. A register with a role stated is a register the
+  build can defend.</p>
+</div>
+
+<p>The engine even documents where the checker's reach currently ends, in the same headers. A
+routine that advances a pointer only through <code>(a4)+</code> auto-increment writes leaves
+its <code>out(a4)</code> commented as pending, because the write-detection does not yet model
+that addressing form. The contract layer is honest about its own gaps rather than pretending
+the proof is total, which is the same instinct as making the undeclared-clobber check a
+warning instead of a lie.</p>
+
+<!-- ================================================================ -->
+<h2 id="requires">5 &middot; requires: promises about the world</h2>
+
+<p>The clauses so far are promises about registers. Some routines also need a promise about the
+<em>state of the machine</em>: a thing that must already be true when they run, that no register
+can express. .emp calls those <b>contexts</b>, and a routine demands one with
+<span class="clause">requires(...)</span>.</p>
+
+<p>The engine's one live example is timing. A handful of routines are only safe to run during
+<span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>,
+the short gap between frames when the display is not being drawn. Reading the controllers is
+one of them:</p>
+
+<pre>pub proc Read_Controllers () clobbers(d0-d4/a0) <span class="k">requires</span>(vblank) {</pre>
+<span class="src">aeon/engine/system/controllers.emp:29</span>
+
+<p>The word <code>vblank</code> names a context declared elsewhere. The interrupt handler that
+runs at the top of VBlank is marked as <em>granting</em> it, and the checker then enforces the
+consuming side across the whole engine: a call to <code>Read_Controllers</code> from a place
+that is not inside a granted vblank window is a hard error, <code>[context.unsatisfied]</code>,
+reported at the call site. The promise is checked between routines, not just within one.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is a context, and who grants it?</summary>
+  <div class="x-body">
+    <p>A context is a named fact about the machine that a routine can require and another can
+    provide. Two flavours exist. A <em>granted</em> context, like <code>vblank</code>, is one
+    only the hardware can bring about; the code cannot fake it, so the interrupt entry that
+    genuinely runs during the blanking window is trusted to grant it, and everything downstream
+    either has it or gets refused. An <em>acquired</em> context is one the code creates itself
+    with a bracket, which is the next paragraph. Either way the value of a context is the same:
+    it lets a routine state a precondition the type of a register could never carry.</p>
+  </div>
+</details>
+
+<h3>Acquired contexts: the bracket the checker watches</h3>
+
+<p>The other flavour of context is one the code sets up and tears down itself, with a
+<code>with</code> block. The classic case is masking interrupts around a delicate operation.
+The engine declares a context called <code>ints_off</code> whose two halves are the
+instructions that raise the interrupt mask and the instruction that restores it:</p>
+
+<pre><span class="k">pub context</span> ints_off {
+    acquire = asm {
+        move.w  sr, -(sp)
+        move.w  #$2700, sr
+    }
+    release = asm {
+        move.w  (sp)+, sr
+    }
+}</pre>
+<span class="src">aeon/engine/irq.emp:48</span>
+
+<p>You never write those halves at a call site. You write a <code>with</code> block, and the
+assembler splices the acquire in at the top and the release in at the bottom. Here is a real
+one, masking interrupts and holding the other CPU's bus around a single byte write:</p>
+
+<pre>pub proc Sound_PostByte (d0: u16, a0: *u8) clobbers() preserves(sr) {
+        <span class="k">with</span> ints_off {
+            <span class="k">with</span> z80_stopped {
+                move.b  d0, (a0)
+            }
+        }
+        rts
+}</pre>
+<span class="src">aeon/engine/sound/sound_api.emp:104</span>
+
+<p>Here is what makes the block worth more than writing the two halves by hand: the checker
+proves that <b>every path through the body reaches the release.</b> If any path leaves the
+bracket without running the release, the interrupts stay masked forever after, and the checker
+refuses it:</p>
+
+<div class="diag"><span class="tier error">Error</span><span class="body">[context.escape] this path leaves the `with ints_off` region without reaching its release - the context stays held past the bracket</span></div>
+
+<p>An early <code>rts</code> inside the block, a branch to a label outside it, a
+<span class="term" data-def="Ending a routine by jumping to another routine instead of calling it, so that when the second one finishes it hands control straight back to whoever called the first.">tail call</span>
+out of the middle: all of them are escapes, and all of them fire this error. This is the exact
+mistake the third edit in the contract checker above stages, so if you have not toggled it yet,
+that message is what it produces. A <code>with</code> region is error-tier and cannot be
+softened; the whole reason to write the bracket instead of the raw instructions is to get this
+guarantee, so a version of it you could quietly waive would be pointless.</p>
+
+<p>Honesty about scope: some brackets in the engine are still written by hand on purpose, where
+the shape genuinely defeats the automatic proof, for instance a bracket that must restore only
+half the status register because the routine returns an answer in the other half. The checker
+does not pretend to handle those; it handles the common bracket exactly and leaves the rare one
+to the programmer, clearly marked.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Watch out &middot; a granted context is a trust root, not a proof</span>
+  <p style="max-width:42rem;">The checker enforces that a <code>requires(vblank)</code> routine
+  is only called from inside a vblank window, but it cannot verify that the routine which
+  <em>grants</em> vblank really does run during the blanking interval. That is a hardware fact
+  no assembler can check, so <code>grants</code> is an explicit trust root: one place where the
+  code says "take this as given." The language does not hide that it is trusted rather than
+  proven. Everything downstream of the grant is checked; the grant itself is the human's word.</p>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="ensure">6 &middot; ensure and assert: two clocks</h2>
+
+<p>Everything so far is checked at build time. But .emp has a second kind of check, and telling
+the two apart is the whole lesson of this section: some things the tool can decide while it is
+building the ROM, and some things are only knowable while the ROM is running. .emp gives each
+its own keyword, and the difference between them is <em>when</em> the check happens.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Build time and run time are two different clocks</summary>
+  <div class="x-body">
+    <p>Two moments in a piece of code's life are easy to blur together. <em>Build time</em> is
+    when the assembler turns your source into a ROM: it happens once, on your machine, before
+    any hardware sees the code. <em>Run time</em> is every moment afterward, when the Genesis is
+    actually executing the ROM. A fact like "these two constants agree" is settled at build time
+    and can never change once the bytes are fixed, so it is wasteful and pointless to check it on
+    the console. A fact like "this buffer never overflowed during play" is not knowable until the
+    game runs. Good tools check each fact on the clock where it lives, and .emp has one keyword
+    for each.</p>
+  </div>
+</details>
+
+<p><span class="clause">ensure(...)</span> is the build-time check. It states a condition the
+assembler must be able to evaluate while building; if the condition is false, the build stops
+and no ROM is produced. It is most often used to lock two authorities together so they cannot
+drift apart. This one refuses to build if the engine's idea of the VRAM target code disagrees
+with the constant the rest of the toolchain exports under the same name:</p>
+
+<pre><span class="k">ensure</span>(target_bits(VdpTarget.Vram) == extern("VRAM"),
+       "engine.constants and engine.vdp disagree on VRAM - update target_bits")</pre>
+<span class="src">aeon/engine/vdp.emp:69</span>
+
+<p><span class="clause">assert</span> is the run-time check, and it is only present in the debug
+build. It desugars into real instructions that test a condition on the actual hardware and, if
+the condition fails, drop into the debugger. In the plain release ROM those instructions are
+simply not emitted, so the check <b>costs zero bytes</b> in the shipping game. This one lives in
+the ring buffer's overflow path and fires, in debug, if a ring was ever dropped, because a drop
+means a content bug upstream:</p>
+
+<pre>    .full:
+        addq.b  #1, Ring_Add_Dropped
+        <span class="k">if</span> DEBUG == 1 {
+        move.b  Ring_Add_Dropped, d4    <span class="c">// d4 = declared clobber</span>
+        <span class="k">assert.b</span> d4, eq, #0             <span class="c">// drop = content bug, fatal in DEBUG</span>
+        }
+        ori.b   #1, ccr                 <span class="c">// set carry</span>
+        rts</pre>
+<span class="src">aeon/engine/objects/rings.emp:85</span>
+
+<figure class="diagram">
+  <div class="clocks">
+    <div class="col build">
+      <span class="when">Build time</span>
+      <span class="kw">ensure(...)</span>
+      <p>The assembler evaluates the condition as it builds. It never becomes a single
+      instruction; it is a question answered before any bytes exist.</p>
+      <p class="fail">If false: the build stops. No ROM is produced.</p>
+    </div>
+    <div class="col run">
+      <span class="when">Run time (debug build only)</span>
+      <span class="kw">assert.*</span>
+      <p>Desugars into real instructions that test the condition on hardware. In the plain
+      release ROM the instructions are not emitted at all.</p>
+      <p class="fail">If false: the running game drops into the debugger. Zero bytes in release.</p>
+    </div>
+  </div>
+  <figcaption>Two checks, two clocks. ensure is answered while building and can stop the build;
+  assert is answered while the game runs and only exists in the debug ROM. A fact the tool can
+  settle at build time never survives to cost a cycle on the console.</figcaption>
+</figure>
+
+<div class="decision">
+  <span class="d-tag">Design decision &middot; a build-time check never survives to run time</span>
+  <p><b>What:</b> checks the assembler can evaluate while building are <code>ensure</code> and
+  resolve to nothing in the ROM; checks that need live hardware state are <code>assert</code>
+  and appear only in the debug build, compiling to zero bytes in release.</p>
+  <p><b>Why:</b> a correctness check should be free where it can be. If the assembler already
+  knows the answer, spending a runtime instruction to re-ask on the console is pure waste, and
+  worse, it invites the habit of shipping debug scaffolding in the release ROM. Splitting the
+  keywords by clock makes the free check free and the costly check opt-in.</p>
+  <p><b>The cost, honestly:</b> you have to know which clock your fact lives on. A condition
+  that depends on runtime state cannot be an <code>ensure</code>, and a constant relationship
+  put in an <code>assert</code> wastes debug cycles checking something that could never vary.
+  The keyword you reach for is a small design decision each time.</p>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="war-stories">7 &middot; When the checker catches you</h2>
+
+<p>The argument for checked contracts is not that they are tidy. It is that they catch real
+lies in real shipping code, contracts that a careful programmer wrote and believed. Here are
+three the checker found in the engine. Each is the same arc: what the header claimed, what the
+code actually did, how the checker said no, and the fix.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is a "false contract"?</summary>
+  <div class="x-body">
+    <p>A false contract is a header that promises something the body does not deliver: a
+    register listed as preserved that actually gets trampled, a flag sworn untouched that is
+    really changed, a routine claimed to never return that has a way out. It is not a typo and
+    not a crash; the code often runs fine in the case the author tested. It is a promise that is
+    true today and becomes a trap the moment a caller relies on it in a case the author did not
+    try. These three all looked correct to a careful reader and shipped anyway, which is exactly
+    why a tool that reads the promise is worth having.</p>
+  </div>
+</details>
+
+<h3>The PSG divisor that lied about a register</h3>
+
+<p><b>The claim.</b> A small Z80 routine in the sound driver,
+<code>Psg_EmitDivisor</code>, declared <code>preserves(b)</code>: register <code>b</code>
+comes back untouched.</p>
+
+<p><b>What the code did.</b> The routine does not end with a return. It falls straight into the
+next routine, <code>Psg_EmitDivisorTo</code>, whose first job includes <code>ld b, a</code>,
+which overwrites <code>b</code>. Because control runs off the end into that successor, the
+value of <code>b</code> a caller would see is the trampled one, not the preserved one. The
+promise was false, and it had shipped in the driver.</p>
+
+<p><b>How the checker said no.</b> The clause that catches a preserved register that is not
+brought back is the hard <code>[proc.preserves-unverifiable]</code> error from section 3. The
+subtlety here is that the damage happens in a routine the falling-through proc runs into, so
+the check has to charge a proc's exit against the routine it falls into rather than stopping at
+the last instruction. Once it did, the lie surfaced with a live witness.</p>
+
+<p><b>The fix.</b> The header was corrected to tell the truth about what the fall-through
+costs. It now reads:</p>
+
+<pre>pub proc Psg_EmitDivisor () <span class="k">clobbers</span>(a, b, c, f) preserves(de, hl) <span class="k">falls_into</span> Psg_EmitDivisorTo {</pre>
+<span class="src">aeon/engine/sound/sound_psg.emp:430</span>
+
+<p><b>The moral.</b> A contract is only as good as the control-flow model behind it. The
+routine that runs off the end is as much a part of your exit as your own last instruction, and
+the checker has to know it. When the model learned that, the false promise could not survive.</p>
+
+<h3>Four routines that swore off a flag they were changing</h3>
+
+<p><b>The claim.</b> Four routines, among them <code>VSync_Wait</code> and
+<code>Sound_PlayMusic</code>, each declared bare <code>preserves(sr)</code>: the whole status
+register comes back untouched, both the interrupt mask and the condition-code flags.</p>
+
+<p><b>What the code did.</b> Each of them wrote a condition-code flag on a path to
+<code>rts</code> that lay <em>outside</em> its save-and-restore bracket. The interrupt-mask half
+of the promise was fine; the flags half was false, because the flags were genuinely different
+on the way out.</p>
+
+<p><b>How the checker said no.</b> Because the status register splits into two halves that are
+checked independently, the checker could see that the mask half held while the flag half did
+not. A bare <code>preserves(sr)</code> whose condition-code half is not provably the caller's
+draws the advisory that names exactly this and suggests the smaller, true promise:</p>
+
+<div class="diag"><span class="tier warn">Warning</span><span class="body">[proc.ccr-advisory] `VSync_Wait` declares bare `preserves(sr)` (both halves), but its condition codes are not provably the caller's at return: ... - declare `preserves(sr.mask)` if only the interrupt mask round-trips (path-sensitive flag liveness is S2-D7)</span></div>
+
+<p><b>The fix.</b> All four were flipped to the honest <code>preserves(sr.mask)</code>: keep
+promising the interrupt mask, stop promising the flags. Two of them had actually been given the
+bare <code>sr</code> form by an earlier convention, so the fix overturned a rule that had once
+been accepted.</p>
+
+<p><b>The moral.</b> Precision in the contract vocabulary is not decoration. Because .emp could
+say "the mask, not the flags," the routines could tell a true small promise instead of a false
+large one, and the checker could tell the difference.</p>
+
+<h3>The routine that preserved the flag it was returning</h3>
+
+<p><b>The claim.</b> <code>QueueDMA_Deferrable</code> returned a yes-or-no in the carry flag,
+declared <code>out(carry: dropped)</code>, and also declared <code>preserves(sr)</code>: the
+whole status register comes back untouched.</p>
+
+<p><b>What the code did.</b> The carry flag lives inside the condition-code half of the status
+register. So the header promised to return an answer in carry and, in the same breath, promised
+to leave carry exactly as the caller had it. Those cannot both be true. A returned flag is
+changed by definition; a preserved one is not.</p>
+
+<p><b>How the checker said no.</b> The overlap between a flag result and a preserved status
+register is a hard error, caught the first time the routine was checked:</p>
+
+<div class="diag"><span class="tier error">Error</span><span class="body">[proc.out-preserves-overlap] `QueueDMA_Deferrable` declares `out(carry: dropped)` and preserves the condition codes (bare `sr` covers both halves) - a flag result lives in CCR, so CCR either carries the result or is restored to entry, not both (declare `preserves(sr.mask)` if only the interrupt mask round-trips)</span></div>
+
+<p><b>The fix.</b> The header became <code>out(carry: dropped) preserves(sr.mask)</code>: return
+the answer in the flags, promise only the interrupt mask. You can read the corrected line in the
+engine today at <span class="src" style="display:inline;">aeon/engine/system/dma_queue.emp:106</span>.</p>
+
+<p><b>The moral.</b> This is the payoff of the two-halves split from section 3, shown as a bug
+rather than a feature. A single-token <code>sr</code> could not even express the contradiction,
+so the tool could not see it. Splitting the register let the routine state what it meant, and
+the instant it did, the tool could tell that what it meant was impossible.</p>
+
+<!-- ================================================================ -->
+<h2 id="s8">8 &middot; Escape hatches, and what refuses them</h2>
+
+<p>A checker this strict needs pressure valves, or it stops being adopted. .emp has two, and the
+more interesting fact about them is where they <em>stop</em>.</p>
+
+<p><span class="clause">@allow("group", "reason")</span> silences one named lint group, at a
+module or a proc, and one of its groups, the opt-out for a computed-dispatch site the checker
+cannot analyse, requires a written reason the parser insists on. It
+turns off a specific heuristic warning you have judged to be a false alarm, and nothing more.
+<span class="clause">@as_compat</span> is the faithful-port valve: on a module still being
+carried over verbatim from the old assembler, it silences the modernization lints, the
+heuristic ones, so a literal transcription can build before it is cleaned up.</p>
+
+<p>Now the part that matters. Both hatches silence <b>lints</b>, the heuristic warnings. Neither
+one can silence a <b>declared contract</b>. A false <code>preserves</code>, a broken
+<code>out</code>, a <code>falls_into</code> that does not line up, an escaped <code>with</code>
+bracket, a proc marked never-returning that returns: these are error-tier, and no attribute
+turns them off. There is no flag that makes the checker accept a promise it has proven false.</p>
+
+<div class="decision">
+  <span class="d-tag">Design decision &middot; some claims cannot be silenced, on purpose</span>
+  <p><b>What:</b> the escape hatches cover the heuristic lints only. The proven contracts, and
+  the machine-checked budgets, have no suppression flag at all, and refuse anything they cannot
+  analyse rather than passing it quietly.</p>
+  <p><b>Why:</b> a silenced lie is worse than no claim. The value of a checked contract is that
+  a reader can trust it without re-deriving it; a single escape hatch that let a false
+  <code>preserves</code> through would poison that trust for every contract, because now none of
+  them is guaranteed. The heuristic warnings can be waived because they are advisory by
+  construction. The proofs cannot, because their whole worth is that they hold.</p>
+  <p><b>The cost, honestly:</b> occasionally the checker refuses code that is actually correct in
+  a way it cannot yet prove, and there is no override. The answer is to write the code in a shape
+  the checker can follow, or to widen the contract to the honest weaker claim, never to silence
+  the proof. That is friction on purpose.</p>
+</div>
+
+<p>That is the whole vocabulary. A .emp procedure header is a sentence in it:
+<span class="clause">clobbers</span> for what dies, <span class="clause">preserves</span> for
+what survives with a proof behind it, typed parameters and <span class="clause">out</span> for
+what goes in and comes back, <span class="clause">requires</span> for what must be true of the
+machine first, and <span class="clause">ensure</span> and <span class="clause">assert</span> for
+the two clocks. None of it is a comment. Every clause is a claim the build will hold you to.</p>
+
+<p>So go read one. Every .emp excerpt on the engine pages is now legible as a set of promises:
+open the <a href="reading-emp.html">Reading .emp</a> page again, or any header quoted here, and
+this time read the top line as a contract. Someone wrote it, the checker proved it, and it is
+still true, which is the entire argument for writing it down where the tool can see it.</p>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
+Previous: <a href="reading-emp.html">Reading .emp</a> &middot; Next: Comptime and build shapes (coming) &middot;
+<a href="../index.html">Back to hub</a></footer>
+
+<script>
+function expandAll(btn){
+  var open = btn.dataset.open !== 'true';
+  Array.prototype.forEach.call(document.querySelectorAll('details.explain'), function(d){ d.open = open; });
+  btn.dataset.open = open ? 'true' : 'false';
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* THE CONTRACT CHECKER. Lesson: the header is checked, not decorative.
+   The verdicts reproduce the checker's real message wording for these specific edits. */
+(function(){
+  var code = document.getElementById('chk-code');
+  if(!code) return;
+  var edA = document.getElementById('ed-a');
+  var edB = document.getElementById('ed-b');
+  var edC = document.getElementById('ed-c');
+  var out = document.getElementById('chk-out');
+  var runBtn = document.getElementById('chk-run');
+  var resetBtn = document.getElementById('chk-reset');
+
+  // esc for the rendered <pre>
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // Build the source as an array of line objects so an edit can add/cut a line.
+  // state: 'base' | 'add' (inserted by an edit) | 'cut' (removed by an edit)
+  function lines(){
+    var a = edA.checked, b = edB.checked, c = edC.checked;
+    var L = [];
+    L.push(['proc Sfx_Post (d0: u16, a0: *u8) clobbers(d1) preserves(d2) {', 'base']);
+    L.push(['        movem.l d2, -(sp)          // save d2', 'base']);
+    L.push(['        move.w  d0, d2             // d2 = working copy', 'base']);
+    L.push(['        move.w  d2, d1             // d1 = scratch (declared clobber)', 'base']);
+    if(a) L.push(['        move.w  d0, d3             // d3 is NOT declared', 'add']);
+    L.push(['        with ints_off {', 'base']);
+    L.push(['            move.b  d1, (a0)       // write while interrupts are masked', 'base']);
+    if(c) L.push(['            rts                    // early return, still inside ints_off', 'add']);
+    L.push(['        }', 'base']);
+    L.push(['        movem.l (sp)+, d2          // restore d2', b ? 'cut' : 'base']);
+    L.push(['        rts', 'base']);
+    L.push(['}', 'base']);
+    return L;
+  }
+
+  function render(){
+    var html = lines().map(function(pair){
+      var text = esc(pair[0]);
+      if(pair[1] === 'add') return '<span class="add">' + text + '</span>';
+      if(pair[1] === 'cut') return '<span class="cut">' + text + '</span>';
+      return text;
+    }).join('\n');
+    code.innerHTML = html;
+  }
+
+  // The real checker messages, verbatim wording (em dashes rendered as hyphens per the
+  // wiki dash convention; register/proc names and diagnostic codes are exact).
+  function diags(){
+    var d = [];
+    if(edA.checked){
+      d.push(['warn',
+        '[proc.clobber-undeclared] `Sfx_Post` writes `d3`, which is not in its `clobbers(...)` set or parameter list (heuristic lint - full register dataflow is deferred to S2-D6)']);
+    }
+    if(edB.checked){
+      d.push(['error',
+        '[proc.preserves-unverifiable] `Sfx_Post` declares `preserves(d2)` but `d2` is written and not restored']);
+    }
+    if(edC.checked){
+      d.push(['error',
+        '[context.escape] this path leaves the `with ints_off` region without reaching its release - the context stays held past the bracket']);
+    }
+    return d;
+  }
+
+  function runCheck(){
+    var d = diags();
+    out.className = 'chk-out ' + (d.length ? 'red' : 'green');
+    var html = '';
+    if(!d.length){
+      html = '<span class="headline">Contracts hold.</span>'
+           + '<span class="rest">Sfx_Post assembles. Every register the body touches is declared or restored, and the ints_off bracket releases on the one path out.</span>';
+    } else {
+      var nErr = d.filter(function(x){ return x[0] === 'error'; }).length;
+      var head = nErr ? 'The build stops.' : 'The build carries a warning.';
+      html = '<span class="headline">' + head + '</span>';
+      d.forEach(function(x){
+        var tier = x[0] === 'error' ? '<span class="tier error">Error</span>' : '<span class="tier warn">Warning</span>';
+        html += '<div class="diag">' + tier + '<span class="body">' + esc(x[1]) + '</span></div>';
+      });
+    }
+    out.innerHTML = html;
+  }
+
+  function pending(){
+    out.className = 'chk-out';
+    out.innerHTML = '<span class="rest">Press Run the checker to see the verdict.</span>';
+  }
+
+  edA.addEventListener('change', function(){ render(); pending(); });
+  edB.addEventListener('change', function(){ render(); pending(); });
+  edC.addEventListener('change', function(){ render(); pending(); });
+  runBtn.addEventListener('click', runCheck);
+  resetBtn.addEventListener('click', function(){
+    edA.checked = false; edB.checked = false; edC.checked = false;
+    render(); pending();
+  });
+
+  render();
+  pending();
+})();
+
+/* Term tooltips (shared popover; markup per AUTHORING.md). */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+</div>
+
+</body>
+</html>
