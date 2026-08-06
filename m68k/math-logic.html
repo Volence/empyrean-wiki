@@ -708,8 +708,9 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
       <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">The source is always the immediate constant; the destination is a data register
-    or memory, never an address register. <code>addi.w #4,a0</code> is refused, that is <a href="#adda">ADDA</a>'s
-    job (<code>adda.w #4,a0</code>).</p>
+    or memory, never an address register. There is no ADDI encoding that targets an An, but the
+    assembler does not stop you: write <code>addi.w #4,a0</code> and it quietly assembles the very same
+    bytes as <code>adda.w #4,a0</code>, the same swap it performs for <a href="#add">ADD</a>.</p>
   </div>
   <p>ADDI adds a compile-time constant straight to a destination, and it earns its place by doing the
   one thing plain <a href="#add">ADD</a> cannot: adding an immediate directly to MEMORY. ADD's
@@ -789,7 +790,8 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
     <p class="og-note">The source is a tiny quick constant, 1 to 8 only, encoded in three bits of the
     opcode itself (which is why there is no extension word). &#8224; an An destination is legal in
     <code>.w</code>/<code>.l</code> only, sets no flags, and updates the whole register. Ask for
-    <code>#9</code> or more and the assembler cannot encode ADDQ, so it falls back to <a href="#addi">ADDI</a>.</p>
+    <code>#9</code> or more and there is no ADDQ encoding to reach for, so the line does not assemble
+    and you write <a href="#addi">ADDI</a> yourself.</p>
   </div>
   <p>ADDQ adds a constant from 1 to 8 in a single opcode word, no extension needed, making it the
   cheapest way on the chip to nudge a value up by a little. This is the everyday increment: bump a
@@ -797,7 +799,7 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
   what you want; the only catch is the range wall.</p>
   <figure class="diagram">
   <div class="movesim">
-    <div class="msim-instr"><code id="aq-instr">addq.w #1,d0</code> <span>type an amount from 1 to 8 and run it. In range it adds in one word; out of range, watch the assembler refuse to encode ADDQ and reach for ADDI instead.</span></div>
+    <div class="msim-instr"><code id="aq-instr">addq.w #1,d0</code> <span>type an amount from 1 to 8 and run it. In range it adds in one word; out of range, watch the assembler reject the line outright.</span></div>
     <div class="msim-ctrl">
       <label for="aq-n">Amount #n (decimal)</label>
       <input id="aq-n" type="text" value="1" maxlength="3" autocomplete="off" aria-describedby="aq-note">
@@ -807,12 +809,12 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
     <div class="msim-regs">
       <span class="mreg"><span class="mr-name">d0</span><span class="mr-val" id="aq-d0">$00000032</span><span class="mr-tag">destination</span><span class="mr-dec" id="aq-d0d">.w = 50</span></span>
     </div>
-    <p class="msim-note" id="aq-note" aria-live="polite">d0 holds $0032 (50). Add 1 through 8 and it climbs in a single-word instruction. Type 9 and the line will not assemble as ADDQ at all, the quick field only reaches 8; the assembler needs ADDI for anything bigger.</p>
+    <p class="msim-note" id="aq-note" aria-live="polite">d0 holds $0032 (50). Add 1 through 8 and it climbs in a single-word instruction. Type 9 and the line does not assemble at all, the quick field only reaches 8; you write ADDI yourself for anything bigger.</p>
   </div>
   <figcaption>ADDQ carries its constant, 1 to 8, inside the opcode word itself, so it needs no immediate
   extension word; with a register or (An) destination that makes it 2 bytes, though a memory-address
   destination still adds its own address words. Static fallback: addq.w #1,d0 with d0 = $0032 gives
-  $0033; addq.w #8,d0 gives $003A; addq.w #9,d0 does not assemble as ADDQ, since the quick field stops
+  $0033; addq.w #8,d0 gives $003A; addq.w #9,d0 does not assemble at all, since the quick field stops
   at 8.</figcaption>
   </figure>
   <p>The classic guarded increment, from ring collection: bump the ring count by one, but only if it
@@ -824,8 +826,11 @@ of the flags (ADDA). Learn the plain ADD once and the rest are variations on whe
   <p>The <code>cmpi</code>/<code>bhs</code> is the guard; the ADDQ is the increment. This exact shape,
   compare against a cap, branch away if reached, otherwise ADDQ, is everywhere in the engine.</p>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  Two surprises. The amount is 1 to 8, full stop; <code>addq #9</code> is not an ADDQ and the assembler
-  will quietly encode <a href="#addi">ADDI</a> instead (bigger and slower). And <code>addq #n,An</code>
+  Two surprises. The amount is 1 to 8, full stop, and nothing rescues you past it: <code>addq.w #9,d0</code>
+  stops the build with <code>operand must be in range 1..8</code> and emits no bytes at all. It is worth
+  knowing which way this fails, because the assembler <em>does</em> silently rewrite some instructions for
+  you (<a href="#add">ADD</a> to an address register quietly becomes ADDA), and this is not one of them.
+  Reach for <a href="#addi">ADDI</a> yourself. And <code>addq #n,An</code>
   costs 8 cycles, not 4, and sets NO flags, one of several places where an address-register operation
   behaves differently from the data-register one right next to it.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
@@ -2045,7 +2050,8 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
     </div>
     <p class="og-note">The key asymmetry on this page: EOR's SOURCE must be a data register, only. Unlike
     AND and OR, you cannot EOR a memory value or an immediate into a register. <code>eor.w (a0),d0</code>
-    is refused (move it to a Dn first); <code>eor.w #$FF,d0</code> is refused (that is <a href="#eori">EORI</a>).</p>
+    is refused (move it to a Dn first). An immediate source is a different story: <code>eor.w #$FF,d0</code>
+    is not refused at all, it quietly assembles as <a href="#eori">EORI</a>.</p>
   </div>
   <p>EOR (exclusive-OR) sets a result bit wherever the two inputs DIFFER, which means a 1 in the mask
   toggles the matching destination bit and a 0 leaves it alone. Two uses fall out of that: flipping
@@ -2365,7 +2371,7 @@ function expandAll(btn){
       d0e.classList.remove('mr-flash'); void d0e.offsetWidth; d0e.classList.add('mr-flash');
       note.textContent='addq.w #'+n+',d0 added '+n+' in a single 2-byte opcode. d0\'s low word is now $'+lo.toString(16).toUpperCase().padStart(4,'0')+'.';
     } else {
-      note.textContent='#'+(isNaN(n)?'?':n)+' is outside the quick range 1 to 8, so this cannot be an ADDQ at all. The assembler falls back to ADDI (4 bytes, 8 cycles). The quick field stops at 8.';
+      note.textContent='#'+(isNaN(n)?'?':n)+' is outside the quick range 1 to 8, so this cannot be an ADDQ at all. The assembler stops with "operand must be in range 1..8" and emits nothing; you write ADDI instead (4 bytes, 8 cycles). The quick field stops at 8.';
     }
   });
   reset.addEventListener('click',function(){ d0=D0; inp.value='1'; instr.textContent='addq.w #1,d0'; d0e.textContent=hex8(d0); d0d.textContent='.w = '+(d0&0xFFFF); note.textContent='Reset. d0 = $0032 (50). Add 1 to 8, or try 9 to hit the range wall.'; });

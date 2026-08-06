@@ -400,9 +400,10 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 
 <p>Almost every instruction on this page is one you will never see in a Genesis game. This first one
 is the opposite: it is in all of them. Counted across seven codebases, <code>move</code> to or from
-the status register appears 4 times in Sonic 1, 47 in Sonic 2, 111 in Sonic 3 and Knuckles, 35 in the
-Sonic Hack engine, 13 in Aeon, and 48 in MarkeyJester's homebrew Mega Drive operating system. It is
-ordinary, everyday code, and it is worth understanding before anything else here.</p>
+the status register appears 4 times in Sonic 1, 47 in Sonic 2, 111 in Sonic 3 and Knuckles, 10 in the
+Sonic Clean Engine, 31 in the Sonic Hack engine, 23 in Aeon, and 49 in MarkeyJester's homebrew Mega
+Drive operating system. It is ordinary, everyday code, and it is worth understanding before anything
+else here.</p>
 
 <p>What it touches is the <span class="term" data-def="A 16-bit register holding the CPU&#39;s own state. Its low byte is the condition codes (X N Z V C) that ordinary instructions set; its high byte is the supervisor half, holding the trace bit, the supervisor bit, and the interrupt mask.">status register</span>,
 and that register has two halves that behave completely differently. You already know the low half:
@@ -448,7 +449,7 @@ it. The high half you have not met, and it is where this page lives.</p>
       <span class="mreg"><span class="mr-name">sr</span><span class="mr-val" id="sr-hex">$2700</span><span class="mr-dec" id="sr-bin">0010 0111 0000 0000</span></span>
       <span class="srdec" id="sr-words">Trace <b>off</b>. Supervisor mode <b>on</b>.<br>Interrupt mask <b>7</b>.</span>
     </div>
-    <p class="srmask" id="sr-maskline">The three mask bits are one number, not three switches: I2 I1 I0 read as 111 in binary, which is <b>7</b>. At 7 the CPU ignores every interrupt level from 1 to 7, so nothing gets through.</p>
+    <p class="srmask" id="sr-maskline">The three mask bits are one number, not three switches: I2 I1 I0 read as 111 in binary, which is <b>7</b>. At 7 the CPU ignores every ordinary interrupt level, 1 to 6, so the VDP can no longer reach you. Level 7 is the exception: it is non-maskable, and a request that rises to 7 from a lower level is taken anyway.</p>
 
     <div class="msim-ctrl">
       <label>Load a real line:</label>
@@ -637,8 +638,8 @@ an operating system is the one thing on this platform that would have reason to 
   <table class="abs">
     <tr><th class="rh">Instruction</th><th>Sonic 1</th><th>Sonic 2</th><th>S3&amp;K</th><th class="soft">S.C.E.</th><th class="soft">Sonic Hack</th><th class="soft">Aeon</th><th class="soft">MD-OS</th><th class="rh">&nbsp;</th></tr>
     <tr class="grp"><td colspan="9">Used constantly. This is section 1.</td></tr>
-    <tr><td class="rh">MOVE SR</td><td class="hit">4</td><td class="hit">47</td><td class="hit">111</td><td class="hit">14</td><td class="hit">35</td><td class="hit">13</td><td class="hit">48</td><td class="rh" style="color:var(--dim);font-size:.68rem;">turning interrupts off and on</td></tr>
-    <tr><td class="rh">NOP</td><td class="hit">38</td><td class="hit">37</td><td class="hit">102</td><td class="hit">15</td><td class="hit">36</td><td class="hit">10</td><td class="hit">71</td><td class="rh" style="color:var(--dim);font-size:.68rem;">three real jobs; section 6</td></tr>
+    <tr><td class="rh">MOVE SR</td><td class="hit">4</td><td class="hit">47</td><td class="hit">111</td><td class="hit">10</td><td class="hit">31</td><td class="hit">23</td><td class="hit">49</td><td class="rh" style="color:var(--dim);font-size:.68rem;">turning interrupts off and on</td></tr>
+    <tr><td class="rh">NOP</td><td class="hit">38</td><td class="hit">37</td><td class="hit">102</td><td class="hit">16</td><td class="hit">36</td><td class="hit">18</td><td class="hit">71</td><td class="rh" style="color:var(--dim);font-size:.68rem;">three real jobs; section 6</td></tr>
     <tr><td class="rh">MOVE to CCR</td><td class="hit">2</td><td class="hit">5</td><td class="hit">8</td><td class="z">0</td><td class="z">0</td><td class="z">0</td><td class="hit">4</td><td class="rh" style="color:var(--dim);font-size:.68rem;">restoring saved flags</td></tr>
     <tr><td class="rh">MOVE USP</td><td class="hit">1</td><td class="hit">1</td><td class="hit">2</td><td class="hit">1</td><td class="hit">1</td><td class="z">0</td><td class="hit">5</td><td class="rh" style="color:var(--dim);font-size:.68rem;">the same boot line, copied</td></tr>
     <tr class="grp"><td colspan="9">Silence one: nobody here needs scratch paper. Section 3.</td></tr>
@@ -662,7 +663,9 @@ an operating system is the one thing on this platform that would have reason to 
   appear only in engines written decades after the original games. What is counted is SOURCE LINES,
   meaning how many times a programmer reached for the instruction, not how many instructions the
   assembler emitted: Aeon's single TRAP sits under a repeat directive that emits five, and its single
-  TAS is inside a macro that expands wherever the macro is used.</figcaption>
+  TAS is inside a macro that expands wherever the macro is used. Third-party code vendored into a
+  project is not counted, because the same error handler is embedded in three of these trees and
+  would otherwise contribute the same seven lines to each of them.</figcaption>
 </figure>
 
 <div class="teach"><span class="t-tag">Teach</span>
@@ -825,7 +828,7 @@ has to ask.</p></div>
   </div>
   <p>STOP loads the immediate into the status register and then halts the processor. It stays halted
   until an interrupt arrives that the new
-  <span class="term" data-def="Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 7 blocks everything and a mask of 0 permits everything.">interrupt mask</span>
+  <span class="term" data-def="Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 0 permits everything and a mask of 7 blocks every ordinary interrupt; level 7 is non-maskable and can still get through.">interrupt mask</span>
   permits, and then it resumes at the next instruction. Both halves are one instruction on purpose: if
   you set the mask first and halted second, an interrupt could arrive in the gap.</p>
   <p>Zero uses in all seven codebases here. But Thunder Force IV uses it seven times, and this is what
@@ -859,11 +862,11 @@ cartridge there is no somebody else.</p>
   <div class="flags" role="group" aria-label="Condition codes affected by CHK">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none"><span class="fl-name">N</span><span class="fl-state">undef.</span></span>
     <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">undef.</span></span>
     <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">undef.</span></span>
     <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">undef.</span></span>
-    <span class="fl-caption">N reflects the comparison; Z, V and C are left undefined, so do not read them</span>
+    <span class="fl-caption">N is defined only in the two cases that trap: set if the register is negative, cleared if it exceeds the bound. After a CHK that passes, and that is the only case where your next instruction runs, all five are undefined</span>
   </div>
   <div class="cost" role="group" aria-label="Size of CHK">
     <span class="fl-label">Cost</span>
@@ -1257,7 +1260,7 @@ across seven codebases; the counting method is stated in section 2.</span></foot
     // T7: say out loud that the three bits are ONE NUMBER, and what that number does
     maskEl.innerHTML='The three mask bits are one number, not three switches: I2 I1 I0 read as '
       +((sr>>8)&7).toString(2).padStart(3,'0')+' in binary, which is <b>'+m+'</b>. '
-      +(m===7 ? 'At 7 the CPU ignores every interrupt level from 1 to 7, so nothing gets through.'
+      +(m===7 ? 'At 7 the CPU ignores every ordinary interrupt level, 1 to 6. Level 7 is non-maskable and is taken anyway.'
        : m===0 ? 'At 0 nothing is masked, so every interrupt level gets through, including VBlank at 6.'
        : 'At '+m+' the CPU ignores interrupt levels 1 to '+m+' and allows '+(m+1)+' to 7, so VBlank at level 6 '
          +(m>=6?'is blocked':'still gets through')+'.');

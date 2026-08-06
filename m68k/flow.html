@@ -2171,7 +2171,7 @@ wrong.</p>
     <span class="fchip f-set" tabindex="0" role="note" aria-label="Z: set from the stack"><span class="fl-name">Z</span><span class="fl-state">from stack</span></span>
     <span class="fchip f-set" tabindex="0" role="note" aria-label="V: set from the stack"><span class="fl-name">V</span><span class="fl-state">from stack</span></span>
     <span class="fchip f-set" tabindex="0" role="note" aria-label="C: set from the stack"><span class="fl-name">C</span><span class="fl-state">from stack</span></span>
-    <span class="fl-caption">all five come back from the stack; this is the only return that restores them</span>
+    <span class="fl-caption">all five come back from the stack; RTE does this too, but it restores the whole status register, where RTR restores only these five</span>
   </div>
 
   <div class="cost"><span class="cchip">20 cycles</span>
