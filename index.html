@@ -392,14 +392,6 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
     <span class="nm">The Programming Model</span>
     <span class="ds">The accumulator and 8-bit registers, register pairs, the flag register, IX/IY/SP/PC, and the shadow set, with a live register explorer</span>
   </a>
-  <a class="card" href="z80/loads-and-arithmetic.html">
-    <span class="nm">Instructions: Loads &amp; Arithmetic</span>
-    <span class="ds">LD (the one instruction that moves everything), the stack and exchanges, arithmetic through the accumulator, the 16-bit pairs, and the masking idioms, plus a full index of every Z80 instruction</span>
-  </a>
-  <a class="card" href="z80/bits-flow-blocks.html">
-    <span class="nm">Instructions: Bits, Flow &amp; Blocks</span>
-    <span class="ds">Rotates and single-bit ops, JP/JR/DJNZ and the calls, interrupts and HALT, and the block instructions that copy a whole run of bytes in one step</span>
-  </a>
 </div>
 
 <p class="hub-h" id="data">Data Formats: how content is encoded</p>
@@ -536,33 +528,6 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
     <span class="no">12</span>
     <span class="nm">The Engine/Game Contract</span>
     <span class="ds">A game is a manifest: seven macros and one include; the demo game proves the engine is game-agnostic</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-</div>
-
-<p class="hub-h" id="emp">The .emp language: what the engine is written in</p>
-<div class="hub-grid">
-  <a class="card" href="emp/reading-emp.html">
-    <span class="nm">Reading .emp</span>
-    <span class="ds">The engine's own source language, read a real file at a time: modules, procedures, the lines that are for the assembler and the lines that are for the CPU</span>
-  </a>
-  <a class="card" href="emp/contracts.html">
-    <span class="nm">Contracts: what a procedure promises</span>
-    <span class="ds">Register promises the assembler checks instead of trusting: clobbers, preserves, results in the flags, and the real false contracts the checker caught in shipping code</span>
-  </a>
-  <div class="card soon">
-    <span class="nm">Comptime &amp; Build Shapes</span>
-    <span class="ds">Work the assembler does before the ROM exists: build-time values, generated code, and one source serving a plain build and a debug build</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="nm">Interfaces: the engine and game seam</span>
-    <span class="ds">How the engine declares the seam a game plugs into, and how an unbound hook costs zero bytes</span>
-    <span class="soon-tag">page coming</span>
-  </div>
-  <div class="card soon">
-    <span class="nm">Cycles as Facts</span>
-    <span class="ds">Timing claims the assembler checks: span bounds, whole-procedure budgets, and what happens when the code outgrows its budget</span>
     <span class="soon-tag">page coming</span>
   </div>
 </div>
