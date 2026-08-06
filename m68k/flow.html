@@ -2242,7 +2242,9 @@ wrong.</p>
   <a href="#s4">section 4</a>'s gotcha describes, pushes a fourteen-byte frame carrying the
   faulting access address and other diagnostic words UNDERNEATH the usual pair, which is why a
   handler that reads the usual pair naively prints nonsense for exactly the two failures you most
-  want to debug. The Programming Model page's exception section is the place for that.) That is
+  want to debug. The Programming Model page's
+  <a href="programming-model.html#vectors">exception section</a> states the same difference and
+  carries the vector list.) That is
   the same shape as RTR and it is a different thing: RTR restores the five condition codes, RTE
   restores the ENTIRE status register, including the interrupt priority mask and the supervisor
   bit. Restoring the mask is the point, because that is how the machine stops being inside an

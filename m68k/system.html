@@ -1085,7 +1085,7 @@ instruction is being used for something other than the thing it is named after.<
   </div>
   <p><code>trap #n</code> raises an exception on purpose. There are sixteen of them, numbered 0 to 15,
   and each has its own slot in the
-  <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens: 256 slots of four bytes each, so 1024 bytes in all, one slot per kind of exception.">vector table</span>:
+  <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens, one four-byte slot each. The 68000 defines 256 of them, but a Genesis game uses only the first 64, which is why the cartridge header begins at $100.">vector table</span>:
   <code>trap #0</code> goes through the slot at <code>$80</code>, <code>trap #1</code> through
   <code>$84</code>, and so on. The CPU saves where it was, switches to supervisor mode, and jumps to
   whatever address it finds there.</p>

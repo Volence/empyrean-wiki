@@ -1460,7 +1460,7 @@ one of those four steps.</p>
 game-facing contract in one pass. The engine <em>declares</em> that seam as a typed interface
 called <code>Game</code>, and a game is the single <code>implement</code> block that binds each
 member. The engine owns the entire ROM
-layout from the <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens: 256 slots of four bytes each, so 1024 bytes in all, one slot per kind of exception.">vector table</span> to the end-of-ROM marker. What boot itself asks of the game is
+layout from the <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens, one four-byte slot each. The 68000 defines 256 of them, but a Genesis game uses only the first 64, which is why the cartridge header begins at $100.">vector table</span> to the end-of-ROM marker. What boot itself asks of the game is
 small and precise:</p>
 
 <ul>

@@ -1266,6 +1266,61 @@ the 68000 enforces. That is why one Sonic routine carefully saves registers on e
 clobbers them: each is following (or ignoring) a convention the code agreed on, and the CPU is indifferent
 either way.</p>
 
+<h3 id="convention">So what is the convention here?</h3>
+
+<p>Having drawn that line, it would be unhelpful to stop at it. Genesis code has no single official
+calling convention the way a C compiler does, but Sonic-era assembly and the engines descended from it
+converge on a small set of habits, and knowing them is most of what makes an unfamiliar routine
+readable.</p>
+
+<ul>
+  <li><b>Arguments arrive in registers, not on the stack.</b> Values go in data registers, addresses in
+  address registers, and which ones is decided per routine and written in a comment above it. Stack
+  arguments do exist, which is what a line like <code>movea.l 4(sp),a0</code> is reading, but they are
+  the exception.</li>
+  <li><b><code>a0</code> is the object being worked on.</b> This is the closest thing to a universal
+  rule in this family of code. Object routines are entered with <code>a0</code> pointing at the
+  64-byte object, every field is reached as a small offset from it, and a routine that needs a second
+  object uses <code>a1</code>. Once you know this, most object code stops looking arbitrary.</li>
+  <li><b>Results come back in registers, named per routine.</b> When the convention is written down at
+  all, it is written like this, in a comment block above the label:
+<pre><span class="c">; d2 = y_pos</span>
+<span class="c">; d3 = x_pos</span>
+<span class="c">; a4 = pointer to angle buffer</span>
+<span class="c">; returns relevant block ID in (a1)</span>
+<span class="c">; returns distance in d1</span>
+<span class="c">; returns angle in (a4)</span>
+FindFloor:</pre>
+  <span class="src">s2disasm/s2.asm:42931-42942 (FindFloor, abridged)</span>
+  That is a complete calling convention for one routine: which registers carry arguments in, which
+  carry results back, and even that two of the results are written to memory the registers point at
+  rather than to the registers themselves.</li>
+  <li><b>A yes-or-no answer often comes back in a flag</b>, usually carry. It costs no register at all,
+  and the caller reads it with a single <code>bcc</code> or <code>bcs</code> on the very next line. Aeon
+  makes the same choice and states it in the routine's signature, where
+  <code>out(carry: dropped)</code> on its DMA queue call means the carry bit IS the answer, and the
+  assembler checks that the routine really sets it.</li>
+  <li><b>Preservation is per routine, not global.</b> There is no register the 68000 or the platform
+  declares sacred. A routine that must not disturb its caller saves what it touches on entry with
+  <code>movem</code> and restores it before <code>rts</code>; a routine documented as clobbering
+  <code>d0-d1</code> simply clobbers them and the caller works around it.</li>
+</ul>
+
+<p>The catch is visible in that excerpt: the contract is a comment. Nothing stops the routine from
+quietly breaking it, and nothing tells the caller when it does. Closing that gap is exactly what this
+engine's source language was built for. The same information, on an Aeon routine, is part of the
+signature:</p>
+<pre>pub proc QueueDMA_Critical (d1: u32, d2: u16, d3: u16) clobbers(d0-d4/a1-a2) out(carry: dropped) preserves(sr.mask) {</pre>
+<span class="src">aeon/engine/system/dma_queue.emp:94</span>
+<p>Every clause there is checked while the ROM is built. The arguments are named and typed, the
+clobber list is verified against what the code actually writes, <code>out(carry: dropped)</code> says
+the carry bit IS the answer this routine hands back, and <code>preserves(sr.mask)</code> promises it
+leaves the interrupt mask as it found it. Break any of them and the build stops. The convention has
+stopped being a comment and become a fact the assembler enforces.</p>
+
+<p class="sub">Combining these into whole idioms, the register-preserving wrapper, dispatch through a
+jump table, the tail call, is the subject of a page of its own rather than this one.</p>
+
 <!-- ================================================================ -->
 <h2 id="s6">6 &middot; Exceptions and when the PC goes wrong</h2>
 
@@ -1285,8 +1340,69 @@ the same six steps. This is the sequence that ties together the supervisor stack
   <li>The handler runs; if execution is meant to continue, it ends with <code>rte</code>, which pops the saved SR and PC back and carries on where it left off.</li>
 </ol>
 <p>This is the common <em>conceptual</em> sequence; it excludes reset, which builds no saved frame at
-all. The exact stack frame varies by exception, and bus and address errors save extra diagnostic
-information beyond SR and PC.</p>
+all. The exact stack frame varies by exception, and this is worth knowing in one specific way: bus
+and address errors push <strong>eight extra bytes below</strong> the SR and PC pair, describing the
+access that failed. A handler that reads the saved PC at a fixed offset from the stack pointer
+therefore reports nonsense for exactly the two exceptions you most want to debug, unless it first
+works out which shape it is looking at. Reading a crash dump properly is its own subject, and it is
+the one this section deliberately hands onward.</p>
+
+<h3 id="vectors">Which slot is which</h3>
+
+<p>Step 5 says the CPU "reads the handler's address from this exception's slot". Here is the whole
+list of slots. The number is the vector number; the offset is where that slot sits, since each is
+four bytes: offset = number &times; 4.</p>
+
+<div class="tbl"><table id="vectab">
+  <tr><th>#</th><th>Offset</th><th>Fires when</th></tr>
+  <tr><td>0</td><td><code>$000</code></td><td>Reset: the initial supervisor stack pointer, not a handler address</td></tr>
+  <tr><td>1</td><td><code>$004</code></td><td>Reset: the address of the first instruction to run</td></tr>
+  <tr><td>2</td><td><code>$008</code></td><td>Bus error</td></tr>
+  <tr><td>3</td><td><code>$00C</code></td><td>Address error: a word or long access at an odd address</td></tr>
+  <tr><td>4</td><td><code>$010</code></td><td>Illegal instruction: the opcode is not one</td></tr>
+  <tr><td>5</td><td><code>$014</code></td><td>Divide by zero, from <a href="math-logic.html#divu">DIVU</a> or DIVS</td></tr>
+  <tr><td>6</td><td><code>$018</code></td><td><a href="system.html#chk">CHK</a> found the register out of bounds</td></tr>
+  <tr><td>7</td><td><code>$01C</code></td><td><a href="system.html#trapv">TRAPV</a> and V was set</td></tr>
+  <tr><td>8</td><td><code>$020</code></td><td>Privilege violation: a privileged instruction in user mode</td></tr>
+  <tr><td>9</td><td><code>$024</code></td><td>Trace, after each instruction while the T bit is set</td></tr>
+  <tr><td>10</td><td><code>$028</code></td><td>Line 1010: the opcode's top four bits are <code>1010</code></td></tr>
+  <tr><td>11</td><td><code>$02C</code></td><td>Line 1111: the opcode's top four bits are <code>1111</code></td></tr>
+  <tr><td>12-23</td><td><code>$030-$05C</code></td><td>Reserved by Motorola; nothing here should ever fire</td></tr>
+  <tr><td>24</td><td><code>$060</code></td><td>Spurious interrupt: a device asked, then failed to identify itself</td></tr>
+  <tr><td>25-31</td><td><code>$064-$07C</code></td><td>Interrupt levels 1 to 7. On the Genesis level 4 is HBlank and level 6 is VBlank</td></tr>
+  <tr><td>32-47</td><td><code>$080-$0BC</code></td><td><a href="system.html#trap">TRAP</a> #0 through #15, one slot each</td></tr>
+  <tr><td>48-63</td><td><code>$0C0-$0FC</code></td><td>Reserved</td></tr>
+</table></div>
+
+<p class="sub" style="margin-top:.7rem;">The 68000 defines 256 vectors, reaching to <code>$3FF</code>,
+but the ones past 63 are for devices that supply their own vector number and the Genesis has none. So
+a Genesis cartridge fills the first 64 and then starts its header at <code>$100</code>. The Aeon boot
+page carries <a href="../aeon/section-0-boot.html#s1">a clickable grid of all 64</a> showing what one
+real engine points each of them at.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why do two whole slots exist for opcodes starting 1010 and 1111?</summary>
+  <div class="x-body">
+    <p>Motorola set aside two entire blocks of the opcode space, everything beginning <code>1010</code>
+    (<code>$Axxx</code>) and everything beginning <code>1111</code> (<code>$Fxxx</code>), and promised
+    never to use them itself. Hit one and the CPU does not treat it as an illegal instruction; it takes
+    its own dedicated exception, so a program can tell those apart from ordinary garbage.</p>
+    <p>The intent was extension. <code>$Fxxx</code> is how the 68000 hands work to a coprocessor that
+    may or may not be fitted, and a machine without one can emulate the instruction in software from
+    this vector. <code>$Axxx</code> was left for the operating system, which is exactly what the early
+    Macintosh did: its toolbox calls are A-line opcodes, so what looks like an instruction is really a
+    system call.</p>
+    <p>There is no coprocessor and no operating system on a Genesis, so neither should ever fire. That
+    makes them useful in the other direction: if your crash handler reports Line 1111, the CPU was not
+    running instructions at all. It was running your data, and that data happened to start with an
+    <code>$F</code> nibble.</p>
+  </div>
+</details>
+
+<p>That last point is worth keeping. Three of the slots above, illegal instruction, Line 1010 and
+Line 1111, are all the same underlying accident: the PC wandered into something that is not code. Which
+of the three fires is decided purely by the top four bits of whatever it landed on, so between them they
+catch a good share of the ways a runaway PC announces itself.</p>
 <p><code>ErrorTrap</code>, below, is a handler that does run (step 6's "handler runs" part) but
 deliberately never reaches the <code>rte</code>: it loops forever, which is the silent freeze.</p>
 
