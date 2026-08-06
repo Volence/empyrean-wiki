@@ -1405,7 +1405,7 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><td class="ix-mn"><a href="math-logic.html#adda">ADDA</a><span class="ix-x">Add Address</span></td><td class="ix-gl">Add a value into an address register; sets no flags.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#addi">ADDI</a><span class="ix-x">Add Immediate</span></td><td class="ix-gl">Add an immediate constant to a destination.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#addq">ADDQ</a><span class="ix-x">Add Quick</span></td><td class="ix-gl">Add a small constant, 1 to 8, packed into the opcode word; extension words can still follow for the destination address.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">ADDX</span><span class="ix-x">Add Extended</span></td><td class="ix-gl">Add with the extend bit, for multi-word addition.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">ADDX</span><span class="ix-x">Add Extended</span></td><td class="ix-gl">Add with the extend bit, for multi-word addition.</td><td><span class="ix-cat soon">Wider than 32 bits</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#and">AND</a><span class="ix-x">Logical AND</span></td><td class="ix-gl">Bitwise AND of two operands.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#andi">ANDI</a><span class="ix-x">AND Immediate</span></td><td class="ix-gl">Bitwise AND with an immediate constant.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="shifts-bits.html#asl">ASL</a><span class="ix-x">Arithmetic Shift Left</span></td><td class="ix-gl">Arithmetic shift left; the vacated low bits fill with zero.</td><td><span class="ix-cat live">Shifts &amp; Bits</span></td></tr>
@@ -1442,6 +1442,7 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><td class="ix-mn"><a href="system.html#moveusp">MOVE USP</a><span class="ix-x">Move User Stack Pointer</span></td><td class="ix-gl">Move the user stack pointer to or from an address register; privileged.</td><td><span class="ix-cat live">System</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#movea">MOVEA</a><span class="ix-x">Move Address</span></td><td class="ix-gl">Load an address into an address register; sets no flags.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#movem">MOVEM</a><span class="ix-x">Move Multiple Registers</span></td><td class="ix-gl">Save or restore a set of registers in one instruction.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
+  <tr><td class="ix-mn"><a href="moving-data.html#movep">MOVEP</a><span class="ix-x">Move Peripheral Data</span></td><td class="ix-gl">Move a register's bytes to or from every other address, for a device on half the bus.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#moveq">MOVEQ</a><span class="ix-x">Move Quick</span></td><td class="ix-gl">Load a small signed constant, -128 to 127, into a data register in one word.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#muls">MULS</a><span class="ix-x">Multiply Signed</span></td><td class="ix-gl">Signed multiply, 16 by 16 giving a 32-bit product.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#mulu">MULU</a><span class="ix-x">Multiply Unsigned</span></td><td class="ix-gl">Unsigned multiply, 16 by 16 giving a 32-bit product.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
@@ -1465,7 +1466,7 @@ on a page that is already built are live links; the rest are marked with the pag
   <tr><td class="ix-mn"><a href="math-logic.html#suba">SUBA</a><span class="ix-x">Subtract Address</span></td><td class="ix-gl">Subtract a value from an address register; sets no flags.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#subi">SUBI</a><span class="ix-x">Subtract Immediate</span></td><td class="ix-gl">Subtract an immediate constant.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
   <tr><td class="ix-mn"><a href="math-logic.html#subq">SUBQ</a><span class="ix-x">Subtract Quick</span></td><td class="ix-gl">Subtract a small constant, 1 to 8, packed into the opcode word; extension words can still follow for the destination address.</td><td><span class="ix-cat live">Math &amp; Logic</span></td></tr>
-  <tr><td class="ix-mn"><span class="mn-plain">SUBX</span><span class="ix-x">Subtract Extended</span></td><td class="ix-gl">Subtract with the extend bit, for multi-word subtraction.</td><td><span class="ix-cat soon">Math &amp; Logic</span></td></tr>
+  <tr><td class="ix-mn"><span class="mn-plain">SUBX</span><span class="ix-x">Subtract Extended</span></td><td class="ix-gl">Subtract with the extend bit, for multi-word subtraction.</td><td><span class="ix-cat soon">Wider than 32 bits</span></td></tr>
   <tr><td class="ix-mn"><a href="moving-data.html#swap">SWAP</a><span class="ix-x">Swap Register Halves</span></td><td class="ix-gl">Exchange the upper and lower 16-bit halves of a data register.</td><td><span class="ix-cat live">Moving Data</span></td></tr>
   <tr><td class="ix-mn"><a href="system.html#tas">TAS</a><span class="ix-x">Test and Set</span></td><td class="ix-gl">Read a byte, set its top bit, in one indivisible step. The write is ignored on a Mega Drive.</td><td><span class="ix-cat live">System</span></td></tr>
   <tr><td class="ix-mn"><a href="system.html#trap">TRAP</a><span class="ix-x">Trap</span></td><td class="ix-gl">A synchronous, software-generated exception to one of sixteen vectored handlers.</td><td><span class="ix-cat live">System</span></td></tr>
@@ -1479,10 +1480,10 @@ on a page that is already built are live links; the rest are marked with the pag
 
 <p style="font-size:.82rem; color:var(--dim); max-width:42rem;">Scope: this index covers the
 instruction set these learning-track pages document, chosen around common Aeon and Sonic-style Genesis
-code. It is not a complete list of every 68000 instruction: it carries 71 of the 83 the chip has, counted the
+code. It is not a complete list of every 68000 instruction: it carries 72 of the 83 the chip has, counted the
 way these rows count them. What is missing is the multi-word and packed-decimal family (ADDX and SUBX,
-which are listed here but not yet linked, plus NEGX, CMPM, ABCD, SBCD and NBCD), the peripheral move
-MOVEP, and the six immediate forms that target the condition codes or the status register directly.
+which are listed here but not yet linked, plus NEGX, CMPM, ABCD, SBCD and NBCD) and the six immediate
+forms that target the condition codes or the status register directly.
 The <code>Bcc</code>, <code>DBcc</code>, and
 <code>Scc</code> rows each stand for a whole family of condition suffixes (EQ, NE, CS, and the rest).</p>
 

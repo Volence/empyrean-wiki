@@ -402,11 +402,52 @@ a word in memory through <code>(a0)</code> costs 4. So:</p>
 operands. It is not the whole story for other instructions. Read-modify-write instructions such as
 ADD, SUB, AND, and OR have their own bases that depend on direction: ADD.W into a data register is
 base 4, but ADD.W into memory (ADD.W Dn,(An)) is base 8, because writing memory means reading it,
-adding, and writing it back. So take the base from that instruction's own row in the Standard
-Instruction table, then add effective-address time only for the operand Motorola marks with a plus.
+adding, and writing it back. So take the base from that instruction's own row in
+<a href="#base">the base table below</a>, then add effective-address time only for the operand
+marked with a plus.
 For example ADD.W D0,(A0) is base 8 plus the (A0) price of 4, which is 12 cycles, not the 8 a
 MOVE-shaped guess would give.</p>
 </div>
+
+<p>That rule needs a second table to be usable, so here it is. The prices below are bases only: add
+the mode price from <a href="#price">the table further down</a> for the operand marked
+<code>+</code>, and nothing for the other one.</p>
+
+<div class="tbl"><table id="base">
+  <tr><th>Instruction</th><th>Form (the <code>+</code> operand pays a mode price)</th><th>Base .b / .w</th><th>Base .l</th></tr>
+  <tr><td><code>MOVE</code></td><td><code>&lt;ea&gt;+,&lt;ea&gt;+</code>, the only one that pays on both sides</td><td>4</td><td>4</td></tr>
+  <tr><td><code>ADD SUB AND OR</code></td><td><code>&lt;ea&gt;+,Dn</code></td><td>4</td><td>6</td></tr>
+  <tr><td><code>ADD SUB AND OR</code></td><td><code>Dn,&lt;ea&gt;+</code>, writing to memory</td><td>8</td><td>12</td></tr>
+  <tr><td><code>CMP</code></td><td><code>&lt;ea&gt;+,Dn</code>, no memory-destination form</td><td>4</td><td>6</td></tr>
+  <tr><td><code>EOR</code></td><td><code>Dn,Dn</code></td><td>4</td><td>8</td></tr>
+  <tr><td><code>EOR</code></td><td><code>Dn,&lt;ea&gt;+</code>, writing to memory</td><td>8</td><td>12</td></tr>
+  <tr><td><code>MULU MULS</code></td><td><code>&lt;ea&gt;+,Dn</code>, data-dependent</td><td>up to 70</td><td>n/a</td></tr>
+  <tr><td><code>DIVU</code></td><td><code>&lt;ea&gt;+,Dn</code>, data-dependent</td><td>up to 140</td><td>n/a</td></tr>
+  <tr><td><code>DIVS</code></td><td><code>&lt;ea&gt;+,Dn</code>, data-dependent</td><td>up to 158</td><td>n/a</td></tr>
+</table></div>
+
+<p class="sub" style="margin-top:.7rem;">There is one trap in the long column. A <code>.l</code>
+operation reading into a data register is base 6, but when the source is itself a data register or an
+immediate the base is <strong>8</strong>. That is why <code>add.l d1,d0</code> takes 8 cycles rather
+than the 6 the rule alone predicts, and <code>add.l #n,d0</code> 16 rather than 14. Everywhere else
+the rule holds exactly: <code>add.l (a0),d0</code> really is 6 plus the long-word <code>(An)</code>
+price of 8, which is 14.</p>
+
+<details class="refbox">
+  <summary>Check the arithmetic yourself</summary>
+  <div class="enc-body">
+  <p>Every figure below is the base from this table plus a price from the mode table, and every one
+  of them matches the totals printed on the Math &amp; Logic page's own ADD entry. If the two ever
+  disagree, the per-instruction entry is the one that was measured.</p>
+  <pre>	add.w	d1,d0        <span class="c">= 4 + 0                 = 4</span>
+	add.w	(a0),d0      <span class="c">= 4 + 4  ((An), word)   = 8</span>
+	add.w	d(a0),d0     <span class="c">= 4 + 8  (d(An), word)  = 12</span>
+	add.w	d0,(a0)      <span class="c">= 8 + 4  (memory dest)  = 12</span>
+	add.l	(a0),d0      <span class="c">= 6 + 8  ((An), long)   = 14</span>
+	add.l	d0,(a0)      <span class="c">= 12 + 8 (memory dest)  = 20</span>
+	add.l	d1,d0        <span class="c">= 8 + 0  (the trap above) = 8</span></pre>
+  </div>
+</details>
 
 <p>The same addition governs SIZE. The opcode itself is one 16-bit word. A mode that needs extra
 information, a displacement, an absolute address, an immediate constant, tacks on
