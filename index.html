@@ -240,6 +240,10 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
     <span class="dr-t">The reference</span>
     <span class="dr-d">Everything true for any Genesis game: the machine, the two CPU languages, the data formats, and the sound ecosystem</span>
   </a>
+  <a class="door" href="#m68k">
+    <span class="dr-t">68000 assembly</span>
+    <span class="dr-d">The language every Genesis game is written in: the registers, the addressing modes, and each instruction taught from real code in the Sonic disassemblies</span>
+  </a>
   <a class="door" href="#manual">
     <span class="dr-t">The Aeon engine</span>
     <span class="dr-d">What this engine chose and why, system by system, with the code behind each decision</span>
@@ -379,6 +383,46 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
     <span class="nm">Instructions: System</span>
     <span class="ds">The instructions that talk to the machine: the SR/CCR/USP moves, LINK/UNLK, STOP, CHK, TRAPV, RESET, ILLEGAL, TAS, TRAP and NOP. Most appear zero times in any Genesis game, and the page is about why that is a fact about the console rather than a gap in the games</span>
   </a>
+</div>
+
+<p class="hub-h" id="m68k-practice">68000 in practice: putting it together</p>
+<p class="hub-sub">The pages above are indexed by instruction, which teaches vocabulary. Real code's meaning lives in the combinations, so these are indexed by problem instead.</p>
+<div class="hub-grid">
+  <div class="card soon">
+    <span class="nm">The assembler is not the CPU</span>
+    <span class="ds">What freezes at assembly time versus what flows at run time: what a label actually is, equates, why #4 and 4 are different things, macros, and struct offsets</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Numbers in practice</span>
+    <span class="ds">8.8 fixed point, the sub-pixel accumulator that makes smooth motion possible, and where overflow actually bites</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Data in memory</span>
+    <span class="ds">How a 64-byte object is addressed, why offsets live in equates, lookup tables, jump tables as data, and where data layout and addressing modes meet</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Idioms: how instructions combine</span>
+    <span class="ds">The standard loop shapes, dispatch through a jump table, test-then-branch pairs, clamping, the tail call, and how routines agree on who preserves what</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Wider than 32 bits, and decimal</span>
+    <span class="ds">ADDX, SUBX, NEGX and CMPM, the packed-decimal family, and the reason the X flag exists at all: carrying between the halves of a sum too big for one register</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">When it crashes</span>
+    <span class="ds">Address error versus illegal instruction, what the CPU pushes on the way out, what a bad program counter really does, and how to read a crash dump</span>
+    <span class="soon-tag">page coming</span>
+  </div>
+  <div class="card soon">
+    <span class="nm">Cost</span>
+    <span class="ds">Cycle counting as a habit rather than a table: why this engine bans mulu and divu, multiplying by shifting and adding, and where the frame budget turns a code choice into a visible one</span>
+    <span class="soon-tag">page coming</span>
+  </div>
 </div>
 
 <p class="hub-h" id="z80">Z80 Assembly: the sound CPU</p>
@@ -647,11 +691,16 @@ knowable, and the debt is worth naming in one place.</p>
         c.classList.toggle('s-hide',!m); if(m){any=true;shown++;}
       });
       grid.classList.toggle('s-hide',!any);
-      var h=grid.previousElementSibling;
+      /* a group may carry a subtitle between its heading and its grid, so walk past it */
+      var h=grid.previousElementSibling, sub=null;
+      if(h&&h.classList.contains('hub-sub')){ sub=h; h=h.previousElementSibling; }
       if(h&&h.classList.contains('hub-h')) h.classList.toggle('s-hide',!any);
+      if(sub) sub.classList.toggle('s-hide',!any);
     });
     document.querySelectorAll('.hub-h').forEach(function(h){
-      if(!(h.nextElementSibling&&h.nextElementSibling.classList.contains('hub-grid')))
+      var n=h.nextElementSibling;
+      if(n&&n.classList.contains('hub-sub')) n=n.nextElementSibling;
+      if(!(n&&n.classList.contains('hub-grid')))
         h.classList.toggle('s-hide',!!t);
     });
     if(doorwrap){
