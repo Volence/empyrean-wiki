@@ -423,9 +423,9 @@ single-register operations and all the 16-bit ones go around it.</p>
 
 <p>Aeon's sound driver runs that same shape while it polls the FM sound chip:</p>
 
-<pre>        ld      a, (SND_Z80_YM_A0)       <span class="c">; YM status: bit0 = Timer A overflow</span>
+<pre>        ld      a, (SND_Z80_YM_A0)      <span class="c">// YM status: bit0 = Timer A overflow</span>
         and     SND_TIMERA_OVF_MASK</pre>
-<span class="src">engine/sound/z80_sound_driver.asm:363</span>
+<span class="src">engine/sound/z80_sound_driver.emp:374</span>
 
 <p>The first line loads the FM chip's status byte into <code>A</code>. The second ANDs that byte with a
 mask that has just one bit set, the "Timer A overflowed" bit; AND keeps a bit only where <em>both</em>
@@ -519,8 +519,8 @@ pair.</p>
 
 <p>Here is a pair loaded in one stroke, from the driver as it sets up DAC streaming:</p>
 
-<pre>        ld      de, SND_Z80_YM_A1        <span class="c">; de = $4001 (DAC data port; held all streaming)</span></pre>
-<span class="src">engine/sound/z80_sound_driver.asm:341</span>
+<pre>        ld      de, SND_Z80_YM_A1       <span class="c">// de = $4001 (DAC data port; held all streaming)</span></pre>
+<span class="src">engine/sound/z80_sound_driver.emp:353</span>
 
 <p>A single instruction drops the full 16-bit constant <code>$4001</code> into <code>DE</code>, filling
 both halves at once (<code>D</code> becomes <code>$40</code>, <code>E</code> becomes <code>$01</code>).
@@ -529,9 +529,9 @@ The driver parks that address in <code>DE</code> and streams every sample byte o
 <p>And here is <code>HL</code> as a pointer. A few lines earlier the driver set <code>H</code> to a fixed
 page, <code>$19</code>; now it sets <code>L</code> and reads through the pair:</p>
 
-<pre>        ld      l, c                     <span class="c">; l = RD (h = $19)</span>
-        ld      a, (hl)                  <span class="c">; ring[rd]</span></pre>
-<span class="src">engine/sound/z80_sound_driver.asm:356</span>
+<pre>        ld      l, c                    <span class="c">// l = RD (h = $19)</span>
+        ld      a, (hl)                 <span class="c">// ring[rd]</span></pre>
+<span class="src">engine/sound/z80_sound_driver.emp:367</span>
 
 <p><code>H</code> holds the page <code>$19</code> and <code>L</code> is set to an index (<code>c</code>,
 the ring read position), so together <code>HL</code> points at <code>ring[rd]</code>, one byte in a small
@@ -662,7 +662,7 @@ header record and <code>IX</code> at the live channel it is filling in; each nam
 
 <pre>        ld      a, (iy+SHC_ROUTE)
         ld      (ix+sc_route), a</pre>
-<span class="src">engine/sound/z80_sound_driver.asm:1256</span>
+<span class="src">engine/sound/z80_sound_driver.emp:1241</span>
 
 <p>The first line reads the header's route field (<code>SHC_ROUTE</code> is that field's offset from
 <code>IY</code>) into <code>A</code>; the second stores it into the channel's own route field
@@ -683,8 +683,8 @@ are easy to get backwards. First, the stack grows <em>downward</em> in memory: <
 <code>POP</code> reads and then adds 2 back. Second, you set where the stack lives once, at startup, by
 loading <code>SP</code> with its top address; the driver does this on its first breath:</p>
 
-<pre>        ld      sp, SND_STACK_TOP        <span class="c">; stack top $1FFE (see the z80-ram-map spec)</span></pre>
-<span class="src">engine/sound/z80_sound_driver.asm:143</span>
+<pre>        ld      sp, SND_STACK_TOP       <span class="c">// stack top $1FFE (z80-ram-map spec)</span></pre>
+<span class="src">engine/sound/z80_sound_driver.emp:165</span>
 
 <details class="explain">
   <summary>New here? &middot; What is a stack, and why does it grow downward?</summary>
@@ -712,12 +712,12 @@ interrupted code never notices. Watch the order, it is the last-in-first-out rul
         push    bc
         push    de
         push    hl
-        <span class="c">; ... handle the interrupt ...</span>
+        <span class="c">// ... handle the interrupt ...</span>
         pop     hl
         pop     de
         pop     bc
         pop     af</pre>
-<span class="src">engine/sound/z80_sound_driver.asm:489</span>
+<span class="src">engine/sound/z80_sound_driver.emp:520</span>
 
 <p>The pushes go <code>af</code>, <code>bc</code>, <code>de</code>, <code>hl</code>; the pops come back
 <code>hl</code>, <code>de</code>, <code>bc</code>, <code>af</code>, an exact mirror. <code>hl</code> was
@@ -766,19 +766,19 @@ separately needs to count down the ROM bytes still to stream. Rather than spend 
 counter, it parks the count in the shadow <code>HL</code>, set up once before the loop begins:</p>
 
 <pre>        exx
-        ld      hl, (SND_ROM_LEN)        <span class="c">; hl' = ROM len (shadow set)</span>
+        ld      hl, (SND_ROM_LEN)       <span class="c">// hl' = ROM len (shadow set)</span>
         exx</pre>
-<span class="src">engine/sound/z80_sound_driver.asm:348</span>
+<span class="src">engine/sound/z80_sound_driver.emp:360</span>
 
 <p>Then, each time through the loop, after copying one byte from ROM into the ring, it ducks into the
 shadow set just long enough to tick the counter down and test it, and ducks straight back out:</p>
 
 <pre>        exx
-        dec     hl                       <span class="c">; len-- (shadow)</span>
+        dec     hl                      <span class="c">// len-- (shadow)</span>
         ld      a, h
         or      l
         exx</pre>
-<span class="src">engine/sound/z80_sound_driver.asm:382</span>
+<span class="src">engine/sound/z80_sound_driver.emp:395</span>
 
 <p>Read it a line at a time. The first <code>exx</code> makes the shadow set live, so the <code>hl</code>
 on the next line is the counter, not the ring pointer. <code>dec hl</code> drops the remaining length by
@@ -894,7 +894,9 @@ ownership convention, never naming a piece of it directly.</p>
 operations, the jumps and calls, and the block and exchange instructions this page only named. Coming
 soon.</p>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-22 &middot; <a href="../index.html">Back to hub</a></footer>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
+Next: <a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> &middot;
+<a href="../index.html">Back to hub</a></footer>
 
 </div>
 

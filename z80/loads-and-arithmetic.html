@@ -1,0 +1,2167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Z80: Loads &amp; Arithmetic</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E➕%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+
+/* ============================================================
+   Page-specific styles: Z80 - Loads & Arithmetic
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+details.refbox summary::-webkit-details-marker{display:none;}
+
+/* collapsible reference box (reused from the other instruction pages) */
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* this page's captions run long; sentence case reads better than small-caps at that length */
+figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
+
+/* mini-index: chip row of this page's mnemonics */
+nav.mini{display:flex; flex-wrap:wrap; gap:.4rem; margin:1rem 0 0; max-width:44rem;}
+nav.mini a{font-family:var(--mono); font-size:.76rem; letter-spacing:.02em;
+  color:var(--ink); text-decoration:none; border:1px solid var(--accent);
+  border-radius:3px; padding:.22rem .55rem; background:rgba(68,102,238,.1);}
+nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outline:none;}
+.mini-h{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); width:100%; margin:.5rem 0 -.1rem;}
+
+/* instruction entry header: mnemonic + expansion + syntax */
+.instr{margin:2.2rem 0 0; padding-top:.2rem;}
+.instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
+.mn{font-family:var(--mono); font-size:1.05rem; color:var(--gold); letter-spacing:.03em;}
+.syn{font-family:var(--mono); font-size:.8rem; color:var(--dim); font-weight:normal;}
+.mnx{font-size:.82rem; color:var(--ink); font-style:italic; font-weight:normal;}
+.member{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); margin:1.4rem 0 .2rem;}
+
+/* flags indicator: the Z80 set S Z H P/V N C */
+.flags{display:flex; align-items:center; gap:.4rem; margin:.6rem 0; flex-wrap:wrap;}
+.flags .fl-label{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin-right:.3rem;}
+.flags .fchip{display:flex; flex-direction:column; align-items:center; gap:.15rem;
+  width:2.6rem; padding:.25rem 0; border-radius:3px; border:1px solid var(--line);
+  font-family:var(--mono); font-size:.7rem; cursor:help;}
+.flags .fchip:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.flags .fchip .fl-name{font-weight:bold;}
+.flags .fchip .fl-state{font-size:.5rem; letter-spacing:.03em; color:var(--dim);
+  text-transform:uppercase;}
+.flags .fchip.f-res{border-color:var(--accent); background:rgba(68,102,238,.14); color:#AACCEE;}
+.flags .fchip.f-res .fl-state{color:#AACCEE;}
+.flags .fchip.f-set{border-color:var(--gold); background:rgba(238,170,0,.14); color:var(--gold);}
+.flags .fchip.f-set .fl-state{color:var(--gold);}
+.flags .fchip.f-clear{border-color:#CC66AA; background:rgba(204,102,170,.12); color:#CC66AA;}
+.flags .fchip.f-clear .fl-state{color:#CC66AA;}
+.flags .fchip.f-none{border-color:var(--line); color:var(--dim); opacity:.6;}
+.flags .fl-caption{font-family:var(--mono); font-size:.68rem; color:var(--dim);
+  margin-left:.3rem; max-width:30rem;}
+
+/* instruction cost line */
+.cost{display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin:.6rem 0; max-width:42rem;}
+.cost .cchip{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent);
+  color:var(--ink); background:rgba(68,102,238,.14); border-radius:3px; padding:.1rem .45rem;
+  font-variant-numeric:tabular-nums;}
+.cost .cnote{font-size:.8rem; color:var(--dim); max-width:38rem;}
+.cost .cctx{font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.03em;}
+
+/* operand legality grid: which forms each slot accepts */
+.opgrid{margin:.6rem 0 .2rem; max-width:42rem;}
+.og-row{display:flex; flex-wrap:wrap; align-items:center; gap:.3rem; margin:.3rem 0;}
+.og-side{font-family:var(--mono); font-size:.62rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); min-width:6.4rem;}
+.og{font-family:var(--mono); font-size:.72rem; border:1px solid var(--accent); border-radius:3px;
+  padding:.12rem .45rem; background:rgba(68,102,238,.14); color:var(--ink);}
+.og.no{border-color:var(--line); background:transparent; color:var(--dim); opacity:.55;
+  text-decoration:line-through;}
+.og-note{font-size:.78rem; color:var(--dim); max-width:40rem; margin:.35rem 0 .6rem;}
+
+/* cheaper cousins: the see-also that names the better tool */
+.kin{border-left:3px solid var(--accent); background:rgba(68,102,238,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.kin .k-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.2rem;}
+
+/* a data VALUE (contents of a register/memory) vs a bare address */
+code.v,.v{background:rgba(238,170,0,.18); border-radius:3px; padding:.03em .34em; font-weight:600;}
+
+/* before/after simulator shell (shared by the ALU demo and the per-instruction toys) */
+.movesim{display:flex; flex-direction:column; gap:.8rem;}
+.msim-instr{font-family:var(--mono); display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;}
+.msim-instr code{font-size:1rem; color:var(--gold); background:var(--code-bg);
+  border:1px solid var(--line); border-radius:3px; padding:.2rem .55rem;}
+.msim-instr span{font-size:.72rem; color:var(--dim); max-width:32rem;}
+.msim-ctrl{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.75rem;}
+.msim-ctrl label{color:var(--dim);}
+.msim-ctrl input{font-family:var(--mono); font-size:.85rem; width:3.4rem; background:var(--panel);
+  color:var(--gold); border:1px solid var(--line); border-radius:3px; padding:.25rem .4rem; text-transform:uppercase;}
+.msim-ctrl input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-ctrl button{font-family:var(--mono); font-size:.72rem; padding:.3rem .6rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.msim-ctrl button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.msim-regs{display:flex; flex-wrap:wrap; align-items:center; gap:1rem;}
+.mreg{display:inline-flex; flex-direction:column; gap:.2rem; align-items:center; border:1px solid var(--line);
+  border-radius:4px; padding:.5rem .8rem; background:var(--panel2); min-width:4.4rem;}
+.mr-name{font-family:var(--mono); font-size:.7rem; color:var(--dim);}
+.mr-val{font-family:var(--mono); font-size:1.1rem; color:var(--gold); font-variant-numeric:tabular-nums;}
+.mr-tag{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);}
+.msim-note{font-family:var(--mono); font-size:.75rem; color:var(--ink); margin:0; min-height:2.4em; max-width:38rem;}
+.mr-flash{background:transparent;}
+@media (prefers-reduced-motion: no-preference){
+  .mr-flash{animation:mrflash .5s ease;}
+  @keyframes mrflash{from{background:rgba(68,102,238,.4);}to{background:transparent;}}
+}
+
+/* live flag readout inside a simulator */
+.msim-fl{display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; font-family:var(--mono); font-size:.72rem;}
+.sfchip{border:1px solid var(--line); border-radius:3px; padding:.15rem .5rem; color:var(--dim);}
+.sfchip.on{border-color:var(--gold); color:var(--gold); background:rgba(238,170,0,.14);}
+.sfchip.forced{border-color:#CC66AA; color:#CC66AA;}
+.sfchip.unaff{opacity:.55;}
+
+/* op picker (reused button-group look) */
+.fpick{display:flex; flex-wrap:wrap; gap:.3rem; margin:.1rem 0;}
+.fpick button{font-family:var(--mono); font-size:.74rem; padding:.25rem .55rem; cursor:pointer;
+  border-radius:3px; background:var(--panel); color:var(--ink); border:1px solid var(--line);}
+.fpick button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--ink);}
+.fpick button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+/* LD mover: a small memory strip HL points into */
+.memstrip{display:flex; flex-wrap:wrap; gap:.4rem; align-items:flex-end;}
+.memcell{display:flex; flex-direction:column; align-items:center; gap:.15rem; border:1px solid var(--line);
+  border-radius:4px; padding:.4rem .55rem; background:var(--panel2); min-width:3.4rem;}
+.memcell .mc-adr{font-family:var(--mono); font-size:.56rem; color:var(--dim);}
+.memcell .mc-val{font-family:var(--mono); font-size:1rem; color:var(--gold);}
+.memcell.point{border-color:var(--accent); background:rgba(68,102,238,.16);}
+.memcell .mc-tag{font-family:var(--mono); font-size:.5rem; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--accent); min-height:1em;}
+
+/* the instruction index (hosted here, covers both Z80 instruction pages) */
+.ixwrap{border:1px solid var(--line); border-radius:5px; background:var(--panel2); padding:1rem; margin:1.2rem 0;}
+.ixsearch{display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin-bottom:.7rem;}
+.ixsearch label{font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--dim);}
+.ixsearch input{font-family:var(--mono); font-size:.9rem; background:var(--panel); color:var(--ink);
+  border:1px solid var(--line); border-radius:3px; padding:.35rem .55rem; min-width:12rem; flex:1 1 12rem; max-width:22rem;}
+.ixsearch input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.ixcount{font-family:var(--mono); font-size:.66rem; color:var(--dim);}
+.ixtblwrap{overflow-x:auto;}
+table.ix{width:100%; border-collapse:collapse; font-size:.82rem; min-width:34rem;}
+table.ix th,table.ix td{border:1px solid var(--line); padding:.32rem .55rem; text-align:left; vertical-align:top;}
+table.ix th{background:var(--panel); font-family:var(--mono); font-size:.62rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); font-weight:normal;}
+table.ix td.ix-mn{white-space:nowrap;}
+table.ix td.ix-mn a{font-family:var(--mono); color:var(--gold); text-decoration:none;}
+table.ix td.ix-mn a:hover,table.ix td.ix-mn a:focus-visible{text-decoration:underline; outline:none;}
+table.ix td.ix-x{font-style:italic; color:var(--ink); white-space:nowrap;}
+table.ix td.ix-g{color:var(--dim);}
+table.ix tr.ix-none td{color:var(--dim); font-style:italic;}
+.ixpage{font-family:var(--mono); font-size:.58rem; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--dim); border:1px solid var(--line); border-radius:2px; padding:0 .3rem; margin-left:.4rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / Z80 ASSEMBLY / LOADS &amp; ARITHMETIC</p>
+  <p class="eyebrow">Z80 Assembly</p>
+  <h1>Instructions: Loads &amp; Arithmetic</h1>
+  <p class="sub">The first of the Z80 track's two instruction pages. It covers moving data (<code>LD</code>,
+  the stack, the exchanges) and doing arithmetic and logic with it (<code>ADD</code> and its family,
+  <code>INC</code>/<code>DEC</code>, <code>CP</code>, the 16-bit adds, <code>AND</code>/<code>OR</code>/<code>XOR</code>,
+  and the decimal-and-carry corner). One prerequisite: <a href="programming-model.html">The Programming Model</a>,
+  which teaches the registers, the pairs, <code>(HL)</code>, the flags, and the destination-first operand
+  order every line here relies on. No 68000 knowledge is needed.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>How to read a Z80 instruction</a>
+  <a href="#s2"><span class="n">2</span>LD: moving everything</a>
+  <a href="#s3"><span class="n">3</span>16-bit loads and the stack</a>
+  <a href="#s4"><span class="n">4</span>Exchanges</a>
+  <a href="#s5"><span class="n">5</span>Arithmetic runs through A</a>
+  <a href="#s6"><span class="n">6</span>16-bit arithmetic</a>
+  <a href="#s7"><span class="n">7</span>Logic and masks</a>
+  <a href="#s8"><span class="n">8</span>The decimal and carry corner</a>
+</nav>
+
+<nav class="mini" aria-label="Mini-index of this page's instructions">
+  <span class="mini-h">Moving</span>
+  <a href="#ld8">LD</a><a href="#ld16">LD (16-bit)</a><a href="#push-pop">PUSH/POP</a><a href="#ex">EX</a><a href="#exx">EXX</a>
+  <span class="mini-h">Arithmetic</span>
+  <a href="#add">ADD</a><a href="#adc">ADC</a><a href="#sub">SUB</a><a href="#sbc">SBC</a><a href="#cp">CP</a><a href="#inc">INC</a><a href="#dec">DEC</a>
+  <span class="mini-h">16-bit</span>
+  <a href="#add16">ADD HL</a><a href="#adc16">ADC HL</a><a href="#sbc16">SBC HL</a><a href="#inc16">INC rr</a><a href="#dec16">DEC rr</a>
+  <span class="mini-h">Logic and carry</span>
+  <a href="#and">AND</a><a href="#or">OR</a><a href="#xor">XOR</a><a href="#cpl">CPL</a><a href="#daa">DAA</a><a href="#neg">NEG</a><a href="#scf">SCF</a><a href="#ccf">CCF</a>
+</nav>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; How to read a Z80 instruction</h2>
+
+<p>The Programming Model page taught the machine; this page teaches the verbs. Three of its rules govern
+every line below, so here they are in one place before the instructions start. Each is taught in full on
+that page; these are the pocket versions.</p>
+
+<div class="notation-recap">
+<details class="explain" open>
+  <summary>A quick reminder &middot; destination first, parentheses mean memory, and where the values live</summary>
+  <div class="x-body">
+    <p><b>Destination first.</b> The Z80 writes the receiving side on the left. <code>ld a, b</code> copies
+    <code>B</code> into <code>A</code>; <code>add a, 3</code> puts <code>A + 3</code> back into <code>A</code>.
+    Read every line "into the left, from the right." (Coming from the 68000 track, this is the one habit to
+    flip: that assembler writes the source first.)</p>
+    <p><b>Parentheses mean memory.</b> A bare name is a <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span>;
+    the same name in parentheses is the byte in memory at the address that register holds. <code>ld a, hl</code>
+    does not exist, but <code>ld a, (hl)</code> reads the byte <code>HL</code> points at. <code>(nn)</code>
+    means the byte at a literal address written into the instruction.</p>
+    <p><b>A is where 8-bit arithmetic happens.</b> <code>A</code> is the
+    <span class="term" data-def="The special register (A on the Z80) that most 8-bit arithmetic and logic operations read from and write their result back to.">accumulator</span>:
+    the 8-bit add, subtract, compare, and the logic operations all read one operand from <code>A</code> and
+    write the result back into <code>A</code>. Many single-register operations (<code>INC</code>,
+    <code>DEC</code>, the bit operations) and all the 16-bit ones go around it. The full model, including the
+    <span class="term" data-def="Two 8-bit registers treated together as one 16-bit register, like B and C forming BC.">register pairs</span>
+    and the <span class="term" data-def="A register whose individual bits each record a fact about the last result, such as whether it was zero or negative, so a later instruction can branch on it.">flag register</span>,
+    is on <a href="programming-model.html">The Programming Model</a>.</p>
+  </div>
+</details>
+</div>
+
+<p>Every entry below opens the same way: the mnemonic and what it stands for, then a scannable metadata
+block before any prose. Three parts make up that block, and the first two need a word of explanation now
+because they are Z80-specific.</p>
+
+<p><b>The FLAGS row</b> shows the six bits of the flag register <code>F</code> in their own order,
+<code>S Z H P/V N C</code>, and marks what the instruction does to each: <b>result</b> (set or cleared to
+match the result), <b>set</b> (always 1), <b>clear</b> (always 0), or <b>unaff.</b> (left exactly as it
+was). An instruction that moves no flags at all gets an honest caption saying so. Hover or focus any chip
+for that flag's meaning.</p>
+
+<p><b>The COST line</b> is measured in <span class="term" data-def="The Z80's basic clock tick, one cycle of its clock. Every instruction's timing is measured in T-states, so a 4 T-state instruction takes four ticks. On the Genesis the Z80 runs at about 3.58 MHz, so a tick is roughly a quarter of a microsecond.">T-states</span>,
+the Z80's own clock ticks. The chip shows the cheapest form and says so, and the line beside it names the
+other forms; where an instruction has more of them than that line can carry, the full per-form table lives in
+a collapsed refbox at the end of the entry. Two things to know coming in. First, there is <b>no additive
+addressing-mode rule</b> on the Z80: a 68000 reader learns to add a per-mode price on top of a base cost,
+but the Z80's manual just lists a flat T-state count for each whole form, and that is the number the chip
+shows. Second, T-states are the Z80's ticks, not 68000 cycles; the Z80 runs its own clock (about 3.58 MHz
+on an NTSC Genesis), so the two counts are not comparable and this page never mixes them.</p>
+
+<p><b>The OPERANDS grid</b> shows, for each slot the instruction really has, one chip per addressing form:
+lit if that form is legal there, crossed out if it is not. Two fixed rows are learned once and scanned
+everywhere. The 8-bit row has seven slots and the 16-bit row has six:</p>
+
+<div class="opgrid" aria-label="The two Z80 operand rows, shown once for reference">
+  <div class="og-row"><span class="og-side">8-bit forms</span>
+    <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og">n</span>
+    <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og">(BC)/(DE)</span><span class="og">(nn)</span>
+  </div>
+  <div class="og-row"><span class="og-side">16-bit forms</span>
+    <span class="og">BC DE HL</span><span class="og">SP</span><span class="og">IX IY</span>
+    <span class="og">AF</span><span class="og">nn</span><span class="og">(nn)</span>
+  </div>
+</div>
+<p class="og-note"><code>r</code> is any of the six general 8-bit registers <code>B C D E H L</code> (plus
+<code>A</code>, shown as its own chip because so many instructions single it out). <code>n</code> is an
+<span class="term" data-def="A constant written directly inside the instruction itself, rather than fetched from a register or memory. On the Z80 it is written as a plain number, like the 5 in ld a, 5.">immediate value</span>,
+a constant written into the instruction. <code>(nn)</code> is the byte (or word) at a literal 16-bit address.
+The crosses carry as much information as the lit chips: a row that is mostly crosses tells you at a glance how
+picky the instruction is, and each entry's note names the tempting lines that will not assemble and the fix.</p>
+
+<h3 id="index">The Z80 instruction index</h3>
+
+<p>Both Z80 instruction pages share one index. Type any part of a mnemonic or its full name to filter it;
+each row links straight to the entry, on this page or on the sibling
+<a href="bits-flow-blocks.html">Bits, Flow &amp; Blocks</a>. The
+<span class="ixpage">A</span> and <span class="ixpage">B</span> tags say which page an instruction lives on.</p>
+
+<div class="ixwrap">
+  <div class="ixsearch">
+    <label for="ix-q">Filter</label>
+    <input id="ix-q" type="text" placeholder="ld, compare, xor, jump..." autocomplete="off" aria-describedby="ix-count">
+    <span class="ixcount" id="ix-count" aria-live="polite"></span>
+  </div>
+  <div class="ixtblwrap">
+  <table class="ix" id="ix-table">
+    <thead><tr><th>Mnemonic</th><th>Stands for</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td class="ix-mn"><a href="#ld8">LD</a><span class="ixpage">A</span></td><td class="ix-x">Load</td><td class="ix-g">Copy a byte or word between registers and memory; the Z80's whole moving company. Touches no flags (bar the special ld a,i / ld a,r).</td></tr>
+      <tr><td class="ix-mn"><a href="#ld16">LD rr</a><span class="ixpage">A</span></td><td class="ix-x">Load (16-bit)</td><td class="ix-g">Load a register pair with a 16-bit constant, or move a pair to or from memory.</td></tr>
+      <tr><td class="ix-mn"><a href="#push-pop">PUSH</a><span class="ixpage">A</span></td><td class="ix-x">Push</td><td class="ix-g">Store a register pair on the stack; SP drops by 2.</td></tr>
+      <tr><td class="ix-mn"><a href="#push-pop">POP</a><span class="ixpage">A</span></td><td class="ix-x">Pop</td><td class="ix-g">Load a register pair from the stack; SP rises by 2. POP AF overwrites the flags.</td></tr>
+      <tr><td class="ix-mn"><a href="#ex">EX</a><span class="ixpage">A</span></td><td class="ix-x">Exchange</td><td class="ix-g">Swap DE and HL, or swap HL with the top word of the stack.</td></tr>
+      <tr><td class="ix-mn"><a href="#exx">EXX</a><span class="ixpage">A</span></td><td class="ix-x">Exchange (shadow set)</td><td class="ix-g">Swap BC/DE/HL with their shadow copies in one instruction; AF is untouched.</td></tr>
+      <tr><td class="ix-mn"><a href="#ex-af">EX AF,AF'</a><span class="ixpage">A</span></td><td class="ix-x">Exchange AF</td><td class="ix-g">Swap AF with its shadow AF', and nothing else.</td></tr>
+      <tr><td class="ix-mn"><a href="#add">ADD</a><span class="ixpage">A</span></td><td class="ix-x">Add</td><td class="ix-g">Add a value into A; full flags.</td></tr>
+      <tr><td class="ix-mn"><a href="#adc">ADC</a><span class="ixpage">A</span></td><td class="ix-x">Add with Carry</td><td class="ix-g">Add a value and the carry flag into A.</td></tr>
+      <tr><td class="ix-mn"><a href="#sub">SUB</a><span class="ixpage">A</span></td><td class="ix-x">Subtract</td><td class="ix-g">Subtract a value from A; full flags, N set.</td></tr>
+      <tr><td class="ix-mn"><a href="#sbc">SBC</a><span class="ixpage">A</span></td><td class="ix-x">Subtract with Carry</td><td class="ix-g">Subtract a value and the carry (borrow) from A.</td></tr>
+      <tr><td class="ix-mn"><a href="#cp">CP</a><span class="ixpage">A</span></td><td class="ix-x">Compare</td><td class="ix-g">Subtract to set the flags exactly as SUB would, then discard the result; A is unchanged.</td></tr>
+      <tr><td class="ix-mn"><a href="#inc">INC</a><span class="ixpage">A</span></td><td class="ix-x">Increment</td><td class="ix-g">Add one to an 8-bit register or memory byte; sets flags but leaves carry alone.</td></tr>
+      <tr><td class="ix-mn"><a href="#dec">DEC</a><span class="ixpage">A</span></td><td class="ix-x">Decrement</td><td class="ix-g">Subtract one from an 8-bit register or memory byte; leaves carry alone.</td></tr>
+      <tr><td class="ix-mn"><a href="#add16">ADD HL,rr</a><span class="ixpage">A</span></td><td class="ix-x">Add (16-bit)</td><td class="ix-g">Add a register pair into HL; moves only H, N, and C.</td></tr>
+      <tr><td class="ix-mn"><a href="#adc16">ADC HL,rr</a><span class="ixpage">A</span></td><td class="ix-x">Add with Carry (16-bit)</td><td class="ix-g">Add a pair and the carry into HL, with full flags including Z and S.</td></tr>
+      <tr><td class="ix-mn"><a href="#sbc16">SBC HL,rr</a><span class="ixpage">A</span></td><td class="ix-x">Subtract with Carry (16-bit)</td><td class="ix-g">Subtract a pair and the carry from HL; the standard 16-bit compare.</td></tr>
+      <tr><td class="ix-mn"><a href="#inc16">INC rr</a><span class="ixpage">A</span></td><td class="ix-x">Increment (16-bit)</td><td class="ix-g">Add one to a register pair; touches no flags at all.</td></tr>
+      <tr><td class="ix-mn"><a href="#dec16">DEC rr</a><span class="ixpage">A</span></td><td class="ix-x">Decrement (16-bit)</td><td class="ix-g">Subtract one from a register pair; touches no flags at all.</td></tr>
+      <tr><td class="ix-mn"><a href="#and">AND</a><span class="ixpage">A</span></td><td class="ix-x">Bitwise AND</td><td class="ix-g">Keep bits set in both A and the operand; sets H, clears C.</td></tr>
+      <tr><td class="ix-mn"><a href="#or">OR</a><span class="ixpage">A</span></td><td class="ix-x">Bitwise OR</td><td class="ix-g">Set bits that are on in either A or the operand.</td></tr>
+      <tr><td class="ix-mn"><a href="#xor">XOR</a><span class="ixpage">A</span></td><td class="ix-x">Bitwise XOR</td><td class="ix-g">Flip bits that differ; xor a is the canonical way to clear A.</td></tr>
+      <tr><td class="ix-mn"><a href="#cpl">CPL</a><span class="ixpage">A</span></td><td class="ix-x">Complement</td><td class="ix-g">Flip every bit of A (one's complement).</td></tr>
+      <tr><td class="ix-mn"><a href="#daa">DAA</a><span class="ixpage">A</span></td><td class="ix-x">Decimal Adjust Accumulator</td><td class="ix-g">Correct A back to packed binary-coded decimal after a BCD add or subtract.</td></tr>
+      <tr><td class="ix-mn"><a href="#neg">NEG</a><span class="ixpage">A</span></td><td class="ix-x">Negate</td><td class="ix-g">Replace A with zero minus A (two's complement).</td></tr>
+      <tr><td class="ix-mn"><a href="#scf">SCF</a><span class="ixpage">A</span></td><td class="ix-x">Set Carry Flag</td><td class="ix-g">Set the carry to 1.</td></tr>
+      <tr><td class="ix-mn"><a href="#ccf">CCF</a><span class="ixpage">A</span></td><td class="ix-x">Complement Carry Flag</td><td class="ix-g">Flip the carry to its opposite.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rlca">RLCA</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Left Circular (A)</td><td class="ix-g">Rotate A left; the top bit wraps to the bottom and into carry.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rla">RLA</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Left (A)</td><td class="ix-g">Rotate A left through the carry.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rrca">RRCA</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Right Circular (A)</td><td class="ix-g">Rotate A right; the bottom bit wraps to the top and into carry.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rra">RRA</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Right (A)</td><td class="ix-g">Rotate A right through the carry.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rlc">RLC</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Left Circular</td><td class="ix-g">Rotate any register or memory byte left; sets S/Z/P/V too.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rl">RL</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Left</td><td class="ix-g">Rotate any register or memory byte left through carry.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rrc">RRC</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Right Circular</td><td class="ix-g">Rotate any register or memory byte right.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rr">RR</a><span class="ixpage">B</span></td><td class="ix-x">Rotate Right</td><td class="ix-g">Rotate any register or memory byte right through carry.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#sla">SLA</a><span class="ixpage">B</span></td><td class="ix-x">Shift Left Arithmetic</td><td class="ix-g">Shift left, a zero into bit 0; a multiply by two.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#sra">SRA</a><span class="ixpage">B</span></td><td class="ix-x">Shift Right Arithmetic</td><td class="ix-g">Shift right, keeping the sign bit; a signed divide by two.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#srl">SRL</a><span class="ixpage">B</span></td><td class="ix-x">Shift Right Logical</td><td class="ix-g">Shift right, a zero into bit 7; an unsigned divide by two.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#bit">BIT</a><span class="ixpage">B</span></td><td class="ix-x">Test Bit</td><td class="ix-g">Set Z from one bit of a register or memory byte, changing nothing.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#set">SET</a><span class="ixpage">B</span></td><td class="ix-x">Set Bit</td><td class="ix-g">Turn one bit on; no flags.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#res">RES</a><span class="ixpage">B</span></td><td class="ix-x">Reset Bit</td><td class="ix-g">Turn one bit off; no flags.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#jp">JP</a><span class="ixpage">B</span></td><td class="ix-x">Jump</td><td class="ix-g">Jump to an absolute address, always or on a condition; also JP (HL) for computed dispatch.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#jr">JR</a><span class="ixpage">B</span></td><td class="ix-x">Jump Relative</td><td class="ix-g">Jump a short signed distance; only NZ, Z, NC, C conditions.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#djnz">DJNZ</a><span class="ixpage">B</span></td><td class="ix-x">Decrement B and Jump if Not Zero</td><td class="ix-g">One-instruction counted loop on register B.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#call">CALL</a><span class="ixpage">B</span></td><td class="ix-x">Call</td><td class="ix-g">Push the return address and jump to a subroutine.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#ret">RET</a><span class="ixpage">B</span></td><td class="ix-x">Return</td><td class="ix-g">Pop the return address back into PC.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#reti">RETI</a><span class="ixpage">B</span></td><td class="ix-x">Return from Interrupt</td><td class="ix-g">Return and signal the end of an interrupt to daisy-chained peripherals.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#retn">RETN</a><span class="ixpage">B</span></td><td class="ix-x">Return from NMI</td><td class="ix-g">Return from a non-maskable interrupt and restore the interrupt-enable state.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#rst">RST</a><span class="ixpage">B</span></td><td class="ix-x">Restart</td><td class="ix-g">A one-byte call to one of eight fixed low addresses.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#nop">NOP</a><span class="ixpage">B</span></td><td class="ix-x">No Operation</td><td class="ix-g">Do nothing for four T-states.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#halt">HALT</a><span class="ixpage">B</span></td><td class="ix-x">Halt</td><td class="ix-g">Stop executing until an interrupt or reset arrives.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#di">DI</a><span class="ixpage">B</span></td><td class="ix-x">Disable Interrupts</td><td class="ix-g">Turn maskable interrupts off, at once.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#ei">EI</a><span class="ixpage">B</span></td><td class="ix-x">Enable Interrupts</td><td class="ix-g">Turn maskable interrupts on, one instruction later.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#im">IM</a><span class="ixpage">B</span></td><td class="ix-x">Interrupt Mode</td><td class="ix-g">Choose how the CPU responds to an interrupt; the Genesis uses IM 1.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#ldi">LDI</a><span class="ixpage">B</span></td><td class="ix-x">Load and Increment</td><td class="ix-g">Copy one byte (HL) to (DE), step both pointers up, count BC down.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#ldir">LDIR</a><span class="ixpage">B</span></td><td class="ix-x">Load, Increment, Repeat</td><td class="ix-g">The block copy: repeat LDI until BC reaches zero.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#ldd">LDD</a><span class="ixpage">B</span></td><td class="ix-x">Load and Decrement</td><td class="ix-g">Like LDI but steps both pointers down.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#lddr">LDDR</a><span class="ixpage">B</span></td><td class="ix-x">Load, Decrement, Repeat</td><td class="ix-g">The downward block copy.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#cpi">CPI</a><span class="ixpage">B</span></td><td class="ix-x">Compare and Increment</td><td class="ix-g">Compare A with (HL), step HL up, count BC down.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#cpir">CPIR</a><span class="ixpage">B</span></td><td class="ix-x">Compare, Increment, Repeat</td><td class="ix-g">Scan forward for a byte: repeat CPI until match or BC runs out.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#cpd">CPD</a><span class="ixpage">B</span></td><td class="ix-x">Compare and Decrement</td><td class="ix-g">Like CPI but steps HL down.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#cpdr">CPDR</a><span class="ixpage">B</span></td><td class="ix-x">Compare, Decrement, Repeat</td><td class="ix-g">Scan backward for a byte.</td></tr>
+      <tr><td class="ix-mn"><a href="bits-flow-blocks.html#io-absent">IN / OUT</a><span class="ixpage">B</span></td><td class="ix-x">Input / Output</td><td class="ix-g">The Z80's separate I/O ports, unused for Genesis sound (the chips are memory-mapped).</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; LD: the one instruction that moves everything</h2>
+
+<p>Most processors have a small zoo of move instructions. The Z80 has one, and its name is <code>LD</code>,
+for Load. Every copy of a byte or a word between registers and memory is an <code>LD</code>: register to
+register, a constant into a register, a byte read from memory, a byte written to memory. There is no
+separate "store" or "move"; the direction is decided entirely by which side you write first. Learn where
+<code>LD</code> is allowed to reach and you have learned the Z80's whole moving company, which is why the
+operand grid below carries most of the lesson.</p>
+
+<div class="instr" id="ld8">
+  <h3><span class="mn">LD</span> <span class="mnx">Load (destination &larr; source)</span> <span class="syn">ld dst, src</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags; a load never lets you branch on what it moved</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">cheapest form, ld r,r' (register to register)</span>
+    <span class="cnote">The best case. A load's cost is set by its form, not by an added addressing-mode
+    price: ld r,n is 7, ld r,(HL) is 7, ld A,(nn) is 13, ld r,(IX+d) is 19. Storing costs the same as
+    loading in each shape (ld (HL),r is 7, ld (nn),A is 13, ld (IX+d),r is 19); the one that is not a
+    mirror is ld (HL),n at 10.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og no">n</span>
+      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og">(BC)/(DE)</span><span class="og">(nn)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og">n</span>
+      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og">(BC)/(DE)</span><span class="og">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note">The two rows look permissive, but three couplings are the whole gotcha, and the
+  crossed <code>n</code> on the destination row is the small one: you cannot write into an immediate,
+  because a constant is not a place. The three real refusals: <code>ld (hl),(hl)</code> does not exist
+  (no 8-bit move goes memory to memory; that opcode is <code>HALT</code>), so you route through a register.
+  <code>(BC)</code> and <code>(DE)</code> pair only with <code>A</code>: <code>ld a,(de)</code> and
+  <code>ld (de),a</code> assemble, but <code>ld b,(de)</code> does not. And the direct-address form
+  <code>(nn)</code> is also <code>A</code>-only for a single byte: <code>ld (nn),a</code> works,
+  <code>ld (nn),b</code> does not. Any register can reach memory through <code>(HL)</code> or
+  <code>(IX+d)</code>; only <code>A</code> gets the narrow <code>(BC)</code>/<code>(DE)</code>/<code>(nn)</code>
+  shortcuts.</p>
+
+  <p>Plainly: <code>LD</code> copies a value from where the right operand says into where the left operand
+  says, and leaves the source exactly as it was. Reach for it constantly, because it is how every value
+  gets anywhere: into <code>A</code> to be worked on, out to memory to be kept, from one register to
+  another to free the first. It dominates real code by a wide margin: the Sonic 2 sound driver this page
+  quotes runs 747 <code>LD</code>s against 119 of the next most common instruction. Two obscure forms are
+  the one exception to the no-flags rule, <code>ld a,i</code> and <code>ld a,r</code>, which read the
+  interrupt-vector and refresh registers and do set <code>S</code>, <code>Z</code>, and <code>P/V</code>;
+  no load in the grid above touches a flag.</p>
+
+  <details class="explain">
+    <summary>New here? &middot; "Load" sounds like it empties the source. It does not.</summary>
+    <div class="x-body">
+      <p>The word <em>load</em> makes it sound like the value is picked up and carried, leaving an empty
+      spot behind. It is not. <code>LD</code> makes a copy: after <code>ld a, b</code>, the value is in
+      <code>A</code> and still in <code>B</code>, both. Nothing is emptied, nothing is moved in the
+      everyday sense. This is the same lesson the 68000 track teaches for its <code>MOVE</code> instruction
+      (see <a href="../m68k/moving-data.html#move">Moving Data</a>); the mnemonic differs, the idea is
+      identical. If you need the source cleared afterward, that is a second instruction.</p>
+      <p>Why does this matter? Because a great deal of Z80 code depends on the source surviving. You copy
+      <code>B</code> into <code>A</code> precisely so you can do arithmetic on it in <code>A</code> while
+      <code>B</code> keeps the original for later. A load that destroyed its source would make that
+      impossible.</p>
+    </div>
+  </details>
+
+  <p>The toy runs four real loads against a handful of registers and a four-byte patch of memory that
+  <code>HL</code> points into. Watch the destination change, the source stay put, and the parentheses
+  decide whether a register or a memory byte is touched.</p>
+
+  <figure class="diagram">
+  <div class="movesim" id="ldsim">
+    <div class="msim-instr"><code id="ld-instr">ld a, b</code> <span>real Z80 syntax. Destination on the left, source on the right; parentheses mean the byte in memory, not the register.</span></div>
+    <div class="msim-ctrl">
+      <button type="button" id="ld-ab">Run ld a, b</button>
+      <button type="button" id="ld-ahl">Run ld a, (hl)</button>
+      <button type="button" id="ld-hla">Run ld (hl), a</button>
+      <button type="button" id="ld-an">Run ld a, $40</button>
+      <button type="button" id="ld-reset">Reset</button>
+    </div>
+    <div class="msim-regs" id="ld-regs"></div>
+    <div style="margin-top:.3rem;">
+      <div class="mr-tag" style="margin-bottom:.3rem;">Memory &middot; HL = <span id="ld-hlval" class="v">$1C02</span> points at one cell</div>
+      <div class="memstrip" id="ld-mem"></div>
+    </div>
+    <p class="msim-note" id="ld-note" aria-live="polite"></p>
+  </div>
+  <figcaption>The LD mover. Four buttons run ld a, b (register to register), ld a, (hl) (read the byte
+  HL points at), ld (hl), a (write A into that byte), and ld a, $40 (load a constant). Static fallback:
+  ld a, b copies B into A and leaves B unchanged; ld a, (hl) reads the memory byte HL points at into A;
+  ld (hl), a writes A back into that byte; ld a, $40 puts the constant $40 into A. The left operand always
+  receives, the right always supplies, and the source is never emptied.</figcaption>
+  </figure>
+  <script>
+  (function(){
+    var root = document.getElementById('ldsim');
+    if(!root) return;
+    var regsEl = document.getElementById('ld-regs');
+    var memEl  = document.getElementById('ld-mem');
+    var hlEl   = document.getElementById('ld-hlval');
+    var note   = document.getElementById('ld-note');
+    var instr  = document.getElementById('ld-instr');
+    var st, changed;
+    function defaults(){
+      st = {A:0x07, B:0x2A, C:0x19, H:0x1C, L:0x02, mem:[0x11,0x22,0x33,0x44]};
+      changed = {};
+    }
+    function hx(n){ var s=(n&0xFF).toString(16).toUpperCase(); return s.length<2?('0'+s):s; }
+    function ptr(){ return st.L & 3; }
+    function renderRegs(){
+      var order=['A','B','C','H','L'];
+      var tags={A:'accumulator',B:'general',C:'general',H:'HL high',L:'HL low'};
+      regsEl.innerHTML = order.map(function(k){
+        var cls = changed[k] ? ' mr-flash' : '';
+        return '<span class="mreg"><span class="mr-name">'+k+'</span>'+
+          '<span class="mr-val'+cls+'">$'+hx(st[k])+'</span><span class="mr-tag">'+tags[k]+'</span></span>';
+      }).join('');
+    }
+    function renderMem(){
+      var p = ptr();
+      memEl.innerHTML = st.mem.map(function(v,i){
+        var here = i===p;
+        var cls = changed['m'+i] ? ' mr-flash' : '';
+        return '<span class="memcell'+(here?' point':'')+'">'+
+          '<span class="mc-tag">'+(here?'(HL)':'')+'</span>'+
+          '<span class="mc-val'+cls+'">$'+hx(v)+'</span>'+
+          '<span class="mc-adr">$1C0'+i+'</span></span>';
+      }).join('');
+      hlEl.textContent = '$1C0'+p;
+    }
+    function render(){ renderRegs(); renderMem(); }
+    function run(line, fn, msg){
+      changed = {};
+      instr.textContent = line;
+      fn();
+      render();
+      note.textContent = msg();
+    }
+    document.getElementById('ld-ab').addEventListener('click', function(){
+      run('ld a, b', function(){ st.A = st.B; changed.A=1; }, function(){
+        return 'ld a, b copied B ($'+hx(st.B)+') into A. B still holds $'+hx(st.B)+', because a load copies, it does not empty the source.';
+      });
+    });
+    document.getElementById('ld-ahl').addEventListener('click', function(){
+      run('ld a, (hl)', function(){ st.A = st.mem[ptr()]; changed.A=1; }, function(){
+        return 'ld a, (hl) read the byte at $1C0'+ptr()+' (the cell HL points at, $'+hx(st.mem[ptr()])+') into A. The parentheses mean memory, so a byte was fetched.';
+      });
+    });
+    document.getElementById('ld-hla').addEventListener('click', function(){
+      run('ld (hl), a', function(){ st.mem[ptr()] = st.A; changed['m'+ptr()]=1; }, function(){
+        return 'ld (hl), a wrote A ($'+hx(st.A)+') into memory at $1C0'+ptr()+'. Same instruction, opposite direction: the memory side is on the left now, so it receives.';
+      });
+    });
+    document.getElementById('ld-an').addEventListener('click', function(){
+      run('ld a, $40', function(){ st.A = 0x40; changed.A=1; }, function(){
+        return 'ld a, $40 put the constant $40 into A. $40 has no parentheses and is a plain number, so it is an immediate, baked into the instruction itself.';
+      });
+    });
+    document.getElementById('ld-reset').addEventListener('click', function(){
+      defaults(); instr.textContent='ld a, b'; render();
+      note.textContent = 'Reset. A=$07, B=$2A, C=$19, and HL=$1C02 points at the third memory cell ($33). Press a button to run a load.';
+      var f = document.getElementById('ld-ab'); if(f) f.focus();
+    });
+    defaults(); render();
+    note.textContent = 'Press a button to run a load. HL holds $1C02, so (HL) is the byte at $1C02, currently $33.';
+  })();
+  </script>
+
+  <p>Now the same instruction in the sound driver. Inside its DAC playback loop, <code>HL</code> is a
+  pointer into a compressed sample stream, and this pulls the next byte out to decode:</p>
+
+<pre>        ld      a,(hl)                  <span class="c">; 7+3   ; Get next DAC byte</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:688 (SMPS Z80 driver)</span>
+
+  <p>That single line reads the byte <code>HL</code> currently points at into <code>A</code>, where the
+  next few instructions will pick it apart. The consumer is immediate: right after this the driver rotates
+  and masks <code>A</code> to extract a nibble, work that only makes sense once the byte is in the
+  accumulator. (The <code>; 7+3</code> in the comment is the driver author's own T-state note: 7 for the
+  load plus 3 wait-states for that particular memory, a reminder that timing is what a sound loop lives or
+  dies by.)</p>
+
+  <p>The engine's own driver, written in Aeon's <code>.emp</code> dialect, shows the pointer being built a
+  byte at a time. The <code>.emp</code> source uses <code>//</code> for comments instead of <code>;</code>,
+  but the Z80 instructions are exactly the same. Here <code>H</code> already holds a fixed page and the code
+  sets <code>L</code>, so together <code>HL</code> names one slot of a small ring buffer, then reads it:</p>
+
+<pre>        ld      l, c                    <span class="c">// l = RD (h = $19)</span>
+        ld      a, (hl)                 <span class="c">// ring[rd]</span></pre>
+<span class="src">aeon/engine/sound/z80_sound_driver.emp:367-368 (Aeon driver, .emp dialect)</span>
+
+  <p>The first line sets the low half of the pointer to the read cursor in <code>C</code>; the second
+  dereferences the whole pair. Two loads, and the byte the loop wants is in <code>A</code>. This is the LD
+  mover's <code>ld a, (hl)</code> button, running for real.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha &middot; the move that is not there</span><p>
+  The tempting <code>ld (hl),(hl)</code> and <code>ld bc,de</code> do not exist. There is no memory-to-memory
+  byte load and no pair-to-pair 16-bit load (the only 16-bit register-to-register loads are
+  <code>ld sp,hl</code>, <code>ld sp,ix</code>, and <code>ld sp,iy</code>). To copy <code>BC</code> into
+  <code>DE</code> you move the halves, <code>ld d,b</code> then <code>ld e,c</code>, or push one pair and pop
+  the other. The machine gives you narrow doors and expects you to route through them.</p>
+  </div>
+
+  <div class="kin"><span class="k-tag">Cheaper cousins</span><p>
+  To put zero in <code>A</code>, prefer <code>xor a</code> (1 byte, 4 T-states) over <code>ld a, 0</code>
+  (2 bytes, 7 T-states): both leave <code>A</code> = 0, but <code>xor a</code> is smaller and faster (it
+  also sets the flags, which <code>ld</code> never does; see <a href="#xor">XOR</a>). For any other
+  constant, <code>ld a, n</code> is exactly the tool and has no cheaper cousin.</p>
+</div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; 16-bit loads and the stack</h2>
+
+<p><code>LD</code> also moves whole 16-bit register pairs, and the stack instructions <code>PUSH</code> and
+<code>POP</code> are its close cousins: they move a pair to or from a special region of memory. This section
+covers both, and one honest contrast with the 68000 that a reader from that track will want early.</p>
+
+<div class="instr" id="ld16">
+  <h3><span class="mn">LD</span> <span class="mnx">Load, 16-bit pair forms</span> <span class="syn">ld dd, nn &middot; ld hl, (nn) &middot; ld sp, hl</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags, like every LD form on this page</span>
+  </div>
+
+  <div class="cost"><span class="cchip">6 T-states</span>
+    <span class="cctx">cheapest form, ld sp,hl</span>
+    <span class="cnote">The best case, and an outlier: <code>ld sp,hl</code> is one byte. The common
+    <code>ld dd,nn</code> (a 16-bit constant into a pair) is 10; loading or storing a pair through a
+    literal address, <code>ld hl,(nn)</code> or <code>ld (nn),hl</code>, is 16, and the ED-prefixed pair
+    forms are 20. Full table in the refbox.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">BC DE HL</span><span class="og">SP</span><span class="og">IX IY</span>
+      <span class="og no">AF</span><span class="og no">nn</span><span class="og">(nn)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Source</span>
+      <span class="og">BC DE HL</span><span class="og">SP</span><span class="og">IX IY</span>
+      <span class="og no">AF</span><span class="og">nn</span><span class="og">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note"><code>AF</code> is crossed on both rows on purpose: there is no <code>ld af,nn</code> and
+  no 16-bit load that names <code>AF</code> at all. <code>AF</code> moves as a unit only through
+  <code>push af</code>/<code>pop af</code> and <code>ex af,af'</code>, because its low half is the flag
+  register, not data you load. Pair-to-pair moves are still refused here as in the 8-bit section: the only
+  register-to-register 16-bit load is into <code>SP</code> (<code>ld sp,hl</code> and the index-register
+  twins). Everything else loads a constant (<code>nn</code>) or goes through a literal address
+  (<code>(nn)</code>).</p>
+
+  <p>A 16-bit load fills both halves of a pair in one instruction. Reach for <code>ld dd,nn</code> whenever
+  you need a pair to hold an address or a 16-bit count: a pointer to a table, the top of the stack, the
+  length of something to copy. It is the setup line before almost every loop.</p>
+
+  <p>The driver parks the YM chip's DAC data port in <code>DE</code> before it starts streaming, so every
+  sample can be written out through that one register:</p>
+
+<pre>        ld      de, SND_Z80_YM_A1       <span class="c">// de = $4001 (DAC data port; held all streaming)</span></pre>
+<span class="src">aeon/engine/sound/z80_sound_driver.emp:353 (Aeon driver, .emp dialect)</span>
+
+  <p>One instruction drops the full constant <code>$4001</code> into <code>DE</code> (<code>D</code> becomes
+  <code>$40</code>, <code>E</code> becomes <code>$01</code>). It is loaded once and then used for the entire
+  streaming loop, the payoff of a 16-bit load: set the address up front, spend nothing on it afterward.</p>
+
+  <p>The other 16-bit form reads a pair <em>from</em> memory. Here the driver loads a remaining-length word
+  out of RAM into <code>HL</code> (the shadow <code>HL'</code>, bracketed by the <code>exx</code> swaps that
+  <a href="#exx">EXX</a> explains):</p>
+
+<pre>        exx
+        ld      hl, (SND_ROM_LEN)       <span class="c">// hl' = ROM len (shadow set)</span>
+        exx</pre>
+<span class="src">aeon/engine/sound/z80_sound_driver.emp:360-362 (Aeon driver, .emp dialect)</span>
+
+  <p>The parentheses are doing the same job they did for a single byte: <code>(SND_ROM_LEN)</code> is the
+  16-bit value stored at that address, not the address itself. <code>ld hl,(nn)</code> reads two bytes from
+  memory into the pair; <code>ld hl,nn</code> (no parentheses) would instead load the address as a literal
+  number. One character, opposite meanings.</p>
+
+  <details class="refbox">
+    <summary>Full 16-bit load timing and forms</summary>
+    <div class="enc-body">
+      <div class="tbl"><table>
+        <thead><tr><th>Form</th><th>Bytes</th><th>T-states</th></tr></thead>
+        <tbody>
+          <tr><td><code>ld sp,hl</code></td><td>1</td><td>6</td></tr>
+          <tr><td><code>ld dd,nn</code> (dd = BC/DE/HL/SP)</td><td>3</td><td>10</td></tr>
+          <tr><td><code>ld sp,ix</code> / <code>ld sp,iy</code></td><td>2</td><td>10</td></tr>
+          <tr><td><code>ld ix,nn</code> / <code>ld iy,nn</code></td><td>4</td><td>14</td></tr>
+          <tr><td><code>ld hl,(nn)</code> / <code>ld (nn),hl</code></td><td>3</td><td>16</td></tr>
+          <tr><td><code>ld dd,(nn)</code> / <code>ld (nn),dd</code> (ED form)</td><td>4</td><td>20</td></tr>
+        </tbody>
+      </table></div>
+      <p class="enc-note">From UM0080 and the clrhome opcode table, which agree; the index-register forms
+      have their own manual pages too (<code>ld ix,nn</code> = 14 on page 100, <code>ld sp,ix</code> = 10 on
+      page 113). Both also follow the standard DD/FD prefix rule, +4 T-states and +1 byte over the
+      non-index form.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="push-pop">
+  <h3><span class="mn">PUSH / POP</span> <span class="mnx">Push / Pop a register pair to the stack</span> <span class="syn">push qq &middot; pop qq</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">neither instruction sets flags; but POP AF <em>loads</em> the flags as data (see the gotcha)</span>
+  </div>
+
+  <div class="cost"><span class="cchip">POP 10 T &middot; PUSH 11 T</span>
+    <span class="cctx">for a general pair BC/DE/HL/AF</span>
+    <span class="cnote">The index pairs cost more: <code>push ix</code>/<code>push iy</code> = 15,
+    <code>pop ix</code>/<code>pop iy</code> = 14 (the DD/FD prefix). No other forms exist.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Pair</span>
+      <span class="og">BC DE HL</span><span class="og no">SP</span><span class="og">IX IY</span>
+      <span class="og">AF</span><span class="og no">nn</span><span class="og no">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note">The stack works in 16-bit pairs only, and the exact set is <code>BC</code>,
+  <code>DE</code>, <code>HL</code>, <code>AF</code>, <code>IX</code>, <code>IY</code>. Two refusals catch
+  newcomers: <code>push sp</code> does not exist (that encoding slot belongs to <code>AF</code>), and there
+  is no <code>push a</code> or <code>push b</code> for a single 8-bit register. If you need one byte on the
+  stack, push its pair.</p>
+
+  <p><code>PUSH qq</code> stores a pair on the stack and steps <code>SP</code> down by 2; <code>POP qq</code>
+  reads a pair back and steps <code>SP</code> up by 2. Reach for them to free a register you need but must
+  hand back untouched, above all across a subroutine call that will clobber it. The
+  <span class="term" data-def="A duplicate set of the main registers (written with a prime, like BC') that the Z80 can swap in with a single instruction, mainly for fast interrupt handling.">shadow register set</span>
+  offers a faster alternative for whole-register-bank saves (see <a href="#exx">EXX</a>), but the stack is
+  the general tool.</p>
+
+  <p>The engine's sound interrupt handler is the textbook case. An interrupt can fire in the middle of
+  anything, so on entry the handler pushes every pair it will disturb, does its work, and pops them back in
+  exact mirror order, leaving the interrupted code none the wiser:</p>
+
+<pre>        push    af
+        push    bc
+        push    de
+        push    hl
+        call    Snd_PollMailbox_Banked
+        pop     hl
+        pop     de
+        pop     bc
+        pop     af</pre>
+<span class="src">aeon/engine/sound/z80_sound_driver.emp:520-523, 528, 531-534 (Aeon driver, .emp dialect; the comment blocks between are left out)</span>
+
+  <p>The order is the whole lesson. The stack is last-in-first-out, so the pops must reverse the pushes:
+  <code>hl</code> went on last, so it comes off first, and each pair lands back exactly where it started.
+  The <code>call</code> in the middle is the reason all this is needed; it runs a routine that freely uses
+  <code>af</code>, <code>bc</code>, <code>de</code>, and <code>hl</code>, and only the save-and-restore
+  bracket keeps that from corrupting whatever the interrupt broke into. Every push stepped <code>SP</code>
+  down, every pop stepped it back up, so <code>SP</code> ends where it began.</p>
+
+  <p>A smaller everyday case protects just one loop counter across a call that trashes it:</p>
+
+<pre>.fmloop:
+        push    bc
+        ld      de,zTrack.len                   <span class="c">; Spacing between tracks</span>
+        add     ix,de                           <span class="c">; Next track</span>
+        bit     7,(ix+zTrack.PlaybackControl)   <span class="c">; Is it playing?</span>
+        call    nz,zFMUpdateTrack               <span class="c">; If it is, go update it</span>
+        pop     bc
+        djnz    .fmloop</pre>
+<span class="src">s2disasm/s2.sounddriver.asm:468-475 (SMPS Z80 driver)</span>
+
+  <p>Here <code>B</code> counts the sound-effect channels, and <code>djnz</code> at the bottom decrements
+  it and loops (see <a href="bits-flow-blocks.html#djnz">DJNZ</a> on the sibling page). The trouble is that
+  <code>zFMUpdateTrack</code> uses <code>BC</code> for its own purposes, so without protection the counter
+  would be destroyed mid-loop. Bracketing the call with <code>push bc</code> and <code>pop bc</code> keeps
+  the count intact for <code>djnz</code>. This is the single most common reason driver code pushes anything.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha &middot; POP AF rewrites your flags</span><p>
+  <code>AF</code>'s low byte is the flag register, so <code>pop af</code> loads whatever 8 bits sit on the
+  stack straight into <code>S Z H P/V N C</code>, wholesale. That is the feature and the trap. The feature:
+  <code>push af</code> then <code>pop af</code> is the standard way to save and restore the flags across a
+  routine that would otherwise clobber them. The trap: a stray <code>pop af</code>, or a push/pop pair that
+  gets out of balance, silently overwrites your condition codes with data, and the next conditional branch
+  reads a lie. Watch that every <code>push af</code> has its matching <code>pop af</code>.</p>
+</div>
+</div>
+
+<div class="decision"><span class="d-tag">A Zilog choice, not ours &middot; no stack-relative addressing</span>
+<p>The Z80 has no <code>ld a,(sp+2)</code>. You cannot read a value out of the middle of the stack by
+offset the way the 68000 reads <code>d16(sp)</code>. Zilog built the stack as a pure save-and-restore
+device: <code>PUSH</code> and <code>POP</code> at the top, and that is all. The consequence shapes Z80
+code. Where a 68000 routine might carve out a stack frame and keep locals on it at fixed offsets, Z80 code
+keeps its working values in registers and in fixed RAM, and touches the stack only to stow a pair it will
+pop back soon. It is not a workspace; it is a coat-check. This is why the driver above pushes a register
+only to pop it a few instructions later, and never reaches "into" the stack.</p></div>
+
+<!-- ================================================================ -->
+<h2 id="s4">4 &middot; Exchanges</h2>
+
+<p>An exchange swaps two things at once, with no third register to hold one while the other moves. The Z80
+has exactly five exchange forms, no more, and they split into two jobs: swapping two working locations
+(<code>EX DE,HL</code>, <code>EX (SP),HL</code>) and swapping in the second, hidden bank of registers
+(<code>EXX</code>, <code>EX AF,AF'</code>). The Programming Model page owns the shadow-set model in full;
+this section teaches the instructions and links back for the concept.</p>
+
+<div class="instr">
+  <span id="ex"></span><span id="exx"></span><span id="ex-af"></span><span id="ex-sp"></span>
+  <h3><span class="mn">EX / EXX</span> <span class="mnx">Exchange two locations, or swap the shadow set</span> <span class="syn">ex de,hl &middot; ex af,af' &middot; exx &middot; ex (sp),hl</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">no exchange sets flags; but EX AF,AF' swaps the flag register itself as part of AF</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">ex de,hl, exx, and ex af,af' are all 4</span>
+    <span class="cnote">The stack exchange is the expensive outlier: <code>ex (sp),hl</code> is 19 T-states
+    (it reads and rewrites two bytes of memory), and <code>ex (sp),ix</code>/<code>ex (sp),iy</code> are 23.</span>
+  </div>
+
+  <p>These five forms are the entire family. Reading them as a table is clearer than a grid, because each
+  is a fixed pairing rather than a slot with choices:</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Form</th><th>Swaps</th><th>T-states</th></tr></thead>
+    <tbody>
+      <tr><td><code>ex de,hl</code></td><td>DE with HL</td><td>4</td></tr>
+      <tr><td><code>ex af,af'</code></td><td>AF with its shadow AF'</td><td>4</td></tr>
+      <tr><td><code>exx</code></td><td>BC, DE, HL with BC', DE', HL' (all three at once)</td><td>4</td></tr>
+      <tr><td><code>ex (sp),hl</code></td><td>HL with the word on top of the stack</td><td>19</td></tr>
+      <tr><td><code>ex (sp),ix</code> / <code>ex (sp),iy</code></td><td>IX or IY with the top-of-stack word</td><td>23</td></tr>
+    </tbody>
+  </table></div>
+  <p class="og-note">Everything else a newcomer might reach for is refused: <code>ex bc,hl</code>,
+  <code>ex de,bc</code>, <code>ex (sp),de</code>, <code>ex af,bc</code> all do not exist. <code>DE</code>
+  with <code>HL</code> is the only general-pair exchange, and only <code>HL</code>/<code>IX</code>/<code>IY</code>
+  can swap with the top of the stack.</p>
+
+  <h4 class="member">EX DE,HL &middot; the workhorse</h4>
+  <p><code>ex de,hl</code> trades the two most useful pointer pairs in a single 4-T-state instruction, with
+  nothing lost. Reach for it when you have built an address in one pair but the instruction you want next
+  needs it in the other. In the driver's modulation routine, the finished address is sitting in
+  <code>HL</code> exactly where a computed jump wants it, right after a 16-bit add builds it:</p>
+
+<pre>        add     hl,bc                           <span class="c">; Add modulation value</span>
+        ex      de,hl
+        jp      (hl)                            <span class="c">; WILL return to zUpdateTrack</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:1047-1049 (SMPS Z80 driver)</span>
+
+  <p>The target address arrives in <code>DE</code>; <code>ex de,hl</code> moves it into <code>HL</code> so
+  the very next line, <code>jp (hl)</code>, can jump to it (that computed jump lives on the
+  <a href="bits-flow-blocks.html#jp">sibling page</a>). The exchange is the bridge between "the address is in
+  the wrong pair" and "now it is in the right one," and because it is a swap, whatever was in <code>HL</code>
+  is safely tucked into <code>DE</code> rather than thrown away.</p>
+
+  <h4 class="member">EXX and EX AF,AF' &middot; the shadow set</h4>
+  <p>The Z80 keeps a second copy of <code>AF</code>, <code>BC</code>, <code>DE</code>, and <code>HL</code>,
+  written with a prime mark. You never name a primed register directly; the only thing you can do is swap a
+  half of the shadow set in. <code>EXX</code> swaps the trio <code>BC</code>/<code>DE</code>/<code>HL</code>
+  with their shadows and leaves <code>AF</code> alone; <code>EX AF,AF'</code> swaps <code>AF</code> and
+  touches nothing else. The two halves swap independently, which is the point. The full model, including why
+  the shadow set needs a clear ownership convention, is on
+  <a href="programming-model.html#s7">The Programming Model, section 7</a>.</p>
+
+  <p>The classic use is an interrupt handler grabbing a private set of working registers in one instruction
+  instead of pushing three pairs. The Sonic 2 driver's interrupt entry does exactly that:</p>
+
+<pre>        push    af                      <span class="c">; Save 'af'</span>
+        exx                             <span class="c">; Effectively backs up 'bc', 'de', and 'hl'</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:397-398 (SMPS Z80 driver)</span>
+
+  <p>One <code>exx</code> hands the handler a fresh <code>BC</code>/<code>DE</code>/<code>HL</code> to work
+  in, and a matching <code>exx</code> on the way out gives the interrupted code its registers back, with no
+  stack traffic at all. (Note it still pushes <code>AF</code> separately: <code>EXX</code> does not touch
+  <code>AF</code>, so the flags are saved the ordinary way.)</p>
+
+  <p>A subtler use keeps a value <em>live</em> in the shadow set for the length of a loop. Rather than a
+  whole context switch, the driver parks a byte counter in the shadow <code>HL'</code> so the main
+  <code>HL</code> stays free as a ring pointer, ducking into the shadow set only to tick the counter down:</p>
+
+<pre>        exx
+        dec     hl                      <span class="c">// len-- (shadow)</span>
+        ld      a, h
+        or      l
+        exx</pre>
+<span class="src">aeon/engine/sound/z80_sound_driver.emp:395-399 (Aeon driver, .emp dialect)</span>
+
+  <p>The first <code>exx</code> makes the shadow set live, so <code>dec hl</code> decrements the counter,
+  not the ring pointer; <code>ld a,h</code> then <code>or l</code> is the 16-bit zero test (there is no
+  single instruction for it, so you fold both halves through <code>A</code>; see <a href="#dec16">DEC rr</a>
+  and <a href="#or">OR</a>); the second <code>exx</code> swaps the ring pointer back. Two swaps bracket the
+  whole thing.</p>
+
+  <h4 class="member">EX AF,AF' as a second accumulator</h4>
+  <p><code>EX AF,AF'</code> is not only for interrupts. The DAC decoder keeps its running total permanently
+  in the shadow <code>A'</code>, swapping it in to add each delta and swapping it back so the main
+  <code>A</code> stays free for the raw sample byte:</p>
+
+<pre>        ex      af,af'                  <span class="c">; 4     ; shadow register 'a' is the 'd' value for 'jman2050' encoding</span>
+.highnybble:
+        add     a,(iy+0)                <span class="c">; 19    ; Get byte from zDACDecodeTbl (self-modified to proper index)</span>
+        ld      (zYM2612_D0),a          <span class="c">; 13    ; Write this byte to the DAC</span>
+        ex      af,af'                  <span class="c">; 4     ; back to regular registers</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:695, 698-701 (SMPS Z80 driver)</span>
+
+  <p>The pattern is: swap in the running accumulator, add the table delta into it, emit the result, swap
+  back. Between the two <code>ex af,af'</code> lines, <code>A</code> is the decoder's accumulator; outside
+  them, <code>A</code> is the main one. The shadow <code>A'</code> holds the running value across every
+  sample, a persistent second accumulator rather than a save/restore.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha &middot; EXX leaves AF behind</span><p>
+  It is easy to think <code>EXX</code> swaps "the registers" and expect the flags to come along. It does not:
+  <code>EXX</code> swaps only <code>BC</code>/<code>DE</code>/<code>HL</code>, and <code>AF</code> stays put.
+  To bank out everything, interrupt handlers run <code>EX AF,AF'</code> and <code>EXX</code> as a pair. If
+  you rely on the shadow flags after a bare <code>EXX</code>, they are still the main ones.</p>
+</div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s5">5 &middot; Arithmetic runs through A</h2>
+
+<p>The Z80's 8-bit arithmetic is built around one register. <code>ADD</code>, <code>ADC</code>,
+<code>SUB</code>, <code>SBC</code>, and <code>CP</code> all read one operand from the accumulator
+<code>A</code>, and all but <code>CP</code> write their result back into <code>A</code>. You do not add into
+<code>B</code>; you bring a value into <code>A</code>, operate, and take the result out. They are grouped as
+one entry because they share a shape; then <code>INC</code> and <code>DEC</code>, which work on any register
+and skip the carry flag, get their own.</p>
+
+<div class="instr">
+  <span id="add"></span><span id="adc"></span><span id="sub"></span><span id="sbc"></span><span id="cp"></span>
+  <h3><span class="mn">ADD / ADC / SUB / SBC / CP</span> <span class="mnx">Add, Add with Carry, Subtract, Subtract with Carry, Compare</span> <span class="syn">add a,s &middot; sub s &middot; cp s</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: set from the result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: set from the result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: set from the result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Parity/Overflow: here it is signed overflow" aria-label="P/V: signed overflow"><span class="fl-name">P/V</span><span class="fl-state">overflow</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: 0 after add, 1 after subtract"><span class="fl-name">N</span><span class="fl-state">0/1</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: set from the result"><span class="fl-name">C</span><span class="fl-state">result</span></span>
+    <span class="fl-caption">full-flag ops. N is cleared by ADD/ADC and set by SUB/SBC/CP; P/V here is signed overflow. CP sets every one of these, then discards the result</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">cheapest form, register source (add a,r / sub r / cp r)</span>
+    <span class="cnote">By form, not by an added mode price: an immediate (<code>add a,n</code>) or
+    <code>(HL)</code> source is 7, and an <code>(IX+d)</code> source is 19. Same for all five. Full table
+    in the refbox.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Source s</span>
+      <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og">n</span>
+      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og no">(BC)/(DE)</span><span class="og no">(nn)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">A</span><span class="og no">r (B C D E H L)</span><span class="og no">n</span>
+      <span class="og no">(HL)</span><span class="og no">(IX+d)/(IY+d)</span><span class="og no">(BC)/(DE)</span><span class="og no">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note">The destination row is nearly all crosses on purpose: the result always goes to
+  <code>A</code> (for <code>CP</code> it goes nowhere). You cannot add into <code>B</code>: there is no
+  <code>add b,c</code>. On the source side, <code>(BC)</code> and <code>(DE)</code> are crossed because
+  arithmetic reaches memory only through <code>(HL)</code> or <code>(IX+d)</code>; <code>add a,(bc)</code>
+  does not exist, even though <code>ld a,(bc)</code> does. Two spellings, one machine op: <code>SUB</code>,
+  <code>CP</code> (and the logic ops) are written with a single operand because the <code>A</code>
+  destination is implied (<code>sub b</code> means <code>A &larr; A - B</code>), while <code>ADD</code>,
+  <code>ADC</code>, <code>SBC</code> spell the <code>A</code> out (<code>add a,b</code>). It is only
+  notation.</p>
+
+  <details class="explain">
+    <summary>New here? &middot; why does everything pile up in A?</summary>
+    <div class="x-body">
+      <p>Picture an old desk calculator with a single running total on its display. You do not compute "3
+      plus 4" floating in the air; you key 3, press plus, key 4, and the display updates to 7. Every
+      operation reads that one display and writes the answer back to it, so answers accumulate in the same
+      place. On the Z80, <code>A</code> is that display. The chip has one 8-bit adder-and-comparer, and it
+      is wired so that <code>A</code> is always one of its inputs and its output. That is the whole reason
+      so much code has the rhythm "load a value into <code>A</code>, do arithmetic, read the result out of
+      <code>A</code>," which is where the register gets its name, the accumulator.</p>
+    </div>
+  </details>
+
+  <p>Reach for these constantly: <code>ADD</code> and <code>SUB</code> for plain arithmetic and for stepping
+  an index; <code>ADC</code> and <code>SBC</code> when a value is wider than a byte and a carry or borrow has
+  to travel from the low byte into the high one; and <code>CP</code> to ask how <code>A</code> compares with
+  something without disturbing it. <code>CP</code> is the star of the section, so it gets its own treatment
+  below. First, the shared toy.</p>
+
+  <p>Pick an operation, set <code>A</code> and the operand, and run it. The accumulator and all six flags
+  update; the note reads the result both ways where that matters. Watch <code>CP</code> leave <code>A</code>
+  untouched while still setting every flag. Every logic and arithmetic entry on this page links here rather
+  than growing its own flag readout.</p>
+
+  <figure class="diagram">
+  <div class="movesim" id="alusim">
+    <div class="msim-instr"><code id="alu-instr">add a, $32</code> <span>real Z80 syntax on a single byte. A is the accumulator; the operation reads it, and (except CP) writes the result back into it.</span></div>
+    <div class="fpick" role="group" aria-label="Pick an operation">
+      <button type="button" class="alu-op" data-op="add" aria-pressed="true">add</button>
+      <button type="button" class="alu-op" data-op="adc" aria-pressed="false">adc</button>
+      <button type="button" class="alu-op" data-op="sub" aria-pressed="false">sub</button>
+      <button type="button" class="alu-op" data-op="sbc" aria-pressed="false">sbc</button>
+      <button type="button" class="alu-op" data-op="cp" aria-pressed="false">cp</button>
+      <button type="button" class="alu-op" data-op="and" aria-pressed="false">and</button>
+      <button type="button" class="alu-op" data-op="or" aria-pressed="false">or</button>
+      <button type="button" class="alu-op" data-op="xor" aria-pressed="false">xor</button>
+    </div>
+    <div class="msim-ctrl">
+      <label for="alu-a">A (hex byte)</label>
+      <input id="alu-a" type="text" value="6C" maxlength="2" autocomplete="off" aria-describedby="alu-note">
+      <label for="alu-s" id="alu-slab">operand (hex byte)</label>
+      <input id="alu-s" type="text" value="32" maxlength="2" autocomplete="off" aria-describedby="alu-note">
+      <button type="button" id="alu-cy" aria-pressed="false" style="display:none;">carry-in: 0</button>
+      <button type="button" id="alu-run">Run</button>
+      <button type="button" id="alu-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">A</span><span class="mr-val" id="alu-aval">$6C</span><span class="mr-tag">accumulator</span></span>
+      <span class="mreg" id="alu-sreg"><span class="mr-name">operand</span><span class="mr-val" id="alu-sval">$32</span><span class="mr-tag">source</span></span>
+    </div>
+    <div class="msim-fl" aria-label="Flags after the operation">
+      <span class="fl-label">Flags after</span>
+      <span class="sfchip" id="alu-fs">S -</span>
+      <span class="sfchip" id="alu-fz">Z -</span>
+      <span class="sfchip" id="alu-fh">H -</span>
+      <span class="sfchip" id="alu-fpv">P/V -</span>
+      <span class="sfchip" id="alu-fn">N -</span>
+      <span class="sfchip" id="alu-fc">C -</span>
+    </div>
+    <p class="msim-note" id="alu-note" aria-live="polite"></p>
+  </div>
+  <figcaption>The accumulator ALU. Pick add, adc, sub, sbc, cp, and, or, or xor; set A and the operand;
+  Run. Static fallback: add a, $32 with A = $6C gives A = $9E (158 unsigned, -98 signed), lighting S; sub
+  $32 gives $3A with N set; cp $32 sets the same flags as that subtract but leaves A = $6C unchanged, which
+  is what makes cp a comparison. The arithmetic ops set P/V as signed overflow; the logic ops set it as
+  parity and force C to 0.</figcaption>
+  </figure>
+  <script>
+  (function(){
+    var root = document.getElementById('alusim');
+    if(!root) return;
+    var aIn=document.getElementById('alu-a'), sIn=document.getElementById('alu-s');
+    var aVal=document.getElementById('alu-aval'), sVal=document.getElementById('alu-sval');
+    var sReg=document.getElementById('alu-sreg'), sLab=document.getElementById('alu-slab');
+    var instr=document.getElementById('alu-instr'), note=document.getElementById('alu-note');
+    var cyBtn=document.getElementById('alu-cy'), run=document.getElementById('alu-run'), reset=document.getElementById('alu-reset');
+    var fs=document.getElementById('alu-fs'), fz=document.getElementById('alu-fz'), fh=document.getElementById('alu-fh'),
+        fpv=document.getElementById('alu-fpv'), fn=document.getElementById('alu-fn'), fc=document.getElementById('alu-fc');
+    var A=0x6C, S=0x32, op='add', cy=0;
+    var TWO={add:1,adc:1,sbc:1};   // spelled add a,s
+    var USESCY={adc:1,sbc:1};
+    function hx(n){ var s=(n&0xFF).toString(16).toUpperCase(); return s.length<2?('0'+s):s; }
+    function s8(b){ b&=0xFF; return b>=0x80 ? b-0x100 : b; }
+    function readIn(el){ var v=(el.value||'').replace(/[^0-9a-fA-F]/g,'').slice(0,2).toUpperCase(); el.value=v; return parseInt(v||'0',16)&0xFF; }
+    function parity(x){ var c=0; for(var i=0;i<8;i++){ c+=(x>>i)&1; } return (c%2)===0 ? 1 : 0; }
+    function syn(){
+      var v='$'+hx(S);
+      if(op==='cp') return 'cp '+v;
+      if(op==='sub') return 'sub '+v;
+      if(op==='and'||op==='or'||op==='xor') return op+' '+v;
+      return op+' a, '+v;   // add/adc/sbc
+    }
+    function isLogic(){ return op==='and'||op==='or'||op==='xor'; }
+    function setChip(el,letter,shown,val){
+      if(shown==='dash'){ el.textContent=letter+' -'; el.className='sfchip unaff'; }
+      else if(shown==='forced'){ el.textContent=letter+' 0'; el.className='sfchip forced'; }
+      else { el.textContent=letter+' '+(val?'1':'0'); el.className='sfchip'+(val?' on':''); }
+    }
+    function pending(){
+      instr.textContent=syn();
+      run.textContent='Run '+syn();
+      sReg.style.display = (op==='cp') ? '' : '';
+      aVal.textContent='$'+hx(A); sVal.textContent='$'+hx(S);
+      cyBtn.style.display = USESCY[op] ? '' : 'none';
+      cyBtn.setAttribute('aria-pressed', cy?'true':'false');
+      cyBtn.textContent='carry-in: '+cy;
+      setChip(fs,'S','dash'); setChip(fz,'Z','dash'); setChip(fh,'H','dash');
+      setChip(fpv,'P/V','dash'); setChip(fn,'N','dash'); setChip(fc,'C','dash');
+    }
+    function run1(){
+      A=readIn(aIn); S=readIn(sIn);
+      var res, C, H, PV, N, wrote=true;
+      if(op==='add'||op==='adc'){
+        var k=(op==='adc')?cy:0; var sum=A+S+k; res=sum&0xFF;
+        C=sum>0xFF?1:0; H=(((A&0xF)+(S&0xF)+k)>0xF)?1:0;
+        PV=((~(A^S)&(A^res)&0x80)!==0)?1:0; N=0;
+      } else if(op==='sub'||op==='sbc'||op==='cp'){
+        var k2=(op==='sbc')?cy:0; var d=A-S-k2; res=d&0xFF;
+        C=d<0?1:0; H=(((A&0xF)-(S&0xF)-k2)<0)?1:0;
+        PV=(((A^S)&(A^res)&0x80)!==0)?1:0; N=1;
+        if(op==='cp') wrote=false;
+      } else { // and/or/xor
+        res = op==='and' ? (A&S) : op==='or' ? (A|S) : (A^S);
+        C=0; H = op==='and' ? 1 : 0; PV=parity(res); N=0;
+      }
+      var Sf=(res&0x80)?1:0, Zf=(res===0)?1:0;
+      if(wrote){ A=res; }
+      aVal.textContent='$'+hx(A);
+      aVal.classList.remove('mr-flash'); void aVal.offsetWidth; aVal.classList.add('mr-flash');
+      sVal.textContent='$'+hx(S);
+      setChip(fs,'S',null,Sf); setChip(fz,'Z',null,Zf); setChip(fh,'H',null,H);
+      setChip(fn,'N',null,N);
+      if(isLogic()){ setChip(fpv,'P/V',null,PV); setChip(fc,'C','forced'); }
+      else { setChip(fpv,'P/V',null,PV); setChip(fc,'C',null,C); }
+      var u=res, sv=s8(res), msg;
+      if(op==='cp'){
+        msg='cp $'+hx(S)+' computes A - $'+hx(S)+' to set the flags, then throws the result away: A is still $'+hx(A)+'. Z='+Zf+' (1 means equal), C='+C+' (1 means A is below the operand, unsigned), N=1. The next branch reads these.';
+      } else if(isLogic()){
+        var names={and:'AND keeps a bit only where both A and the operand have it',or:'OR sets a bit where either has it',xor:'XOR sets a bit where they differ'};
+        msg=op+' $'+hx(S)+' -> A = $'+hx(A)+'. '+names[op]+'. Here P/V is PARITY (P/V='+PV+', so '+(PV?'an even':'an odd')+' number of 1-bits), not overflow, and C is forced to 0.';
+      } else {
+        var carryWord=(op==='add'||op==='adc')?'carry':'borrow';
+        msg=op+(TWO[op]?' a, ':' ')+'$'+hx(S)+' -> A = $'+hx(A)+' ('+u+' unsigned, '+sv+' signed). N='+N+', C='+C+' ('+carryWord+' out of the byte), P/V='+PV+' (signed overflow).'+(USESCY[op]?(' Carry-in was '+cy+'.'):'');
+      }
+      note.textContent=msg;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.alu-op'),function(b){
+      b.addEventListener('click',function(){
+        op=b.dataset.op;
+        Array.prototype.forEach.call(document.querySelectorAll('.alu-op'),function(o){ o.setAttribute('aria-pressed',o===b?'true':'false'); });
+        pending();
+        note.textContent='Set A and the operand, then Run '+syn()+'.';
+      });
+    });
+    aIn.addEventListener('input',function(){ A=readIn(aIn); aVal.textContent='$'+hx(A); });
+    sIn.addEventListener('input',function(){ S=readIn(sIn); sVal.textContent='$'+hx(S); });
+    cyBtn.addEventListener('click',function(){ cy=cy?0:1; cyBtn.setAttribute('aria-pressed',cy?'true':'false'); cyBtn.textContent='carry-in: '+cy; });
+    run.addEventListener('click',run1);
+    reset.addEventListener('click',function(){
+      A=0x6C; S=0x32; cy=0; op='add'; aIn.value='6C'; sIn.value='32';
+      Array.prototype.forEach.call(document.querySelectorAll('.alu-op'),function(o){ o.setAttribute('aria-pressed',o.dataset.op==='add'?'true':'false'); });
+      pending();
+      note.textContent='Reset to A = $6C, operand $32. Press Run to add them (A becomes $9E), or pick another operation.';
+      var f=document.getElementById('alu-run'); if(f) f.focus();
+    });
+    pending();
+    note.textContent='Press Run to add $32 into A ($6C -> $9E). Or pick sub, cp, and, or, xor and Run to watch A and the flags.';
+  })();
+  </script>
+
+  <p>Now the same instructions in the driver. <code>SUB</code> rebases a sound ID into a zero-based index
+  (DAC samples are numbered from <code>$81</code>, so subtracting <code>$81</code> gives 0, 1, 2, ...):</p>
+
+<pre>        sub     81h                     <span class="c">; Subtract 81h (first DAC index is 81h)</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:509 (SMPS Z80 driver)</span>
+
+  <p>The consumer is the code just after it, which uses the rebased value in <code>A</code> as a table index.
+  And <code>ADD</code> doubles a value as a cheap left shift: adding <code>A</code> to itself is a multiply
+  by two, so two of them multiply by four:</p>
+
+<pre>        add     a,a
+        add     a,a                     <span class="c">; a *= 4 (each DAC entry is a pointer and length, 2+2)</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:513-514 (SMPS Z80 driver)</span>
+
+  <p>The comment names the payoff: each table entry is four bytes, so <code>A * 4</code> turns the index
+  into a byte offset into the table.</p>
+
+  <h4 class="member">CP &middot; compare is subtract-and-discard</h4>
+  <p><code>CP s</code> computes <code>A - s</code>, sets every flag exactly as <code>SUB</code> would, and
+  then throws the difference away, leaving <code>A</code> untouched. That is the entire trick: you learn how
+  <code>A</code> relates to a value (equal, above, below) without spending <code>A</code> to find out. It
+  never travels alone. A compare exists to be read by the branch on the very next line, so always show the
+  two together:</p>
+
+<pre>        ld      a,(zAbsVar.QueueToPlay)
+        cp      80h
+        call    nz,zPlaySoundByIndex            <span class="c">; If not 80h, we need to play something new!</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:427-429 (SMPS Z80 driver)</span>
+
+  <p><code>$80</code> is the "nothing queued" sentinel. The <code>cp 80h</code> sets the zero flag if the
+  queued byte equals <code>$80</code> and clears it otherwise; <code>call nz</code> then fires the play
+  routine only when they differ. The compare set the note, the conditional call read it, and <code>A</code>
+  still holds the queued byte afterward for whatever comes next. This two-beat rhythm, an operation that
+  sets flags and a branch that reads one, is what the sibling page's jumps and calls all link back to.</p>
+
+  <details class="explain">
+    <summary>New here? &middot; how can comparing not change the number?</summary>
+    <div class="x-body">
+      <p>It feels like a compare must do <em>something</em> to <code>A</code>. It does not, and that is the
+      whole point. <code>CP</code> runs the exact subtraction <code>A</code> minus the operand, watches how
+      it came out (was it zero, did it borrow), writes those answers into the flags, and then discards the
+      difference. <code>A</code> is left exactly as it was. So you can ask "is <code>A</code> equal to
+      <code>$80</code>? is it below it?" as often as you like without ever spending the value in
+      <code>A</code>. If you actually wanted <code>A</code> minus the operand kept, that is
+      <code>SUB</code>; <code>CP</code> is <code>SUB</code> with the answer thrown away and only the flags
+      kept.</p>
+    </div>
+  </details>
+
+  <details class="explain">
+    <summary>New here? &middot; after a subtract, why does carry mean "smaller"?</summary>
+    <div class="x-body">
+      <p>On an add, the carry flag is the bit that spilled off the top, a carry <em>out</em>. On a subtract
+      the same flag is repurposed as a <em>borrow</em>: it lights when the subtraction had to borrow from
+      beyond the top bit, which happens exactly when you take a larger number away from a smaller one. So
+      after <code>cp n</code> or <code>sub n</code>, carry set means <code>A</code> was below
+      <code>n</code> (both read as unsigned), and carry clear means <code>A</code> was greater than or
+      equal. That is why <code>jr c</code> after a compare reads as "jump if below." It trips people because
+      the word "carry" suggests going over a limit, while here it is really flagging going under one.</p>
+    </div>
+  </details>
+
+  <div class="gotcha"><span class="g-tag">Gotcha &middot; the sign of the carry after a subtract</span><p>
+  After <code>SUB</code>, <code>SBC</code>, or <code>CP</code>, the carry flag means <em>borrow</em>:
+  <code>C</code> = 1 says the subtraction went below zero, that is, <code>A</code> was smaller than the
+  operand (read as unsigned). So <code>cp n</code> then <code>jr c</code> means "jump if A is below n." It
+  is the opposite polarity from what "carry" suggests to a beginner, and mixing it up inverts the branch.</p>
+  </div>
+
+  <details class="refbox">
+    <summary>Per-operation flags and full timing</summary>
+    <div class="enc-body">
+      <div class="tbl"><table>
+        <thead><tr><th>Op</th><th>S</th><th>Z</th><th>H</th><th>P/V</th><th>N</th><th>C</th></tr></thead>
+        <tbody>
+          <tr><td><code>ADD A,s</code></td><td>result</td><td>result</td><td>result</td><td>overflow</td><td>0</td><td>result</td></tr>
+          <tr><td><code>ADC A,s</code></td><td>result</td><td>result</td><td>result</td><td>overflow</td><td>0</td><td>result</td></tr>
+          <tr><td><code>SUB s</code></td><td>result</td><td>result</td><td>result</td><td>overflow</td><td>1</td><td>result</td></tr>
+          <tr><td><code>SBC A,s</code></td><td>result</td><td>result</td><td>result</td><td>overflow</td><td>1</td><td>result</td></tr>
+          <tr><td><code>CP s</code></td><td>result</td><td>result</td><td>result</td><td>overflow</td><td>1</td><td>result</td></tr>
+        </tbody>
+      </table></div>
+      <div class="tbl"><table>
+        <thead><tr><th>Source form</th><th>Bytes</th><th>T-states</th></tr></thead>
+        <tbody>
+          <tr><td>register (<code>add a,r</code>, <code>sub r</code>, <code>cp r</code>)</td><td>1</td><td>4</td></tr>
+          <tr><td>immediate (<code>add a,n</code>)</td><td>2</td><td>7</td></tr>
+          <tr><td><code>(HL)</code> source</td><td>1</td><td>7</td></tr>
+          <tr><td><code>(IX+d)</code> / <code>(IY+d)</code> source</td><td>3</td><td>19</td></tr>
+        </tbody>
+      </table></div>
+      <p class="enc-note">From UM0080 and clrhome, which agree; the register and immediate T-states also
+      match the sigil cost model. For <code>CP</code>, one undocumented detail: the two undocumented flag
+      bits (5 and 3) copy from the operand rather than the result, unlike every other ALU op. It matters
+      only to cycle-exact emulators and is never tested by documented code.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="inc">
+  <span id="dec"></span>
+  <h3><span class="mn">INC / DEC</span> <span class="mnx">Increment (+1) / Decrement (-1), 8-bit</span> <span class="syn">inc r &middot; dec (hl)</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: set from the result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: set from the result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: set from the result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Parity/Overflow: here it is signed overflow" aria-label="P/V: signed overflow"><span class="fl-name">P/V</span><span class="fl-state">overflow</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: 0 after INC, 1 after DEC"><span class="fl-name">N</span><span class="fl-state">0/1</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">sets S Z H and P/V from the result; N is 0 for INC, 1 for DEC; carry is deliberately left alone</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">cheapest form, a register (inc r / dec r)</span>
+    <span class="cnote">On a memory byte it costs more: <code>inc (hl)</code>/<code>dec (hl)</code> is 11 (read,
+    modify, write), and <code>inc (ix+d)</code>/<code>dec (ix+d)</code> is 23.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Operand</span>
+      <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og no">n</span>
+      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og no">(BC)/(DE)</span><span class="og no">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note">Unlike the arithmetic above, <code>INC</code> and <code>DEC</code> work on <em>any</em>
+  8-bit register, not just <code>A</code>, and on the memory byte at <code>(HL)</code> or <code>(IX+d)</code>.
+  This is a distinct 8-bit form; the 16-bit <code>inc hl</code> that steps a whole pair is a separate
+  instruction with different rules, covered in <a href="#inc16">section 6</a>.</p>
+
+  <p>They add or subtract one, and reach for them wherever a value ticks by one: a loop counter, a timer, a
+  position. The one thing to hold onto is what they do <em>not</em> touch. Here the driver counts a RAM
+  timer down without loading it into a register at all:</p>
+
+<pre>        ld      hl,zPALUpdTick
+        dec     (hl)
+        jr      nz,.not_pal</pre>
+<span class="src">s2disasm/s2.sounddriver.asm:445-447 (SMPS Z80 driver)</span>
+
+  <p><code>HL</code> points at the timer; <code>dec (hl)</code> reads it, subtracts one, and writes it back
+  in a single instruction; <code>jr nz</code> then loops while it is nonzero. The <code>dec</code> set the
+  zero flag, and the very next branch consumed it. (The same pattern with <code>inc (hl)</code> appears at
+  line 614, counting a delay tick up.)</p>
+
+  <div class="decision"><span class="d-tag">A Zilog choice, not ours &middot; INC and DEC preserve carry</span>
+  <p>The 8-bit <code>INC</code> and <code>DEC</code> set <code>S</code>, <code>Z</code>, <code>H</code>, and
+  <code>P/V</code>, but they leave the <em>carry</em> flag exactly as it was. That is deliberate, and it is
+  useful: it lets you set up a carry with one instruction, run a counter with <code>DEC</code> in the middle,
+  and still have that carry intact for a multi-byte add or rotate afterward. The counter and the carry do not
+  interfere. It is also a trap in the other direction: you cannot use <code>INC</code>/<code>DEC</code> to
+  test whether a value crossed 255 or 0, because the carry that would tell you never moves. Use <code>ADD</code>
+  or <code>SUB</code> when you need the carry.</p></div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s6">6 &middot; 16-bit arithmetic</h2>
+
+<p>The Z80 can add and subtract whole 16-bit pairs, but the family is smaller and quirkier than the 8-bit
+one, and the flags behave differently enough to trip people. There are three adds on <code>HL</code> with
+their own asymmetry, and then <code>INC</code>/<code>DEC</code> on a pair, which touch no flags at all and
+are the source of a classic bug.</p>
+
+<div class="instr">
+  <span id="add16"></span><span id="adc16"></span><span id="sbc16"></span>
+  <h3><span class="mn">ADD HL / ADC HL / SBC HL</span> <span class="mnx">16-bit Add, Add with Carry, Subtract with Carry</span> <span class="syn">add hl,ss &middot; adc hl,ss &middot; sbc hl,ss</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags (ADD HL)</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected by ADD HL"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected by ADD HL"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: here the carry out of bit 11" aria-label="H: set from the result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity/Overflow" aria-label="P/V: unaffected by ADD HL"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Carry: here the carry out of bit 15" aria-label="C: set from the result"><span class="fl-name">C</span><span class="fl-state">result</span></span>
+    <span class="fl-caption">ADD HL moves only H, N, C. ADC HL and SBC HL set the full set (S, Z, H, P/V, N, C); see the table below</span>
+  </div>
+
+  <div class="cost"><span class="cchip">ADD HL 11 T &middot; ADC/SBC HL 15 T</span>
+    <span class="cctx">ss = BC/DE/HL/SP</span>
+    <span class="cnote"><code>ADD IX,pp</code> and <code>ADD IY,rr</code> are 15 (the index prefix). No
+    additive mode price; these are the whole numbers.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Destination</span>
+      <span class="og">HL</span><span class="og no">BC DE</span><span class="og no">SP</span>
+      <span class="og">IX IY</span><span class="og no">AF</span><span class="og no">nn / (nn)</span>
+    </div>
+    <div class="og-row"><span class="og-side">Source pair</span>
+      <span class="og">BC DE HL</span><span class="og">SP</span><span class="og">IX IY</span>
+      <span class="og no">AF</span><span class="og no">nn</span><span class="og no">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note">Note the asymmetry the destination row is drawing. Plain <code>ADD</code> targets
+  <code>HL</code>, <code>IX</code>, or <code>IY</code>; but <code>ADC</code> and <code>SBC</code> exist
+  <em>only</em> with <code>HL</code> as destination, so <code>adc ix,bc</code> and <code>sbc de,hl</code> do
+  not assemble. The source chips are coupled to the destination, which is the picky part:
+  <code>add hl,ss</code> takes <code>BC</code>, <code>DE</code>, <code>HL</code>, or <code>SP</code> and
+  never an index register, while <code>add ix,pp</code> takes <code>BC</code>, <code>DE</code>,
+  <code>IX</code>, or <code>SP</code> and never <code>HL</code>. An index register can add itself but not
+  the other one: <code>add ix,ix</code> assembles, <code>add ix,iy</code> does not. There is no
+  16-bit add against an immediate or a memory word; the source is always a register pair.</p>
+
+  <p>Reach for <code>ADD HL,ss</code> to fold a 16-bit offset into a running pointer, which is its everyday
+  job. The driver's modulation code does exactly that, adding a computed offset into a frequency value:</p>
+
+<pre>        add     hl,bc                           <span class="c">; Add modulation value</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:1047 (SMPS Z80 driver)</span>
+
+  <p>This is the line whose result <a href="#ex">EX DE,HL</a> then shuffled into place for a computed jump.
+  One instruction adds a full 16-bit pair into <code>HL</code>.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha &middot; ADD HL cannot tell you if the result was zero</span><p>
+  Plain <code>ADD HL,ss</code> sets <code>H</code>, <code>N</code>, and <code>C</code>, but it leaves
+  <code>S</code>, <code>Z</code>, and <code>P/V</code> exactly as they were. So you cannot follow an
+  <code>add hl,de</code> with <code>jr z</code> and expect it to test the 16-bit sum for zero; the zero flag
+  never moved. When you need the full flags on a 16-bit result (a zero test, a sign, a signed comparison),
+  use <code>ADC HL,ss</code> or <code>SBC HL,ss</code>, which do set them. The standard idiom is to clear the
+  carry first with <code>or a</code>, then <code>sbc hl,ss</code> as a real 16-bit compare (see the driver
+  excerpt below).</p>
+  </div>
+
+  <p><code>SBC HL,ss</code> is the Z80's 16-bit compare. Because there is no <code>cp</code> for pairs, you
+  clear the carry and subtract, then read the flags. The Sonic 2 driver does exactly that inside the Saxman
+  decompressor that unpacks music data. A compressed stream can say "repeat something you have already
+  written," and before the decoder can copy from that earlier position it has to check that the position is
+  actually behind the write cursor:</p>
+
+<pre>        or      a                       <span class="c">; Clear carry</span>
+        sbc     hl,bc                   <span class="c">; hl -= bc</span>
+        jr      nc,.is_not_zero_fill    <span class="c">; if result positive, jump ahead</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:4022-4024 (SMPS Z80 driver)</span>
+
+  <p>Both pairs hold positions in the output, measured from the same base: <code>HL</code> is how far the
+  decompressor has written, <code>BC</code> is where the reference points. The <code>or a</code> is there
+  because <code>SBC</code> subtracts the carry too, so you must know it is 0 before the subtract is
+  trustworthy (see <a href="#or">OR</a> for why <code>or a</code> clears the carry without changing
+  <code>A</code>). Then <code>sbc hl,bc</code> does the comparison, and the <code>jr nc</code> on the next
+  line is the consumer: no borrow means <code>HL</code> was at least <code>BC</code>, so the reference lands
+  inside data already written and the copy path takes over. A borrow (carry set) means the reference points past
+  everything written so far, and the code that falls through fills that run with zeroes instead. The same
+  subtract also sets <code>Z</code>, so a test for the two pairs being equal is <code>jr z</code> on the very
+  same instruction, which is exactly what plain <code>add hl</code> could not give you.</p>
+
+  <details class="refbox">
+    <summary>Per-operation flags and full timing</summary>
+    <div class="enc-body">
+      <div class="tbl"><table>
+        <thead><tr><th>Op</th><th>S</th><th>Z</th><th>H</th><th>P/V</th><th>N</th><th>C</th></tr></thead>
+        <tbody>
+          <tr><td><code>ADD HL,ss</code></td><td>unaff.</td><td>unaff.</td><td>result</td><td>unaff.</td><td>0</td><td>result</td></tr>
+          <tr><td><code>ADC HL,ss</code></td><td>result</td><td>result</td><td>result</td><td>overflow</td><td>0</td><td>result</td></tr>
+          <tr><td><code>SBC HL,ss</code></td><td>result</td><td>result</td><td>result</td><td>overflow</td><td>1</td><td>result</td></tr>
+        </tbody>
+      </table></div>
+      <p class="enc-note">From UM0080. For the 16-bit adds, <code>H</code> is the carry out of bit 11 and
+      <code>C</code> the carry out of bit 15. <code>ADD HL,ss</code> = 11 T (1 byte); <code>ADC HL,ss</code>
+      and <code>SBC HL,ss</code> = 15 T (2 bytes, ED-prefixed); <code>ADD IX,pp</code> / <code>ADD IY,rr</code>
+      = 15 T (2 bytes). Cross-checked against clrhome.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="inc16">
+  <span id="dec16"></span>
+  <h3><span class="mn">INC rr / DEC rr</span> <span class="mnx">Increment / Decrement a register pair (16-bit)</span> <span class="syn">inc ss &middot; dec ss</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity/Overflow" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">touches no flags at all; you cannot branch on the result of a 16-bit INC or DEC</span>
+  </div>
+
+  <div class="cost"><span class="cchip">6 T-states</span>
+    <span class="cctx">a pair BC/DE/HL/SP</span>
+    <span class="cnote"><code>inc ix</code>/<code>inc iy</code>/<code>dec ix</code>/<code>dec iy</code> are
+    10 (the index prefix). No memory or immediate forms.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Operand</span>
+      <span class="og">BC DE HL</span><span class="og">SP</span><span class="og">IX IY</span>
+      <span class="og no">AF</span><span class="og no">nn</span><span class="og no">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note">Any pair, plus <code>SP</code>, <code>IX</code>, <code>IY</code>. This is a different
+  instruction from the 8-bit <code>inc r</code> in <a href="#inc">section 5</a>: same mnemonic, but it steps
+  a whole 16-bit pair and sets no flags whatsoever.</p>
+
+  <p>These step a pointer or a 16-bit counter by one. The driver walks a sample pointer forward and counts a
+  remaining-length word down in the same breath:</p>
+
+<pre>        inc     hl                      <span class="c">; 6     ; Next byte in DAC stream...</span>
+        dec     de                      <span class="c">; 6     ; One less byte</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:714-715 (SMPS Z80 driver)</span>
+
+  <p><code>inc hl</code> advances the pointer; <code>dec de</code> ticks the counter. The catch is what
+  comes next: because <code>dec de</code> sets no flags, the loop cannot simply do <code>dec de</code> then
+  <code>jr nz</code>. To find out whether a pair has reached zero you fold its two bytes together, which is
+  the toy's whole lesson.</p>
+
+  <details class="explain">
+    <summary>New here? &middot; why not just <code>dec bc</code> and jump if it hit zero?</summary>
+    <div class="x-body">
+      <p>Coming from the 8-bit world it looks obvious: decrement the counter, then <code>jr nz</code> to
+      loop while it is nonzero. That works for <code>dec b</code>, because the 8-bit <code>DEC</code> sets
+      the zero flag. But <code>dec bc</code>, the 16-bit version, is a different instruction that sets no
+      flags at all, so there is nothing for <code>jr nz</code> to read; it would branch on whatever some
+      earlier instruction happened to leave in the zero flag. To test a pair for zero you have to
+      manufacture a flag yourself, and the standard trick is to OR its two bytes together (<code>ld a,b</code>
+      then <code>or c</code>): the result is zero only if both halves were zero, so the zero flag then tells
+      you the whole pair is zero. It is one of the small taxes the Z80 charges for being an 8-bit chip doing
+      16-bit work.</p>
+    </div>
+  </details>
+
+  <p>Run <code>dec bc</code> a few times and watch every flag stay dark, then run the <code>ld a,b</code> +
+  <code>or c</code> test and watch <code>Z</code> light exactly when <code>BC</code> hits zero:</p>
+
+  <figure class="diagram">
+  <div class="movesim" id="silsim">
+    <div class="msim-instr"><code id="sil-instr">dec bc</code> <span>dec bc changes BC but no flags; the ld a,b / or c pair is how you test a 16-bit pair for zero.</span></div>
+    <div class="msim-ctrl">
+      <button type="button" id="sil-dec">Run dec bc</button>
+      <button type="button" id="sil-test">Run ld a,b / or c</button>
+      <button type="button" id="sil-reset">Reset</button>
+    </div>
+    <div class="msim-regs">
+      <span class="mreg"><span class="mr-name">BC</span><span class="mr-val" id="sil-bc">$0003</span><span class="mr-tag">counter</span></span>
+      <span class="mreg"><span class="mr-name">A</span><span class="mr-val" id="sil-a">$00</span><span class="mr-tag">scratch for the test</span></span>
+    </div>
+    <div class="msim-fl" aria-label="Flags">
+      <span class="fl-label">Flags</span>
+      <span class="sfchip" id="sil-fs">S -</span>
+      <span class="sfchip" id="sil-fz">Z -</span>
+      <span class="sfchip" id="sil-fc">C -</span>
+    </div>
+    <p class="msim-note" id="sil-note" aria-live="polite"></p>
+  </div>
+  <figcaption>The 16-bit silence. dec bc counts BC down but never moves a flag, so the flag row stays dark
+  no matter how many times you press it. ld a,b / or c copies B into A and ORs C onto it, so the result is
+  zero only when both bytes are zero, lighting Z exactly when BC has reached $0000. Static fallback: a
+  16-bit DEC sets no flags, and the standard test for BC == 0 is ld a,b then or c, reading Z afterward.</figcaption>
+  </figure>
+  <script>
+  (function(){
+    var root=document.getElementById('silsim');
+    if(!root) return;
+    var bcEl=document.getElementById('sil-bc'), aEl=document.getElementById('sil-a'), note=document.getElementById('sil-note'), instr=document.getElementById('sil-instr');
+    var fs=document.getElementById('sil-fs'), fz=document.getElementById('sil-fz'), fc=document.getElementById('sil-fc');
+    var bc, a, tested;
+    function defaults(){ bc=0x0003; a=0x00; tested=false; }
+    function hx4(n){ var s=(n&0xFFFF).toString(16).toUpperCase(); while(s.length<4) s='0'+s; return s; }
+    function hx2(n){ var s=(n&0xFF).toString(16).toUpperCase(); return s.length<2?('0'+s):s; }
+    function dark(){ fs.textContent='S -'; fz.textContent='Z -'; fc.textContent='C -'; fs.className=fz.className=fc.className='sfchip unaff'; }
+    function render(){ bcEl.textContent='$'+hx4(bc); aEl.textContent='$'+hx2(a); }
+    document.getElementById('sil-dec').addEventListener('click',function(){
+      instr.textContent='dec bc';
+      bc=(bc-1)&0xFFFF; tested=false;
+      bcEl.textContent='$'+hx4(bc);
+      bcEl.classList.remove('mr-flash'); void bcEl.offsetWidth; bcEl.classList.add('mr-flash');
+      dark();
+      note.textContent='dec bc -> BC = $'+hx4(bc)+'. Look at the flag row: nothing moved. A 16-bit DEC sets no flags, so you cannot tell from it whether BC just reached zero.';
+    });
+    document.getElementById('sil-test').addEventListener('click',function(){
+      instr.textContent='ld a,b / or c';
+      a=(bc>>8)&0xFF;          // ld a,b
+      a=a|(bc&0xFF);           // or c
+      var Z=(a===0)?1:0, S=(a&0x80)?1:0;
+      aEl.textContent='$'+hx2(a);
+      aEl.classList.remove('mr-flash'); void aEl.offsetWidth; aEl.classList.add('mr-flash');
+      fs.textContent='S '+S; fs.className='sfchip'+(S?' on':'');
+      fz.textContent='Z '+Z; fz.className='sfchip'+(Z?' on':'');
+      fc.textContent='C 0'; fc.className='sfchip forced';
+      tested=true;
+      note.textContent='ld a,b put $'+hx2((bc>>8)&0xFF)+' into A; or c ORed $'+hx2(bc&0xFF)+' onto it -> A = $'+hx2(a)+'. Z='+Z+(Z?' : BC is zero, both bytes were 0.':' : BC is not zero yet.')+' OR also clears carry. This is how you test a pair for zero.';
+    });
+    document.getElementById('sil-reset').addEventListener('click',function(){
+      defaults(); instr.textContent='dec bc'; render(); dark();
+      note.textContent='Reset. BC = $0003. Press "Run dec bc" a few times (the flags never move), then "Run ld a,b / or c" to test for zero.';
+      var f=document.getElementById('sil-dec'); if(f) f.focus();
+    });
+    defaults(); render(); dark();
+    note.textContent='BC = $0003, flags idle. Press "Run dec bc" to count down (watch the flags stay dark), then "Run ld a,b / or c" to test whether BC is zero.';
+  })();
+  </script>
+
+  <div class="decision"><span class="d-tag">A Zilog choice, not ours &middot; why the block instructions exist</span>
+  <p>The flag-silence of 16-bit <code>DEC</code> is exactly why the Z80 has a whole family of block
+  instructions (<code>LDIR</code>, <code>CPIR</code>, and their kin, on the
+  <a href="bits-flow-blocks.html">sibling page</a>). Those fold "step the pointers, decrement the
+  <code>BC</code> counter, and report whether the count ran out" into one instruction that <em>does</em>
+  expose the counter through a flag. Where a plain <code>dec bc</code> loop needs the <code>ld a,b</code> /
+  <code>or c</code> dance, a block instruction just repeats until <code>BC</code> is zero on its own. The
+  silence here is the reason that family was worth building.</p></div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s7">7 &middot; Logic and masks</h2>
+
+<p>The bitwise operations work on <code>A</code> like the arithmetic ones, but instead of treating the byte
+as a number they treat it as eight independent bits. This is where the Z80's idiom culture lives thickest:
+<code>xor a</code> to zero a register, <code>or a</code> to test one, <code>and</code> to mask a status bit.
+Each idiom is a real instruction doing a job its plain name does not advertise.</p>
+
+<div class="instr">
+  <span id="and"></span><span id="or"></span><span id="xor"></span>
+  <h3><span class="mn">AND / OR / XOR</span> <span class="mnx">Bitwise AND, inclusive OR, exclusive OR</span> <span class="syn">and s &middot; or s &middot; xor s</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: set from the result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: set from the result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry" aria-label="H: 1 after AND, 0 after OR/XOR"><span class="fl-name">H</span><span class="fl-state">1/0</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Parity/Overflow: here it is parity of the result" aria-label="P/V: parity of the result"><span class="fl-name">P/V</span><span class="fl-state">parity</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Carry" aria-label="C: cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
+    <span class="fl-caption">S and Z from the result; P/V is PARITY here, not overflow; N and C are cleared; H is set by AND and cleared by OR/XOR</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">cheapest form, a register source</span>
+    <span class="cnote">Immediate or <code>(HL)</code> source is 7; <code>(IX+d)</code> is 19. Same as the
+    8-bit arithmetic.</span>
+  </div>
+
+  <div class="opgrid">
+    <div class="og-row"><span class="og-side">Source s</span>
+      <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og">n</span>
+      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og no">(BC)/(DE)</span><span class="og no">(nn)</span>
+    </div>
+  </div>
+  <p class="og-note">One-operand syntax, and the destination is always <code>A</code> (<code>and b</code>
+  means <code>A &larr; A AND B</code>). Same reach as the arithmetic ops: any register, an immediate, or
+  memory through <code>(HL)</code>/<code>(IX+d)</code>, but never <code>(BC)</code>/<code>(DE)</code>.</p>
+
+  <p>Reach for <code>AND</code> to keep only certain bits (mask off the rest), <code>OR</code> to turn bits
+  on or to fold several bytes together, and <code>XOR</code> to flip bits. For the flag lesson, all three run
+  in the <a href="#add">accumulator ALU</a> above (pick and, or, or xor there); this entry shows the idioms.
+  <code>AND</code> isolating a single status bit is the canonical mask, shown here in the engine driver with
+  its consumer:</p>
+
+<pre>        ld      a, (SND_Z80_YM_A0)      <span class="c">// YM status: bit0 = Timer A overflow</span>
+        and     SND_TIMERA_OVF_MASK
+        jp      nz, SndDrv_TimerATick   <span class="c">// overflow -> tick (spill/frame/refill/reload), rejoin</span></pre>
+<span class="src">aeon/engine/sound/z80_sound_driver.emp:374-376 (Aeon driver, .emp dialect)</span>
+
+  <p>The mask has exactly one bit set, the "Timer A overflowed" bit. <code>AND</code> keeps a bit only where
+  <em>both</em> operands have it, so after the mask <code>A</code> holds that single bit and nothing else:
+  nonzero if the timer overflowed, zero if not. The <code>jp nz</code> is the reaction, branching precisely
+  when the bit survived. Masking to test one bit, then branching, is the everyday shape.</p>
+
+  <p><code>AND</code> also extracts a field. After four rotates move a nibble into the low four bits (see the
+  <a href="bits-flow-blocks.html">rotates on the sibling page</a>), <code>and 0Fh</code> clears everything
+  above it so <code>A</code> is a clean 0-to-15 index:</p>
+
+<pre>        and     0Fh                     <span class="c">; 7     ; UPPER 4-bit offset into zDACDecodeTbl</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:693 (SMPS Z80 driver)</span>
+
+  <p><code>OR</code> folds several "is anything set?" tests into one branch. Here the driver ORs three queue
+  bytes together and calls one routine if any is nonzero:</p>
+
+<pre>        ld      a,(zAbsVar.Queue0)
+        or      (ix+zVar.Queue1)
+        or      (ix+zVar.Queue2)                <span class="c">; This was missing in Sonic 1's driver, breaking the third queue slot.</span>
+        call    nz,zCycleQueue                  <span class="c">; If any of those are non-zero, cycle queue</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:420-423 (SMPS Z80 driver)</span>
+
+  <p>After the two <code>or</code>s, <code>A</code> is zero only if all three bytes were zero, so
+  <code>call nz</code> fires whenever any slot holds something. One branch, three conditions.</p>
+
+  <p>And <code>XOR</code> against yourself is the Z80's canonical "set A to zero":</p>
+
+<pre>        xor     a                       <span class="c">; Clear 'a'</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:400 (SMPS Z80 driver)</span>
+
+  <details class="explain">
+    <summary>New here? &middot; why is <code>xor a</code> the way to write zero?</summary>
+    <div class="x-body">
+      <p>Exclusive-OR sets each result bit to 1 only where the two inputs <em>differ</em>. XOR a value with
+      itself and every bit matches itself, so every result bit is 0: <code>xor a</code> always leaves
+      <code>A</code> = 0, whatever it held before. It sounds like a roundabout way to write zero, and it is,
+      but it is the smallest and fastest one: one byte and 4 T-states, against <code>ld a, 0</code>'s two
+      bytes and 7. It also sets the flags (Z becomes 1, carry becomes 0) as a bonus, which a plain load never
+      does. Seeing <code>xor a</code> at the top of a routine, read it as "A = 0" and move on; it is so
+      common it stops looking strange.</p>
+    </div>
+  </details>
+
+  <div class="kin"><span class="k-tag">Cheaper cousins</span><p>
+  <b><code>xor a</code></b> beats <code>ld a, 0</code> for zeroing <code>A</code> (1 byte / 4 T vs 2 bytes /
+  7 T), and beats <code>sub a</code> only on clarity (both are 1 byte / 4 T; <code>sub a</code> also zeroes
+  <code>A</code>, but <code>xor a</code> is the idiom everyone reads instantly). <b><code>or a</code></b> (or
+  <code>and a</code>) beats <code>cp 0</code> for testing <code>A</code> against zero on both counts: 1 byte
+  and 4 T-states against <code>cp 0</code>'s 2 bytes and 7, for the same <code>Z</code> and <code>S</code>.
+  And <code>cp 0</code> buys nothing on the carry either, which is the tempting reason to reach for it:
+  <code>A - 0</code> can never borrow, so <code>cp 0</code> clears the carry exactly as <code>or a</code>
+  does. <code>or a</code> before an <code>ADC</code>/<code>SBC</code> is the idiom precisely because that
+  cleared carry is what those instructions need.</p>
+</div>
+</div>
+
+<div class="instr" id="cpl">
+  <h3><span class="mn">CPL</span> <span class="mnx">Complement Accumulator (flip every bit)</span> <span class="syn">cpl</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" title="Half-carry" aria-label="H: set"><span class="fl-name">H</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity/Overflow" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" title="Add/subtract flag" aria-label="N: set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fl-caption">only H and N move (both set); S, Z, P/V, and C are left alone</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">the only form; 1 byte, no operand</span>
+    <span class="cnote">CPL takes no operand and has one form, so this number is the whole cost.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: <code>CPL</code> is implicitly on
+  <code>A</code> and takes no operand you can write.</div>
+
+  <p><code>CPL</code> replaces <code>A</code> with its one's complement: every 0 becomes 1 and every 1
+  becomes 0. Reach for it to invert a mask, or as the first half of a two's-complement negate (flip the bits,
+  then add one; the one-instruction version of that is <a href="#neg">NEG</a>). Its everyday job in the
+  Sonic 2 driver is smaller and neater than either: a <code>$00</code>/<code>$FF</code> toggle, a stored byte
+  that must come out the opposite of whatever it was last time. The bloop/gloop sound effect is only allowed
+  to play every other time it is asked for, and <code>CPL</code> is the entire mechanism:</p>
+
+<pre>        ld      a,(zGloopFlag)
+        cpl
+        ld      (zGloopFlag),a
+        or      a
+        ret     z               <span class="c">; Sometimes don't play it</span>
+        jp      zPlaySound      <span class="c">; Now play the gloop sound</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:2144-2149 (SMPS Z80 driver)</span>
+
+  <p><code>zGloopFlag</code> is one byte in the driver's own data area, starting at <code>$00</code>. The
+  first request loads it, <code>cpl</code> flips it to <code>$FF</code>, and the store puts it back. The
+  consumer is right there: <code>or a</code> tests the flipped value and <code>ret z</code> fires only when it
+  came out zero, so this time <code>A</code> is <code>$FF</code>, the return is skipped, and
+  <code>jp zPlaySound</code> plays the sound. The next request loads <code>$FF</code>, flips it to
+  <code>$00</code>, and now <code>ret z</code> does fire and the sound is dropped. One instruction turns a
+  byte into its own opposite, and the flag alternates forever. A few lines above, at
+  <code>s2.sounddriver.asm:2133</code>, the same trick alternates <code>zRingSpeaker</code> between
+  <code>$00</code> and <code>$FF</code>, which is how consecutive rings pick opposite speakers.</p>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="s8">8 &middot; The decimal and carry corner</h2>
+
+<p>Four small instructions round out the page: one for decimal arithmetic, one for negation, and two that
+poke the carry flag directly. Only <code>DAA</code> is genuinely missing from the swept sound drivers (score
+and time code, where decimal math lives, are the 68000's job here), so it is the one entry on this page that
+teaches from a labeled worked example instead of real code. <code>NEG</code>, <code>SCF</code>, and
+<code>CCF</code> all appear in the swept drivers and the entries below quote the lines; <code>CCF</code>
+turns up exactly once in the whole Sonic 2 driver, and that one use is worth the visit.</p>
+
+<div class="instr" id="daa">
+  <h3><span class="mn">DAA</span> <span class="mnx">Decimal Adjust Accumulator</span> <span class="syn">daa</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Sign" aria-label="S: set from adjusted A"><span class="fl-name">S</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero" aria-label="Z: set from adjusted A"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry follows the correction table" aria-label="H: set from the correction"><span class="fl-name">H</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Parity of adjusted A" aria-label="P/V: parity"><span class="fl-name">P/V</span><span class="fl-state">parity</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Carry follows the correction table" aria-label="C: set from the correction"><span class="fl-name">C</span><span class="fl-state">result</span></span>
+    <span class="fl-caption">S and Z from the adjusted A; P/V is parity; N is left alone (DAA reads it); H and C follow DAA's correction table</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">the only form; 1 byte, no operand</span>
+    <span class="cnote">One form, this is the whole cost.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: <code>DAA</code> works implicitly on
+  <code>A</code> and takes no operand.</div>
+
+  <p>Binary-coded decimal packs one decimal digit into each
+  <span class="term" data-def="Four bits, half a byte: exactly one hexadecimal digit, with 16 possible values.">nibble</span>
+  of a byte, so <code>$25</code> stores the decimal number 25 (not
+  the value $25 = 37). Ordinary <code>ADD</code> does not respect that packing: add BCD <code>$25</code> and
+  <code>$18</code> and you get <code>$3D</code>, which is not a valid pair of decimal digits.
+  <code>DAA</code>, run immediately after the add, corrects <code>A</code> back to <code>$43</code>, the BCD
+  for 43. Reach for it only in decimal arithmetic (a score, a clock), and only right after an add-family or
+  subtract-family operation on <code>A</code>.</p>
+
+  <details class="explain">
+    <summary>New here? &middot; what is binary-coded decimal?</summary>
+    <div class="x-body">
+      <p>Normally a byte holds a plain binary number from 0 to 255. Binary-coded decimal, or BCD, uses the
+      same eight bits differently: it splits the byte into two 4-bit halves and stores one decimal digit (0
+      to 9) in each. So the byte <code>$37</code> read as BCD means the decimal number 37, one digit per
+      nibble, and the bit-patterns for <code>$A</code> through <code>$F</code> never appear. Why bother? A
+      score or a clock is shown to a human as decimal digits, and BCD keeps each digit in its own nibble so
+      you can read them straight out to the screen. The cost is that ordinary binary <code>ADD</code> does
+      not know about the split and can leave an invalid half, which is exactly the gap <code>DAA</code>
+      fills.</p>
+    </div>
+  </details>
+
+  <p>No sound-driver example exists, so here is a worked one:</p>
+
+  <div class="teach">
+    <span class="t-tag">Teaching example &middot; not engine code</span>
+    <pre>        ld      a, 25h          <span class="c">; BCD 25 (decimal twenty-five, not the value $25)</span>
+        add     a, 18h          <span class="c">; binary add gives A = $3D, not a valid BCD pair</span>
+        daa                     <span class="c">; correct it: A = $43, BCD for 43</span></pre>
+    <p style="margin:.5rem 0 0;">The add produced <code>$3D</code> because the low nibble ran past 9 (5 + 8 =
+    13) with no decimal carry into the high nibble. <code>DAA</code> reads the half-carry and carry the add
+    left behind, adds the right correction (here +6 to fix the low nibble and carry the ten into the high
+    one), and leaves <code>$43</code>. It only works because the add set those flags first.</p>
+  </div>
+
+  <div class="gotcha"><span class="g-tag">Gotcha &middot; DAA only makes sense right after an add or subtract</span><p>
+  <code>DAA</code> reads the <code>N</code> flag to know whether the last operation was an add or a subtract,
+  and reads <code>H</code> and <code>C</code> to know which nibble overflowed. Run it after a logic operation
+  (which leaves <code>N</code> = 0 and <code>H</code> per <code>AND</code>/<code>OR</code>) or a
+  <a href="bits-flow-blocks.html">block instruction</a> and it applies a meaningless correction. This is the
+  one thing the otherwise-obscure <code>N</code> flag exists for: nothing else on the Z80 reads it.</p>
+  </div>
+
+  <details class="refbox">
+    <summary>DAA's correction, and the N flag</summary>
+    <div class="enc-body">
+      <p><code>DAA</code> chooses its correction from the current <code>N</code>, <code>C</code>, and
+      <code>H</code> flags plus the two nibble values of <code>A</code>. After an add (<code>N</code> = 0) it
+      adds one of +00, +06, +60, or +66; after a subtract (<code>N</code> = 1) it applies the symmetric
+      -06, -60, or -66. It also updates <code>C</code> to reflect a decimal carry out of the high nibble, so
+      chained multi-byte BCD arithmetic works. The exact per-row correction table is in UM0080 (pages
+      173-174); the shape above is faithful to it, but transcribe the precise added value from the manual if
+      you implement <code>DAA</code> rather than just use it.</p>
+      <p class="enc-note">Source: UM0080. The undocumented flag bits follow the adjusted <code>A</code>;
+      emulator detail only.</p>
+    </div>
+  </details>
+</div>
+
+<div class="instr" id="neg">
+  <h3><span class="mn">NEG</span> <span class="mnx">Negate Accumulator (A &larr; 0 - A)</span> <span class="syn">neg</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags</span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Sign" aria-label="S: set from the result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero" aria-label="Z: set from the result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry" aria-label="H: set from the result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Overflow: set only if A was $80" aria-label="P/V: overflow"><span class="fl-name">P/V</span><span class="fl-state">overflow</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" title="Add/subtract flag" aria-label="N: set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Carry: set unless A was $00" aria-label="C: set from the result"><span class="fl-name">C</span><span class="fl-state">result</span></span>
+    <span class="fl-caption">behaves like SUB of A from 0: P/V is set only when A was $80, C is set for any nonzero A, N is set</span>
+  </div>
+
+  <div class="cost"><span class="cchip">8 T-states</span>
+    <span class="cctx">the only form; 2 bytes (ED-prefixed), no operand</span>
+    <span class="cnote">One form, this is the whole cost.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: <code>NEG</code> negates <code>A</code>
+  implicitly and takes no operand.</div>
+
+  <p><code>NEG</code> replaces <code>A</code> with zero minus <code>A</code>, the
+  <span class="term" data-def="The standard way to store signed numbers in a fixed width: the top bit carries negative weight, so every bit pattern is a distinct number and there is a single zero.">two's complement</span>
+  negation: <code>$01</code> becomes <code>$FF</code> (which reads as -1 signed), <code>$05</code> becomes
+  <code>$FB</code> (-5). Reach for it to flip the sign of a signed byte in <code>A</code> in one instruction,
+  instead of <code>cpl</code> then <code>inc a</code>. The Sonic 2 driver uses it exactly once, and the job is
+  vibrato. <code>zDoModulation</code> keeps a running modulation value, adds a small signed delta to it at a
+  set interval, and adds the whole thing to the track's frequency, so the note's pitch drifts. Each sweep
+  runs for a fixed number of steps, and when that count runs out the delta has to start pulling the other
+  way:</p>
+
+<pre>        ld      a,(ix+zTrack.ModulationDelta)   <span class="c">; get modulation change per mod step</span>
+        neg                                     <span class="c">; flip it negative</span>
+        ld      (ix+zTrack.ModulationDelta),a   <span class="c">; store negated value</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:1016-1018 (SMPS Z80 driver)</span>
+
+  <p>The delta comes out of the track's own state, <code>neg</code> turns +n into -n (or -n back into +n),
+  and the store is the consumer: it puts the flipped value back where the next sweep will read it. What makes
+  the negation meaningful is that the byte is treated as signed downstream. Further along the same routine
+  the driver sign-extends this delta into <code>BC</code> and adds that to the running modulation value, so a
+  negative delta walks the pitch down exactly as a positive one walked it up. Flipping the sign every time
+  the step count expires is what makes the pitch wobble around the note instead of sliding away from it.</p>
+
+  <p>To see the flags for any input, run the <code>sub</code> path in the
+  <a href="#add">accumulator ALU</a> with <code>A</code> = 0 and the operand set to your value:
+  <code>NEG</code> is exactly <code>0 - A</code>. The one edge case worth knowing is <code>$80</code>
+  (-128): its negation cannot fit in a signed byte, so <code>NEG</code> leaves <code>$80</code> unchanged
+  and sets the overflow flag <code>P/V</code>.</p>
+</div>
+
+<div class="instr" id="scf">
+  <span id="ccf"></span>
+  <h3><span class="mn">SCF / CCF</span> <span class="mnx">Set Carry Flag / Complement Carry Flag</span> <span class="syn">scf &middot; ccf</span></h3>
+
+  <div class="flags"><span class="fl-label">Flags (SCF)</span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Half-carry" aria-label="H: cleared by SCF"><span class="fl-name">H</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity/Overflow" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" title="Carry set to 1" aria-label="C: set"><span class="fl-name">C</span><span class="fl-state">set</span></span>
+    <span class="fl-caption">SCF sets C, clears H and N, and leaves S, Z, P/V alone. CCF instead inverts C, and copies the OLD carry into H (see below)</span>
+  </div>
+
+  <div class="cost"><span class="cchip">4 T-states</span>
+    <span class="cctx">both; 1 byte each, no operand</span>
+    <span class="cnote">One form each, this is the whole cost.</span>
+  </div>
+
+  <div class="og-note" style="margin-top:.6rem;">No operand grid: both act on the carry flag alone and take
+  no operand.</div>
+
+  <p><code>SCF</code> sets the carry to 1; <code>CCF</code> flips it to its opposite. They are the carry
+  knobs, for when you want to force a known carry before a rotate through carry (see the
+  <a href="bits-flow-blocks.html">rotates on the sibling page</a>) or an <code>ADC</code>/<code>SBC</code>,
+  or to signal a routine's result back to its caller as the carry flag. That last job is <code>SCF</code>'s
+  everyday one. The engine's own <code>Snd_DacLookup</code> turns a DAC sample id into a pointer to that
+  sample's descriptor, and its header comment states the contract: the carry comes back clear on success and
+  set on a bad id. <code>scf</code> is how each of the two failure paths raises it:</p>
+
+<pre>        or      a
+        scf
+        ret     z                       <span class="c">// id 0 -> bad (carry set)</span>
+        cp      DAC_SAMPLE_COUNT+1      <span class="c">// carry SET iff id &lt;= COUNT (valid)</span>
+        jr      c, .valid
+        scf                             <span class="c">// id > COUNT -> bad (carry set)</span>
+        ret</pre>
+<span class="src">aeon/engine/sound/z80_sound_driver.emp:741-747 (Aeon driver, .emp dialect)</span>
+
+  <p>Read the first three lines together and you can see why <code>SCF</code> can sit where it does.
+  <code>or a</code> tests the id and sets <code>Z</code> if it is zero; <code>scf</code> then raises the carry
+  <em>without disturbing</em> <code>Z</code>, because it moves only <code>C</code>, <code>H</code>, and
+  <code>N</code>; so <code>ret z</code> on the next line still branches on the test from two instructions back
+  and returns with the carry already up. The second failure path works the other way round:
+  <code>cp</code> leaves the carry set when the id is in range, <code>jr c</code> takes those good ids away to
+  <code>.valid</code>, so anything reaching the next line is out of range and gets <code>scf</code> then
+  <code>ret</code>. The success path at <code>.valid</code> builds the pointer and finishes by clearing the
+  carry with <code>or a</code>.</p>
+
+  <p>The consumer is the caller. <code>Seq_HookDac</code> is the sequencer's hook for a song's DAC trigger,
+  and it decides whether to play anything at all by reading one flag:</p>
+
+<pre>        call    Snd_DacLookup           <span class="c">// a=id -> hl=descriptor (carry set if bad)</span>
+        ret     c                       <span class="c">// bad id -> ignore the trigger</span>
+        jp      Snd_StartSample         <span class="c">// start DAC playback from the descriptor</span></pre>
+<span class="src">aeon/engine/sound/sound_sequencer.emp:1836-1838 (Aeon driver, .emp dialect)</span>
+
+  <p><code>ret c</code> reads exactly the bit <code>scf</code> set and abandons the trigger; otherwise the
+  code falls straight through to start the sample. The answer travelled from routine to caller in one flag,
+  costing no register, and it survived the <code>call</code> boundary because <code>RET</code> touches no
+  flags.</p>
+
+  <p><code>CCF</code> covers the other case: you already have a carry and you want the opposite sense of it.
+  The Sonic 2 driver flips one exactly once, in <code>zBGMLoad</code>, the routine that starts a new piece of
+  music. The byte it has just fetched from the master playlist is not only a song number: its low five bits
+  index the music table (<code>and 1Fh</code> strips the rest a few lines later) and its top three bits are
+  flags, which the code peels off into the carry one at a time:</p>
+
+<pre>        add     a,a                             <span class="c">; Adding a+a causes a possible overflow and a multiplication by 2</span>
+        add     a,a                             <span class="c">; Now multiplied by 4 and another possible overflow</span>
+        ld      c,a                             <span class="c">; Result -> 'c'</span>
+        ccf                                     <span class="c">; Invert carry flag...</span>
+        sbc     a,a                             <span class="c">; ... so that this sets a to FFh if bit 6 of original a was clear (allow PAL double-update), zero otherwise (do not allow PAL double-update)</span>
+        ld      (zAbsVar.IsPalFlag),a           <span class="c">; Set IsPalFlag</span></pre>
+<span class="src">s2disasm/s2.sounddriver.asm:1756-1761 (SMPS Z80 driver)</span>
+
+  <p>Each <code>add a,a</code> doubles <code>A</code> and pushes its top bit out into the carry, so after two
+  of them the carry holds bit 6 of the original byte. The code wants the opposite of that bit, and
+  <code>ccf</code> is the whole answer: one instruction, no branch, no spare register. Its consumer is the
+  very next line. <code>sbc a,a</code> subtracts <code>A</code> from itself along with the carry, which
+  leaves <code>$00</code> when the carry was clear and <code>$FF</code> when it was set, smearing the flipped
+  bit across a whole byte; the store then keeps that byte as the driver's PAL flag. Two instructions turn one
+  flag into a mask, and <code>CCF</code> is what got the polarity right.</p>
+
+  <div class="gotcha"><span class="g-tag">Gotcha &middot; CCF does not clear H, it saves the old carry there</span><p>
+  It is natural to assume <code>CCF</code> just flips the carry and zeroes the rest. It does clear
+  <code>N</code>, but it copies the <em>previous</em> carry into the half-carry flag <code>H</code> rather
+  than clearing <code>H</code>. Nothing you normally branch on reads <code>H</code>, so this rarely bites,
+  but do not assume <code>H</code> is zero after <code>CCF</code>. Neither <code>SCF</code> nor
+  <code>CCF</code> touches <code>S</code>, <code>Z</code>, or <code>P/V</code>. (The two undocumented bits
+  after <code>SCF</code>/<code>CCF</code> are famously model-dependent across Z80 variants; no page should
+  teach a specific value for them.)</p>
+</div>
+</div>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
+<a href="../index.html">Back to hub</a> &middot; Previous: <a href="programming-model.html">The Programming Model</a>
+&middot; Next: <a href="bits-flow-blocks.html">Bits, Flow &amp; Blocks</a></footer>
+
+</div>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+
+/* ---- instruction index filter ---- */
+(function(){
+  var q = document.getElementById('ix-q');
+  if(!q) return;
+  var table = document.getElementById('ix-table');
+  var count = document.getElementById('ix-count');
+  var rows = Array.prototype.slice.call(table.tBodies[0].rows);
+  var total = rows.length;
+  var noneRow = null;
+  function apply(){
+    var v = q.value.trim().toLowerCase();
+    var shown = 0;
+    rows.forEach(function(r){
+      var hit = v === '' || r.textContent.toLowerCase().indexOf(v) !== -1;
+      r.style.display = hit ? '' : 'none';
+      if(hit) shown++;
+    });
+    if(noneRow) noneRow.style.display = shown === 0 ? '' : 'none';
+    count.textContent = v === '' ? (total + ' instructions') : (shown + ' of ' + total);
+  }
+  var tb = table.tBodies[0];
+  noneRow = document.createElement('tr');
+  noneRow.className = 'ix-none';
+  noneRow.innerHTML = '<td colspan="3">No instruction matches that. Try a mnemonic like ld or a word like compare.</td>';
+  noneRow.style.display = 'none';
+  tb.appendChild(noneRow);
+  q.addEventListener('input', apply);
+  apply();
+})();
+</script>
+
+</body>
+</html>
