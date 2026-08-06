@@ -310,12 +310,17 @@ NemDecToRAM:
         lea     (NemDec_WriteAndAdvance).l,a3</pre>
 <span class="src">s2disasm/s2.asm:1814</span>
 
-<p>Read what that comment does and does not tell you. It names two inputs. It says nothing
-about which registers survive the call, even though the very next line saves thirteen of them
-onto the stack because they do not. A caller has to read the body to learn that. And nothing
-anywhere checks the comment: if someone later adds a line that trashes <code>a2</code>, the
-comment still says what it always said, the build still succeeds, and the bug ships. The
-comment cannot rot loudly. It can only rot silently.</p>
+<p>Read what that comment does and does not tell you. It names two inputs, and then it stops.
+It says nothing about registers, even though this routine is careful with them: that first
+instruction pushes thirteen registers onto the stack, and a matching instruction further down
+pops them back before the routine returns. So the routine really does make a promise, that those
+thirteen come back untouched, and the only place the promise is written down is the instructions
+themselves. A caller who wants to know has to read the body.</p>
+
+<p>And nothing anywhere checks the comment. If someone later adds a line that trashes
+<code>a2</code>, which is one of the registers this routine does not save, the comment still says
+what it always said, the build still succeeds, and the bug ships. The comment cannot rot loudly.
+It can only rot silently.</p>
 
 <div class="decision">
   <span class="d-tag">Design decision &middot; contracts are checked, or they are comments</span>
