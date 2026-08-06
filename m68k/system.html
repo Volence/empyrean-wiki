@@ -491,12 +491,17 @@ are also where the 68000 gets asymmetric in a way worth knowing about, because t
 not equally protected.</p>
 
 <div class="teach"><span class="t-tag">Teach</span>
-<p><b>Why this page states no cycle counts.</b> Every other instruction page on this track gives you
-timings. This one does not, and that is deliberate rather than an oversight: the sources we trust for
-68000 timing do not cover these instructions, so any number here would be one we could not stand
-behind. Byte sizes are given, because those follow directly from how the instruction is encoded. It
-matters less than it would elsewhere, because nothing on this page sits on a hot path. That is the
-whole point of the page.</p></div>
+<p><b>Where the cycle counts come from.</b> Timing for these instructions took some settling, because
+the sources disagreed. Two independent emulator cores price them, and on two entries they parted
+company: one charges RESET four cycles where the manual says 132, and its figure for CHK looked
+irreconcilable with the manual's. Both are now resolved in the manual's favour, and by evidence
+rather than by preference. A processor test suite built from traces of real hardware times RESET at
+exactly 132, and times <code>chk (a0),Dn</code> at 14, which is the manual's base of 10 plus the four
+cycles that reaching <code>(a0)</code> costs on any instruction. The disagreement was a difference in
+where each core drew the line between an instruction's own cost and its operand's, not a
+disagreement about the machine. Counts here are core CPU cycles with no wait states; a memory
+operand adds its addressing mode's price from
+<a href="addressing-modes.html#price">the mode table</a>.</p></div>
 
 <details class="refbox">
   <summary>Why a CPU has two privilege levels at all, and why this console never uses the feature</summary>
@@ -536,9 +541,12 @@ whole point of the page.</p></div>
   </div>
   <div class="cost" role="group" aria-label="Size of MOVE SR">
     <span class="fl-label">Cost</span>
+    <span class="cchip">12 cycles writing SR</span>
+    <span class="cchip">6 cycles reading into Dn</span>
     <span class="cchip">2 bytes</span>
     <span class="cchip">4 bytes with an immediate</span>
     <span class="cctx">register or immediate forms; a memory destination adds its own address words.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>Reading is the safe direction and the common one. <code>move sr,d0</code> copies the whole
   16-bit register into a data register so you can put it back later, which is what code does when it
@@ -589,9 +597,11 @@ whole point of the page.</p></div>
   </div>
   <div class="cost" role="group" aria-label="Size of MOVE to CCR">
     <span class="fl-label">Cost</span>
+    <span class="cchip">12 cycles</span>
     <span class="cchip">2 bytes</span>
     <span class="cchip">4 bytes with an immediate</span>
     <span class="cctx">writes only the low byte of the status register, so it is not privileged.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>This is the unprivileged way to write flags: it touches the user half of the status register and
   leaves the system half alone, so user code is allowed to do it. Games use it to <em>restore</em>
@@ -645,8 +655,10 @@ whole point of the page.</p></div>
   </div>
   <div class="cost" role="group" aria-label="Size of MOVE USP">
     <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">always; both directions.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>The 68000 has two stack pointers, and <code>a7</code> means whichever one is currently in force:
   the supervisor stack pointer while the S bit is set, the user stack pointer while it is clear. Since
@@ -825,8 +837,10 @@ has to ask.</p></div>
   </div>
   <div class="cost" role="group" aria-label="Size of LINK">
     <span class="fl-label">Cost</span>
+    <span class="cchip">16 cycles</span>
     <span class="cchip">4 bytes</span>
     <span class="cctx">the displacement is a word, so it always costs an extension word.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>Three things happen, in this order. The address register you name is pushed onto the stack. The
   stack pointer is then copied into that register. Finally the displacement is added to the stack
@@ -870,8 +884,10 @@ has to ask.</p></div>
   </div>
   <div class="cost" role="group" aria-label="Size of UNLK">
     <span class="fl-label">Cost</span>
+    <span class="cchip">12 cycles</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">always.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>Exactly LINK backwards, and only two steps because it does not need the displacement: copy the
   frame pointer into the stack pointer, which discards the whole frame in one move however big it was,
@@ -903,8 +919,10 @@ has to ask.</p></div>
   </div>
   <div class="cost" role="group" aria-label="Size of STOP">
     <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
     <span class="cchip">4 bytes</span>
     <span class="cctx">opcode plus the immediate word.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>STOP loads the immediate into the status register and then halts the processor. It stays halted
   until an interrupt arrives that the new
@@ -973,8 +991,11 @@ cartridge there is no somebody else.</p>
   </div>
   <div class="cost" role="group" aria-label="Size of CHK">
     <span class="fl-label">Cost</span>
+    <span class="cchip">10 cycles when it passes</span>
+    <span class="cchip">42 to 44 when it traps</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">plus any words the source operand needs.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>CHK compares a data register against an upper bound and, if the register is negative or greater
   than the bound, raises an
@@ -1014,8 +1035,11 @@ cartridge there is no somebody else.</p>
   </div>
   <div class="cost" role="group" aria-label="Size of TRAPV">
     <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles when V is clear</span>
+    <span class="cchip">34 when it traps</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">no operands at all.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>One job: if the V flag is set, raise an exception; otherwise do nothing and carry on. It is the
   overflow equivalent of CHK, meant to sit after arithmetic in a language that promises to notice when a
@@ -1048,8 +1072,10 @@ cartridge there is no somebody else.</p>
   </div>
   <div class="cost" role="group" aria-label="Size of RESET">
     <span class="fl-label">Cost</span>
+    <span class="cchip">132 cycles</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">no operands.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>RESET asserts the CPU's reset line, which is wired to the other chips. It resets
   <em>them</em> and deliberately not itself: the 68000 keeps running, its registers intact, on the
@@ -1091,8 +1117,10 @@ cartridge there is no somebody else.</p>
   </div>
   <div class="cost" role="group" aria-label="Size of ILLEGAL">
     <span class="fl-label">Cost</span>
+    <span class="cchip">34 cycles</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">the fixed opcode word $4AFC.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>An instruction whose defined behaviour is to be invalid. The 68000 reserves the bit pattern
   <code>$4AFC</code>, guarantees it will never mean anything, and takes the illegal-instruction
@@ -1140,8 +1168,11 @@ instruction is being used for something other than the thing it is named after.<
   </div>
   <div class="cost" role="group" aria-label="Size of TAS">
     <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles on Dn</span>
+    <span class="cchip">14 cycles on (An)</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">on a data register; a memory operand adds its address words.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
 
   <p><b>Start with what it does, because that is all you need to read the code below.</b> TAS looks at
@@ -1238,8 +1269,10 @@ instruction is being used for something other than the thing it is named after.<
   </div>
   <div class="cost" role="group" aria-label="Size of TRAP">
     <span class="fl-label">Cost</span>
+    <span class="cchip">34 cycles</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">the vector number is packed into the opcode, so no extension word.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p><code>trap #n</code> raises an exception on purpose. There are sixteen of them, numbered 0 to 15,
   and each has its own slot in the
@@ -1321,8 +1354,10 @@ be the most pointless instruction on a page about pointless instructions, and in
   </div>
   <div class="cost" role="group" aria-label="Size of NOP">
     <span class="fl-label">Cost</span>
+    <span class="cchip">4 cycles</span>
     <span class="cchip">2 bytes</span>
     <span class="cctx">and it spends time doing nothing, which is the point of the first use below.</span>
+      <span class="cnote">From the M68000 User's Manual, Section 8. Core CPU cycles, excluding Genesis wait states; a memory operand adds its addressing mode's own price.</span>
   </div>
   <p>NOP changes no register, no flag, and no memory. It advances the program counter and consumes
   time. Both of those nothings are useful.</p>
@@ -1403,7 +1438,9 @@ Previous: <a href="flow.html">Flow</a> &middot; the last page of the instruction
 <a href="programming-model.html">the full instruction index</a><br>
 <span class="fnote">Instruction semantics verified against the Motorola M68000 Programmer's Reference Manual,
 corroborated against Kelly-Bootle and Fowler (1985) and Skinner (1988). Genesis-specific behaviour
-verified against Sega's own Genesis Software Development Manual Complement (1991). Usage counts measured
+verified against Sega's own Genesis Software Development Manual Complement (1991). Timings from the
+M68000 User's Manual Section 8, reconciled against two emulator cores and a hardware-trace test suite
+where they disagreed. Usage counts measured
 across seven codebases; the counting method is stated in section 2.</span></footer>
 
 
