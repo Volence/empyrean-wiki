@@ -672,6 +672,18 @@ which one to write.</p>
   There is nothing cheaper; MOVEQ is the floor. Go the other way instead: a constant outside
   -128 to 127, or a destination that is not a data register, needs plain <a href="#move">MOVE</a>,
   and zeroing memory rather than a register is <a href="#clr">CLR</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0111 rrr 0 dddddddd</code>. Three bits name the destination data register, and the
+    low byte IS the constant, sign-extended to 32 bits when it lands. There is no room for anything
+    else, which is the whole story of MOVEQ: one word, no extension, and a range of only -128 to 127
+    because eight bits is all the space left.</p>
+    <p><code>moveq #0,d0</code> is <code>7000</code>, <code>moveq #1,d1</code> is <code>7201</code>,
+    and <code>moveq #-1,d0</code> is <code>70FF</code>, the <code>FF</code> being -1 as a signed
+    byte.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="movea">
@@ -770,6 +782,19 @@ which one to write.</p>
   Loading a nearby label's address? <code>lea Table(pc),a0</code> (see <a href="#lea">LEA</a>) is
   4 cycles and 2 bytes cheaper than <code>movea.l #Table,a0</code> whenever the label is in reach
   of PC-relative addressing, and it keeps working if the code is moved in ROM.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>MOVEA has no opcode of its own. It is <a href="#move">MOVE</a> with an address register
+    named as the destination: <code>00 ss rrr 001 mmm rrr</code>, where the destination
+    <code>001</code> is the address-register-direct mode. That is exactly why the assembler silently
+    turns <code>move.w d0,a0</code> into MOVEA, and why there is no byte size, since the size field
+    has no encoding for a byte into an An.</p>
+    <p><code>movea.w d0,a0</code> is <code>3040</code> and <code>movea.l a1,a2</code> is
+    <code>2449</code>. Compare with MOVE's own encoding above: same shape, and only the destination
+    mode differs.</p>
+    </div>
+  </details>
 </div>
 
 <!-- ================================================================ -->
@@ -954,6 +979,18 @@ lea     8(a1,d0.w),a0   <span class="c">; load the calculated address itself</sp
   8 cycles, 4 cheaper than <code>adda.w #64,a0</code> at the same size. For tiny bumps of 1 to 8,
   <code>addq</code> still wins on size; none of the An-destination adds touch the flags either
   way.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 rrr 111 mmm rrr</code>. The first <code>rrr</code> is the destination address
+    register, the fixed <code>111</code> marks it as LEA, and the trailing mode-and-register pair is
+    the source operand whose ADDRESS is wanted. Only modes that name a memory location are legal
+    there, which is the encoding's way of saying you cannot take the address of a register.</p>
+    <p><code>lea $1234.w,a0</code> is <code>41F8 1234</code>, <code>lea 8(a1),a2</code> is
+    <code>45E9 0008</code>, and <code>lea (a0,d1.w),a3</code> is <code>47F0 1000</code>, the trailing
+    word being the index-mode extension.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="pea">
@@ -1068,6 +1105,16 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
   If the address will be used more than once, <a href="#lea">LEA</a> it into a spare register and
   push that with <code>move.l An,-(sp)</code>; PEA only wins when the address is needed exactly
   once, on the stack, right now.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1000 01 mmm rrr</code>, then whatever extension words the operand needs. There
+    is no register field at all, because the destination is always the stack. PEA is LEA's shape with
+    the destination removed.</p>
+    <p><code>pea (a0)</code> is a bare <code>4850</code>, <code>pea 8(a1)</code> is
+    <code>4869 0008</code>, and <code>pea $1234.w</code> is <code>4878 1234</code>.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="movem">
@@ -1215,6 +1262,20 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
     (sp)+,d0-a6 pops d0 first and a6 last, each register landing back in itself (static fallback:
     the two columns above list the exact push and pop order top to bottom).</figcaption>
   </figure>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1D00 1S mmm rrr</code>, then a 16-bit register MASK. <code>D</code> is the
+    direction (0 registers to memory, 1 memory to registers) and <code>S</code> the size (0 word,
+    1 long). One mask bit per register decides who takes part.</p>
+    <p>The mask is where the surprise lives: its bit ORDER FLIPS for predecrement. Normally bit 0 is
+    d0 and bit 15 is a7, but with a <code>-(An)</code> destination the order reverses so that the
+    registers still land in memory in the same arrangement. That is why the same register list
+    encodes two different masks: <code>movem.l d0-a6,-(sp)</code> is <code>48E7 FFFE</code> while
+    <code>movem.l (sp)+,d0-a6</code> is <code>4CDF 7FFF</code>. Both name d0 through a6; only the
+    direction of the mask differs.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="movep">
@@ -1272,20 +1333,6 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
     </div>
   </details>
 
-  <details class="refbox">
-    <summary>Encoding</summary>
-    <div class="enc-body">
-    <p><code>0000 rrr ooo 001 aaa</code> then a 16-bit displacement. <code>rrr</code> is the data
-    register and <code>aaa</code> the address register; the fixed <code>001</code> in the mode
-    field is what makes this the only instruction shaped like this. <code>ooo</code> carries both
-    the size and the direction at once: <code>100</code> word to register, <code>101</code> long
-    to register, <code>110</code> word to memory, <code>111</code> long to memory.</p>
-    <p>So <code>movep.w 0(a0),d3</code> assembles as <code>0708 0000</code> and
-    <code>movep.l d2,0(a0)</code> as <code>05C8 0000</code>. The trailing zero word in each is the
-    displacement, and it is why every MOVEP costs four bytes.</p>
-    </div>
-  </details>
-
   <p>The textbook use is the one the instruction is named for. Sonic 3 and Knuckles talks to the
   cartridge's save chip this way, because SRAM is an 8-bit device sitting on half the bus:</p>
   <pre>	movep.w	d2,<span class="n">0</span>(a0)	<span class="c">; Copy data to SRAM</span>
@@ -1318,6 +1365,19 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
   If the bytes you want really are consecutive, you want a plain <a href="#move">MOVE</a>, which is
   faster and shorter. MOVEP only pays when the destination genuinely is every other byte. For a
   whole set of registers to consecutive addresses, that is <a href="#movem">MOVEM</a>.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0000 rrr ooo 001 aaa</code> then a 16-bit displacement. <code>rrr</code> is the data
+    register and <code>aaa</code> the address register; the fixed <code>001</code> in the mode
+    field is what makes this the only instruction shaped like this. <code>ooo</code> carries both
+    the size and the direction at once: <code>100</code> word to register, <code>101</code> long
+    to register, <code>110</code> word to memory, <code>111</code> long to memory.</p>
+    <p>So <code>movep.w 0(a0),d3</code> assembles as <code>0708 0000</code> and
+    <code>movep.l d2,0(a0)</code> as <code>05C8 0000</code>. The trailing zero word in each is the
+    displacement, and it is why every MOVEP costs four bytes.</p>
+    </div>
+  </details>
 </div>
 
 <!-- ================================================================ -->
@@ -1432,6 +1492,17 @@ carry meaning, without touching memory at all.</p>
   Zeroing a whole data register? <code>moveq #0,d0</code> (see <a href="#moveq">MOVEQ</a>) clears
   all 32 bits in 4 cycles; <code>clr.l d0</code> takes 6 and <code>clr.w</code> leaves the top
   half dirty. CLR earns its keep on memory and on deliberately partial clears.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 0010 ss mmm rrr</code>, where <code>ss</code> is the size (<code>00</code>
+    byte, <code>01</code> word, <code>10</code> long) and the mode-and-register pair is the
+    destination. No source field exists, because the source is always zero.</p>
+    <p><code>clr.b d0</code> is <code>4200</code>, <code>clr.w d1</code> is <code>4241</code>,
+    <code>clr.l d2</code> is <code>4282</code>, and <code>clr.l $1234.w</code> is
+    <code>42B8 1234</code>.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="swap">
@@ -1509,6 +1580,15 @@ carry meaning, without touching memory at all.</p>
   SWAP rearranges one register's halves; exchanging two whole registers is
   <a href="#exg">EXG</a>. There is no cheaper way to reach a register's top half on the 68000;
   shifting right by 16 costs far more.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1000 0100 0 rrr</code>. Only three bits vary, naming the data register; there
+    is no size field because SWAP is always a full 32-bit operation, and no mode field because the
+    operand is always a register.</p>
+    <p><code>swap d0</code> is <code>4840</code> and <code>swap d7</code> is <code>4847</code>.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="exg">
@@ -1592,6 +1672,18 @@ loc_1ECD4:
   different physics routines. That rarity is itself a useful signal: reach for a temp-register
   MOVE first, and treat EXG as a specialist tool for the rare spot where swapping two full
   registers in one step is genuinely worth it, not a routine replacement for MOVE.</div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>1100 rrr 1 ooooo rrr</code>. The two <code>rrr</code> fields name the two registers
+    and the five-bit opmode says which KIND each one is: <code>01000</code> two data registers,
+    <code>01001</code> two address registers, <code>10001</code> one of each. There is no encoding for
+    any other combination, which is the whole of EXG's operand rule.</p>
+    <p><code>exg d0,d1</code> is <code>C141</code>, <code>exg a0,a1</code> is <code>C149</code>, and
+    <code>exg d0,a1</code> is <code>C189</code>. Note the shared <code>1100</code> prefix with AND: the
+    opmode field is what separates them.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="ext">
@@ -2007,7 +2099,18 @@ function expandAll(btn){
     if(!n){ note.textContent='Pick at least one register first.'; return; }
     if(saved){ note.textContent='Already saved. Run the restore to pop them home.'; return; }
     var html='';
-    for(var i=0;i<n;i++){ var k=n-i; html+='<div class="sd-cell'+(i===0?' sd-first':'')+(i===n-1?' sd-last':'')+'"><span>'+regs[i]+'</span><span class="sd-ord">pushed '+ordinal(k)+'</span></div>'; }
+    for(var i=0;i<n;i++){ var k=n-i; html+='<div class="sd-cell'+(i===0?' sd-first':'')+(i===n-1?' sd-last':'')+'"><span>'+regs[i]+'</span><span class="sd-ord">pushed '+ordinal(k)+'</span>  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1000 1 ooo 000 rrr</code>, where the opmode is <code>010</code> for byte to word
+    and <code>011</code> for word to long. The register is a data register and nothing else, so there
+    is no mode field to vary.</p>
+    <p><code>ext.w d0</code> is <code>4880</code> and <code>ext.l d0</code> is <code>48C0</code>. The
+    size suffix names the RESULT width, not the source, which is why the two forms differ by a single
+    opmode bit.</p>
+    </div>
+  </details>
+</div>'; }
     col.innerHTML=html; saved=true;
     cost.textContent='movem.l '+regs.join('/')+',-(sp) '+DOT+' 8 + 8'+TIMES+n+' = '+(8+8*n)+' cycles '+DOT+' register to memory save';
     note.textContent='Saved '+n+' registers in one instruction for '+(8+8*n)+' cycles (8 + 8 per register). They pushed in descending order, so '+regs[n-1]+' went down first and '+regs[0]+' last, leaving '+regs[0]+' on top. That order is exactly what lets a matching pop land each one home.';

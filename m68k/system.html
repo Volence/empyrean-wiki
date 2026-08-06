@@ -410,6 +410,13 @@ and that register has two halves that behave completely differently. You already
 it is the condition codes, <code>X N Z V C</code>, the flags that <code>cmp</code> and <code>add</code>
 set and that <code>beq</code> reads. Every earlier page on this track has been quietly working with
 it. The high half you have not met, and it is where this page lives.</p>
+<details class="explain">
+  <summary>New here? &middot; What does privileged mean, and does it matter on a cartridge?</summary>
+  <div class="x-body">
+    <p>The 68000 runs in one of two states. In <span class="term" data-def="The 68000's privileged state. In supervisor mode all instructions are allowed and the CPU uses its own stack pointer. A Genesis cartridge runs in supervisor mode the whole time, because there is no operating system to drop it into user mode.">supervisor mode</span> every instruction is allowed. In <span class="term" data-def="The 68000's restricted state, meant for programs an operating system does not trust. Privileged instructions are refused. Genesis games effectively never run in it.">user mode</span> a handful of instructions are refused, and attempting one raises an <span class="term" data-def="A forced detour: the CPU stops what it is doing, looks up an address in the vector table, and jumps there. Caused by hardware (an interrupt) or by the program itself (a trap, a bad instruction, a bad address).">exception</span> instead of executing.</p><p>The idea is that an operating system runs in the privileged state and the programs it hosts run in the restricted one, so a misbehaving program cannot turn off interrupts or halt the machine. A Genesis cartridge has no operating system and boots straight into supervisor mode, so it never leaves it. Every privileged instruction on this page is therefore simply available, all the time.</p><p>That does not make the distinction invisible. Assemblers still know which instructions are privileged and will say so: point one at AS and it prints <code>warning: privileged instruction</code>. It is a warning and not an error, the ROM still builds, and on this machine the warning is telling you about a restriction that does not apply.</p>
+  </div>
+</details>
+
 
 <figure class="diagram">
   <div class="movesim" id="srsim">
@@ -450,6 +457,13 @@ it. The high half you have not met, and it is where this page lives.</p>
       <span class="srdec" id="sr-words">Trace <b>off</b>. Supervisor mode <b>on</b>.<br>Interrupt mask <b>7</b>.</span>
     </div>
     <p class="srmask" id="sr-maskline">The three mask bits are one number, not three switches: I2 I1 I0 read as 111 in binary, which is <b>7</b>. At 7 the CPU ignores every ordinary interrupt level, 1 to 6, so the VDP can no longer reach you. Level 7 is the exception: it is non-maskable, and a request that rises to 7 from a lower level is taken anyway.</p>
+<details class="explain">
+  <summary>New here? &middot; Why would code ever turn interrupts off?</summary>
+  <div class="x-body">
+    <p>An <span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupt</span> can arrive between any two instructions. Usually that is exactly what you want: the video chip interrupts sixty times a second and the game keeps step with the screen because of it.</p><p>It stops being what you want when a handful of instructions have to happen as a unit. If code is halfway through updating a structure the interrupt handler also reads, and the interrupt lands in the middle, the handler sees a half-updated thing. Raising the mask closes that window, and lowering it afterwards opens it again.</p><p>This is why the save-and-restore shape matters more than the write itself. Setting the mask back to a fixed value assumes you know what it was; pushing the old status register and popping it back makes no such assumption, which is what lets one of these regions safely contain another.</p>
+  </div>
+</details>
+
 
     <div class="msim-ctrl">
       <label>Load a real line:</label>
@@ -547,6 +561,19 @@ whole point of the page.</p></div>
   hole on the 68010 by making <code>MOVE from SR</code> privileged too, which then created a new
   problem and a new instruction; see <a href="#moveccr">MOVE to CCR</a> below.
   </div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p>Two separate encodings that look like one instruction. Reading is
+    <code>0100 0000 11 mmm rrr</code> and writing is <code>0100 0110 11 mmm rrr</code>; the
+    trailing pair is the other operand. <code>move sr,d0</code> is <code>40C0</code>,
+    <code>move sr,(a0)</code> is <code>40D0</code>, and <code>move #$2700,sr</code> is
+    <code>46FC 2700</code>, the second word being the immediate.</p>
+    <p>There is no size field in either, because both are always word operations. That is why
+    writing <code>move.w</code> or plain <code>move</code> makes no difference here, and why
+    <code>move.b</code> has nothing to encode into.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="moveccr">
@@ -592,6 +619,17 @@ whole point of the page.</p></div>
   disassemblies show the asymmetry without needing the manual: across Sonic 1, 2 and 3 and Knuckles
   there are 15 writes to CCR and not one read, because a read would not assemble.
   </div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 0100 11 mmm rrr</code>, one bit pattern away from
+    <a href="#movesr">MOVE to SR</a>, which is the encoding admitting they are the same operation
+    aimed at different halves. <code>move d0,ccr</code> is <code>44C0</code>.</p>
+    <p>Note what is missing: there is no matching <em>read</em> form. The 68000 has no
+    <code>move ccr,&lt;ea&gt;</code> encoding at all, which is why reading the condition codes on
+    this chip means reading the whole status register and ignoring the top half.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="moveusp">
@@ -623,6 +661,16 @@ whole point of the page.</p></div>
   copying: <code>a6</code> holds zero at that moment, so the line parks the unused stack pointer at
   address 0 and nothing ever reads it again. Every single use is a write; nobody has ever needed to
   read it back.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0110 d rrr</code>. Only four bits carry information: the direction
+    bit <code>d</code> and the address register. <code>move a0,usp</code> is <code>4E60</code> and
+    <code>move usp,a1</code> is <code>4E69</code>.</p>
+    <p>The operand can only ever be an address register, so there is no mode field, and the user
+    stack pointer is not named at all: it is implied by the opcode.</p>
+    </div>
+  </details>
 </div>
 
 <h2 id="s2">2 &middot; What the rest of this page is about</h2>
@@ -692,8 +740,22 @@ survive.</p>
 routine does. Ask for sixteen bytes on the way in, use them, hand them back on the way out. If you have
 written in C, this is where your local variables live, and a compiler emits these two instructions
 around almost every function it compiles.</p>
+<details class="explain">
+  <summary>New here? &middot; What is a stack frame, and why would a routine want one?</summary>
+  <div class="x-body">
+    <p>A <span class="term" data-def="A block of memory a routine carves out of the stack for its own temporary use, and releases when it returns. LINK opens one and UNLK closes it. Hand-written Genesis code usually keeps its values in registers and fixed RAM instead, so frames are rare.">stack frame</span> is scratch space. A routine that needs a few temporary values, and has run out of registers to keep them in, can move the stack pointer down by some number of bytes and use the gap as private storage until it returns.</p><p>This is how compiled languages give you local variables. Every call to a C function that declares locals opens a frame on entry and drops it on exit, which is why recursion works: each call gets its own copy of everything, stacked on top of the last.</p><p>Hand-written Genesis assembly almost never wants this, because the alternatives are cheaper. Sixteen registers is a lot when one routine has the machine to itself, and anything that needs to outlive a call goes in a fixed location in work RAM, which costs nothing to reach. A frame buys you re-entrancy, and re-entrancy is a problem this code does not have.</p>
+  </div>
+</details>
+
 
 <p>Zero uses across all seven codebases. So does a Genesis game just not need temporary memory?</p>
+<details class="explain">
+  <summary>New here? &middot; What is the machine doing while STOP is stopped?</summary>
+  <div class="x-body">
+    <p>Nothing, and that is the point. The CPU stops fetching instructions entirely and waits, drawing less power, until an <span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupt</span> arrives at a level its mask allows through. Then it resumes at the instruction after the STOP.</p><p>What makes it useful rather than a hang is that the mask and the halt are set by the same instruction. Written as two, there would be a window between them where an interrupt could arrive before the CPU was ready to wait for it, and the machine would sleep through the very thing that was meant to wake it.</p><p>A game has no reason to want this: there is always more to do before the next frame, and a console with nothing to do just draws the same picture again.</p>
+  </div>
+</details>
+
 
 <p>That was the conclusion, until the claim got tested against a game with no relationship to Sonic at
 all. <b>Thunder Force IV</b>, by Technosoft, shipped in 1992, the same year as Sonic 2. It uses stack
@@ -784,6 +846,15 @@ has to ask.</p></div>
   This is the same joke as <a href="#tas">TAS</a> in section 5, and it is worth noticing twice: the
   instruction is kept for a side effect, and the thing it was named for is discarded.
   </div>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0101 0 rrr</code> then a 16-bit signed displacement.
+    <code>link a6,#-8</code> is <code>4E56 FFF8</code>, the second word being -8. The displacement is
+    always present and always a word, which is why LINK is four bytes even when the frame is small,
+    and why the displacement is normally negative: it moves the stack pointer DOWN to make room.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="unlk">
@@ -808,6 +879,15 @@ has to ask.</p></div>
   <p><b>Never read one without the other.</b> A LINK with no matching UNLK leaks the stack a little on
   every call, and since the return address is on that same stack, a routine that gets this wrong does
   not fail politely. In Thunder Force IV they match exactly, thirteen and thirteen.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0101 1 rrr</code>. The same word as <a href="#link">LINK</a> with one bit
+    flipped, and no displacement, because UNLK does not need to be told the frame size: it recovers
+    the old stack pointer from the frame itself. <code>unlk a6</code> is <code>4E5E</code>, against
+    LINK's <code>4E56</code>.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="stop">
@@ -844,6 +924,15 @@ has to ask.</p></div>
   VBlank handler changes a flag in RAM. Both wait for the frame. One of them burns every cycle of the
   wait, and one of them stops the clock. Same goal, and the instruction that does it in one line is the
   one that appears zero times in every Sonic codebase.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0111 0010</code> then the word to load into the status register.
+    <code>stop #$2700</code> is <code>4E72 2700</code>. The immediate is not optional: STOP always
+    sets SR and halts in one act, which is what makes it safe to use at all, since setting the mask
+    and halting as two instructions would leave a window between them.</p>
+    </div>
+  </details>
 </div>
 
 
@@ -853,9 +942,23 @@ has to ask.</p></div>
 section's silence is a different kind, and it holds. These four instructions are zero in every codebase
 measured, including Thunder Force IV, which just refuted the other claim, and including a homebrew
 operating system that had every reason to want them.</p>
+<details class="explain">
+  <summary>New here? &middot; What is an operating system actually doing that a game does not?</summary>
+  <div class="x-body">
+    <p>An operating system shares one machine between programs that do not trust each other. That job creates the needs the instructions in this section were designed for: a program must be able to ask the system for something without knowing where the system lives, and the system must be able to stop a program that misbehaves.</p><p>A Genesis cartridge is the opposite situation in every respect. One program owns the whole machine, it was all written together, it knows every address in itself, and there is nobody to report a problem to. Asking for a service is just <code>jsr</code> to a label you already know.</p><p>So the instructions are not badly designed and they are not broken here. They answer a question this platform does not ask.</p>
+  </div>
+</details>
+
 
 <p>They share a shape: each one is a way of <em>reporting a problem to somebody else</em>. And on a
 cartridge there is no somebody else.</p>
+<details class="explain">
+  <summary>New here? &middot; If a trap is an error, why would you cause one on purpose?</summary>
+  <div class="x-body">
+    <p>Because "<span class="term" data-def="A forced detour: the CPU stops what it is doing, looks up an address in the vector table, and jumps there. Caused by hardware (an interrupt) or by the program itself (a trap, a bad instruction, a bad address).">exception</span>" on the 68000 does not mean "mistake". It means a forced detour: the CPU stops, looks up an address in the vector table, and jumps there. What that detour is FOR is entirely up to whoever filled in the table.</p><p>On a machine with an operating system, a deliberate exception is how a program asks for service. The program cannot call the system directly, so it raises one on purpose, and the handler on the other side reads what was wanted and does it. The exception is the doorbell.</p><p>On a cartridge there is nobody on the other side of the door, so a deliberate exception has only one honest use left: crashing on purpose, at a moment you choose, so the crash handler can tell you where you were. That is what the engines here do with the ones they use.</p>
+  </div>
+</details>
+
 
 <div class="instr" id="chk">
   <h3><span class="mn">CHK</span> <span class="mnx">Check Register Against Bounds</span> <span class="syn">CHK &lt;ea&gt;,Dn</span></h3>
@@ -885,6 +988,17 @@ cartridge there is no somebody else.</p>
   waiting is a crash handler whose entire job is to stop the game and print an error. A programmer who
   already knows the index is fine does not want the check; a programmer who is not sure would rather
   <code>cmp</code> and branch and handle it, because then the handling is theirs.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 rrr 110 mmm rrr</code>. The first <code>rrr</code> is the data register being
+    checked, <code>110</code> marks the word size, and the trailing pair is the upper bound's
+    operand. <code>chk d1,d0</code> is <code>4181</code> and <code>chk (a0),d2</code> is
+    <code>4590</code>.</p>
+    <p>The size field only ever holds <code>110</code> on a 68000, since the word form is the only
+    one this chip has; the long form arrived with the 68020.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="trapv">
@@ -911,6 +1025,14 @@ cartridge there is no somebody else.</p>
   revolution, and counters are allowed to roll over because the roll is the behaviour you wanted. An
   instruction whose whole purpose is to complain about wrapping is not much use in a program built on
   wrapping.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0111 0110</code>, and that is the entire instruction:
+    <code>4E76</code>. No operands, no fields. It takes the exception if V is set and does nothing at
+    all if it is not.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="reset">
@@ -947,6 +1069,13 @@ cartridge there is no somebody else.</p>
   A Genesis game boots the VDP and the sound chips itself, one register at a time, because it knows
   exactly which state it wants them in. Pulsing a line that resets all of them to their defaults is a
   blunter tool than anything a game needs, and it would undo work the game had just done.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0111 0000</code>, or <code>4E70</code>. No operands: it asserts the
+    processor's reset line and nothing else, so there is nothing to encode.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="illegal">
@@ -972,6 +1101,15 @@ cartridge there is no somebody else.</p>
   <p>One use across everything measured, and fittingly it is in the operating system rather than in any
   game. What happens after it, meaning what the CPU pushes on the stack and how a handler reads it back
   to tell you where you died, is the subject of its own page and not this one.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1010 1111 1100</code>, or <code>4AFC</code>. This is a real, defined
+    opcode whose defined behaviour is to take the illegal-instruction exception, which is what makes
+    it different from an arbitrary invalid word: it is guaranteed to keep behaving this way on every
+    68000, so code can rely on it.</p>
+    </div>
+  </details>
 </div>
 
 
@@ -981,6 +1119,13 @@ cartridge there is no somebody else.</p>
 absent from the <em>1990s</em>. Neither appears in any Sega-era disassembly, and both turn up in engines
 written by hobbyists two decades later, each solving one specific problem. And in both cases the
 instruction is being used for something other than the thing it is named after.</p>
+<details class="explain">
+  <summary>New here? &middot; Why does reading and writing in one instruction need to be special?</summary>
+  <div class="x-body">
+    <p>Suppose two processors share one byte of memory as a "someone is using this" flag. Each wants to read the flag, and if it is clear, set it and proceed.</p><p>Written as two instructions, a read and then a write, there is a gap in the middle. If the other processor reads the same byte during that gap, both see it clear, both set it, and both proceed, which is exactly what the flag existed to prevent. The gap does not have to be likely to be fatal; it only has to happen once.</p><p>A <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back, without letting go of the bus in between. TAS is the 68000's only one, and the Genesis does not honour its write.">read-modify-write</span> closes the gap by doing all of it as one indivisible act, holding the bus throughout so nothing can look in between. That is the whole purpose of TAS, and it is why it is the only instruction of its kind the 68000 has.</p>
+  </div>
+</details>
+
 
 <div class="instr" id="tas">
   <h3><span class="mn">TAS</span> <span class="mnx">Test and Set</span> <span class="syn">TAS &lt;ea&gt; &nbsp;<span style="color:var(--dim);">(byte only)</span></span></h3>
@@ -1065,6 +1210,19 @@ instruction is being used for something other than the thing it is named after.<
     reason. A tidy correction to a documented defect, twelve years too late to be welcome.</p>
     </div>
   </details>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1010 11 mmm rrr</code>. It shares the <code>0100 1010</code> prefix with
+    <a href="math-logic.html#tst">TST</a>, and the <code>11</code> where TST's size field would be is
+    what distinguishes it. <code>tas d0</code> is <code>4AC0</code> and <code>tas (a0)</code> is
+    <code>4AD0</code>.</p>
+    <p>There is no size field because TAS is always a byte operation, and the missing size is the
+    same slot <a href="#illegal">ILLEGAL</a> uses to mark itself: <code>4AFC</code> is this pattern
+    with the operand field set to an immediate, which no read-modify-write instruction could
+    meaningfully use.</p>
+    </div>
+  </details>
 </div>
 
 <div class="instr" id="trap">
@@ -1123,6 +1281,15 @@ instruction is being used for something other than the thing it is named after.<
   pointing sixteen slots at one crash handler already told you. The instruction designed for asking an
   operating system a question is being used here to make sure a certain kind of mistake cannot go
   unnoticed.</p>
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0100 vvvv</code>, where the low four bits are the vector number
+    directly. <code>trap #0</code> is <code>4E40</code> and <code>trap #15</code> is
+    <code>4E4F</code>. Sixteen vectors is not a design decision made later: it is exactly what four
+    bits hold.</p>
+    </div>
+  </details>
 </div>
 
 
@@ -1131,6 +1298,13 @@ instruction is being used for something other than the thing it is named after.<
 <p>One instruction left, and it breaks the pattern completely: 38 uses in Sonic 1, 37 in Sonic 2, 102 in
 Sonic 3 and Knuckles, 71 in the homebrew operating system. NOP does nothing, which sounds like it should
 be the most pointless instruction on a page about pointless instructions, and instead it is the busiest.</p>
+<details class="explain">
+  <summary>New here? &middot; How can an instruction that does nothing be worth having?</summary>
+  <div class="x-body">
+    <p>Because "nothing" is not the same as "no effect on the machine". A NOP still takes a fixed amount of time, still advances the program counter, and still occupies exactly two bytes. Those three properties are the three reasons to write one.</p><p>Time, when hardware needs a moment between two accesses and the CPU would otherwise get there too soon. Space, when something later has to sit at a particular address, or when a patch has to fill the room an instruction used to take. And as a placeholder, when code writes over itself at run time and needs somewhere valid to write into.</p>
+  </div>
+</details>
+
 
 <p>Doing nothing turns out to be three completely different jobs, and all three are in Sonic 2.</p>
 
@@ -1302,6 +1476,16 @@ across seven codebases; the counting method is stated in section 2.</span></foot
 })();
 </script>
 
+  <details class="refbox">
+    <summary>Encoding</summary>
+    <div class="enc-body">
+    <p><code>0100 1110 0111 0001</code>, or <code>4E71</code>. It sits in the same
+    <code>4E7x</code> corner as <a href="#reset">RESET</a> (<code>4E70</code>),
+    <a href="#stop">STOP</a> (<code>4E72</code>) and <a href="flow.html#rte">RTE</a>
+    (<code>4E73</code>), which is the block Motorola set aside for instructions that act on the
+    machine rather than on data.</p>
+    </div>
+  </details>
 </div>
 
 </body>
