@@ -465,6 +465,20 @@ pointers step through tables, and nearly all of it is ADD and SUB. The family lo
 immediate version for larger ones (ADDI), and an address-register version that stays out of the way
 of the flags (ADDA). Learn the plain ADD once and the rest are variations on when to reach for which.</p>
 
+<div class="gotcha"><span class="g-tag">Gotcha</span>
+<b>The in-place forms cannot be aimed at the video chip.</b> Adding a constant straight to memory is
+exactly what <a href="#addi">ADDI</a> and <a href="#addq">ADDQ</a> are for, so it is natural to try it
+on video memory. You cannot. Working on a value in place means reading it, changing it, and writing it
+back, and the VDP's data port is not memory: it is a port with a direction, set by the control write
+before it. Read from it while it is set up for writing and the VDP withholds
+<span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>
+and stalls the 68000; write to it while it is set up for reading and the address advances without
+storing anything. Sega's development manual rules out ten instructions from this page for that reason:
+ADDI, ADDQ, SUBI, SUBQ, ANDI, ORI, EORI, CMPI, <a href="#neg">NEG</a> and <a href="#not">NOT</a>. Move
+the value into a data register, do the arithmetic there, and write it back. Note that
+<a href="#cmpi">CMPI</a> is on that list even though it never writes anything: reading the port in the
+wrong mode is enough on its own.</div>
+
 <details class="explain">
   <summary>New here? &middot; Why are there four different ways to add?</summary>
   <div class="x-body">

@@ -405,7 +405,7 @@ Sonic Clean Engine, 31 in the Sonic Hack engine, 23 in Aeon, and 49 in MarkeyJes
 Drive operating system. It is ordinary, everyday code, and it is worth understanding before anything
 else here.</p>
 
-<p>What it touches is the <span class="term" data-def="A 16-bit register holding the CPU&#39;s own state. Its low byte is the condition codes (X N Z V C) that ordinary instructions set; its high byte is the supervisor half, holding the trace bit, the supervisor bit, and the interrupt mask.">status register</span>,
+<p>What it touches is the <span class="term" data-def="A 16-bit register holding the CPU's own state. Its low byte is the condition codes (X N Z V C) that ordinary instructions set; its high byte is the supervisor half, holding the trace bit, the supervisor bit, and the interrupt mask.">status register</span>,
 and that register has two halves that behave completely differently. You already know the low half:
 it is the condition codes, <code>X N Z V C</code>, the flags that <code>cmp</code> and <code>add</code>
 set and that <code>beq</code> reads. Every earlier page on this track has been quietly working with
@@ -1046,7 +1046,7 @@ instruction is being used for something other than the thing it is named after.<
     <summary>Why the write is discarded, and which consoles differ</summary>
     <div class="enc-body">
     <p>TAS is the 68000's only
-    <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back, without letting go of the bus in between. TAS is the 68000&#39;s only one, and the Genesis does not honour its write.">read-modify-write</span>
+    <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back, without letting go of the bus in between. TAS is the 68000's only one, and the Genesis does not honour its write.">read-modify-write</span>
     instruction, and it holds the bus for the read and the write together so nothing can slip between
     them. That indivisibility is the point, and it is also what the Genesis hardware does not handle.</p>
     <p>The most detailed explanation available is by Nemesis, author of the Exodus emulator, in a source
@@ -1085,7 +1085,7 @@ instruction is being used for something other than the thing it is named after.<
   </div>
   <p><code>trap #n</code> raises an exception on purpose. There are sixteen of them, numbered 0 to 15,
   and each has its own slot in the
-  <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens: one slot per kind of exception.">vector table</span>:
+  <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens: 256 slots of four bytes each, so 1024 bytes in all, one slot per kind of exception.">vector table</span>:
   <code>trap #0</code> goes through the slot at <code>$80</code>, <code>trap #1</code> through
   <code>$84</code>, and so on. The CPU saves where it was, switches to supervisor mode, and jumps to
   whatever address it finds there.</p>
@@ -1216,14 +1216,17 @@ be the most pointless instruction on a page about pointless instructions, and in
 <div class="teach"><span class="t-tag">Where next</span>
 <p>This is the last page of the 68000 instruction reference. Two things this page deliberately handed
 onward: what the CPU actually pushes when an exception fires, and how to read it back to find out where
-a crash happened, which needs a page of its own; and the extended-precision and decimal instructions
-(ADDX, SUBX and the BCD family), which are the only rows left unlinked in the
-<a href="programming-model.html">instruction index</a>.</p></div>
+a crash happened, which needs a page of its own; and the extended-precision and decimal instructions.
+Of those, ADDX and SUBX are the only two rows left unlinked in the
+<a href="programming-model.html">instruction index</a>; the BCD family has no rows there at all, and
+neither do NEGX and CMPM.</p></div>
 
 
 </main>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-27 &middot; <a href="../index.html">Back to hub</a><br>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot; <a href="../index.html">Back to hub</a><br>
+Previous: <a href="flow.html">Flow</a> &middot; the last page of the instruction reference &middot;
+<a href="programming-model.html">the full instruction index</a><br>
 <span class="fnote">Instruction semantics verified against the Motorola M68000 Programmer's Reference Manual,
 corroborated against Kelly-Bootle and Fowler (1985) and Skinner (1988). Genesis-specific behaviour
 verified against Sega's own Genesis Software Development Manual Complement (1991). Usage counts measured

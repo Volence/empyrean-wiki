@@ -506,7 +506,7 @@ to have written a promise the caller will trust and the code will break.</p>
 It packs two unrelated things into one word. Its low half holds the
 <span class="term" data-def="One of the bits the processor sets to describe the last result, such as whether it was zero or negative. A conditional instruction reads these bits rather than looking at the values themselves.">condition codes</span>
 (the X N Z V C flags an ordinary instruction sets), and its high half holds the
-<span class="term" data-def="Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 7 blocks everything and a mask of 0 permits everything.">interrupt mask</span>
+<span class="term" data-def="Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 0 permits everything and a mask of 7 blocks every ordinary interrupt; level 7 is non-maskable and can still get through.">interrupt mask</span>
 among the supervisor bits. A routine very often wants to promise one half and not the other,
 so .emp lets you name them separately: <code>preserves(sr.mask)</code> is a promise about the
 interrupt half alone, <code>preserves(sr.ccr)</code> about the flags alone, and

@@ -2259,8 +2259,8 @@ wrong.</p>
   <p>This page deliberately stops here. Which exceptions exist, what the vector table is, what the
   CPU pushes when things go wrong, and how a handler reads the frame are all covered on
   <a href="programming-model.html#s6">the Programming Model page, section 6</a>, and RTE's full
-  treatment belongs with the rest of the system-control instructions on the System page, which is
-  not built yet. What this page owes you is the comparison at the top of this section: it is a
+  treatment belongs with the rest of the system-control instructions on
+  <a href="system.html">the System page</a>. What this page owes you is the comparison at the top of this section: it is a
   return, it pops more than RTS, and swapping the two is a crash.</p>
 
   <div class="gotcha"><span class="g-tag">Gotcha</span>
@@ -2351,7 +2351,14 @@ wrong.</p>
   big-endian, so the byte at that offset is the HIGH byte of the word, and the result of the
   <code>seq</code> is a word holding $FF00 or $0000 rather than $00FF or $0000. If you are
   reading code and the arithmetic afterwards looks like it is off by a factor of 256, this is
-  usually why.</div>
+  usually why.
+  <p>Scc also cannot be aimed at the video chip, which is easy to miss because it looks like a pure
+  write. It is not: on the 68000 Scc reads its destination before writing the byte back, and the VDP's
+  data port is a port with a direction rather than memory. Reading it while it is set up for writing
+  makes the VDP withhold
+  <span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>
+  and stall the 68000. Sega's development manual lists Scc among the instructions it rules out for
+  exactly this reason, alongside CLR, the shifts and rotates, and the bit instructions.</p></div>
 
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   If you want 1 and 0 rather than $FF and $00, the manual's own suggestion is to follow the Scc
@@ -2380,7 +2387,7 @@ wrong.</p>
 target, two ways to decide whether to, one counted loop, one way to keep an answer instead of
 acting on it, and three returns that differ only in how many bytes they take off the stack. The
 system-control instructions that talk to the CPU itself, TRAP, CHK, LINK, STOP and the rest, are
-a separate page and are not built yet.</p>
+<a href="system.html">a separate page</a>.</p>
 
 <p>If there is one thing to carry away, it is the sentence from <a href="#s1">section 1</a>:
 nothing marks those four bytes as a return address. Every idiom on this page, from the trampoline
@@ -2388,8 +2395,8 @@ table to the tail call to the six-byte frame built by hand for an <code>rtr</cod
 taking that fact seriously.</p>
 
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-25 &middot;
-Previous: <a href="shifts-bits.html">Shifts &amp; Bits</a> &middot; Next: System (coming) &middot;
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
+Previous: <a href="shifts-bits.html">Shifts &amp; Bits</a> &middot; Next: <a href="system.html">System</a> &middot;
 <a href="../index.html">Back to hub</a></footer>
 
 <script>

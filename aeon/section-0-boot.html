@@ -968,7 +968,7 @@ the FM chip and two writers on one chip is a race.</p>
 <!-- ================================================================ -->
 <h2 id="s5">5 · Clearing 64KB the clever way</h2>
 
-<p>Boot must zero three memories: 64KB of video RAM, 64KB of <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. All game and engine state lives here.">work RAM</span>, plus the VDP's two small
+<p>Boot must zero three memories: 64KB of video RAM, 64KB of <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. Most CPU-visible runtime state lives here; graphics and sound state live in the VDP's VRAM/CRAM/VSRAM and the Z80's RAM.">work RAM</span>, plus the VDP's two small
 internal memories (CRAM, the color <span class="term" data-def="A set of 16 colors in CRAM. Every tile and sprite picks one of the four palettes.">palette</span>, 128 bytes; VSRAM, the vertical-scroll table, 80
 bytes). The naive order is serial: clear one, then the next. Aeon overlaps them.</p>
 
@@ -1460,7 +1460,7 @@ one of those four steps.</p>
 game-facing contract in one pass. The engine <em>declares</em> that seam as a typed interface
 called <code>Game</code>, and a game is the single <code>implement</code> block that binds each
 member. The engine owns the entire ROM
-layout from the <span class="term" data-def="The first 256 bytes of ROM: a table of addresses telling the 68000 where to jump for every interrupt, error and reset.">vector table</span> to the end-of-ROM marker. What boot itself asks of the game is
+layout from the <span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens: 256 slots of four bytes each, so 1024 bytes in all, one slot per kind of exception.">vector table</span> to the end-of-ROM marker. What boot itself asks of the game is
 small and precise:</p>
 
 <ul>

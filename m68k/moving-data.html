@@ -369,11 +369,13 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
 instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
-on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+on the Programming Model page lists most 68000 mnemonics with a one-line gloss and a direct link, and
+says plainly which ones it does not carry.</p>
 
 <p style="margin-top:.8rem; color:var(--dim); font-size:.85rem;">Scope: these are the ten everyday movers.
-A few specialized ones sit elsewhere, MOVEP (byte-spreading to peripherals, rare in Genesis code), plus
-the SR/CCR/USP moves and the stack-frame pair LINK/UNLK that the Flow &amp; System page covers.</p>
+The SR, CCR and USP moves and the stack-frame pair LINK/UNLK sit on
+<a href="system.html">the System page</a>. MOVEP, which spreads the bytes of a register across
+alternating addresses for an 8-bit peripheral, belongs on this page and is not yet written up.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; The MOVE family</h2>
@@ -1314,7 +1316,15 @@ carry meaning, without touching memory at all.</p>
   performs a read-then-write bus cycle, not a write-only one. That is invisible for ordinary
   <span class="term" data-def="The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. Most CPU-visible runtime state lives here; graphics and sound state live in the VDP's VRAM/CRAM/VSRAM and the Z80's RAM.">work RAM</span>, but it matters if the destination is a hardware register with a
   read side effect, since clearing it can silently trigger that side effect as an unwanted extra
-  read. Later 680x0 family members fixed CLR to be write-only.</div>
+  read. Later 680x0 family members fixed CLR to be write-only.
+  <p><b>On this machine that extra read is not a curiosity.</b> Sega's own development manual rules
+  CLR out against the video chip entirely, and uses it as the worked example. The VDP's data port is
+  not memory: it is a port with a direction, set by the control write before it. A read aimed at it
+  while it is set up for writing makes the VDP withhold
+  <span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>
+  and stall the 68000, and a write aimed at it while it is set up for reading advances the address
+  without storing anything. CLR does both halves, so it cannot work here whichever mode the port is
+  in. Zero VRAM with a DMA fill, or with ordinary MOVE writes.</p></div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Zeroing a whole data register? <code>moveq #0,d0</code> (see <a href="#moveq">MOVEQ</a>) clears
   all 32 bits in 4 cycles; <code>clr.l d0</code> takes 6 and <code>clr.w</code> leaves the top
@@ -1372,7 +1382,7 @@ carry meaning, without touching memory at all.</p>
   </div>
   <figcaption>SWAP trades a data register's two 16-bit halves in place (static fallback: swap d0 turns $12345678 into $56781234; the high word $1234 and low word $5678 exchange positions, and swapping again restores the original).</figcaption>
   </figure>
-  <p>Both real uses here build a <span class="term" data-def="Direct Memory Access: the VDP moves bulk data into video memory itself, far faster than the CPU copying word by word. A 68000-to-VDP transfer halts the CPU while it runs; VRAM fill and VRAM-to-VRAM copy do not.">DMA</span> command word out of two 16-bit halves computed
+  <p>Both real uses here build a <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span> command word out of two 16-bit halves computed
   separately, which is exactly the situation SWAP is built for. First, shaping a VRAM destination
   address into the top half of a DMA command:</p>
   <pre>	andi.l	<span class="n">#$FFFF</span>,d2 <span class="c">; command to specify destination address and begin DMA</span>
@@ -1574,8 +1584,8 @@ loc_1ECD4:
   <a href="#moveq">MOVEQ</a> arrives already sign-extended to 32 bits.</div>
 </div>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-17 &middot; <a href="../index.html">Back to hub</a><br>
-Previous: <a href="addressing-modes.html">Addressing Modes</a> &middot; Next: Math, Logic &amp; Bits (coming)</footer>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot; <a href="../index.html">Back to hub</a><br>
+Previous: <a href="addressing-modes.html">Addressing Modes</a> &middot; Next: <a href="math-logic.html">Math &amp; Logic</a></footer>
 
 </div>
 
