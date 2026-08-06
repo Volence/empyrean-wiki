@@ -371,12 +371,11 @@ the two kinds of check that guard the build itself (<span class="clause">ensure<
 
 <div class="teach">
   <span class="t-tag">Teaching example &middot; not engine code</span>
-  <p style="max-width:42rem;">The failure mode in miniature. Suppose a routine's comment says
-  <code>; d3 preserved</code>, and a year later someone adds <code>move.w #0, d3</code> in the
-  middle of it. In assembly, both the comment and the new line assemble without complaint, and
-  the next caller that trusted <code>d3</code> now reads a zero it never expected. The comment
-  did not change, so nothing warned anyone. The whole point of a contract is to make that exact
-  edit refuse to build. By the end of section 3 you will watch it do so.</p>
+  <p style="max-width:42rem;">The failure mode in miniature: a routine's comment says
+  <code>; d3 preserved</code>, someone later adds <code>move.w #0, d3</code> in the middle of it,
+  and in assembly both lines sit there without complaint while the next caller that trusted
+  <code>d3</code> reads a zero it never expected. The whole point of a contract is to make that
+  exact edit refuse to build, and by the end of section 3 you will watch it do so.</p>
 </div>
 
 <!-- ================================================================ -->
@@ -426,20 +425,16 @@ prints this and the build carries a warning:</p>
 
 <div class="diag"><span class="tier warn">Warning</span><span class="body">[proc.clobber-undeclared] `Sfx_Post` writes `d3`, which is not in its `clobbers(...)` set or parameter list (heuristic lint - full register dataflow is deferred to S2-D6)</span></div>
 
-<p>Two things about that message are worth naming, because the page is honest about them and
-you will meet both again. First, it is a <b>warning</b>, not a hard error. The proof it rests
-on is a heuristic: the assembler recognises the write forms it can, and full register
-dataflow is deliberately deferred, so an undeclared clobber is flagged loudly rather than
-made unbuildable. Second, it still names the exact register and the exact routine. Notice the
-name in the message is <code>Sfx_Post</code>, not one of the real procs above. That is the
-routine in the interactive checker two sections down, which is where you will toggle this
-mistake on and watch the message appear.</p>
+<p>It is a <b>warning</b>, not a hard error. The proof it rests on is a heuristic: the assembler
+recognises the write forms it can, and full register dataflow is deliberately deferred, so an
+undeclared clobber is flagged loudly rather than made unbuildable. It still names the exact
+register and the exact routine. (<code>Sfx_Post</code> is the procedure in the interactive
+checker below.)</p>
 
 <div class="decision">
   <span class="d-tag">Design decision &middot; the honest default is "survives"</span>
-  <p><b>What:</b> a register you never mention is presumed preserved, and writing it without
-  declaring it is what draws the warning. The default is the safe, strong claim, not the
-  permissive one.</p>
+  <p><b>What:</b> a register you never mention is presumed preserved; writing it without
+  declaring it is what draws the warning.</p>
   <p><b>Why:</b> the language's stance is explicit-by-default and release-ready: the reading
   that protects a caller should be the one you get for free, and the destructive reading
   should be the one you have to spell out. A default of "anything might be trashed" would make
@@ -478,11 +473,14 @@ that comes back is the one that went in, the promise stands.</p>
   </div>
 </details>
 
-<p>Here is the bracket doing exactly that, protecting two registers across a decompression
-loop:</p>
+<p>Here is the bracket doing exactly that inside <code>ZX0_Decompress</code>, the proc whose
+header section 2 quoted, protecting two registers across a decompression loop:</p>
 
-<pre>pub proc ZX0_Decompress (a0: *u8, a1: *u8) clobbers(d0-d1) out(a0, a1) <span class="k">preserves</span>(d2/a2) {</pre>
-<span class="src">aeon/engine/compression/zx0.emp:58</span>
+<pre>        <span class="k">movem.l</span> a2/d2, -(sp)            <span class="c">// preserve registers</span>
+        <span class="c">// ... the decompression loop ...</span>
+    .done:
+        <span class="k">movem.l</span> (sp)+, a2/d2            <span class="c">// restore preserved registers, fall into the shared rts</span></pre>
+<span class="src">aeon/engine/compression/zx0.emp:59,120</span>
 
 <p>Now the part that makes <span class="clause">preserves</span> a hard error rather than a
 warning. If a register is on the preserve list, gets written in the body, and is
@@ -510,17 +508,13 @@ interrupt half alone, <code>preserves(sr.ccr)</code> about the flags alone, and
 <code>preserves(sr)</code> covers both.</p>
 
 <p>This routine keeps the interrupt mask exactly where it found it while treating the
-condition-code flags as scratch it is allowed to change:</p>
+condition-code flags as scratch it is allowed to change, and the precision earns its keep in
+section 7's third war story, where a routine claimed to preserve the whole status register
+while quietly returning an answer in the carry flag, which lives inside the half it swore not
+to touch:</p>
 
 <pre>pub proc Sound_DrainSfxRing () clobbers(d0-d1/a0/<span class="k">sr.ccr</span>) <span class="k">preserves</span>(<span class="k">sr.mask</span>) {</pre>
 <span class="src">aeon/engine/sound/sound_api.emp:349</span>
-
-<p>The two halves can even land in different clauses of the same header, as above: the flags
-are clobbered, the mask is preserved, and because they are genuinely different bits the
-checker is happy to see one on each side. The reason this precision earns its keep is section
-7's third war story, where a routine claimed to preserve the whole status register while
-quietly returning an answer in the carry flag, which lives inside the half it swore not to
-touch.</p>
 
 <div class="decision">
   <span class="d-tag">Design decision &middot; the status register splits into mask and ccr</span>
@@ -630,7 +624,7 @@ one ring to the buffer and has to know whether it landed:</p>
         <span class="c">// ... success path: set the loaded bit</span>
         jbsr    EntityLoaded_Set
     .gated:</pre>
-<span class="src">aeon/engine/objects/entity_window.emp:1022</span>
+<span class="src">aeon/engine/objects/entity_window.emp:1035</span>
 
 <p>The <code>bcs .gated</code> on the line right after the call is the whole reason the flag
 result exists. The caller branches on the carry the callee promised. Producer and consumer
@@ -650,12 +644,8 @@ kind of drift the checker exists to catch.</p>
   build can defend.</p>
 </div>
 
-<p>The engine even documents where the checker's reach currently ends, in the same headers. A
-routine that advances a pointer only through <code>(a4)+</code> auto-increment writes leaves
-its <code>out(a4)</code> commented as pending, because the write-detection does not yet model
-that addressing form. The contract layer is honest about its own gaps rather than pretending
-the proof is total, which is the same instinct as making the undeclared-clobber check a
-warning instead of a lie.</p>
+<p>The checker's write-detection does not yet model <code>(a4)+</code> auto-increment, so a few
+<code>out</code> clauses are marked pending in the engine's own headers.</p>
 
 <!-- ================================================================ -->
 <h2 id="requires">5 &middot; requires: promises about the world</h2>
@@ -735,15 +725,12 @@ refuses it:</p>
 <span class="term" data-def="Ending a routine by jumping to another routine instead of calling it, so that when the second one finishes it hands control straight back to whoever called the first.">tail call</span>
 out of the middle: all of them are escapes, and all of them fire this error. This is the exact
 mistake the third edit in the contract checker above stages, so if you have not toggled it yet,
-that message is what it produces. A <code>with</code> region is error-tier and cannot be
-softened; the whole reason to write the bracket instead of the raw instructions is to get this
-guarantee, so a version of it you could quietly waive would be pointless.</p>
+that message is what it produces.</p>
 
 <p>Honesty about scope: some brackets in the engine are still written by hand on purpose, where
-the shape genuinely defeats the automatic proof, for instance a bracket that must restore only
-half the status register because the routine returns an answer in the other half. The checker
-does not pretend to handle those; it handles the common bracket exactly and leaves the rare one
-to the programmer, clearly marked.</p>
+the shape genuinely defeats the automatic proof. The checker does not pretend to handle those;
+it handles the common bracket exactly and leaves the rare one to the programmer, clearly
+marked.</p>
 
 <div class="gotcha">
   <span class="g-tag">Watch out &middot; a granted context is a trust root, not a proof</span>
@@ -821,16 +808,12 @@ means a content bug upstream:</p>
       <p class="fail">If false: the running game drops into the debugger. Zero bytes in release.</p>
     </div>
   </div>
-  <figcaption>Two checks, two clocks. ensure is answered while building and can stop the build;
-  assert is answered while the game runs and only exists in the debug ROM. A fact the tool can
-  settle at build time never survives to cost a cycle on the console.</figcaption>
+  <figcaption>A fact the tool can settle at build time never survives to cost a cycle on the
+  console.</figcaption>
 </figure>
 
 <div class="decision">
   <span class="d-tag">Design decision &middot; a build-time check never survives to run time</span>
-  <p><b>What:</b> checks the assembler can evaluate while building are <code>ensure</code> and
-  resolve to nothing in the ROM; checks that need live hardware state are <code>assert</code>
-  and appear only in the debug build, compiling to zero bytes in release.</p>
   <p><b>Why:</b> a correctness check should be free where it can be. If the assembler already
   knows the answer, spending a runtime instruction to re-ask on the console is pure waste, and
   worse, it invites the habit of shipping debug scaffolding in the release ROM. Splitting the
@@ -956,17 +939,14 @@ turns off a specific heuristic warning you have judged to be a false alarm, and 
 carried over verbatim from the old assembler, it silences the modernization lints, the
 heuristic ones, so a literal transcription can build before it is cleaned up.</p>
 
-<p>Now the part that matters. Both hatches silence <b>lints</b>, the heuristic warnings. Neither
-one can silence a <b>declared contract</b>. A false <code>preserves</code>, a broken
-<code>out</code>, a <code>falls_into</code> that does not line up, an escaped <code>with</code>
-bracket, a proc marked never-returning that returns: these are error-tier, and no attribute
-turns them off. There is no flag that makes the checker accept a promise it has proven false.</p>
-
 <div class="decision">
   <span class="d-tag">Design decision &middot; some claims cannot be silenced, on purpose</span>
   <p><b>What:</b> the escape hatches cover the heuristic lints only. The proven contracts, and
   the machine-checked budgets, have no suppression flag at all, and refuse anything they cannot
-  analyse rather than passing it quietly.</p>
+  analyse rather than passing it quietly. A false <code>preserves</code>, a broken
+  <code>out</code>, a <code>falls_into</code> that does not line up, an escaped <code>with</code>
+  bracket, a proc marked never-returning that returns: these are error-tier, and no attribute
+  turns them off.</p>
   <p><b>Why:</b> a silenced lie is worse than no claim. The value of a checked contract is that
   a reader can trust it without re-deriving it; a single escape hatch that let a false
   <code>preserves</code> through would poison that trust for every contract, because now none of

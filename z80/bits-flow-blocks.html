@@ -371,10 +371,20 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   <a href="#ldi">LDI</a><a href="#ldir">LDIR</a><a href="#ldd">LDD</a><a href="#lddr">LDDR</a><a href="#cpi">CPI</a><a href="#cpir">CPIR</a><a href="#cpd">CPD</a><a href="#cpdr">CPDR</a>
 </nav>
 
+<p style="margin-top:1.4rem;">Every entry below opens with the same three blocks before any prose: a
+FLAGS row saying what the instruction does to each of the six flags, a COST line in T-states, and an
+OPERANDS grid of the forms each slot will take. All three are
+<a href="loads-and-arithmetic.html#s1">explained once</a> on the sibling page, and two pocket rules from
+there carry the rest. The Z80 writes the destination first, so <code>ld a, 5</code> puts 5 into
+<code>A</code>. Parentheses mean the byte in memory at that address, so <code>ld a,(hl)</code> reads the
+byte <code>HL</code> points at rather than touching <code>HL</code> itself. The six flags themselves,
+<code>S Z H P/V N C</code>, are taught on
+<a href="programming-model.html#s4">The Programming Model, section 4</a>.</p>
+
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific instruction
 and you do not know which page it lives on? The
 <a href="loads-and-arithmetic.html#index">full Z80 instruction index</a> on the Loads &amp; Arithmetic
-page lists every mnemonic with a one-line gloss and a direct link.</p>
+page lists every mnemonic these two pages cover, with a one-line gloss and a direct link.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; Turning bits</h2>
@@ -387,7 +397,8 @@ register or the byte in memory at <code>(HL)</code>.</p>
 
 <p>One note about the numbers on this page before the entries begin, because a reader arriving from the
 68000 track will look for something that is not here. On the Z80 there is <b>no separate add-on cost for
-naming a memory operand</b>: each form of each instruction has one whole-instruction T-state figure, and
+naming a memory operand</b>: each form of each instruction has one whole-instruction
+<span class="term" data-def="The Z80's basic clock tick, one cycle of its clock. Every instruction's timing is measured in T-states, so a 4 T-state instruction takes four ticks. On the Genesis the Z80 runs at about 3.58 MHz, so a tick is roughly a quarter of a microsecond.">T-state</span> figure, and
 that is the number. A <code>rlc (hl)</code> is not "the base cost plus an <code>(hl)</code> surcharge"; it
 is 15 T-states, full stop. (The <a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> page states
 this once for the whole track.) The cost chips below show the cheapest form and say so; the collapsed
@@ -410,15 +421,15 @@ reference box carries the rest.</p>
 
 <div class="instr" id="rlca">
   <span id="rla"></span><span id="rrca"></span><span id="rra"></span>
-  <h3><span class="mn">RLCA / RLA / RRCA / RRA</span> <span class="mnx">Rotate (Left/Right) (Circular/through carry) Accumulator</span> <span class="syn">RLCA</span></h3>
+  <h3><span class="mn">RLCA / RLA / RRCA / RRA</span> <span class="mnx">Rotate (Left/Right) (Circular/through carry) Accumulator</span> <span class="syn">rlca</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S (Sign): unaffected by the accumulator rotates" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z (Zero): unaffected by the accumulator rotates" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-clear" tabindex="0" role="note" title="H (Half-carry): cleared to 0" aria-label="H: cleared"><span class="fl-name">H</span><span class="fl-state">clear</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V (Parity/Overflow): unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-clear" tabindex="0" role="note" title="N (Add/Subtract): cleared to 0" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="C (Carry): set to the bit rotated out of A" aria-label="C: the bit rotated out"><span class="fl-name">C</span><span class="fl-state">result</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit; the accumulator rotates leave it alone" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero; the accumulator rotates leave it alone" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA; cleared to 0 here" aria-label="H: cleared"><span class="fl-name">H</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; unaffected here" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag, read by DAA; cleared to 0 here" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract; here it takes the bit rotated out of A" aria-label="C: the bit rotated out"><span class="fl-name">C</span><span class="fl-state">result</span></span>
     <span class="fl-caption">only H, N (both cleared) and C (the bit rotated out) move; S, Z, P/V are left exactly as they were</span>
   </div>
 
@@ -479,15 +490,15 @@ reference box carries the rest.</p>
 
 <div class="instr" id="rlc">
   <span id="rl"></span><span id="rrc"></span><span id="rr"></span><span id="sla"></span><span id="sra"></span><span id="srl"></span>
-  <h3><span class="mn">RLC / RL / RRC / RR / SLA / SRA / SRL</span> <span class="mnx">the CB-prefixed rotate and shift group</span> <span class="syn">RLC r &middot; RL (HL) &middot; SRL (IX+d)</span></h3>
+  <h3><span class="mn">RLC / RL / RRC / RR / SLA / SRA / SRL</span> <span class="mnx">the CB-prefixed rotate and shift group</span> <span class="syn">rlc r &middot; rl (hl) &middot; srl (ix+d)</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-res" tabindex="0" role="note" title="S (Sign): a copy of the result's top bit" aria-label="S: from result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="Z (Zero): set when the result is zero" aria-label="Z: from result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
-    <span class="fchip f-clear" tabindex="0" role="note" title="H (Half-carry): cleared to 0" aria-label="H: cleared"><span class="fl-name">H</span><span class="fl-state">clear</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="P/V (Parity): parity of the result" aria-label="P/V: parity of result"><span class="fl-name">P/V</span><span class="fl-state">parity</span></span>
-    <span class="fchip f-clear" tabindex="0" role="note" title="N (Add/Subtract): cleared to 0" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="C (Carry): set to the bit shifted or rotated out" aria-label="C: the bit shifted out"><span class="fl-name">C</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: from result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: from result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA; cleared to 0 here" aria-label="H: cleared"><span class="fl-name">H</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; here it is the parity of the result" aria-label="P/V: parity of result"><span class="fl-name">P/V</span><span class="fl-state">parity</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag, read by DAA; cleared to 0 here" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract; here it takes the bit shifted or rotated out" aria-label="C: the bit shifted out"><span class="fl-name">C</span><span class="fl-state">result</span></span>
     <span class="fl-caption">full flags: S and Z from the result, P/V is its parity, H and N cleared, C is the bit shifted out</span>
   </div>
 
@@ -513,8 +524,13 @@ reference box carries the rest.</p>
   <em>not</em> reach <code>(BC)</code>/<code>(DE)</code> or a direct address, and you cannot rotate an
   immediate (<code>rlc 5</code> is meaningless: there is nothing to write back to).</p>
 
-  <p>This family reaches everywhere the accumulator rotates cannot, and sets the flags the accumulator
-  rotates leave alone. The four rotates <b>RLC / RL / RRC / RR</b> mirror RLCA / RLA / RRCA / RRA (circular
+  <p>"CB-prefixed" is a fact about the encoding, and it is where the cost comes from: every instruction in
+  this group is a two-byte
+  <span class="term" data-def="The byte or bytes that name one instruction to the CPU. It is what the assembler turns a line of your source into, and what the processor fetches and executes.">opcode</span>,
+  a <code>CB</code> marker byte followed by a byte naming the operation and which register or memory byte
+  it works on. That second fetch is why these cost 8 T-states on a register where the one-byte accumulator
+  rotates cost 4. This family reaches everywhere the accumulator rotates cannot, and sets the flags the
+  accumulator rotates leave alone. The four rotates <b>RLC / RL / RRC / RR</b> mirror RLCA / RLA / RRCA / RRA (circular
   or through-carry, left or right) but on any register. The three shifts are new: <b>SLA</b> shifts left,
   filling the bottom with 0; <b>SRL</b> shifts right, filling the top with 0; and <b>SRA</b> shifts right
   but keeps the top bit as it was.</p>
@@ -522,7 +538,7 @@ reference box carries the rest.</p>
   <p>That SRA-versus-SRL difference is a real fork. <b>SRL is an unsigned halve</b>: it drops a 0 into the
   top, so <code>$80</code> becomes <code>$40</code>. <b>SRA is a signed halve</b>: it copies the sign bit
   back down, so a
-  <a href="../basics/numbers-and-notation.html">byte read as a negative number</a> stays negative when you
+  <a href="../basics/numbers-and-notation.html#s7">byte read as a negative number</a> stays negative when you
   halve it. Pick SRL when the byte is an unsigned count and SRA when it is a signed quantity.</p>
 
   <p>The driver uses <code>srl</code> as the high half of a two-register right shift, threading the bit that
@@ -621,15 +637,15 @@ off. All three take a bit number 0 to 7 and a target that can be any register or
 </details>
 
 <div class="instr" id="bit">
-  <h3><span class="mn">BIT</span> <span class="mnx">Test Bit</span> <span class="syn">BIT b, r &middot; BIT b, (HL) &middot; BIT b, (IX+d)</span></h3>
+  <h3><span class="mn">BIT</span> <span class="mnx">Test Bit</span> <span class="syn">bit b, r &middot; bit b, (hl) &middot; bit b, (ix+d)</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-und" tabindex="0" role="note" title="S (Sign): documented UNKNOWN after BIT" aria-label="S: undefined"><span class="fl-name">S</span><span class="fl-state">undef.</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="Z (Zero): set to the COMPLEMENT of the tested bit (Z=1 means the bit was 0)" aria-label="Z: complement of tested bit"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
-    <span class="fchip f-set" tabindex="0" role="note" title="H (Half-carry): set to 1" aria-label="H: set"><span class="fl-name">H</span><span class="fl-state">set</span></span>
-    <span class="fchip f-und" tabindex="0" role="note" title="P/V (Parity/Overflow): documented UNKNOWN after BIT" aria-label="P/V: undefined"><span class="fl-name">P/V</span><span class="fl-state">undef.</span></span>
-    <span class="fchip f-clear" tabindex="0" role="note" title="N (Add/Subtract): cleared to 0" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C (Carry): unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-und" tabindex="0" role="note" title="Sign: a copy of the result's top bit; documented UNKNOWN after BIT" aria-label="S: undefined"><span class="fl-name">S</span><span class="fl-state">undef.</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero; after BIT it is the COMPLEMENT of the tested bit, so Z=1 means the bit was 0" aria-label="Z: complement of tested bit"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA; set to 1 here" aria-label="H: set"><span class="fl-name">H</span><span class="fl-state">set</span></span>
+    <span class="fchip f-und" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; documented UNKNOWN after BIT" aria-label="P/V: undefined"><span class="fl-name">P/V</span><span class="fl-state">undef.</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag, read by DAA; cleared to 0 here" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract; unaffected here" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">Z is the whole point (it is the complement of the tested bit); H is set, N cleared, C untouched; S and P/V are documented UNKNOWN, so never branch on them after BIT</span>
   </div>
 
@@ -687,15 +703,15 @@ off. All three take a bit number 0 to 7 and a target that can be any register or
 
 <div class="instr" id="set">
   <span id="res"></span>
-  <h3><span class="mn">SET / RES</span> <span class="mnx">Set Bit / Reset Bit</span> <span class="syn">SET b, s &middot; RES b, s</span></h3>
+  <h3><span class="mn">SET / RES</span> <span class="mnx">Set Bit / Reset Bit</span> <span class="syn">set b, s &middot; res b, s</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touches no flags at all, so you cannot branch on the bit you just wrote</span>
   </div>
 
@@ -746,6 +762,13 @@ off. All three take a bit number 0 to 7 and a target that can be any register or
   <code>set 5,...</code> or whatever the constant resolves to at build time. The instruction underneath is
   the same <code>SET b,(IX+d)</code>; the name is for the human reading the code.</p>
 
+  <p>The reader of every one of those writes is the entry above. <code>bit 7,(ix+zTrack.PlaybackControl)</code>
+  tests the same control byte these lines are writing, and <code>call nz</code> spends time on the track
+  only when the answer comes back set: the write and the test are two ends of one convention. Nothing in
+  the byte itself says that bit 1 means "at rest" or that bit 7 means "playing". The bit numbers mean that
+  because the code that sets them and the code that tests them agree, which is why both sides name them
+  with the same constant.</p>
+
   <figure class="diagram">
   <div class="movesim" id="bitsim">
     <div class="msim-instr"><code id="bp-instr">bit 2, b</code> <span>Pick an op and a bit number. BIT sets Z to the
@@ -792,7 +815,7 @@ form that only jumps when a flag condition holds.</p>
   <summary>New here? &middot; What is a "condition", and where do the flags come from?</summary>
   <div class="x-body">
     <p>A conditional jump does not look at a value; it looks at a
-    <span class="term" data-def="One of the bits the processor sets to describe the last result, such as whether it was zero or negative. A conditional instruction reads these bits rather than looking at the values themselves.">flag</span>. The instruction just before it did some
+    <span class="term" data-def="One bit in the flag register recording a fact about the last result, such as whether it came out zero, negative, or carried past the end of the byte. A conditional instruction reads a flag rather than looking at the value itself.">flag</span>. The instruction just before it did some
     arithmetic or logic and left notes in the flag register: was the result zero (the Z flag), did it carry
     or borrow (the C flag), and so on. <code>jp z,label</code> means "jump only if the Z flag is set";
     <code>jr nc,label</code> means "jump only if the carry flag is clear".</p>
@@ -805,15 +828,15 @@ form that only jumps when a flag condition holds.</p>
 </details>
 
 <div class="instr" id="jp">
-  <h3><span class="mn">JP</span> <span class="mnx">Jump</span> <span class="syn">JP nn &middot; JP cc, nn &middot; JP (HL)</span></h3>
+  <h3><span class="mn">JP</span> <span class="mnx">Jump</span> <span class="syn">jp nn &middot; jp cc, nn &middot; jp (hl)</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touches no flags; it reads them (for JP cc) but never writes them</span>
   </div>
 
@@ -862,15 +885,15 @@ form that only jumps when a flag condition holds.</p>
 </div>
 
 <div class="instr" id="jr">
-  <h3><span class="mn">JR</span> <span class="mnx">Jump Relative</span> <span class="syn">JR e &middot; JR cc, e</span></h3>
+  <h3><span class="mn">JR</span> <span class="mnx">Jump Relative</span> <span class="syn">jr e &middot; jr cc, e</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touches no flags; like JP it reads a flag for the conditional form and writes none</span>
   </div>
 
@@ -949,15 +972,15 @@ short relative distance. Put a count in <code>B</code>, write the loop body, end
 <code>djnz label</code>, and you have a counted loop.</p>
 
 <div class="instr" id="djnz">
-  <h3><span class="mn">DJNZ</span> <span class="mnx">Decrement B and Jump if Not Zero</span> <span class="syn">DJNZ e</span></h3>
+  <h3><span class="mn">DJNZ</span> <span class="mnx">Decrement B and Jump if Not Zero</span> <span class="syn">djnz e</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touches NO flags, even though it decrements B; you cannot test a flag about B after DJNZ</span>
   </div>
 
@@ -982,7 +1005,9 @@ short relative distance. Put a count in <code>B</code>, write the loop body, end
       <span class="og no">HL</span>
     </div>
   </div>
-  <p class="og-note">The nine crosses are the point: DJNZ counts in <code>B</code> and nothing else. Not
+  <p class="og-note">That row is a one-off, not the standard 8-bit row every other grid on these pages
+  uses: DJNZ has no addressing forms to offer, only a choice of counter register, so the chips are
+  registers. The nine crosses are the point: DJNZ counts in <code>B</code> and nothing else. Not
   <code>C</code>, not the pair <code>BC</code>, not any other register. If your count needs to live somewhere
   else, DJNZ cannot loop on it.</p>
 
@@ -992,8 +1017,8 @@ short relative distance. Put a count in <code>B</code>, write the loop body, end
   decrement never disturbs it. Reach for DJNZ whenever you have a count that fits in a byte and want the
   tightest possible counted loop.</p>
 
-  <p>The exit rule is the thing to hold onto, and it is the mirror of the 68000's <code>dbf</code>: <b>DJNZ
-  exits when B reaches zero, so loading B with N runs the body exactly N times.</b> No off-by-one. Load 3,
+  <p>The exit rule is the thing to hold onto: <b>DJNZ exits when B reaches zero, so loading B with N runs
+  the body exactly N times.</b> No off-by-one. Load 3,
   the body runs three times. (The one edge: loading <code>B</code> with 0 does not skip the loop; the first
   decrement wraps 0 to 255, so it runs 256 times. Guard a possibly-zero count before the loop.)</p>
 
@@ -1096,15 +1121,15 @@ have conditional forms. Two more returns, <b>RETI</b> and <b>RETN</b>, exist for
 </details>
 
 <div class="instr" id="call">
-  <h3><span class="mn">CALL</span> <span class="mnx">Call subroutine</span> <span class="syn">CALL nn &middot; CALL cc, nn</span></h3>
+  <h3><span class="mn">CALL</span> <span class="mnx">Call subroutine</span> <span class="syn">call nn &middot; call cc, nn</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touches no flags, so a routine can hand its result back to the caller in the flags</span>
   </div>
 
@@ -1137,20 +1162,20 @@ have conditional forms. Two more returns, <b>RETI</b> and <b>RETN</b>, exist for
 </div>
 
 <div class="instr" id="ret">
-  <h3><span class="mn">RET</span> <span class="mnx">Return from subroutine</span> <span class="syn">RET &middot; RET cc</span></h3>
+  <h3><span class="mn">RET</span> <span class="mnx">Return from subroutine</span> <span class="syn">ret &middot; ret cc</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touches no flags; the flags the routine set survive the return for the caller to read</span>
   </div>
 
-  <div class="cost"><span class="cchip">11 T taken</span><span class="cchip">5 T not taken</span>
-    <span class="cctx">1 byte; unconditional <code>RET</code> is 10 T</span>
+  <div class="cost"><span class="cchip">10 T plain RET</span><span class="cchip">11 T taken</span><span class="cchip">5 T not taken</span>
+    <span class="cctx">1 byte; the second and third are the conditional <code>RET cc</code></span>
     <span class="cnote"><code>RET cc</code> is 11 T-states when it returns and just 5 when it does not, the
     cheapest conditional in the whole instruction set. Plain <code>RET</code> is 10 T. Both 1 byte. From
     UM0080, clrhome, and the sigil cost model.</span>
@@ -1176,15 +1201,15 @@ have conditional forms. Two more returns, <b>RETI</b> and <b>RETN</b>, exist for
 
 <div class="instr" id="reti">
   <span id="retn"></span>
-  <h3><span class="mn">RETI / RETN</span> <span class="mnx">Return from Interrupt / from Non-maskable interrupt</span> <span class="syn">RETI &middot; RETN</span></h3>
+  <h3><span class="mn">RETI / RETN</span> <span class="mnx">Return from Interrupt / from Non-maskable interrupt</span> <span class="syn">reti &middot; retn</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touch no flags</span>
   </div>
 
@@ -1223,15 +1248,15 @@ have conditional forms. Two more returns, <b>RETI</b> and <b>RETN</b>, exist for
 </div>
 
 <div class="instr" id="rst">
-  <h3><span class="mn">RST</span> <span class="mnx">Restart</span> <span class="syn">RST p</span></h3>
+  <h3><span class="mn">RST</span> <span class="mnx">Restart</span> <span class="syn">rst p</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touches no flags</span>
   </div>
 
@@ -1279,15 +1304,15 @@ has to know them.</p>
 
 <div class="instr" id="di">
   <span id="ei"></span>
-  <h3><span class="mn">DI / EI</span> <span class="mnx">Disable Interrupts / Enable Interrupts</span> <span class="syn">DI &middot; EI</span></h3>
+  <h3><span class="mn">DI / EI</span> <span class="mnx">Disable Interrupts / Enable Interrupts</span> <span class="syn">di &middot; ei</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touch no flags</span>
   </div>
 
@@ -1332,15 +1357,15 @@ has to know them.</p>
 </div>
 
 <div class="instr" id="im">
-  <h3><span class="mn">IM</span> <span class="mnx">Interrupt Mode</span> <span class="syn">IM 0 &middot; IM 1 &middot; IM 2</span></h3>
+  <h3><span class="mn">IM</span> <span class="mnx">Interrupt Mode</span> <span class="syn">im 0 &middot; im 1 &middot; im 2</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touch no flags</span>
   </div>
 
@@ -1376,15 +1401,15 @@ has to know them.</p>
 
 <div class="instr" id="halt">
   <span id="nop"></span>
-  <h3><span class="mn">HALT / NOP</span> <span class="mnx">Halt / No Operation</span> <span class="syn">HALT &middot; NOP</span></h3>
+  <h3><span class="mn">HALT / NOP</span> <span class="mnx">Halt / No Operation</span> <span class="syn">halt &middot; nop</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="H: unaffected" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="P/V: unaffected" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="N: unaffected" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: unaffected"><span class="fl-name">H</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic" aria-label="P/V: unaffected"><span class="fl-name">P/V</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: unaffected"><span class="fl-name">N</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">touch no flags</span>
   </div>
 
@@ -1428,20 +1453,20 @@ has to know them.</p>
 <p>The Z80's <span class="term" data-def="A Z80 instruction that copies or compares a run of bytes in one step, walking the pointer registers HL and DE and counting BC down; the repeating forms (ending in R, like LDIR) re-run themselves until the count reaches zero.">block instruction</span>s fold a whole memory loop into a
 single opcode. One of them copies a byte from <code>(HL)</code> to <code>(DE)</code>, steps both pointers,
 and counts <code>BC</code> down, all at once; the repeating variant re-runs itself until the count hits zero,
-so a whole block copy is one instruction. There are eight, in two groups of four: the LD family copies bytes,
-the CP family compares them.</p>
+so a whole block copy is one instruction. There are eight, in two groups of four: the block copy group
+copies bytes, the block compare group searches them.</p>
 
 <div class="instr" id="ldi">
   <span id="ldir"></span><span id="ldd"></span><span id="lddr"></span>
-  <h3><span class="mn">LDI / LDIR / LDD / LDDR</span> <span class="mnx">Load (and Increment/Decrement) (and Repeat)</span> <span class="syn">LDI &middot; LDIR &middot; LDD &middot; LDDR</span></h3>
+  <h3><span class="mn">LDI / LDIR / LDD / LDDR</span> <span class="mnx">Load (and Increment/Decrement) (and Repeat)</span> <span class="syn">ldi &middot; ldir &middot; ldd &middot; lddr</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-none" tabindex="0" role="note" title="S: unaffected" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Z: unaffected" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
-    <span class="fchip f-clear" tabindex="0" role="note" title="H (Half-carry): cleared to 0" aria-label="H: cleared"><span class="fl-name">H</span><span class="fl-state">clear</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="P/V: set while bytes remain (BC not zero after the step), cleared when the count runs out" aria-label="P/V: the BC counter"><span class="fl-name">P/V</span><span class="fl-state">count</span></span>
-    <span class="fchip f-clear" tabindex="0" role="note" title="N (Add/Subtract): cleared to 0" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: unaffected"><span class="fl-name">S</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: unaffected"><span class="fl-name">Z</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA; cleared to 0 here" aria-label="H: cleared"><span class="fl-name">H</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; the block instructions use it as the BC counter instead, set while bytes remain and cleared when the count runs out" aria-label="P/V: the BC counter"><span class="fl-name">P/V</span><span class="fl-state">count</span></span>
+    <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag, read by DAA; cleared to 0 here" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">S, Z and C are left alone; H and N are cleared; P/V is the counter (set while bytes remain, clear when BC hits 0)</span>
   </div>
 
@@ -1562,21 +1587,21 @@ the CP family compares them.</p>
 
 <div class="instr" id="cpi">
   <span id="cpir"></span><span id="cpd"></span><span id="cpdr"></span>
-  <h3><span class="mn">CPI / CPIR / CPD / CPDR</span> <span class="mnx">Compare (and Increment/Decrement) (and Repeat)</span> <span class="syn">CPI &middot; CPIR &middot; CPD &middot; CPDR</span></h3>
+  <h3><span class="mn">CPI / CPIR / CPD / CPDR</span> <span class="mnx">Compare (and Increment/Decrement) (and Repeat)</span> <span class="syn">cpi &middot; cpir &middot; cpd &middot; cpdr</span></h3>
 
   <div class="flags"><span class="fl-label">Flags</span>
-    <span class="fchip f-res" tabindex="0" role="note" title="S: from the compare A minus (HL)" aria-label="S: from result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="Z: set when A equals (HL), i.e. a match" aria-label="Z: match"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="H: borrow from the compare" aria-label="H: from result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="P/V: set while BC is not zero after the step" aria-label="P/V: the BC counter"><span class="fl-name">P/V</span><span class="fl-state">count</span></span>
-    <span class="fchip f-set" tabindex="0" role="note" title="N (Add/Subtract): set to 1" aria-label="N: set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="C: unaffected" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Sign: a copy of the result's top bit; here from the compare A minus (HL)" aria-label="S: from result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero; here it means A equalled (HL), a match" aria-label="Z: match"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA; here the borrow out of the compare" aria-label="H: from result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; the block instructions use it as the BC counter instead, set while BC is not zero after the step" aria-label="P/V: the BC counter"><span class="fl-name">P/V</span><span class="fl-state">count</span></span>
+    <span class="fchip f-set" tabindex="0" role="note" title="Add/subtract flag, read by DAA; set to 1 here" aria-label="N: set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
+    <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">Z means A matched the byte, P/V means bytes still remain; N is set, C untouched; that two-flag split is the whole idiom</span>
   </div>
 
   <div class="cost"><span class="cchip">16 T single step</span><span class="cchip">21 T per repeat</span>
     <span class="cctx">2 bytes; the final pass of a repeat is 16 T</span>
-    <span class="cnote">Same timing as the LD block family: <code>CPI</code>/<code>CPD</code> 2 bytes / 16 T;
+    <span class="cnote">Same timing as the block copy group: <code>CPI</code>/<code>CPD</code> 2 bytes / 16 T;
     <code>CPIR</code>/<code>CPDR</code> 21 T per repeating iteration, 16 T for the last. From UM0080 and
     clrhome.</span>
   </div>
@@ -1585,7 +1610,7 @@ the CP family compares them.</p>
   searched for, <code>HL</code> the pointer walked, <code>BC</code> the count. There is no
   <code>(DE)</code> here; nothing is written.</div>
 
-  <p>The CP family searches instead of copies. Each step compares <code>A</code> against the byte at
+  <p>The block compare group searches instead of copying. Each step compares <code>A</code> against the byte at
   <code>(HL)</code> (subtracting to set flags, discarding the result, exactly like
   <a href="loads-and-arithmetic.html#cp"><code>CP</code></a>), then steps <code>HL</code> and decrements
   <code>BC</code>. The repeating forms stop on either of two conditions: a match (<code>A</code> equals the
@@ -1603,7 +1628,7 @@ the CP family compares them.</p>
     <p style="margin:.5rem 0 0;">The census found no <code>cpir</code> or <code>cpi</code> anywhere in the
     Sonic 2 driver, the S3K driver, or Aeon's driver, so this is a labelled teaching example rather than a
     real excerpt. The sound drivers simply do not scan byte runs this way; the instruction is shown for
-    completeness and because its Z-plus-P/V split is the same counter idea the LD family uses.</p>
+    completeness and because its Z-plus-P/V split is the same counter idea the block copy group uses.</p>
   </div>
 </div>
 
@@ -1663,6 +1688,21 @@ shimmer or a bit of variety it is free entropy already sitting in the CPU. A rar
 most code never touches.</p>
 
 </div>
+
+<p style="margin-top:2.6rem;"><strong>Read the loop you started with.</strong> The
+<code>.fmloop</code> excerpt in the <a href="#djnz">DJNZ</a> entry is one pass of a real sound driver's
+frame, and it is made of nothing but this page and its sibling. <code>push bc</code> parks the counter
+where the call cannot reach it, an add walks <code>IX</code> to the next track,
+<code>bit 7,(ix+zTrack.PlaybackControl)</code> asks one bit of one control byte whether that track is
+playing, <code>call nz</code> spends time on it only if the answer was yes, <code>pop bc</code> hands the
+counter back, and <code>djnz</code> closes the loop and decides whether to go round again. The test, the
+conditional call and the loop are all taught here; the push, the pop and the 16-bit add come from
+<a href="loads-and-arithmetic.html#push-pop">Loads &amp; Arithmetic</a>. One pass per FM channel, and it
+is the shape most of a driver is written in.</p>
+
+<p>From here, the <a href="loads-and-arithmetic.html#index">instruction index</a> reaches every entry on
+both pages, and <a href="programming-model.html">The Programming Model</a> is where the registers, the
+pairs, <code>(HL)</code> and the flags all of these instructions move are taught in full.</p>
 
 <footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
 Previous: <a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> &middot;

@@ -863,8 +863,8 @@ hardware: shortly after boot, the running game must write the letters <code>S</c
 <code>G</code>, <code>A</code> to a specific hardware register at <code>$A14000</code>, or the very next
 attempt to touch the video chip freezes the machine. Here is the exact line that does it:</p>
 
-<pre>        move.l  #$53454741, (TMSS_REGISTER).l   ; "SEGA"</pre>
-<span class="src">engine/system/boot.asm:32</span>
+<pre>        move.l  #$53454741, TMSS_REGISTER       // "SEGA"</pre>
+<span class="src">engine/system/boot.emp:86</span>
 
 <p>The single hex value <code>$53454741</code> is a long word, four bytes. Split it into those bytes,
 most significant first, and they are <code>$53</code>, <code>$45</code>, <code>$47</code>,
@@ -877,7 +877,7 @@ carry no built-in meaning, and here the code chooses to read them as letters. Wh
 word it writes the <code>$53</code> first, at the lowest address, because the 68000 is <em>big-endian</em>:
 it puts the most significant byte first, which is exactly why the bytes land in reading order S, E, G, A
 rather than reversed. The register is watching for precisely those four bytes, and the comment
-<code>; "SEGA"</code> is the programmer telling you what the digits secretly say.</p>
+<code>// "SEGA"</code> is the programmer telling you what the digits secretly say.</p>
 
 <p>One clarification, because the word SEGA does double duty here. A TMSS console actually looks for SEGA
 in two separate places. At power-on, before it will boot the cartridge at all, the system firmware checks
@@ -908,7 +908,7 @@ a leading <code>$</code>, and the choice to pack four letters into one long word
 console's check. That line is not universal notation you will find in every computer; it is a real
 spot in this wiki's code where the general idea shows up wearing this project's conventions. The same
 letters live in a plainer form elsewhere too: the ROM header field
-<code>GAME_CONSOLE equ "SEGA GENESIS    "</code> (<span class="src" style="display:inline;">games/sonic4/config/game.asm:4</span>)
+<code>console:   "SEGA GENESIS    ",</code> (<span class="src" style="display:inline;">games/sonic4/config/header.emp:32</span>)
 is another run of bytes that is really text, this time written as characters between quotes and left
 for the assembler to turn into their ASCII numbers.</div>
 

@@ -242,6 +242,11 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .flags .fchip.f-clear{border-color:#CC66AA; background:rgba(204,102,170,.12); color:#CC66AA;}
 .flags .fchip.f-clear .fl-state{color:#CC66AA;}
 .flags .fchip.f-none{border-color:var(--line); color:var(--dim); opacity:.6;}
+/* a flag the instruction fixes to a constant, but a different constant per mnemonic in the
+   group (N is 0 after ADD and 1 after SUB; H is 1 after AND and 0 after OR/XOR). It is set
+   deterministically, so it must read like f-set/f-clear and never like the dimmed f-none. */
+.flags .fchip.f-fixed{border-color:var(--learn); background:rgba(68,204,136,.14); color:var(--learn);}
+.flags .fchip.f-fixed .fl-state{color:var(--learn);}
 .flags .fl-caption{font-family:var(--mono); font-size:.68rem; color:var(--dim);
   margin-left:.3rem; max-width:30rem;}
 
@@ -262,6 +267,11 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
   padding:.12rem .45rem; background:rgba(68,102,238,.14); color:var(--ink);}
 .og.no{border-color:var(--line); background:transparent; color:var(--dim); opacity:.55;
   text-decoration:line-through;}
+/* a form that is legal in this slot only in combination with what the other slot holds:
+   LD's (BC)/(DE)/(nn) assemble against A and against nothing else. Half-lit, so it reads as
+   neither a plain lit chip nor a refusal, and tagged with the register it is tied to. */
+.og.only-a{border-style:dashed; background:rgba(68,102,238,.06);}
+.og.only-a::after{content:" A only"; color:var(--gold); font-size:.62rem; letter-spacing:.06em;}
 .og-note{font-size:.78rem; color:var(--dim); max-width:40rem; margin:.35rem 0 .6rem;}
 
 /* cheaper cousins: the see-also that names the better tool */
@@ -418,13 +428,20 @@ that page; these are the pocket versions.</p>
 
 <p>Every entry below opens the same way: the mnemonic and what it stands for, then a scannable metadata
 block before any prose. Three parts make up that block, and the first two need a word of explanation now
-because they are Z80-specific.</p>
+because they are Z80-specific. One convention before them: Z80 assemblers ignore case, so
+<code>LD A,B</code> and <code>ld a,b</code> assemble to the same byte. This wiki writes the syntax lines
+and the quoted code lowercase, the way the drivers themselves are written, and names an instruction in
+prose by its uppercase mnemonic (<code>LD</code>, <code>CP</code>, <code>DJNZ</code>).</p>
 
 <p><b>The FLAGS row</b> shows the six bits of the flag register <code>F</code> in their own order,
 <code>S Z H P/V N C</code>, and marks what the instruction does to each: <b>result</b> (set or cleared to
-match the result), <b>set</b> (always 1), <b>clear</b> (always 0), or <b>unaff.</b> (left exactly as it
-was). An instruction that moves no flags at all gets an honest caption saying so. Hover or focus any chip
-for that flag's meaning.</p>
+match the result), <b>set</b> (always 1), <b>clear</b> (always 0), <b>fixed</b> (a constant, but a
+different constant per mnemonic in the group, the way <code>N</code> is 0 after <code>ADD</code> and 1
+after <code>SUB</code>), <b>unaff.</b> (left exactly as it was), or <b>undef.</b> (the manual documents no
+value, so the flag moved but what it holds is not yours to read; <code>BIT</code> on the sibling page
+leaves <code>S</code> and <code>P/V</code> that way). Only <b>unaff.</b> means the instruction left the
+flag alone, and it is the only one drawn dim. An instruction that moves no flags at
+all gets an honest caption saying so. Hover or focus any chip for that flag's meaning.</p>
 
 <p><b>The COST line</b> is measured in <span class="term" data-def="The Z80's basic clock tick, one cycle of its clock. Every instruction's timing is measured in T-states, so a 4 T-state instruction takes four ticks. On the Genesis the Z80 runs at about 3.58 MHz, so a tick is roughly a quarter of a microsecond.">T-states</span>,
 the Z80's own clock ticks. The chip shows the cheapest form and says so, and the line beside it names the
@@ -436,8 +453,10 @@ shows. Second, T-states are the Z80's ticks, not 68000 cycles; the Z80 runs its 
 on an NTSC Genesis), so the two counts are not comparable and this page never mixes them.</p>
 
 <p><b>The OPERANDS grid</b> shows, for each slot the instruction really has, one chip per addressing form:
-lit if that form is legal there, crossed out if it is not. Two fixed rows are learned once and scanned
-everywhere. The 8-bit row has seven slots and the 16-bit row has six:</p>
+lit if that form is legal there, crossed out if it is not. A few forms are legal only in combination with
+what the other slot holds; those chips are drawn dashed and tagged with the register they are tied to, and
+the entry's note under the grid names them. Two fixed rows are learned once and scanned everywhere. The
+8-bit row has seven slots and the 16-bit row has six:</p>
 
 <div class="opgrid" aria-label="The two Z80 operand rows, shown once for reference">
   <div class="og-row"><span class="og-side">8-bit forms</span>
@@ -575,15 +594,16 @@ operand grid below carries most of the lesson.</p>
   <div class="opgrid">
     <div class="og-row"><span class="og-side">Destination</span>
       <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og no">n</span>
-      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og">(BC)/(DE)</span><span class="og">(nn)</span>
+      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og only-a">(BC)/(DE)</span><span class="og only-a">(nn)</span>
     </div>
     <div class="og-row"><span class="og-side">Source</span>
       <span class="og">A</span><span class="og">r (B C D E H L)</span><span class="og">n</span>
-      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og">(BC)/(DE)</span><span class="og">(nn)</span>
+      <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og only-a">(BC)/(DE)</span><span class="og only-a">(nn)</span>
     </div>
   </div>
   <p class="og-note">The two rows look permissive, but three couplings are the whole gotcha, and the
-  crossed <code>n</code> on the destination row is the small one: you cannot write into an immediate,
+  dashed "A only" chips mark two of them. The crossed <code>n</code> on the destination row is the small
+  one: you cannot write into an immediate,
   because a constant is not a place. The three real refusals: <code>ld (hl),(hl)</code> does not exist
   (no 8-bit move goes memory to memory; that opcode is <code>HALT</code>), so you route through a register.
   <code>(BC)</code> and <code>(DE)</code> pair only with <code>A</code>: <code>ld a,(de)</code> and
@@ -747,9 +767,12 @@ operand grid below carries most of the lesson.</p>
   mover's <code>ld a, (hl)</code> button, running for real.</p>
 
   <div class="gotcha"><span class="g-tag">Gotcha &middot; the move that is not there</span><p>
-  The tempting <code>ld (hl),(hl)</code> and <code>ld bc,de</code> do not exist. There is no memory-to-memory
-  byte load and no pair-to-pair 16-bit load (the only 16-bit register-to-register loads are
-  <code>ld sp,hl</code>, <code>ld sp,ix</code>, and <code>ld sp,iy</code>). To copy <code>BC</code> into
+  The tempting <code>ld (hl),(hl)</code> and <code>ld bc,de</code> do not exist. No <code>LD</code> moves
+  memory to memory, and none moves a pair to a pair (the only 16-bit register-to-register loads are
+  <code>ld sp,hl</code>, <code>ld sp,ix</code>, and <code>ld sp,iy</code>). The machine does have one
+  memory-to-memory move, and it is not an <code>LD</code>: the block copy group on the sibling page
+  (<a href="bits-flow-blocks.html#ldi">LDI and its repeating kin</a>) copies a byte from
+  <code>(HL)</code> to <code>(DE)</code>, locked to those two pairs and no others. To copy <code>BC</code> into
   <code>DE</code> you move the halves, <code>ld d,b</code> then <code>ld e,c</code>, or push one pair and pop
   the other. The machine gives you narrow doors and expects you to route through them.</p>
   </div>
@@ -947,8 +970,10 @@ covers both, and one honest contrast with the 68000 that a reader from that trac
 </div>
 
 <div class="decision"><span class="d-tag">A Zilog choice, not ours &middot; no stack-relative addressing</span>
-<p>The Z80 has no <code>ld a,(sp+2)</code>. You cannot read a value out of the middle of the stack by
-offset the way the 68000 reads <code>d16(sp)</code>. Zilog built the stack as a pure save-and-restore
+<p>You cannot reach into the middle of the stack. No instruction reads a value sitting a few bytes below
+the top by naming its offset; the only way down to it is to pop what is above it. (If you know the 68000,
+that machine does have the reach, as <code>d16(sp)</code>, and the Z80 has no <code>ld a,(sp+2)</code> to
+match it.) Zilog built the stack as a pure save-and-restore
 device: <code>PUSH</code> and <code>POP</code> at the top, and that is all. The consequence shapes Z80
 code. Where a 68000 routine might carve out a stack frame and keep locals on it at fixed offsets, Z80 code
 keeps its working values in registers and in fixed RAM, and touches the stack only to stow a pair it will
@@ -1101,7 +1126,7 @@ and skip the carry flag, get their own.</p>
     <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: set from the result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: set from the result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Parity/Overflow: here it is signed overflow" aria-label="P/V: signed overflow"><span class="fl-name">P/V</span><span class="fl-state">overflow</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: 0 after add, 1 after subtract"><span class="fl-name">N</span><span class="fl-state">0/1</span></span>
+    <span class="fchip f-fixed" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: 0 after add, 1 after subtract"><span class="fl-name">N</span><span class="fl-state">0/1</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: set from the result"><span class="fl-name">C</span><span class="fl-state">result</span></span>
     <span class="fl-caption">full-flag ops. N is cleared by ADD/ADC and set by SUB/SBC/CP; P/V here is signed overflow. CP sets every one of these, then discards the result</span>
   </div>
@@ -1127,11 +1152,15 @@ and skip the carry flag, get their own.</p>
   <code>A</code> (for <code>CP</code> it goes nowhere). You cannot add into <code>B</code>: there is no
   <code>add b,c</code>. On the source side, <code>(BC)</code> and <code>(DE)</code> are crossed because
   arithmetic reaches memory only through <code>(HL)</code> or <code>(IX+d)</code>; <code>add a,(bc)</code>
-  does not exist, even though <code>ld a,(bc)</code> does. Two spellings, one machine op: <code>SUB</code>,
-  <code>CP</code> (and the logic ops) are written with a single operand because the <code>A</code>
-  destination is implied (<code>sub b</code> means <code>A &larr; A - B</code>), while <code>ADD</code>,
-  <code>ADC</code>, <code>SBC</code> spell the <code>A</code> out (<code>add a,b</code>). It is only
-  notation.</p>
+  does not exist, even though <code>ld a,(bc)</code> does.</p>
+
+  <p>Two spelling conventions, one shape, which is what the syntax line above is showing.
+  <code>SUB</code> and <code>CP</code> (and the logic operations) are written with a single operand
+  because the <code>A</code> destination is implied: <code>sub b</code> means
+  <code>A &larr; A - B</code>. <code>ADD</code>, <code>ADC</code>, and <code>SBC</code> spell that
+  <code>A</code> out instead, as <code>add a,b</code>. All five read <code>A</code>, and all but
+  <code>CP</code> write the result back into it; the spelling is the only thing that differs, and each
+  mnemonic is still its own instruction with its own opcode.</p>
 
   <details class="explain">
     <summary>New here? &middot; why does everything pile up in A?</summary>
@@ -1411,7 +1440,7 @@ and skip the carry flag, get their own.</p>
     <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: set from the result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: set from the result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Parity/Overflow: here it is signed overflow" aria-label="P/V: signed overflow"><span class="fl-name">P/V</span><span class="fl-state">overflow</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: 0 after INC, 1 after DEC"><span class="fl-name">N</span><span class="fl-state">0/1</span></span>
+    <span class="fchip f-fixed" tabindex="0" role="note" title="Add/subtract flag, read by DAA" aria-label="N: 0 after INC, 1 after DEC"><span class="fl-name">N</span><span class="fl-state">0/1</span></span>
     <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
     <span class="fl-caption">sets S Z H and P/V from the result; N is 0 for INC, 1 for DEC; carry is deliberately left alone</span>
   </div>
@@ -1718,7 +1747,7 @@ Each idiom is a real instruction doing a job its plain name does not advertise.<
   <div class="flags"><span class="fl-label">Flags</span>
     <span class="fchip f-res" tabindex="0" role="note" title="Sign: a copy of the result's top bit" aria-label="S: set from the result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero" aria-label="Z: set from the result"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
-    <span class="fchip f-none" tabindex="0" role="note" title="Half-carry" aria-label="H: 1 after AND, 0 after OR/XOR"><span class="fl-name">H</span><span class="fl-state">1/0</span></span>
+    <span class="fchip f-fixed" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA" aria-label="H: 1 after AND, 0 after OR/XOR"><span class="fl-name">H</span><span class="fl-state">1/0</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Parity/Overflow: here it is parity of the result" aria-label="P/V: parity of the result"><span class="fl-name">P/V</span><span class="fl-state">parity</span></span>
     <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
     <span class="fchip f-clear" tabindex="0" role="note" title="Carry" aria-label="C: cleared"><span class="fl-name">C</span><span class="fl-state">clear</span></span>
@@ -2089,6 +2118,20 @@ turns up exactly once in the whole Sonic 2 driver, and that one use is worth the
   teach a specific value for them.)</p>
 </div>
 </div>
+
+<p style="margin-top:2.6rem;"><strong>Read the routine you started with.</strong> The
+<code>Snd_DacLookup</code> excerpt in the <a href="#scf">SCF</a> entry is a whole procedure, and every
+instruction in it is on this page: <code>or a</code> tests the id for zero, <code>scf</code> raises the
+carry without touching the zero flag that test just set, <code>ret z</code> leaves on the id-zero case,
+<code>cp</code> puts the range check into the carry, and <code>jr c</code> takes the good ids away to the
+success path. On the way in those were five unrelated mnemonics. Now they are one contract, "carry set
+means bad id", enforced in seven instructions and no registers, which the caller in the next excerpt
+reads with a single <code>ret c</code>.</p>
+
+<p>The other half of the instruction set is on <a href="bits-flow-blocks.html">Bits, Flow &amp; Blocks</a>:
+the rotates and shifts, the single-bit operations, the jumps, calls and returns that those
+<code>ret</code>s belong to, and the block instructions that fold a whole copy loop into one opcode. The
+<a href="#index">index</a> above reaches every entry on both pages.</p>
 
 <footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
 <a href="../index.html">Back to hub</a> &middot; Previous: <a href="programming-model.html">The Programming Model</a>

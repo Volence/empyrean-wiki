@@ -1007,19 +1007,21 @@ instruction is being used for something other than the thing it is named after.<
   this purpose never comes up here at all.</p>
 
   <p><b>And here is where it actually appears.</b> Both the Sonic Hack engine and Aeon contain exactly
-  one TAS, in the macro that builds a VDP command word:</p>
-<pre>    if ((type)&amp;(rwd))&amp;$FC = $20
-        tas.b   reg
-    elseif ((type)&amp;(rwd))&amp;$FC &lt;&gt; 0
-        ori.w   #(((type)&amp;(rwd))&amp;$FC)&lt;&lt;2, reg
-    endif
-        endm</pre>
-  <span class="src">aeon/engine/macros.asm:274-279</span>
-  <p>Read the two branches against each other. The <code>elseif</code> is the ordinary way to set some
-  bits: <code>ori.w</code> with an immediate, which costs 4 bytes. The <code>if</code> above it fires
+  one TAS, in the code that builds a VDP command word. In Aeon that is a compile-time function
+  choosing which instruction to emit for the bit pattern it was handed:</p>
+<pre>comptime fn vcr_type(tr: int, reg: Reg) -&gt; Code {
+    let hi = tr &amp; $FC
+    if hi == $20 { return asm { tas.b   {reg} } }
+    if hi != 0 { return asm { ori.w   #{hi &lt;&lt; 2}, {reg} } }
+    return asm { }
+}</pre>
+  <span class="src">aeon/engine/vdp.emp:105-110</span>
+  <p>Read the two branches against each other. The second is the ordinary way to set some
+  bits: <code>ori.w</code> with an immediate, which costs 4 bytes. The one above it fires
   when the bits needed happen to be exactly bit 7 of the low byte, and in that one case
   <code>tas.b</code> does the same job in 2 bytes, because setting bit 7 is what TAS does on its way
-  past.</p>
+  past. Neither branch is a run-time test: whichever arm matches is the only one that puts any
+  bytes in the ROM.</p>
   <p>So the instruction survives here as a two-byte way to set a bit. The test half is ignored, the
   flags it sets are never read, and the multiprocessor problem it was invented for is not in the
   building.</p>
@@ -1088,25 +1090,30 @@ instruction is being used for something other than the thing it is named after.<
   cheap, two bytes, and the operating system decides what each number means. On a Genesis there is
   nothing to ask, so the sixteen slots have nothing to point at. Here is what Aeon does with all of
   them:</p>
-<pre>    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $80-$8C: TRAP 0-3</span>
-    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $90-$9C: TRAP 4-7</span>
-    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $A0-$AC: TRAP 8-11</span>
-    dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">; $B0-$BC: TRAP 12-15</span></pre>
-  <span class="src">aeon/engine/system/vectors.asm:40-43</span>
-  <p>All sixteen go to the same crash handler. The engine is not reserving them for later; it is
+<pre>        dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">// $80-$8C: TRAP 0-3</span>
+        dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">// $90-$9C: TRAP 4-7</span>
+        dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">// $A0-$AC: TRAP 8-11</span>
+        dc.l    ErrorTrap, ErrorTrap, ErrorTrap, ErrorTrap   <span class="c">// $B0-$BC: TRAP 12-15</span></pre>
+  <span class="src">aeon/engine/system/vectors.emp:135-138</span>
+  <p>All sixteen go to the same crash handler (a build that ships without the debugger points the
+  same sixteen at its own fault stop instead). The engine is not reserving them for later; it is
   declaring that arriving here at all is a bug. MarkeyJester's homebrew Mega Drive operating system,
   which has threads and a window manager and is the one program on this platform with a real reason to
   want a system call, contains <b>zero</b> TRAPs and reaches its services another way entirely.</p>
   <p>And Aeon's single actual <code>trap</code> is not a system call either:</p>
-<pre>.jump_table:
-        bra.w   .done
-        rept 5
-        trap    #0
-        endr</pre>
-  <span class="src">aeon/engine/system/dma_queue.asm:164-168</span>
+<pre>comptime fn jt_filler() -&gt; Code {
+    return <span class="n">0</span>..(sizeof(DMAEntry) - <span class="n">4</span>) / <span class="n">2</span> |&gt; fold(asm {}, |acc, _i| acc ++ asm { trap #<span class="n">0</span> })
+}
+<span class="c">// … the jump table's first slot …</span>
+    .jump_table:
+    .slot_0:
+        bra.w   .done                           <span class="c">// STRUCTURAL bra.w: slot 0 (queue empty) - the 4-byte head of the sizeof(DMAEntry)-wide slot</span>
+        jt_filler()</pre>
+  <span class="src">aeon/engine/system/dma_queue.emp:223-225, 282-285</span>
   <p>This is a jump table. The first entry needs to fill the same number of bytes as every other entry,
   <code>bra.w</code> supplies four of them, and the remaining ten are five <code>trap #0</code>
-  instructions rather than five <code>nop</code>s. Both would pad. The difference is what happens if the
+  instructions rather than five <code>nop</code>s (the filler is generated: an entry is 14 bytes, four
+  are spent on the branch, and each <code>trap</code> is two). Both would pad. The difference is what happens if the
   dispatch ever computes a wrong offset and lands in the middle of an entry: NOPs would let it slide
   quietly onward into whatever came next, and traps stop it dead and hand it to the crash handler.</p>
   <p><b>So the only TRAP in the engine is a landmine for a bug</b>, which is exactly what a vector table

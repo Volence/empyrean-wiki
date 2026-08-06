@@ -391,7 +391,7 @@ page is just what the code at that second address chooses to do.</p>
     <span class="l-boot">reset (SSP / PC)</span>
     <span class="l-exc">CPU exception</span>
     <span class="l-resv">reserved → ErrorExcept</span>
-    <span class="l-irqn">unused IRQ → NullInterrupt</span>
+    <span class="l-irqn">unused IRQ level → ErrorExcept</span>
     <span class="l-irqh">IRQ4 HBlank</span>
     <span class="l-irqv">IRQ6 VBlank</span>
     <span class="l-trap">TRAP / tail reserved → ErrorTrap</span>
@@ -399,32 +399,43 @@ page is just what the code at that second address chooses to do.</p>
   <figcaption>The 64 vectors at $000000-$0000FF (one cell per longword slot). Clicking a cell
   names that slot and the routine Aeon points it at, and the lesson survives skipping the widget
   entirely: all 64 slots are filled, two by boot, ten by named CPU exceptions, two by the
-  interrupts this engine runs on, and every one of the rest by an error handler or an immediate
-  return.</figcaption>
+  interrupts this engine runs on, and every one of the rest by an error handler. No vector
+  returns silently.</figcaption>
 </figure>
 
 <p>The table itself is plain data, and deliberately so. The org-0 image (the ROM bytes
 assembled at address zero) is pure data until
-address $200 (vectors, then the ROM header), so even the trivial <code>rte</code> instruction
-behind <code>NullInterrupt</code> is emitted later in the ROM, not squeezed between the tables.
-That instruction is the interrupt-time counterpart of a subroutine return: when an interrupt
-fires the CPU pushes a status word and a return address onto the stack, and <code>rte</code>
+address $200 (vectors, then the ROM header), so no instruction is squeezed between the tables:
+every handler these longwords name is emitted later in the ROM. One entry does not name ROM at
+all. The IRQ4 slot points at <code>HBlank_Vector_Slot</code>, six executable bytes of RAM that
+boot fills with <code>rte</code>, the interrupt-time counterpart of a subroutine return: when an
+interrupt fires the CPU pushes a status word and a return address onto the stack, and
+<code>rte</code>
 pops both back and resumes the interrupted code, the same push-and-pop discipline a normal call
 uses. The <a href="../m68k/programming-model.html">68000
 programming model</a> steps through that stack frame byte by byte.
 Here is the real top of the file:</p>
 
-<pre><span class="k">Vectors</span>:
-    dc.l    SYSTEM_STACK                    <span class="c">; $00: Initial SSP</span>
-    dc.l    EntryPoint                      <span class="c">; $04: Reset PC</span>
-    dc.l    BusError                        <span class="c">; $08: Bus error</span>
-    dc.l    AddressError                    <span class="c">; $0C: Address error</span>
-    dc.l    IllegalInstr                    <span class="c">; $10: Illegal instruction</span>
-    <span class="c">; … one label per exception …</span>
-    dc.l    HBlank_Dispatch                 <span class="c">; $70: IRQ4 (HBlank)</span>
-    dc.l    NullInterrupt                   <span class="c">; $74: IRQ5</span>
-    dc.l    VBlank_Handler                  <span class="c">; $78: IRQ6 (VBlank)</span></pre>
-<span class="src">engine/system/vectors.asm:7</span>
+<pre><span class="k">pub proc Vectors</span> () clobbers() {
+    dc.l    SYSTEM_STACK                    <span class="c">// $00: Initial SSP</span>
+    dc.l    EntryPoint                      <span class="c">// $04: Reset PC</span>
+    <span class="k">if</span> DEBUG == <span class="n">1</span> || CRASH_REPORT == <span class="n">1</span> {
+        dc.l    BusError                    <span class="c">// $08: Bus error</span>
+        dc.l    AddressError                <span class="c">// $0C: Address error</span>
+        dc.l    IllegalInstr                <span class="c">// $10: Illegal instruction</span>
+        <span class="c">// … one label per exception, then the reserved and IRQ1/2/3 cells …</span>
+        dc.l    ErrorExcept                 <span class="c">// $6C: IRQ3 (unused on MD)</span>
+    } <span class="k">else</span> {
+        <span class="c">// … the lean shape: the same cells, every one ReleaseFault …</span>
+    }
+    dc.l    HBlank_Vector_Slot              <span class="c">// $70: IRQ4 (HBlank) - RAM jmp-slot trampoline</span>
+    <span class="k">if</span> DEBUG == <span class="n">1</span> || CRASH_REPORT == <span class="n">1</span> {
+        dc.l    ErrorExcept                 <span class="c">// $74: IRQ5 (unused on MD)</span>
+    } <span class="k">else</span> {
+        dc.l    ReleaseFault                <span class="c">// $74: IRQ5 (unused on MD)</span>
+    }
+    dc.l    VBlank_Handler                  <span class="c">// $78: IRQ6 (VBlank)</span></pre>
+<span class="src">engine/system/vectors.emp:76-128</span>
 
 <p>Two details worth making explicit.
 First, exceptions do not all funnel into one monolithic <code>ExceptionHandler</code>: each CPU
@@ -435,12 +446,14 @@ ask who raised it), and all sixteen TRAPs plus the tail reserved block go to
 <code>ErrorTrap</code>; no TRAP is assigned to a job yet. Per-vector labels let the debug error
 handler name exactly what fired. The interrupt levels split the same way. Aeon runs on two of
 them, IRQ4 and IRQ6. The other five (IRQ1, IRQ2 from the EXT port, IRQ3, IRQ5, and the
-non-maskable IRQ7) are not wired to anything this engine uses, so they point at
-<code>NullInterrupt</code>, which does nothing but <code>rte</code> straight back to whatever was
-interrupted.
-Second, the ROM header at $100-$1FF is not a hardcoded block: it is emitted by a
-<code>gameHeader</code> macro from game-declared strings, and every field width is asserted at
-build time (more on that in section 9).</p>
+non-maskable IRQ7) are not wired to anything this engine uses, so they point at the same error
+handler the reserved slots do: an interrupt level the engine does not model halts loudly instead
+of returning silently. A build can opt out of shipping the debugger with the <code>lean</code>
+profile, and then every one of those cells names <code>ReleaseFault</code> instead, which masks
+interrupts, paints the backdrop red and freezes.
+Second, the ROM header at $100-$1FF is not a hardcoded block: it is emitted from a game-declared
+<code>GameHeader</code> struct whose field types <em>are</em> the width assertions (more on that
+in section 9).</p>
 
 <p>What those per-vector labels buy is a real crash screen. Every exception stub feeds a named
 message ("BUS ERROR", "ADDRESS ERROR", "ILLEGAL INSTRUCTION", ...) into Vladikcomper's
@@ -451,9 +464,10 @@ the crash happened before boot configured the <span class="term" data-def="The V
 counter, the <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span>, the caller, and resolves addresses to symbol names using a table the
 build appends to every ROM. On the error screen, button B shows an exception backtrace and
 button A decodes the address registers. This is not a debug-build luxury: the handler ships in
-<em>release</em> builds too (only assertions and the KDebug logging interface are gated to
-DEBUG), so an exception on real hardware is a readable screen, never a silent freeze.</p>
-<span class="src">engine/debug/error_handler.asm:31 · engine/engine.inc:450</span>
+<em>release</em> builds too (only the opt-in <code>lean</code> profile leaves it out; assertions
+and the KDebug logging interface stay gated to DEBUG), so an exception on real hardware is a
+readable screen, never a silent freeze.</p>
+<span class="src">engine/debug/error_handler.emp:9-19 · engine/system/vectors.emp:16-42</span>
 
 <details class="explain">
   <summary>New here? · What happens when a Genesis game crashes?</summary>
@@ -552,10 +566,11 @@ keeping.</p>
 </div>
 
 <div class="decision"><span class="d-tag">Decision</span>
-  <strong>HBlank is RAM-patched; the vector never changes.</strong> Vector $70 points at a tiny
-  ROM stub that jumps through a pointer in RAM (<code>HBlank_Handler_Ptr</code>). Swapping raster
-  effects per level section means swapping one RAM longword; the ROM stays immutable. The stub
-  also binds installed handlers to a strict register-clobber contract, detailed in "The
+  <strong>HBlank is RAM-patched; the vector never changes.</strong> Vector $70 points straight at
+  six executable bytes of RAM (<code>HBlank_Vector_Slot</code>), holding an idle <code>rte</code>
+  until a section patches a <code>jmp</code> into them. Swapping raster effects per level section
+  means rewriting that slot; the vector table stays immutable. There is no ROM stub in the path,
+  which puts the whole save-and-restore burden on the handler itself, detailed in "The
   interrupt switchboard" below.
   <p class="prov-label">Who does what</p>
   <div class="prov">
@@ -613,8 +628,8 @@ notation page</a> teaches that reading, and its converter will take any of these
 </details>
 
 <p>Two footnotes to the handshake. The magic register is only half of TMSS: the console also
-checks that the ROM header's first field, the console-name string at $100 (which
-<code>gameHeader</code> emits from the game's <code>GAME_CONSOLE</code> symbol), begins with
+checks that the ROM header's first field, the console-name string at $100 (the game's
+<code>console</code> header field), begins with
 <code>"SEGA"</code> (the boot ROM also accepts <code>" SEGA"</code> with a leading space). And on <span class="term" data-def="The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.">TMSS</span> machines the cartridge is not actually the first thing to run:
 the console's internal boot ROM executes before <code>EntryPoint</code>, performs those checks,
 and draws the license splash. By the time Aeon's first instruction runs, the player has already
@@ -623,9 +638,9 @@ been looking at that screen.</p>
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>Soft-reset checks run before TMSS.</strong> Pressing RESET only resets the 68000; the
   VDP may still be mid-DMA, and reprogramming it blind would corrupt the transfer in flight. So
-  the very first instructions test the port A and expansion control registers (non-zero means
-  the machine was already running), and the warm path waits out any in-flight DMA before
-  anything else touches the hardware.
+  the first thing after the stack-pointer reload is a test of the port A and expansion control
+  registers (non-zero means the machine was already running), and the warm path waits out any
+  in-flight DMA before anything else touches the hardware.
   <p class="prov-label">Who does what</p>
   <div class="prov">
     <span class="yes">S.C.E. ✓ same check, same order</span>
@@ -634,39 +649,44 @@ been looking at that screen.</p>
 
 <p>Here is the real entry point, exactly as it ships:</p>
 
-<pre><span class="k">EntryPoint</span>:
-        tst.l   (HW_PORT_A_CTRL_FULL).l
-        bne.s   Warm_Boot
-        tst.w   (HW_EXPANSION_CTRL_FULL).l
-        beq.s   Cold_Boot
+<pre><span class="k">pub proc EntryPoint</span> () clobbers(d0-d7/a0-a6/sr) {
+        lea     (SYSTEM_STACK).w, sp
 
-<span class="k">Warm_Boot</span>:
-        <span class="c">; Wait for any in-progress DMA</span>
-.wait_dma:
-        move.w  (VDP_CTRL).l, d0
-        btst    <span class="n">#1</span>, d0
-        bne.s   .wait_dma
-        <span class="c">; Fall through to cold boot.</span>
+        tst.l   HW_PORT_A_CTRL_FULL
+        bne     .warm_boot
+        tst.w   HW_EXPANSION_CTRL_FULL
+        beq     .cold_boot
 
-<span class="k">Cold_Boot</span>:
-        <span class="c">; TMSS handshake (§0.2)</span>
-        move.b  (HW_VERSION).l, d0
-        andi.b  <span class="n">#$F</span>, d0
-        beq.s   .no_tmss
-        move.l  <span class="n">#$53454741</span>, (TMSS_REGISTER).l   <span class="c">; "SEGA"</span>
-.no_tmss:</pre>
-<span class="src">engine/system/boot.asm:6</span>
+    .warm_boot:
+        <span class="c">// Wait for any in-progress DMA. (Safe pre-handshake on TMSS</span>
+        <span class="c">// hardware: the TMSS boot ROM has already unlocked the VDP on every</span>
+        <span class="c">// reset path before the cartridge runs.)</span>
+    .wait_dma:
+        move.w  VDP_CTRL, d0
+        btst    <span class="n">#1</span>, d0                      <span class="c">// VDP status bit 1 = DMA busy</span>
+        bne     .wait_dma
 
-<p>Note the fall-through at the end of <code>Warm_Boot</code>: it waits for any in-flight <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span>
-to finish, then continues straight into <code>Cold_Boot</code>. A soft reset runs the same full
+        <span class="c">// Fall through to cold boot.</span>
+
+    .cold_boot:
+        <span class="c">// TMSS handshake (§0.2)</span>
+        move.b  HW_VERSION, d0
+        andi.b  <span class="n">#$F</span>, d0                     <span class="c">// low nibble = hardware version (0 = pre-TMSS)</span>
+        beq     .no_tmss
+        move.l  <span class="n">#$53454741</span>, TMSS_REGISTER       <span class="c">// "SEGA"</span>
+    .no_tmss:</pre>
+<span class="src">engine/system/boot.emp:38-87</span>
+
+<p>Note the fall-through at the end of <code>.warm_boot</code>: it waits for any in-flight <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span>
+to finish, then continues straight into <code>.cold_boot</code>. A soft reset runs the same full
 hardware initialization as power-on, including the 64KB RAM wipe; the only thing "warm" about
 it is the DMA wait.</p>
 
-<p>A warm-reset persistence scheme, preserving a small RAM region (lives, score) across RESET
-presses, is designed but not yet built. Today every boot, warm or cold, clears all 64KB of RAM,
-including the reserved marker address at $FFFFFF00, and then unconditionally rewrites the
-<code>CROSS_RESET_MAGIC</code> longword (<code>'INIT'</code>) there; nothing survives a soft
-reset. The address reservation is real, and the preservation mechanism will build on it.</p>
+<p>Nothing at all survives a soft reset, and that is a ruling rather than an unfinished feature.
+Every boot, warm or cold, clears all 64KB of work RAM with no preserved region and no cold-boot
+marker; a warm-reset persistence scheme was considered and dropped, because SRAM (which survives
+power-off, not just a RESET press) is this engine's persistence mechanism. A soft reset is a
+full restart.</p>
 
 <!-- ================================================================ -->
 <h2 id="s3">3 · Programming the video chip</h2>
@@ -736,7 +756,7 @@ as a number. Testing and flipping single bits like those is the day job of the
   </tbody>
 </table>
 </div>
-<span class="src">engine/system/boot.asm:239 (BootData_VDPRegs)</span>
+<span class="src">engine/system/boot_data.emp:113-143 (BootData_VDPRegs)</span>
 
 <p>Registers $02, $04, $05 and $0D are all answering one question: where in the VDP's 64KB does
 each table live? Here is the map those four values draw, to proportion:</p>
@@ -863,7 +883,7 @@ what was just read, by one, two or four bytes depending on the operand's size. T
 other eleven ways a 68000 instruction can name where its operand lives are the subject of
 <a href="../m68k/addressing-modes.html">68000: Addressing
 Modes</a>.)</p>
-<span class="src">engine/system/boot.asm:268</span>
+<span class="src">engine/system/boot.emp:137-148 · engine/system/boot_data.emp:147-151</span>
 
 <p>The idle program is a curiosity worth two lines: after clearing Z80 RAM and its registers,
 it plants the byte <code>$E9</code>, the opcode for <code>jp&nbsp;(hl)</code>, at address 0
@@ -872,33 +892,34 @@ instruction that jumps to itself.</p>
 
 <pre>        di
         im      <span class="n">1</span>
-        ld      (hl), <span class="n">0E9h</span>          <span class="c">; patch: jp (hl) opcode at address 0</span>
-        jp      (hl)                <span class="c">; idle loop</span></pre>
-<span class="src">engine/system/z80_init.asm:28</span>
+        ld      (hl), <span class="n">$E9</span>               <span class="c">// patch: jp (hl) opcode at address 0 (hl == 0 from the pop above)</span>
+        jp      (hl)                    <span class="c">// idle loop</span></pre>
+<span class="src">engine/system/z80_init.emp:92-95</span>
 
 <p>Silencing the PSG takes four bytes: one "maximum attenuation" command per channel
 (<code>$9F $BF $DF $FF</code>) written to the PSG port at $C00011. The YM2612 gets an explicit
 key-off pass: register $28 is the key-on/off switchboard, and boot writes channel numbers 0-2
 and then $04-$06 (the FM chip splits its six channels across two banks) with all operator bits
-clear. This step runs late, after the video-memory clears, and the whole pass is bracketed by
-<code>stopZ80</code>/<code>startZ80</code>, because the newly-started Z80 driver also talks to
+clear. This step runs late, after the video-memory clears, and the whole pass sits inside a
+<code>with z80_stopped</code> block, a declared context that splices the bus grab before the
+body and the release after it, because the newly-started Z80 driver also talks to
 the FM chip and two writers on one chip is a race.</p>
 
-<pre>        <span class="k">stopZ80</span>
-        lea.l   (YM2612_A0).l, a6
-        move.b  <span class="n">#$28</span>, (a6)                  <span class="c">; select Key On/Off register</span>
-        moveq   <span class="n">#2</span>, d2
-.keyoff_part1:
-        move.b  d2, <span class="n">1</span>(a6)                   <span class="c">; key off channels 0-2</span>
-        dbf     d2, .keyoff_part1
-        moveq   <span class="n">#6</span>, d2
-        moveq   <span class="n">#2</span>, d1
-.keyoff_part2:
-        move.b  d2, <span class="n">1</span>(a6)                   <span class="c">; key off channels 4-6 ($04,$05,$06)</span>
-        subq.w  <span class="n">#1</span>, d2
-        dbf     d1, .keyoff_part2
-        <span class="k">startZ80</span></pre>
-<span class="src">engine/system/boot.asm:124</span>
+<pre>        <span class="k">with</span> z80_stopped {
+            lea     YM2612_A0, a6
+            move.b  <span class="n">#$28</span>, (a6)                  <span class="c">// select Key On/Off register</span>
+            moveq   <span class="n">#2</span>, d2
+        .keyoff_part1:
+            move.b  d2, <span class="n">1</span>(a6)                   <span class="c">// key off channels 0-2</span>
+            dbf     d2, .keyoff_part1
+            moveq   <span class="n">#6</span>, d2
+            moveq   <span class="n">#2</span>, d1
+        .keyoff_part2:
+            move.b  d2, <span class="n">1</span>(a6)                   <span class="c">// key off channels 4-6 ($04,$05,$06)</span>
+            subq.w  <span class="n">#1</span>, d2
+            dbf     d1, .keyoff_part2
+        }</pre>
+<span class="src">engine/system/boot.emp:227-240</span>
 
 <details class="explain">
   <summary>New here? · Why must the Z80 be stopped before touching video memory?</summary>
@@ -941,7 +962,7 @@ the FM chip and two writers on one chip is a race.</p>
   again; a continuous hold would deadlock the handshake, since a stopped Z80 can never finish
   booting and post the marker. There is deliberately no timeout: a driver that never comes up
   means the ROM itself is broken, and hanging at one well-defined address beats limping onward
-  without sound (<code>Sound_Init</code>, engine/sound/sound_api.asm:39).
+  without sound (<code>Sound_Init</code>, engine/sound/sound_api.emp:135).
 </div>
 
 <!-- ================================================================ -->
@@ -976,12 +997,12 @@ register, not just the byte the VDP will read as the fill value. The
 toy</a> on the Moving Data page repaints the digits one size at a time if you want to watch it
 happen:</p>
 
-<pre>        <span class="c">; Start VRAM DMA fill (§0.7) - runs in background on VDP clock</span>
-        move.w  <span class="n">#vdpReg($0F, $01)</span>, (a4)    <span class="c">; auto-increment = 1 for byte-by-byte DMA fill</span>
-        move.l  (a5)+, (a4)                <span class="c">; vdpComm(0, VRAM, DMA)</span>
+<pre>        <span class="c">// Start VRAM DMA fill (§0.7) - runs in background on VDP clock</span>
+        move.w  <span class="n">#vdp_reg($0F, $01)</span>, (a4)    <span class="c">// auto-increment = 1 for byte-by-byte DMA fill</span>
+        move.l  (a5)+, (a4)                 <span class="c">// vdpComm(0, VRAM, DMA)</span>
         moveq   <span class="n">#0</span>, d0
-        move.w  d0, (a3)                    <span class="c">; trigger fill (fill byte = 0)</span></pre>
-<span class="src">engine/system/boot.asm:51</span>
+        move.w  d0, (a3)                    <span class="c">// trigger fill (fill byte = 0)</span></pre>
+<span class="src">engine/system/boot.emp:108-112</span>
 
 <p>While the VDP fills, the CPU does the entire previous section's work (the Z80 bus dance,
 the driver copy, the YM-safe reset), then clears its own 64KB of work RAM, then silences the
@@ -999,13 +1020,12 @@ teaches that odometer). Given both, the clear is a lovely idiom: start the addre
 $00000000 and write longwords with pre-decrement, letting 32-bit address arithmetic wrap around
 to $FFFFFFFC and walk down through all of RAM:</p>
 
-<pre>        <span class="c">; Clear Work RAM - 64KB (§0.7)</span>
-        movea.l d0, a6                      <span class="c">; a6 = 0</span>
-        move.w  d6, d2                      <span class="c">; d2 = $3FFF (longword count)</span>
-.clear_ram:
-        move.l  d0, -(a6)                   <span class="c">; wraps: $00000000 → $FFFFFFFC → ... → $FFFF0000</span>
+<pre>        movea.l d0, a6                      <span class="c">// a6 = 0</span>
+        move.w  d6, d2                      <span class="c">// d2 = $3FFF dbf count → $4000 longs = 64KB</span>
+    .clear_ram:
+        move.l  d0, -(a6)                   <span class="c">// wraps: $00000000 → $FFFFFFFC → ... → $FFFF0000</span>
         dbf     d2, .clear_ram</pre>
-<span class="src">engine/system/boot.asm:86</span>
+<span class="src">engine/system/boot.emp:168-172</span>
 
 <p>The <code>-(a6)</code> in that loop is the predecrement mode: it subtracts the operand's size
 from <code>a6</code> <em>first</em> and writes at the new address, which is what lets one
@@ -1035,7 +1055,7 @@ CPU  [###### chores, 9 ######][wait 1]                   total = 10</pre>
 
 <p>And here is the real timeline, on both clocks. The top lane is the VDP grinding through the
 fill on its own; the bottom lane is everything the CPU does in the meantime, in the exact order
-<code>boot.asm</code> runs it:</p>
+<code>boot.emp</code> runs it:</p>
 
 <figure class="diagram">
   <div class="lanes">
@@ -1053,12 +1073,14 @@ fill on its own; the bottom lane is everything the CPU does in the meantime, in 
         <div class="tseg t-cpu" style="width:7%;">inc = 1, start fill</div>
         <div class="tseg t-cpu" style="width:25%;">Z80 init + driver load</div>
         <div class="tseg t-cpu t-big" style="width:46%;">clear 64KB work RAM (~393,000 cycles, the dominator)</div>
-        <div class="tseg t-cpu" style="width:8%;">PSG silence</div>
         <div class="tseg t-wait" style="width:14%;">wait: fill done?</div>
+        <div class="tseg t-cpu" style="width:8%;">PSG silence</div>
       </div>
     </div>
   </div>
-  <figcaption>The parallel window, order as shipped (boot.asm, phases B-D). Widths are
+  <figcaption>The parallel window, order as shipped (boot.emp, phases B-D). The PSG sits inside
+  the VDP, so its four silence bytes wait for the fill to finish rather than riding inside the
+  window. Widths are
   qualitative; the real durations are in the paragraph below, and the whole sequence finishes
   in a small handful of frames.</figcaption>
 </figure>
@@ -1111,18 +1133,18 @@ matters: NTSC or PAL.</p>
   </div>
 </details>
 
-<p>Exactly four region constants exist in the engine, and boot bakes the chosen pair into RAM
+<p>Exactly two region constants exist in the engine, and boot bakes the chosen one into RAM
 once; there is no runtime re-checking of the region bit on hot paths:</p>
 
 <div class="tbl">
 <table>
   <thead><tr><th>Constant</th><th>NTSC</th><th>PAL</th><th>Meaning</th></tr></thead>
   <tbody>
-    <tr><td><code>NTSC/PAL_TIMING_STEP</code></td><td><code>$0100</code></td><td><code>$0133</code></td><td>8.8 fixed-point tick step (exactly 1.0 vs ≈1.199, the nominal 6/5 ratio) → <code>Timing_Step</code></td></tr>
-    <tr><td><code>DMA_BUDGET_NTSC/PAL</code></td><td><code>7200</code></td><td><code>15000</code></td><td>Usable DMA bytes per VBlank → <code>DMA_Budget_Default</code></td></tr>
+    <tr><td><code>DMA_BUDGET_NTSC/PAL</code></td><td><code>6144</code></td><td><code>11648</code></td><td>Per-frame DMA window capacity in bytes → <code>DMA_Budget_Default</code></td></tr>
   </tbody>
 </table>
 </div>
+<span class="src">engine/system/constants.emp:375-376</span>
 
 <p><code>DMA_Budget_Default</code> is not advice: the VBlank DMA queue spends it in bytes every
 frame and stops issuing transfers once the allowance is gone, and the entries that did not fit are
@@ -1136,22 +1158,30 @@ hardware background you'll find in a Genesis reference; the engine deliberately 
 carry them as named constants.)</p>
 
 <div class="decision"><span class="d-tag">Decision</span>
-  <strong>PAL compensation via a fixed-timestep accumulator.</strong> Each frame adds
-  <code>Timing_Step</code> to an 8.8 fixed-point <code>Frame_Accumulator</code>, and whole
-  1/60s ticks are consumed from it. On NTSC the step is exactly 1.0. On PAL it's
-  $0133&nbsp;≈&nbsp;1.199, so roughly every fifth frame the accumulator yields a second tick
-  (≈60 physics ticks per 50 PAL frames), and every tick that runs is bit-exact NTSC physics.
-  Boot's share is picking the step and zeroing the accumulator, and as of this writing that is
-  the only part wired up: nothing consumes the accumulator yet, and <code>GameLoop</code> still
-  runs one state dispatch per VSync on both regions.
+  <strong>No PAL timing compensation: the engine commits to NTSC.</strong> <code>GameLoop</code>
+  runs exactly one game-state dispatch per <code>VSync_Wait</code>, unconditionally, on both
+  regions. On a 50Hz Mega Drive that means the whole game runs at 5/6 speed, the classic
+  frame-locked PAL slowdown, accepted rather than corrected. The region bit changes exactly one
+  thing in the shipped engine: which of the two budgets above boot writes into
+  <code>DMA_Budget_Default</code>. Nothing else reads <code>Region_Flags</code>.
+  <p>A road not taken, recorded because it is the obvious question: an 8.8 fixed-point
+  accumulator. Each frame would add a per-region <code>Timing_Step</code> (<code>$0100</code> =
+  exactly 1.0 on NTSC, <code>$0133</code>&nbsp;≈&nbsp;1.199 on PAL, the 6/5 ratio) to a
+  <code>Frame_Accumulator</code>, and whole ticks would be consumed out of it, so PAL would have
+  run roughly 60 bit-exact NTSC physics ticks per 50 frames. Boot wrote both fields and
+  <em>nothing ever read them</em>. Half-built machinery that reads as wired up is worse than an
+  honest gap, so the NTSC-only ruling of 2026-08-02 deleted the two RAM fields and the two
+  constants instead of leaving them standing as scaffolding. Reviving PAL support starts by
+  writing the consume side.</p>
   <p class="prov-label">Who does what</p>
   <div class="prov">
-    <span class="yes">Aeon ✓ accumulator (boot side shipped; consume side pending)</span>
+    <span class="no">Aeon: none (NTSC-only by ruling)</span>
     <span class="no">Sonic 3: velocity multiplier (rounding drift)</span>
     <span class="no">Treasure: hardcoded frame skip</span>
     <span class="no">Most 90s ports: nothing (17% slower)</span>
   </div>
 </div>
+<span class="src">engine/system/boot.emp:264-278 · engine/ram.emp:124-128 · engine/system/game_loop.emp:28-43</span>
 
 <p>Last piece of world-facing setup: the controller ports. Boot writes <code>$40</code> to all
 three port <em>control</em> registers, configuring the TH pin as an output (the pin the
@@ -1218,27 +1248,26 @@ VDP page</a> measures it in bytes rather than lines. Here it is to proportion:</
   exists.</figcaption>
 </figure>
 
-<p><strong>HBlank: RAM-dispatched, contract-bound.</strong> The vector points at this ROM stub,
-which never changes; per-section raster programs are installed by writing
-<code>HBlank_Handler_Ptr</code>. Handlers may clobber only <code>d0-d1/a0</code>; the stub
-saves nothing else, because this code can run up to 224 times per frame and every saved
-register is paid for on every line:</p>
+<p><strong>HBlank: a jump slot in RAM.</strong> There is no ROM dispatch stub at all. The IRQ4
+vector points straight at <code>HBlank_Vector_Slot</code>, six executable bytes of work RAM, and
+<code>HBlank_Install</code> patches a <code>jmp handler.l</code> into them. The interrupt reaches
+the raster program through one <code>jmp</code>, with nothing saved or restored on the way,
+because this code can run up to 224 times per frame and every saved register is paid for on
+every line:</p>
 
-<pre><span class="k">HBlank_Dispatch</span>:
-        movem.l d0-d1/a0, -(sp)
-        movea.l (HBlank_Handler_Ptr).w, a0
-        jsr     (a0)
-        movem.l (sp)+, d0-d1/a0
-        rte</pre>
-<span class="src">engine/system/hblank.asm:12</span>
+<pre><span class="k">pub proc HBlank_Install</span> (a0: HBlankHandler, d0: u8) clobbers(d1) {
+        move.w  <span class="n">#HBLANK_SLOT_JMP</span>, HBlank_Vector_Slot        <span class="c">// jmp.l opcode</span>
+        move.l  a0, HBlank_Vector_Slot + <span class="n">2</span>                  <span class="c">// handler target</span></pre>
+<span class="src">engine/system/hblank.emp:52-54</span>
 
-<p>Boot installs <code>HBlank_Null</code>, a bare <code>rts</code>, so the dispatch costs a
-handful of cycles until a level section wants more. The dispatch is two addressing modes doing all
-the work: <code>(HBlank_Handler_Ptr).w</code> fetches the pointer out of RAM by short absolute
-address, and <code>jsr (a0)</code> then calls the address <code>a0</code> <em>holds</em> rather
-than <code>a0</code> itself, which is exactly the distinction
-<a href="../m68k/addressing-modes.html">68000: Addressing
-Modes</a> works through mode by mode.</p>
+<p>The price of that speed is paid by the handler instead: it runs in raw interrupt context, so
+it must save and restore every register it touches itself and must end with <code>rte</code>, not
+<code>rts</code>. Boot leaves the slot holding a bare <code>rte</code> (<code>$4E73</code>, written
+as one longword so the second word is a defensive <code>rte</code> too), so until a level section
+arms a handler an H-interrupt costs only the CPU's own entry and exit:</p>
+
+<pre>        move.l  <span class="n">#$4E734E73</span>, HBlank_Vector_Slot</pre>
+<span class="src">engine/system/boot.emp:296</span>
 
 <p><strong>VBlank: ROM entry, RAM-selected body, built-in lag detection.</strong> The handler
 saves everything, then checks <code>VBlank_Ready</code>, a flag the main loop sets when it
@@ -1246,19 +1275,19 @@ finishes a frame's work. If the main loop finished, the handler dispatches throu
 <code>VInt_Ptr</code> (boot installs <code>VInt_Level</code>); if the main loop is still
 running (a lag frame), it takes a reduced path instead:</p>
 
-<pre><span class="k">VBlank_Handler</span>:
+<pre><span class="k">pub proc VBlank_Handler</span> () clobbers() preserves(d0-d7/a0-a6) grants(vblank) {
         movem.l d0-a6, -(sp)
-        tst.b   (VBlank_Ready).w
-        beq.s   .lag
-        movea.l (VInt_Ptr).w, a0
-        jsr     (a0)
-        bra.s   .done
-.lag:
-        bsr.w   VInt_Lag</pre>
-<span class="src">engine/system/vblank.asm:8</span>
+        tst.b   VBlank_Ready                    <span class="c">// (VBlank_Ready).w</span>
+        beq     .lag
+        movea.l VInt_Ptr, a0                    <span class="c">// (VInt_Ptr).w</span>
+        jsr     (a0) as VBlankHandler           <span class="c">// computed dispatch (bare jsr by the jbra/jbsr rule)</span>
+        jbra    .done
+    .lag:
+        jbsr    VInt_Lag</pre>
+<span class="src">engine/system/vblank.emp:40-48</span>
 
 <p><code>VInt_Level</code>, the normal-frame body, runs in this exact order: raise the sound
-DMA flag → <code>Flush_VDP_Shadow</code> → <code>Enqueue_Dirty_Buffers</code> (palette, <span class="term" data-def="A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.">sprites</span>,
+DMA flag → seed this frame's DMA budget → <code>Flush_VDP_Shadow</code> → <code>Enqueue_Dirty_Buffers</code> (palette, <span class="term" data-def="A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.">sprites</span>,
 HScroll) → <code>VInt_DrawLevel</code> (drain the plane buffer to the <span class="term" data-def="A grid map in VRAM saying which tile to draw in each 8x8 cell of a plane, plus that cell's palette, flip and priority bits.">nametables</span>) →
 <code>Process_DMA_Critical</code> → <code>Vscroll_Write</code> (the VSRAM write deliberately
 comes <em>after</em> the critical DMA drain, because it must follow the HScroll DMA), then the
@@ -1287,24 +1316,27 @@ flag, so the "wait" falls straight through with no real vsync, while Ready is le
 a few dozen cycles on a once-per-frame path: mask interrupts across the pair, then wait with
 them live.</p>
 
-<p>Masking is one write. <code>move.w #$2700, sr</code> loads the status register, the 16-bit word
-where the CPU keeps its own mode and its condition flags, with a supervisor bit and an interrupt
-mask of level 7, which shuts out both IRQ4 and IRQ6, the two interrupts this engine runs on; the
-push and pop of <code>sr</code> around the pair then restore whatever mask was in force before,
-instead of guessing at it. The
+<p>The masking is not spelled out at the site at all. <code>with ints_off { … }</code> names a
+declared context, and the compiler splices its two halves around the block: <code>move.w sr,
+-(sp)</code> then <code>move.w #$2700, sr</code> on the way in, <code>move.w (sp)+, sr</code> on
+the way out, with every path through the body proved to reach the restore. That immediate loads
+the status register, the 16-bit word where the CPU keeps its own mode and its condition flags,
+with a supervisor bit and an interrupt mask of level 7, which shuts out both IRQ4 and IRQ6, the
+two interrupts this engine runs on; the push and pop restore whatever mask was in force before,
+instead of guessing at it. Note the closing brace lands <em>before</em> the wait loop: the wait
+depends on IRQ6 being live. The
 <a href="../m68k/programming-model.html">programming
 model</a> draws that register as a 16-bit ruler with every position labelled, worked through on the
 near-identical example value $2704.</p>
 
-<pre>        move.w  sr, -(sp)
-        move.w  <span class="n">#$2700</span>, sr             <span class="c">; mask: the pair below must be atomic</span>
-        move.b  d0, (VBlank_Flag).w     <span class="c">; clear any stale lag-frame flag</span>
-        move.b  <span class="n">#1</span>, (VBlank_Ready).w    <span class="c">; this frame's work is done</span>
-        move.w  (sp)+, sr               <span class="c">; unmask BEFORE waiting; IRQ6 sets the flag</span>
-.wait:
-        tst.b   (VBlank_Flag).w
-        beq.s   .wait</pre>
-<span class="src">engine/system/vblank.asm:182</span>
+<pre>        <span class="k">with</span> ints_off {
+            move.b  d0, VBlank_Flag
+            move.b  <span class="n">#1</span>, VBlank_Ready
+        }
+    .wait:
+        tst.b   VBlank_Flag
+        beq     .wait</pre>
+<span class="src">engine/system/vblank.emp:290-296 · engine/irq.emp:48-56</span>
 
 <p>One loose end the excerpts above leave out: the interrupt side lowers
 <code>VBlank_Ready</code> itself on the way out of every <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>, normal or lag, so the ready
@@ -1314,14 +1346,15 @@ not earn it.</p>
 <!-- ================================================================ -->
 <h2 id="s8">8 · The whole sequence</h2>
 
-<p>Here is the boot order: all thirty-four steps of <code>boot.asm</code>, grouped into
+<p>Here is the boot order: all thirty-four steps of <code>boot.emp</code>, grouped into
 phases. Phase C is the parallel window from section 5: everything
 in it executes while the VDP is filling <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>.</p>
 
 <ol class="bootline">
   <li data-ph="A">
-    <p class="ph-t">Reset &amp; TMSS <small>· boot.asm:6-36</small></p>
+    <p class="ph-t">Reset &amp; TMSS <small>· boot.emp:38-90</small></p>
     <ul class="ph-steps">
+      <li>Reload <code>sp</code> from <code>SYSTEM_STACK</code> (redundant after a hardware reset, load-bearing after a software one)</li>
       <li>Soft-reset checks: <code>tst.l</code> port A control, <code>tst.w</code> expansion control</li>
       <li>Warm path only: poll VDP status until any in-flight DMA finishes, then fall through</li>
       <li>TMSS: read the $A10001 revision nibble; write <code>"SEGA"</code> to $A14000 if non-zero</li>
@@ -1329,7 +1362,7 @@ in it executes while the VDP is filling <span class="term" data-def="The VDP's p
     </ul>
   </li>
   <li data-ph="B">
-    <p class="ph-t">VDP registers, fill armed <small>· boot.asm:39-55</small></p>
+    <p class="ph-t">VDP registers, fill armed <small>· boot.emp:92-112</small></p>
     <ul class="ph-steps">
       <li>Preload hardware addresses into <code>d5-d7/a0-a4</code> with one <code>movem</code></li>
       <li>Write all 24 VDP registers from <code>BootData_VDPRegs</code> (display OFF, DMA ON)</li>
@@ -1337,32 +1370,32 @@ in it executes while the VDP is filling <span class="term" data-def="The VDP's p
     </ul>
   </li>
   <li data-ph="C">
-    <p class="ph-t">Parallel window: CPU works while the VDP fills <small>· boot.asm:60-97</small></p>
+    <p class="ph-t">Parallel window: CPU works while the VDP fills <small>· boot.emp:114-172</small></p>
     <ul class="ph-steps">
       <li>Z80 init: reset/bus-request dance, copy in the sound driver (or idle blob), reset again with the ~264-cycle YM2612-safe delay, release</li>
       <li>Clear all 64KB of Work RAM via the wrapping pre-decrement loop</li>
-      <li>Silence the PSG: 4 attenuation bytes to $C00011</li>
     </ul>
   </li>
   <li data-ph="D">
-    <p class="ph-t">Fill completes, small memories cleared <small>· boot.asm:101-121</small></p>
+    <p class="ph-t">Fill completes, small memories cleared <small>· boot.emp:174-208</small></p>
     <ul class="ph-steps">
       <li>Poll VDP status bit 1 until the DMA fill is done</li>
+      <li>Silence the PSG: 4 attenuation bytes to $C00011 (the PSG is decoded inside the VDP, so this waits for the fill)</li>
       <li>Restore auto-increment = 2</li>
       <li>Clear <span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span> (128 bytes) with a CPU loop</li>
       <li>Clear <span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span> (80 bytes) with a CPU loop</li>
     </ul>
   </li>
   <li data-ph="E">
-    <p class="ph-t">Silence FM, zero the CPU <small>· boot.asm:124-143</small></p>
+    <p class="ph-t">Silence FM, zero the CPU <small>· boot.emp:210-246</small></p>
     <ul class="ph-steps">
-      <li>YM2612 key-off on all six FM channels, bracketed by stopZ80/startZ80</li>
+      <li>YM2612 key-off on all six FM channels, inside a <code>with z80_stopped</code> block</li>
       <li>Clear all 68K registers with one <code>movem.l</code> from freshly-zeroed RAM</li>
-      <li><code>disableInts</code>: masked while the engine assembles itself</li>
+      <li><code>move.w #$2700, sr</code>: masked while the engine assembles itself</li>
     </ul>
   </li>
   <li data-ph="F">
-    <p class="ph-t">Engine subsystems <small>· boot.asm:146-158</small></p>
+    <p class="ph-t">Engine subsystems <small>· boot.emp:248-261</small></p>
     <ul class="ph-steps">
       <li><code>VDP_Shadow_Init</code>: copy the boot register table into the RAM shadow</li>
       <li><code>Init_DMA_Queue</code></li>
@@ -1372,37 +1405,36 @@ in it executes while the VDP is filling <span class="term" data-def="The VDP's p
     </ul>
   </li>
   <li data-ph="G">
-    <p class="ph-t">World facts <small>· boot.asm:161-185</small></p>
+    <p class="ph-t">World facts <small>· boot.emp:263-296</small></p>
     <ul class="ph-steps">
-      <li>Region detection → <code>Hardware_Region</code>, <code>Region_Flags</code>, <code>Timing_Step</code>, <code>DMA_Budget_Default</code>; zero <code>Frame_Accumulator</code></li>
+      <li>Region detection → <code>Hardware_Region</code>, <code>Region_Flags</code>, <code>DMA_Budget_Default</code></li>
       <li>Controller init: $40 to three control registers <em>and</em> three data ports (TH output, driven high)</li>
-      <li>Install <code>HBlank_Handler_Ptr = HBlank_Null</code></li>
+      <li>Fill <code>HBlank_Vector_Slot</code> with an idle <code>rte</code>, before IRQ4 can fire</li>
     </ul>
   </li>
   <li data-ph="H">
-    <p class="ph-t">Interrupts live <small>· boot.asm:188-194</small></p>
+    <p class="ph-t">Interrupts live <small>· boot.emp:298-307</small></p>
     <ul class="ph-steps">
-      <li><code>setVDPReg</code> mode 2 = $34: VBlank interrupt enabled in the VDP, display still OFF</li>
+      <li>Mode 2 = $34 through the shadow and its dirty mask: VBlank interrupt enabled in the VDP, display still OFF</li>
       <li><code>Flush_VDP_Shadow</code>: the VDP must have VInt enabled before the CPU unmasks</li>
-      <li><code>enableInts</code>: the engine goes live</li>
+      <li><code>move.w #$2300, sr</code>: the engine goes live</li>
     </ul>
   </li>
   <li data-ph="I">
-    <p class="ph-t">Handoff to the game <small>· boot.asm:197-220</small></p>
+    <p class="ph-t">Handoff to the game <small>· boot.emp:309-335</small></p>
     <ul class="ph-steps">
-      <li>Write <code>CROSS_RESET_MAGIC</code> (<code>'INIT'</code>) to $FFFFFF00, the cold-boot-complete marker</li>
       <li>DEBUG builds: <code>CompressionSelfTest</code>, the golden decompressor self-test</li>
       <li>Sound builds: <code>Sound_Init</code>, a mailbox idle handshake with the running Z80 driver</li>
-      <li><code>gameBootHook</code>: game-supplied, may be empty</li>
-      <li>Set <code>Game_State = Game_Entry</code>, <code>Game_State_ID = GAME_ENTRY_ID</code>, clear <code>Game_State_Init</code></li>
-      <li><code>bra.w GameLoop</code>: never returns</li>
+      <li><code>invoke Game.boot_hook</code>: game-supplied, and zero bytes when left <code>= empty</code></li>
+      <li>Set <code>Game_State = Game.entry</code>, <code>Game_State_ID = Game.ENTRY_ID</code>, clear <code>Game_State_Init</code></li>
+      <li><code>jbra GameLoop</code>: never returns</li>
     </ul>
   </li>
 </ol>
 
 <p>Note what the last phase says about the engine/game split: boot ends at <code>GameLoop</code>
 with a <em>game-supplied</em> entry state. The engine has no idea whether the game is Sonic 4 or
-the demo's white box on a blue field; it just runs whatever <code>Game_Entry</code> the game's
+the demo's white box on a blue field; it just runs whatever <code>Game.entry</code> the game's
 manifest declared. And the handoff is live: VBlank is enabled in the VDP and unmasked in the
 CPU before the branch (phase H), so the game's first state runs with interrupts already
 firing. There is no masked handoff to unwind.</p>
@@ -1417,32 +1449,33 @@ whatever the game puts up. Boot itself is invisible.</p>
 
 <p><code>GameLoop</code>, the destination of that final branch, is four steps repeated forever:
 wait for VBlank (<code>VSync_Wait</code>, section 7), drain one pending sound effect into the
-Z80 mailbox (sound builds), run the game's per-frame debug hook (<code>gameDebugTick</code>),
+Z80 mailbox (sound builds), run the game's per-frame debug hook (<code>Game.debug_tick</code>),
 and jump through <code>Game_State</code>. Everything the engine does after boot happens inside
 one of those four steps.</p>
-<span class="src">engine/system/game_loop.asm:10</span>
+<span class="src">engine/system/game_loop.emp:28-43</span>
 
 <h3>The boot-time contract</h3>
 
 <p>Boot is also where the engine/game wall is easiest to see, because boot consumes the whole
-game-facing contract in one pass. A game is a <em>manifest</em>: its <code>main.asm</code>
-declares seven include-macros (config, RAM, engine-block code, object-bank code, data, sound
-data, game states) and then includes <code>engine/engine.inc</code>, which owns the entire ROM
+game-facing contract in one pass. The engine <em>declares</em> that seam as a typed interface
+called <code>Game</code>, and a game is the single <code>implement</code> block that binds each
+member. The engine owns the entire ROM
 layout from the <span class="term" data-def="The first 256 bytes of ROM: a table of addresses telling the 68000 where to jump for every interrupt, error and reset.">vector table</span> to the end-of-ROM marker. What boot itself asks of the game is
 small and precise:</p>
 
 <ul>
-  <li><code>GAME_*</code> header strings, consumed by <code>gameHeader</code> at build time
-  (section 9)</li>
-  <li><code>gameBootHook</code>, invoked once, after <code>Sound_Init</code>: defined in the
-  game's contract file (<code>games/&lt;game&gt;/config/game.asm</code>), and may be empty</li>
-  <li><code>Game_Entry</code> and <code>GAME_ENTRY_ID</code>, the first state routine and its
+  <li>The header strings, declared as a typed <code>GameHeader</code> struct whose field widths
+  are checked at build time (section 9)</li>
+  <li><code>Game.boot_hook</code>, invoked once, after <code>Sound_Init</code>: bound in the
+  game's manifest (<code>games/&lt;game&gt;/config/game.emp</code>), and left <code>= empty</code>
+  in every canonical build, where the call site emits nothing at all</li>
+  <li><code>Game.entry</code> and <code>Game.ENTRY_ID</code>, the first state routine and its
   id, installed as the final act before <code>GameLoop</code></li>
 </ul>
 
 <p>Two consequences of the wall are worth spelling out. First, a game must boot with sound
-compiled out: the game-states macro sits outside the engine's sound conditional, so
-<code>Game_Entry</code> has to resolve even in a sound-off build. Second, the 64KB RAM wipe in
+compiled out: the game's own states sit outside the engine's sound conditional, so
+<code>Game.entry</code> has to resolve even in a sound-off build. Second, the 64KB RAM wipe in
 phase C covers game RAM too; game variables live in a region that continues from the engine's
 <code>Engine_RAM_End</code> seam, inside the same 64KB, so every game starts from zeroed memory
 without writing its own clear loop.</p>
@@ -1452,7 +1485,7 @@ without writing its own clear loop.</p>
 
 <p>A recurring Aeon principle: never compute at runtime what the assembler can compute at build
 time, and never let a mistake survive to hardware that a build error could have caught. §0 is
-full of small examples: the <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> register commands are built by a <code>vdpReg</code> function,
+full of small examples: the <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> register commands are built by a <code>vdp_reg</code> function,
 the boot data block is read sequentially with all offsets resolved at assembly, and the ROM
 header is generated, not typed.</p>
 
@@ -1471,14 +1504,19 @@ header is generated, not typed.</p>
   </div>
 </details>
 
-<p>The ROM header shows the pattern best. The <code>gameHeader</code> macro takes nine
-game-declared strings and refuses to assemble if any has the wrong width; a wrong-length
+<p>The ROM header shows the pattern best, and it shows something better than an assertion: the
+header is a typed struct, so the <em>type</em> is the check. Each field declares its exact byte
+width, and a game-declared string of the wrong length simply fails to lower. A wrong-length
 serial becomes a build failure, not a corrupt header field discovered on hardware:</p>
 
-<pre>        <span class="k">if</span> strlen(GAME_SERIAL) &lt;&gt; <span class="n">14</span>
-          <span class="k">fatal</span> <span class="c">"GAME_SERIAL must be exactly 14 chars"</span>
-        <span class="k">endif</span></pre>
-<span class="src">engine/system/header.inc:25</span>
+<pre><span class="k">struct</span> HeaderTop {
+    console:   [u8; <span class="n">16</span>],   <span class="c">// $100</span>
+    copyright: [u8; <span class="n">16</span>],   <span class="c">// $110</span>
+    title_dom: [u8; <span class="n">48</span>],   <span class="c">// $120</span>
+    title_ovs: [u8; <span class="n">48</span>],   <span class="c">// $150</span>
+    serial:    [u8; <span class="n">14</span>],   <span class="c">// $180</span>
+}</pre>
+<span class="src">games/sonic4/config/header.emp:12-18</span>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>No boot-time checksum check.</strong> The header's checksum word at $18E is emitted as
@@ -1495,25 +1533,26 @@ serial becomes a build failure, not a corrupt header field discovered on hardwar
   </div>
 </div>
 
-<p>The same idea guards the whole ROM image and the RAM structures boot depends on:</p>
+<p>Where a type cannot carry the rule, an explicit wall does. <code>ensure</code> is the
+assertion form, and the two that guard the whole ROM image are checked at link time, because
+what they test is where the terminus label finally landed:</p>
 
-<pre>    <span class="k">if</span> (EndOfRom &amp; <span class="n">1</span>) &lt;&gt; <span class="n">0</span>
-      <span class="k">error</span> <span class="c">"ROM size is odd"</span>
-    <span class="k">endif</span>
+<pre><span class="c">// Wall 1 (link-time): the assembled ROM must be even-sized (word-aligned tail).</span>
+<span class="k">ensure</span>((extern(<span class="c">"EndOfRom"</span>) &amp; <span class="n">1</span>) == <span class="n">0</span>, <span class="c">"ROM size is odd"</span>)
 
-    <span class="k">if</span> EndOfRom &gt; <span class="n">$3FFFFF</span>
-      <span class="k">error</span> <span class="c">"ROM exceeds 4MB without banking"</span>
-    <span class="k">endif</span></pre>
-<span class="src">engine/engine.inc:458</span>
+<span class="c">// Wall 2 (link-time): the ROM must fit 4 MB without banking.</span>
+<span class="k">ensure</span>(extern(<span class="c">"EndOfRom"</span>) &lt;= <span class="n">$3FFFFF</span>, <span class="c">"ROM exceeds 4MB without banking"</span>)</pre>
+<span class="src">engine/system/epilogue.emp:28-32</span>
 
-<pre>        <span class="k">if</span> VDP_Shadow_len &lt;&gt; <span class="n">19</span>
-          <span class="k">error</span> <span class="c">"VDP_Shadow struct is \{VDP_Shadow_len} bytes, expected 19"</span>
-        <span class="k">endif</span></pre>
-<span class="src">engine/structs.asm:31</span>
+<p>The same form guards the RAM structures boot depends on. The DMA queue's drain is spelled for
+a 14-byte entry in three separate places, so the entry layout is pinned where each of them lives:</p>
 
-<p>The shadow-struct assert is the quiet hero: the flush loop, the dirty mask width, and the
-"registers $00-$12 only" rule all assume that struct is exactly 19 bytes, and anyone who adds a
-field learns about all three dependents at build time.</p>
+<pre><span class="k">ensure</span>(sizeof(DMAEntry) == <span class="n">14</span>, <span class="c">"queue_static_dma's 3L+1W entry copy assumes sizeof(DMAEntry) == 14 - re-derive the copy"</span>)</pre>
+<span class="src">engine/system/buffers.emp:66</span>
+
+<p>That assert is the quiet hero of the pattern: a copy loop, a jump-table stride, and a
+dispatch index all assume that struct is exactly 14 bytes, and anyone who adds a field learns
+about every dependent at build time rather than on hardware.</p>
 
 <p>DEBUG builds extend the principle past build time, into the first moments of runtime. Right
 after interrupts go live (phase I in section 8), boot runs <code>CompressionSelfTest</code>: the
@@ -1524,7 +1563,7 @@ vectors the buffer is poisoned with $A5A5: all three vectors share one payload, 
 poison a decoder that did nothing at all would pass on the previous vector's output. Any
 mismatch between a 68000 decompressor and its build-side encoder halts on the assert screen
 before any game state has touched the buffer.</p>
-<span class="src">engine/debug/compression_selftest.asm:23</span>
+<span class="src">engine/debug/compression_selftest.emp:43-72</span>
 
 <p>Two smaller pieces of §0 machinery round out the picture. The <strong>sine table</strong> is
 320 word entries at amplitude $100, binary-included from <code>engine/data/sine.bin</code>, with
@@ -1561,7 +1600,7 @@ function expandAll(btn){
    ["Privilege violation","PrivilegeViol"],["Trace","Trace"],
    ["Line 1010 (A-line)","Line1010Emu"],["Line 1111 (F-line)","Line1111Emu"]
   ].forEach(e => add(e[0], e[1],
-      "Per-exception label: the debug error handler can name exactly which exception fired.", "exc"));
+      "Per-exception label: the error handler can name exactly which exception fired.", "exc"));
 
   for (let i = 0; i < 12; i++)
     add("Reserved", "ErrorExcept",
@@ -1569,15 +1608,20 @@ function expandAll(btn){
   add("Spurious interrupt", "ErrorExcept",
       "An interrupt whose source vanished before the CPU could ask who raised it. Error handler.", "resv");
 
-  add("IRQ1 (external)", "NullInterrupt", "Unused on the Genesis: immediate rte.", "irqn");
-  add("IRQ2 (EXT port)", "NullInterrupt", "External-port interrupt, unused: immediate rte.", "irqn");
-  add("IRQ3", "NullInterrupt", "Unused on the Genesis: immediate rte.", "irqn");
-  add("IRQ4 (HBlank)", "HBlank_Dispatch",
-      "RAM-patched: a ROM stub jumps through HBlank_Handler_Ptr. Handlers may clobber only d0-d1/a0.", "irqh");
-  add("IRQ5", "NullInterrupt", "Unused on the Genesis: immediate rte.", "irqn");
+  add("IRQ1 (external)", "ErrorExcept",
+      "Unused on the Genesis. An interrupt level the engine does not model halts loudly rather than returning silently, so this points at the same error handler the reserved slots do. The lean profile names ReleaseFault here instead.", "irqn");
+  add("IRQ2 (EXT port)", "ErrorExcept",
+      "The EXT-port interrupt, which this engine does not use: same loud halt as the reserved slots, or ReleaseFault in the lean profile.", "irqn");
+  add("IRQ3", "ErrorExcept",
+      "Unused on the Genesis: routed to the error handler, not to a silent rte. ReleaseFault in the lean profile.", "irqn");
+  add("IRQ4 (HBlank)", "HBlank_Vector_Slot",
+      "The one vector that does not name ROM: it points straight at six executable bytes of work RAM, holding an idle rte until HBlank_Install patches a jmp into them. The handler runs in raw interrupt context, saves and restores everything it touches, and ends with rte.", "irqh");
+  add("IRQ5", "ErrorExcept",
+      "Unused on the Genesis: loud halt, same as the reserved slots. ReleaseFault in the lean profile.", "irqn");
   add("IRQ6 (VBlank)", "VBlank_Handler",
       "ROM handler with internal VInt_Ptr dispatch and VBlank_Ready lag detection.", "irqv");
-  add("IRQ7 (NMI)", "NullInterrupt", "Non-maskable and unused on standard hardware: immediate rte.", "irqn");
+  add("IRQ7 (NMI)", "ErrorExcept",
+      "Non-maskable and unused on standard hardware, and still routed to the error handler rather than an rte. ReleaseFault in the lean profile.", "irqn");
 
   for (let i = 0; i < 16; i++)
     add("TRAP #" + i, "ErrorTrap",

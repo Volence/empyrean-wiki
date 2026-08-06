@@ -476,7 +476,7 @@ two hex digits, the low byte the bottom two.</p>
 <p>Why join them? A single 8-bit register only counts from 0 to 255, nowhere near enough to name a
 location in memory, which needs a full 16 bits. A register pair is exactly 16 bits wide, so it can hold
 an address. A 16-bit value runs from <code>$0000</code> to <code>$FFFF</code>, which is
-2<sup>16</sup> = <a href="../basics/numbers-and-notation.html">65,536</a> distinct values, so a pair can name any of 65,536 memory
+2<sup>16</sup> = <a href="../basics/numbers-and-notation.html#s5">65,536</a> distinct values, so a pair can name any of 65,536 memory
 locations: 64 KiB in all. That is the whole span of memory the Z80 can address at any one moment. On the
 Genesis the Z80 does not own 64 KiB of RAM outright; instead its 8 KiB of sound RAM, the hardware ports,
 and a movable window into the cartridge all map into that 64 KiB range, so the console reaches far more
@@ -595,7 +595,7 @@ to; the notes below explain the bits that need care.</p>
 <p>Four of these flags you branch on directly. <code>Z</code> (zero) and <code>C</code> (carry) are the
 workhorses: nearly every loop and comparison ends with a jump that reads one of them. <code>S</code>
 (sign) is a copy of the result's top bit, which is the sign bit
-<a href="../basics/numbers-and-notation.html">when a byte is read as a signed number</a>; a set <code>S</code> means negative.
+<a href="../basics/numbers-and-notation.html#s7">when a byte is read as a signed number</a>; a set <code>S</code> means negative.
 <code>P/V</code> you can also branch on, but its meaning depends on what set it, which the next note
 untangles. Conditional branches read these flags, never a general register directly: the CPU does a
 calculation, the calculation sets flags, and the jump inspects a flag.</p>
@@ -628,7 +628,7 @@ instructions later. Each instruction page spells out precisely which flags its e
     <em>logic</em> operation (AND, OR, XOR) the bit is <strong>parity</strong>: 1 when the number of
     1-bits in the result is even, 0 when odd. After an <em>arithmetic</em> operation (add, subtract,
     compare) the same bit is instead <strong>overflow</strong>: set when a signed result
-    <a href="../basics/numbers-and-notation.html">slips outside the range a signed byte can hold</a>, which is -128 to +127. Adding
+    <a href="../basics/numbers-and-notation.html#s7">slips outside the range a signed byte can hold</a>, which is -128 to +127. Adding
     two positive numbers and landing on a "negative" result is the classic overflow it catches.</p>
     <p>So the honest one-line description is "parity after logic, overflow after arithmetic," never just
     one of the two. (It also carries a couple of special-case meanings, such as reflecting the interrupt
@@ -652,7 +652,7 @@ one, is the whole of Z80 decision-making, and it is why the flag register earns 
 <p><code>IX</code> and <code>IY</code> are the Z80's two <span class="term" data-def="A 16-bit register (IX or IY on the Z80) that holds a base address, so an instruction can reach memory at that address plus a small signed offset.">index registers</span>, each a full 16-bit register
 that holds an address, like <code>HL</code>. Their signature move is indexed addressing:
 <code>(IX+d)</code> means "the byte at the address in <code>IX</code> plus a small
-<a href="../basics/numbers-and-notation.html">signed displacement</a> <code>d</code>." That <code>d</code> is an 8-bit signed value,
+<a href="../basics/numbers-and-notation.html#s7">signed displacement</a> <code>d</code>." That <code>d</code> is an 8-bit signed value,
 so it reaches exactly -128 to +127 bytes from the base. Point an index register at the start of a small
 data structure and each field sits at a fixed offset, so you name the base once and pick out any field by
 its offset.</p>
@@ -890,9 +890,14 @@ register's value. <code>SP</code> and <code>PC</code> drive calls and control fl
 downward as routines nest. And the alternate set is a second workspace you swap in whole under a clear
 ownership convention, never naming a piece of it directly.</p>
 
-<p>Next in the Z80 track: the instruction pages, which document <code>LD</code>, the arithmetic and logic
-operations, the jumps and calls, and the block and exchange instructions this page only named. Coming
-soon.</p>
+<p>Next in the Z80 track are the two instruction pages, which document the verbs this one only named.
+<a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> covers <code>LD</code>, the stack, the
+exchanges, and the whole of the arithmetic and logic.
+<a href="bits-flow-blocks.html">Bits, Flow &amp; Blocks</a> covers the rotates, the single-bit operations,
+the jumps and calls, and the block instructions. Both assume exactly what you have just read: the
+accumulator, the three pairs, <code>(HL)</code>, and the flags. Start with Loads &amp; Arithmetic, which
+also teaches how to read an instruction entry; the sibling page uses the same shape and shares its
+index.</p>
 
 <footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
 Next: <a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> &middot;

@@ -271,10 +271,9 @@ the game and the Z80 that runs the sound. Every module of the engine and every g
 <code>.emp</code>, and it is turned into ROM bytes by <span class="term" data-def="The from-scratch assembler that turns .emp source into Genesis ROM bytes for both of the console's CPUs, and checks the contracts the language adds.">Sigil</span>, the project's
 own assembler. There is no separate C layer and no runtime underneath: what you read is what runs.</p>
 
-<p>Here is the one origin fact worth knowing, because it set the design bar for everything else.
-Sigil began by earning trust the hard way: before it added a single new idea, it reproduced the
+<p>Sigil began by earning trust the hard way: before it added a single new idea, it reproduced the
 engine's ROM byte for byte, identical to the output of the old assembler it replaced. Only once it
-could do that did the language grow on top. That order matters. It means every feature
+could do that did the language grow on top. That order means every feature
 <code>.emp</code> adds is something you could have written by hand in plain assembly, made safer or
 shorter, never something magic bolted on that you cannot see through.</p>
 
@@ -333,14 +332,12 @@ the build fails outright, with no ROM. The sections ahead show the checker doing
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>A promise the tool can check becomes a contract; one it cannot stays a comment.</strong>
-  The rule the language holds itself to is that a correctness feature is honest or it is absent. If
+  The rule the language holds itself to sorts every claim by whether a tool can back it. If
   the assembler can verify a claim, that claim is written as a checked contract, not prose, so it
   can never drift out of date. If a claim cannot be checked (an assumption about the hardware, a note
-  about intent), it stays an ordinary comment and makes no promise it cannot keep. Crucially, there
-  is no escape hatch that lets a false contract assemble anyway: the language refuses to provide the
-  one switch that would let a lie survive, because a switch like that would make every contract on
-  every routine suspect. The cost is bluntness. Sometimes you must either prove a thing or admit you
-  are only asserting it; there is no comfortable middle where a hopeful claim looks official.
+  about intent), it stays an ordinary comment and makes no promise it cannot keep. The cost is
+  bluntness. Sometimes you must either prove a thing or admit you are only asserting it; there is
+  no comfortable middle where a hopeful claim looks official.
 </div>
 
 <!-- ================================================================ -->
@@ -430,10 +427,6 @@ parameter list are the routine's contract, and they are verified, not decorative
     line that is not valid. <code>.emp</code> adds a second reason. When a routine's contract and its
     instructions disagree, the assembler understands you perfectly; it just will not go along with it.
     It stops and names the routine.</p>
-    <p>That is the tool keeping a promise on your behalf. A checked claim is only worth anything if it
-    is never quietly broken, so the moment the code contradicts a contract, handing you a ROM anyway
-    would make every contract in the engine untrustworthy. A failed build here is not the tool being
-    fussy; it is the tool refusing to ship a lie you would otherwise have believed.</p>
   </div>
 </details>
 
@@ -448,12 +441,9 @@ parameter list are the routine's contract, and they are verified, not decorative
 }</pre>
   <p>In plain assembly the <code>preserves(d3)</code> note would be a harmless lie: the routine writes
   d3 and never gives it back, but nothing would object, and a caller trusting the note would be
-  quietly corrupted. Sigil objects. It sees d3 written on the path to <code>rts</code> with no matching
-  restore, judges the promise unverifiable, and stops the build rather than emit a routine whose
-  contract is false, on the principle that a wrong contract is worse than none. The fix is to tell the
-  truth, <code>clobbers(d1, d3)</code>, or to genuinely save and restore d3. Either way the header ends
-  up matching the code, which is the whole point: the annotation is not allowed to disagree with the
-  instructions.</p>
+  quietly corrupted. Sigil objects. The fix is to tell the truth, <code>clobbers(d1, d3)</code>, or
+  to genuinely save and restore d3. Either way the header ends up matching the code, which is the
+  whole point: the annotation is not allowed to disagree with the instructions.</p>
 </div>
 
 <p>The body, by contrast, holds no surprises. <code>moveq</code>, <code>move.b</code>,
@@ -504,9 +494,8 @@ walker below lets you click any line and see which is which.</p>
 <!-- ================================================================ -->
 <h2 id="s3">3 · Instructions are still instructions</h2>
 
-<p>It is worth being precise about the reassurance in section 1, because a lot rides on it. Inside a
-routine body, 68000 code is 68000 code and Z80 code is Z80 code: the same mnemonics, the same operand
-order, the same sizes and flags as the instruction tracks teach. <code>.emp</code> adds no virtual
+<p>Inside a routine body, 68000 code is 68000 code and Z80 code is Z80 code: the same mnemonics,
+the same operand order, the same sizes and flags as the instruction tracks teach. <code>.emp</code> adds no virtual
 instructions of its own, and a plain instruction line hides no secret code generation. What
 <code>move.w d0, d1</code> does, and what it costs, you look up on the
 <a href="../m68k/moving-data.html">68000: Moving Data</a> page; what <code>ld a, (hl)</code> does you
@@ -556,11 +545,8 @@ the header and you have assembly that would run on any 68000.</p>
     write, would make it impossible to reason about timing, and timing is the whole game on this
     hardware: the engine has a few thousand cycles per frame and must not miss the window. So the
     promise that a body contains only the instructions you wrote is not a stylistic nicety, it is what
-    lets a programmer keep predicting the machine exactly.</p>
-    <p>That is why the three exceptions above are called out one by one instead of left implicit. Each
-    is visible in the source (<code>assert</code>, <code>invoke</code>, <code>jbra</code> are words you
-    can see), each expands to something you can look up, and none of them appears silently in the
-    middle of code that looks like plain instructions. Nothing generates a byte behind your back.</p>
+    lets a programmer keep predicting the machine exactly. Nothing generates a byte behind your
+    back.</p>
   </div>
 </details>
 
@@ -590,16 +576,10 @@ control home.</p>
 <details class="explain">
   <summary>New here? · Why let the assembler choose the branch size?</summary>
   <div class="x-body">
-    <p>A branch instruction reaches its target by counting bytes from itself, and the 68000 offers a
-    short form (fewer bytes, limited reach) and longer forms (more bytes, further reach). The target is
-    the same routine either way; the only question is how many bytes the jump itself needs, which
-    depends on how far apart the two ends up in the finished ROM. That is not a decision about what the
-    program does, only about how it is encoded.</p>
-    <p>Asking a human to make that call is asking for the wrong guess. Pick short for a target that
-    later drifts too far and the build rejects it; you widen the letter and try again, and you repeat
-    that dance every time code moves. The assembler already knows where everything lands, so it can
-    choose the smallest encoding that reaches and re-choose automatically when things shift. You write
-    the intent once; the bytes are its problem, and they stay minimal without your attention.</p>
+    <p>The target is the same routine either way; the only question is how many bytes the jump itself
+    needs, so the choice is about encoding, not about what the program does. The assembler already
+    knows where everything lands, so it can pick the smallest form that reaches and re-pick
+    automatically when code shifts.</p>
   </div>
 </details>
 
@@ -620,10 +600,8 @@ state routine is:</p>
         jbra    GameLoop</pre>
 <span class="src">engine/system/game_loop.emp:41-43</span>
 
-<p>The <code>jsr (a0) as GameState</code> jumps through the address in a0, and the <code>as
-GameState</code> tells the checker that a0 had better hold a routine of the <code>GameState</code>
-kind. The <code>jbra GameLoop</code> right after it is the loop closing on itself with an auto-reaching
-jump. How that typing is enforced, and the enumerated form that lets the checker cost every branch of a
+<p>The <code>jbra GameLoop</code> right after the dispatch is the loop closing on itself with an
+auto-reaching jump. How that typing is enforced, and the enumerated form that lets the checker cost every branch of a
 <span class="term" data-def="A list of addresses held in memory, one per case, that code indexes into so it can jump to the entry matching a value it is holding.">jump table</span>, are later pages;
 for reading, name it and move on.</p>
 
@@ -641,11 +619,9 @@ for reading, name it and move on.</p>
 </div>
 
 <div class="gotcha"><span class="g-tag">Gotcha</span>
-  <strong>A bare <code>jmp</code> or <code>jsr</code> to a plain named routine is not the idiom, and
-  reading one as an ordinary call is a mistake.</strong> In <code>.emp</code> the named, fixed-target
-  call is spelled <code>jbsr</code> and the named tail jump is <code>jbra</code>. When you do meet a
-  bare <code>jmp</code>/<code>jsr</code>, expect a register or an indexed table as its operand and a
-  <code>as SomeType</code> annotation naming what it may land on. If you are hunting for where a routine
+  <strong>When you meet a bare <code>jmp</code>/<code>jsr</code>, expect a register or an indexed
+  table as its operand and an <code>as SomeType</code> annotation naming what it may land
+  on.</strong> If you are hunting for where a routine
   is called from, searching for <code>jbsr</code> and <code>jbra</code> finds the static calls; the
   bare forms are the computed ones.
 </div>
@@ -683,12 +659,6 @@ assembler resolving against it, supply the numbers.</p>
     choose the same spot and nobody notices until they both show up; rearranging one team means
     renegotiating with everyone nearby. In the second, one chart is responsible for the whole floor, and
     it simply cannot double-book a desk, because a single authority is placing them all.</p>
-    <p>ROM layout is the same problem. If each file names its own address, conflicts hide until the wrong
-    two files are built together, and every move ripples into address math elsewhere. A single map is the
-    seating chart: it owns every section's spot, so overlaps and gaps become things the tool can catch,
-    and a file can be reordered or relocated without editing a single number inside it. This is the same
-    lesson the other tracks draw about the assembler not being the CPU, applied to layout: deciding where
-    code lives is a build-time job, done once, in one place.</p>
   </div>
 </details>
 

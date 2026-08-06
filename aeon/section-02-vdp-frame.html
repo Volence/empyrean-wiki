@@ -481,25 +481,23 @@ like <code>$85xx</code> means "put <code>xx</code> in register 5".</p>
 
 <p>That convention has a sharp edge: VDP registers are write-only. The chip never lets the CPU
 ask "what's in register 1 right now?" So Aeon keeps its own answer in RAM, a 19-byte
-<code>VDP_Shadow</code> struct mirroring registers $00-$12 (the five DMA registers $13-$17 are
+<code>VdpShadow</code> struct mirroring registers $00-$12 (the five DMA registers $13-$17 are
 per-transfer state the DMA queue owns, not settled configuration, so they are deliberately not
-shadowed):</p>
+shadowed). Nothing asserts the 19: the struct <em>is</em> the layout, and the RAM slot that
+holds it is declared as <code>[u8; sizeof(VdpShadow)]</code>, so adding a field moves both
+together:</p>
 
-<pre>VDP_Shadow struct
-vdp_mode1               ds.b 1          <span class="c">; reg $00</span>
-vdp_mode2               ds.b 1          <span class="c">; reg $01</span>
-vdp_plane_a             ds.b 1          <span class="c">; reg $02</span>
-<span class="c">; … one field per register through $12 …</span>
-vdp_window_h            ds.b 1          <span class="c">; reg $11</span>
-vdp_window_v            ds.b 1          <span class="c">; reg $12</span>
-VDP_Shadow endstruct
+<pre><span class="k">pub struct</span> VdpShadow {
+    vdp_mode1:       u8,   <span class="c">// reg $00</span>
+    vdp_mode2:       u8,   <span class="c">// reg $01</span>
+    vdp_plane_a:     u8,   <span class="c">// reg $02</span>
+    <span class="c">// … one field per register through $12 …</span>
+    vdp_window_h:    u8,   <span class="c">// reg $11</span>
+    vdp_window_v:    u8,   <span class="c">// reg $12</span>
+}</pre>
+<span class="src">engine/structs.emp:137-157</span>
 
-        if VDP_Shadow_len &lt;&gt; <span class="n">19</span>
-          error "VDP_Shadow struct is \{VDP_Shadow_len} bytes, expected 19"
-        endif</pre>
-<span class="src">engine/structs.asm:9</span>
-
-<p>Game code writes registers through a <code>SetVDPReg</code> macro that updates the shadow and
+<p>Game code writes registers through a <code>setVDPReg</code> write-through that updates the shadow and
 sets a bit in a dirty mask; once per <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>, <code>Flush_VDP_Shadow</code> walks all 19 fields and writes only
 the ones whose dirty bit is set. On a typical gameplay frame zero to three registers actually
 change, so the flush skips sixteen-plus writes it would otherwise have to make blind.</p>
@@ -511,7 +509,7 @@ change, so the flush skips sixteen-plus writes it would otherwise have to make b
   value back as authoritative), and mid-frame raster handlers, which may hit registers directly
   because that is the entire point of a raster effect, but must never touch the shadow or dirty
   mask, since the next VBlank flush would just re-assert the old value over the raster write.
-  Everything else goes through <code>SetVDPReg</code>.
+  Everything else goes through <code>setVDPReg</code>.
   <p class="prov-label">Who does what</p>
   <div class="prov">
     <span class="yes">Batman &amp; Robin ✓ RAM shadow table, bulk-writes all 19 every frame</span>
@@ -522,7 +520,7 @@ change, so the flush skips sixteen-plus writes it would otherwise have to make b
 
 <p>The rule has a known live exception, worth stating plainly rather than pretending the
 invariant is perfect: OJZ test/game-shell code contains a direct <code>$8B</code> control-port
-write for HScroll mode that bypasses <code>SetVDPReg</code> entirely. It is tracked as a bug, not
+write for HScroll mode that bypasses <code>setVDPReg</code> entirely. It is tracked as a bug, not
 a supported pattern; the engine-level convention still holds, and the violation is content-side,
 not something the engine itself does.</p>
 
@@ -598,16 +596,16 @@ full 32-bit longword rather than just its low half. MOVEM and the size suffixes 
 <a href="../m68k/moving-data.html">68000: Moving Data</a>.
 Then the handler checks one flag and picks one of exactly two paths:</p>
 
-<pre><span class="k">VBlank_Handler</span>:
+<pre><span class="k">pub proc VBlank_Handler</span> () clobbers() preserves(d0-d7/a0-a6) grants(vblank) {
         movem.l d0-a6, -(sp)
-        tst.b   (VBlank_Ready).w
-        beq.s   .lag
-        movea.l (VInt_Ptr).w, a0
-        jsr     (a0)
-        bra.s   .done
-.lag:
-        bsr.w   VInt_Lag</pre>
-<span class="src">engine/system/vblank.asm:8</span>
+        tst.b   VBlank_Ready                    <span class="c">// (VBlank_Ready).w</span>
+        beq     .lag
+        movea.l VInt_Ptr, a0                    <span class="c">// (VInt_Ptr).w</span>
+        jsr     (a0) as VBlankHandler           <span class="c">// computed dispatch (bare jsr by the jbra/jbsr rule)</span>
+        jbra    .done
+    .lag:
+        jbsr    VInt_Lag</pre>
+<span class="src">engine/system/vblank.emp:40-48</span>
 
 <p><code>VBlank_Ready</code> is the main loop's promise: "I finished this frame's work before you
 fired." When that promise holds, the handler dispatches through <code>VInt_Ptr</code>, which
@@ -621,65 +619,69 @@ correctness would break if it moved.</p>
 
 <figure class="diagram">
   <ol class="bootline">
-    <li data-ph="1"><p class="ph-t">DMA-window open <small>· vblank.asm:49-56</small></p>
-      <ul class="ph-steps"><li>Sound builds: brief <code>stopZ80</code> / raise <code>SND_CTRL_DMA_ACTIVE</code> / <code>startZ80</code> (see section 8)</li>
-      <li>Sound-off builds: <code>stopZ80</code> held across the whole window instead</li></ul></li>
-    <li data-ph="2"><p class="ph-t">Flush_VDP_Shadow <small>· vblank.asm:58</small></p>
+    <li data-ph="1"><p class="ph-t">DMA-window open <small>· vblank.emp:83-92</small></p>
+      <ul class="ph-steps"><li>Sound builds: brief bus hold / raise <code>SND_CTRL_DMA_ACTIVE</code> / release (see section 8)</li>
+      <li>Sound-off builds: the bus is held across the whole window instead</li></ul></li>
+    <li data-ph="2"><p class="ph-t">Budget seed <small>· vblank.emp:97</small></p>
+      <ul class="ph-steps"><li><code>DMA_Budget_Remaining</code> loaded from <code>DMA_Budget_Default</code> <em>before</em> any VDP work, so the two big window riders below charge against it as they run</li></ul></li>
+    <li data-ph="3"><p class="ph-t">Flush_VDP_Shadow <small>· vblank.emp:99</small></p>
       <ul class="ph-steps"><li>Writes only the dirty VDP registers (section 2)</li></ul></li>
-    <li data-ph="3"><p class="ph-t">Enqueue_Dirty_Buffers <small>· vblank.asm:60</small></p>
+    <li data-ph="4"><p class="ph-t">Enqueue_Dirty_Buffers <small>· vblank.emp:101</small></p>
       <ul class="ph-steps"><li>Palette lines, sprite table, HScroll static entries (section 6)</li></ul></li>
-    <li data-ph="4"><p class="ph-t">VInt_DrawLevel <small>· vblank.asm:62</small></p>
-      <ul class="ph-steps"><li>Drains the plane buffer with direct CPU writes to the VDP data port (section 7)</li></ul></li>
-    <li data-ph="5"><p class="ph-t">Process_DMA_Critical <small>· vblank.asm:64</small></p>
-      <ul class="ph-steps"><li>Palette, sprite table, HScroll entries actually leave RAM for VRAM here (section 5)</li></ul></li>
-    <li data-ph="6"><p class="ph-t">Vscroll_Write (VSRAM) <small>· vblank.asm:67</small></p>
+    <li data-ph="5"><p class="ph-t">VInt_DrawLevel <small>· vblank.emp:103-110</small></p>
+      <ul class="ph-steps"><li>Charges the pending buffer bytes against the budget, then drains the plane buffer with direct CPU writes to the VDP data port (section 7)</li></ul></li>
+    <li data-ph="6"><p class="ph-t">Process_DMA_Critical <small>· vblank.emp:112-140</small></p>
+      <ul class="ph-steps"><li>Walks the queued Critical entries to charge their bytes, floors the budget at 0, then drains: palette, sprite table and HScroll entries actually leave RAM for VRAM here (section 5)</li></ul></li>
+    <li data-ph="7"><p class="ph-t">Vscroll_Write (VSRAM) <small>· vblank.emp:143</small></p>
       <ul class="ph-steps"><li>Must run after HScroll DMA, not before; a direct write, not queued</li></ul></li>
-    <li data-ph="7"><p class="ph-t">Budget reset <small>· vblank.asm:69</small></p>
-      <ul class="ph-steps"><li><code>DMA_Budget_Remaining</code> reloaded from <code>DMA_Budget_Default</code> (7,200 NTSC / 15,000 PAL)</li></ul></li>
-    <li data-ph="8"><p class="ph-t">Process_DMA_Important <small>· vblank.asm:70</small></p>
+    <li data-ph="8"><p class="ph-t">Process_DMA_Important <small>· vblank.emp:145</small></p>
       <ul class="ph-steps"><li>Budget-gated (section 5)</li></ul></li>
-    <li data-ph="9"><p class="ph-t">Process_DMA_Deferrable <small>· vblank.asm:71</small></p>
+    <li data-ph="9"><p class="ph-t">Process_DMA_Deferrable <small>· vblank.emp:146</small></p>
       <ul class="ph-steps"><li>Budget-gated, same drain routine as Important</li></ul></li>
-    <li data-ph="10"><p class="ph-t">DMA-window close <small>· vblank.asm:73-86</small></p>
-      <ul class="ph-steps"><li>Sound builds: lower <code>SND_CTRL_DMA_ACTIVE</code>; sound-off builds: <code>startZ80</code></li></ul></li>
-    <li data-ph="11"><p class="ph-t">Controllers <small>· vblank.asm:89-98</small></p>
+    <li data-ph="10"><p class="ph-t">DMA-window close <small>· vblank.emp:154-158</small></p>
+      <ul class="ph-steps"><li>Sound builds: lower <code>SND_CTRL_DMA_ACTIVE</code>; sound-off builds: the bus is released</li></ul></li>
+    <li data-ph="11"><p class="ph-t">Controllers <small>· vblank.emp:161-175</small></p>
       <ul class="ph-steps"><li><code>Read_Controllers</code> plus press-edge accumulator latch</li></ul></li>
-    <li data-ph="12"><p class="ph-t">Frame_Counter <small>· vblank.asm:99</small></p></li>
-    <li data-ph="13"><p class="ph-t">VBlank_Flag set <small>· vblank.asm:100</small></p>
+    <li data-ph="12"><p class="ph-t">Frame_Counter <small>· vblank.emp:176</small></p></li>
+    <li data-ph="13"><p class="ph-t">VBlank_Flag set <small>· vblank.emp:177</small></p>
       <ul class="ph-steps"><li>Signals the main loop's <code>VSync_Wait</code> that this VBlank has run</li></ul></li>
   </ol>
   <figcaption>VInt_Level, all thirteen steps, in shipped order (static fallback: the same order is
   spelled out in the paragraphs around this figure).</figcaption>
 </figure>
 
-<p>Two things about that order are easy to guess wrong. VSRAM (step 6) runs <em>after</em>
+<p>Two things about that order are easy to guess wrong. VSRAM (step 7) runs <em>after</em>
 Critical DMA, not before, because the write must follow the HScroll DMA it is paired with. And
-the plane buffer drain (step 4) runs <em>before</em> Critical DMA, not after, simply because
+the plane buffer drain (step 5) runs <em>before</em> Critical DMA, not after, simply because
 nothing later in the list depends on it and nothing about the plane buffer waits on DMA either;
 putting visual-stability work first is the whole ordering philosophy of this handler.</p>
 
-<pre><span class="k">VInt_Level</span>:
-    ifdef SOUND_DRIVER_ENABLED
-        stopZ80
-        move.b  <span class="n">#1</span>, (SND_Z80_BASE+SND_CTRL_DMA_ACTIVE).l   <span class="c">; raise: DMA window open (Z80 -> DRAIN)</span>
-        startZ80
-    endif
-    ifndef SOUND_DRIVER_ENABLED
-        stopZ80
-    endif
+<pre><span class="k">pub proc VInt_Level</span> () clobbers(d0-d4/a0-a3/a5-a6) requires(vblank) {
+        <span class="k">if</span> SOUND_DRIVER_ENABLED == <span class="n">1</span> {
+            <span class="k">with</span> z80_stopped {
+                move.b  <span class="n">#1</span>, SND_DMA_ACTIVE_SLOT <span class="c">// raise: DMA window open (Z80 -&gt; DRAIN)</span>
+            }
+        }
+        <span class="k">with</span> z80_stopped <span class="k">if</span> SOUND_DRIVER_ENABLED == <span class="n">0</span> {
+            move.w  (DMA_Budget_Default).w, (DMA_Budget_Remaining).w    <span class="c">// widths pinned: mem-to-mem two-symbolic operands need both widths spelled</span>
 
-        bsr.w   Flush_VDP_Shadow
-        bsr.w   Enqueue_Dirty_Buffers   <span class="c">; queues palette + sprites + HScroll (§4.6)</span>
-        bsr.w   VInt_DrawLevel          <span class="c">; drain Plane_Buffer to VDP (§4.1)</span>
-        bsr.w   Process_DMA_Critical    <span class="c">; drains palette + sprites + HScroll</span>
+            jbsr    Flush_VDP_Shadow
 
-        <span class="c">; §4.6: VSRAM write must come AFTER HScroll DMA (CODING_CONVENTIONS §3.4)</span>
-        bsr.w   Vscroll_Write
+            jbsr    Enqueue_Dirty_Buffers   <span class="c">// queues palette + sprites + HScroll (§4.6)</span>
 
-        move.w  (DMA_Budget_Default).w, (DMA_Budget_Remaining).w
-        bsr.w   Process_DMA_Important
-        bsr.w   Process_DMA_Deferrable</pre>
-<span class="src">engine/system/vblank.asm:37</span>
+            <span class="c">// … charge the plane drain against the window budget …</span>
+            jbsr    VInt_DrawLevel          <span class="c">// drain Plane_Buffer to VDP (§4.1)</span>
+
+            <span class="c">// … charge the queued Critical entries, floor the budget at 0 …</span>
+            jbsr    Process_DMA_Critical    <span class="c">// drains palette + sprites + HScroll</span>
+
+            <span class="c">// §4.6: VSRAM write must come AFTER HScroll DMA (CODING_CONVENTIONS §3.4)</span>
+            jbsr    Vscroll_Write
+
+            jbsr    Process_DMA_Important
+            jbsr    Process_DMA_Deferrable
+        }</pre>
+<span class="src">engine/system/vblank.emp:71-147</span>
 
 <details class="explain">
   <summary>New here? · What's a "lag frame", and why does it need its own code path?</summary>
@@ -710,7 +712,7 @@ and Deferrable DMA drains, which simply persist to the next normal frame instead
   <strong>Lag_Frame_Count is the real performance meter, not a cycle profiler.</strong> A
   cycle-counting profiler tells you a routine got slower; it does not tell you whether that
   slowdown ever cost a frame. <code>Lag_Frame_Count</code> (debug builds only,
-  <code>ifdef __DEBUG__</code>, incremented at the tail of <code>VInt_Lag</code>) counts the one
+  <code>if DEBUG == 1</code>, incremented at the tail of <code>VInt_Lag</code>) counts the one
   number that actually matters: how many times the deadline was missed. Zero lag frames during a
   worst-case diagonal fast-scroll is the real pass condition for any streaming or rendering change,
   not a cycle budget on paper.
@@ -730,21 +732,25 @@ which sets the flag, so the wait falls straight through with no real sync at all
 <code>VInt_Level</code> and drain a plane buffer the main loop is still mid-fill on. This is
 exactly the kind of Genesis-timing gotcha that only shows up under load, and the fix (commit
 <code>b96c861</code>) is a few dozen cycles of interrupt masking around the pair, on a
-once-per-frame path where the cost is free. "Masking" here is three bits and nothing more: the
+once-per-frame path where the cost is free. The masking is not spelled out at the site:
+<code>with ints_off { … }</code> names a declared context, and the compiler splices
+<code>move.w sr, -(sp)</code> / <code>move.w #$2700, sr</code> before the block and
+<code>move.w (sp)+, sr</code> after it, proving every path through the body reaches the restore.
+"Masking" itself is three bits and nothing more: the
 68000's status register carries an interrupt-level field, and writing <code>$2700</code> into that
-register raises the level high enough that IRQ6 is held off until the saved value is restored. The
+register raises the level high enough that IRQ6 is held off until the saved value is restored. Note
+that the block closes <em>before</em> the wait loop, because the wait depends on IRQ6 being live. The
 <a href="../m68k/programming-model.html">68000 Programming
 Model</a> page draws the whole status register out bit by bit, this field included:</p>
 
-<pre>        move.w  sr, -(sp)
-        move.w  <span class="n">#$2700</span>, sr             <span class="c">; mask: the pair below must be atomic</span>
-        move.b  d0, (VBlank_Flag).w     <span class="c">; clear any stale lag-frame flag</span>
-        move.b  <span class="n">#1</span>, (VBlank_Ready).w    <span class="c">; this frame's work is done</span>
-        move.w  (sp)+, sr               <span class="c">; unmask BEFORE waiting; IRQ6 sets the flag</span>
-.wait:
-        tst.b   (VBlank_Flag).w
-        beq.s   .wait</pre>
-<span class="src">engine/system/vblank.asm:182</span>
+<pre>        <span class="k">with</span> ints_off {
+            move.b  d0, VBlank_Flag
+            move.b  <span class="n">#1</span>, VBlank_Ready
+        }
+    .wait:
+        tst.b   VBlank_Flag
+        beq     .wait</pre>
+<span class="src">engine/system/vblank.emp:290-296 · engine/irq.emp:48-56</span>
 
 <p>It is a small fix precisely because the underlying design was already close: only the
 clear-and-arm pair needed to be atomic, not the whole wait. That is the value of building the
@@ -768,7 +774,7 @@ on, so a slow VBlank never stalls gameplay logic, only graphics delivery.</p>
   </tbody>
 </table>
 </div>
-<span class="src">engine/constants.asm:118 (DMA_CRITICAL_SLOTS/DMA_IMPORTANT_SLOTS/DMA_DEFERRABLE_SLOTS)</span>
+<span class="src">engine/system/constants.emp:220-222 (DMA_CRITICAL_SLOTS/DMA_IMPORTANT_SLOTS/DMA_DEFERRABLE_SLOTS)</span>
 
 <figure class="diagram">
   <div class="qflow">
@@ -828,24 +834,26 @@ the size and source data interleaved at the odd offsets in between them.</p>
   <span class="bf b-pal">Command (long)<br>+10..13</span>
 </div>
 
-<pre>DMAEntry struct
-Reg94           ds.b 1          <span class="c">; +0  VDP reg $14 marker</span>
-SizeH           ds.b 1          <span class="c">; +1  DMA length high byte</span>
-Reg93           ds.b 1          <span class="c">; +2  VDP reg $13 marker</span>
-SizeL           ds.b 1          <span class="c">; +3  DMA length low byte</span>
-Reg97           ds.b 1          <span class="c">; +4  VDP reg $17 marker</span>
-SrcH            ds.b 1          <span class="c">; +5  source address bits 22-16</span>
-Reg96           ds.b 1          <span class="c">; +6  VDP reg $16 marker</span>
-SrcM            ds.b 1          <span class="c">; +7  source address bits 15-8</span>
-Reg95           ds.b 1          <span class="c">; +8  VDP reg $15 marker</span>
-SrcL            ds.b 1          <span class="c">; +9  source address bits 7-0</span>
-Command         ds.l 1          <span class="c">; +10 VDP command (destination + DMA trigger)</span>
-DMAEntry endstruct
+<pre><span class="k">pub struct</span> DMAEntry {
+    Reg94:   u8,            <span class="c">// +0  VDP reg $14 marker</span>
+    SizeH:   u8,            <span class="c">// +1  DMA length high byte</span>
+    Reg93:   u8,            <span class="c">// +2  VDP reg $13 marker</span>
+    SizeL:   u8,            <span class="c">// +3  DMA length low byte</span>
+    Reg97:   u8,            <span class="c">// +4  VDP reg $17 marker</span>
+    SrcH:    u8,            <span class="c">// +5  source address bits 22-16</span>
+    Reg96:   u8,            <span class="c">// +6  VDP reg $16 marker</span>
+    SrcM:    u8,            <span class="c">// +7  source address bits 15-8</span>
+    Reg95:   u8,            <span class="c">// +8  VDP reg $15 marker</span>
+    SrcL:    u8,            <span class="c">// +9  source address bits 7-0</span>
+    Command: u32,           <span class="c">// +10 VDP command (destination + DMA trigger)</span>
+}</pre>
+<span class="src">engine/structs.emp:88-100</span>
 
-        if DMAEntry_len &lt;&gt; <span class="n">14</span>
-          error "DMAEntry struct is \{DMAEntry_len} bytes, expected 14"
-        endif</pre>
-<span class="src">engine/structs.asm:41</span>
+<p>The 14 is not restated as a magic number anywhere: every routine that hard-codes the layout
+pins itself to the struct instead, so a new field fails the build at each dependent site.</p>
+
+<pre><span class="k">ensure</span>(sizeof(DMAEntry) == <span class="n">14</span>, <span class="c">"the jump-table slot stride is spelled as 14 fixed bytes - a DMAEntry layout change must re-derive jt_slot/jt_filler/dma_send_entry"</span>)</pre>
+<span class="src">engine/system/dma_queue.emp:244</span>
 
 <details class="explain">
   <summary>New here? · Why interleave register markers into the data at all?</summary>
@@ -869,7 +877,8 @@ DMAEntry endstruct
   <strong>Hybrid drain: unrolled jump table for Critical, address-compare loop for the rest.</strong>
   <code>Process_DMA_Critical</code> converts the slot pointer into a byte offset and jumps
   straight into a fully unrolled sequence of <code>move.l</code>/<code>move.w</code> per slot,
-  zero comparisons per entry, about 514 cycles to drain all 8. Important and Deferrable share
+  zero comparisons per entry: 72 cycles an entry, 576 for all 8 drain groups, and a
+  machine-checked whole-routine ceiling of 670. Important and Deferrable share
   <code>Drain_Budgeted_Queue</code>, a loop that checks <code>DMA_Budget_Remaining</code> before
   each entry and stops by comparing the current pointer against the queue's first-free address,
   not a <code>dbf</code>-counted loop (<code>dbf</code> decrements a register and loops until it
@@ -885,48 +894,50 @@ DMAEntry endstruct
   </div>
 </div>
 
-<pre><span class="k">Process_DMA_Critical</span>:
-        movea.w (DMA_Critical_Slot).w, a1
-        suba.w  <span class="n">#DMA_Critical</span>, a1               <span class="c">; a1 = byte offset into queue</span>
-        jmp     .jump_table(a1)</pre>
-<span class="src">engine/system/dma_queue.asm:154</span>
+<pre><span class="k">pub proc Process_DMA_Critical</span> () clobbers(a1/a5) requires(vblank) {
+        movea.w DMA_Critical_Slot, a1           <span class="c">// (DMA_Critical_Slot).w</span>
+        suba.w  <span class="n">#DMA_Critical</span>, a1               <span class="c">// a1 = byte offset into queue</span>
+        jmp     .jump_table(a1) targets(.slot_0, .slot_1, .slot_2, .slot_3, .slot_4, .slot_5, .slot_6, .slot_7, .slot_8)</pre>
+<span class="src">engine/system/dma_queue.emp:271-274</span>
 
-<pre><span class="k">Drain_Budgeted_Queue</span>:
-        lea     (VDP_CTRL).l, a5
-        movea.l a0, a3                          <span class="c">; a3 = queue base</span>
-.loop:
-        move.w  (DMA_Budget_Remaining).w, d0
-        ble.s   .out_of_budget
-        movep.w DMAEntry_SizeH(a0), d1          <span class="c">; read size in words</span>
-        add.w   d1, d1                          <span class="c">; words -&gt; bytes</span>
-        sub.w   d1, (DMA_Budget_Remaining).w
+<pre><span class="k">proc Drain_Budgeted_Queue</span> (a0: *u8, a1: *u8, a2: *u8) clobbers(d0-d1/a0-a1/a3/a5) {
+        lea     VDP_CTRL, a5                    <span class="c">// (VDP_CTRL).l</span>
+        movea.l a0, a3                          <span class="c">// a3 = queue base</span>
+    .loop:
+        movep.w DMAEntry.SizeH(a0), d1          <span class="c">// read this entry's size in words</span>
+        add.w   d1, d1                          <span class="c">// words -&gt; bytes</span>
+        move.w  DMA_Budget_Remaining, d0        <span class="c">// (DMA_Budget_Remaining).w</span>
+        sub.w   d1, d0                          <span class="c">// budget AFTER sending this whole entry</span>
+        bmi     .out_of_budget                  <span class="c">// entry does not fit - leave it (+ the rest) queued for next frame's fresh budget; no overshoot</span>
+        move.w  d0, DMA_Budget_Remaining        <span class="c">// commit: budget stays &gt;= 0 (the drain never overshoots the window)</span>
         move.l  (a0)+, (a5)
         move.l  (a0)+, (a5)
         move.l  (a0)+, (a5)
         move.w  (a0)+, (a5)
         cmpa.l  a0, a1
-        bhi.s   .loop
-        move.w  a3, (a2)
+        bhi     .loop
+        move.w  a3, (a2)                        <span class="c">// fully drained - slot = base</span>
         rts</pre>
-<span class="src">engine/system/dma_queue.asm:232</span>
+<span class="src">engine/system/dma_queue.emp:373-390</span>
 
 <p>Both excerpts lean on operand forms worth naming. <code>jmp .jump_table(a1)</code> jumps to
 <code>.jump_table</code> offset by whatever a1 holds, the displacement baked in at assembly time and
-the register supplied at run time; <code>move.l (a0)+, (a5)</code> copies through the address a0
+the register supplied at run time (the <code>targets(…)</code> clause names where those computed
+jumps can land, so the compiler can check the routine's cycle budget through them);
+<code>move.l (a0)+, (a5)</code> copies through the address a0
 holds and then steps a0 past what it just read, which is how the drain walks an entry without
 counting anything. Those forms, and the cycle price of each, are the subject of
 <a href="../m68k/addressing-modes.html">68000: Addressing
 Modes</a>.</p>
 
-<p>Note the check order: the budget is tested before the current entry is charged against it, not
-after checking whether the entry fits. An entry larger than what is left still drains fully, so
-the budget can go negative by up to one entry's size before the next entry's check catches it and
-defers that one to the next frame. The queue is not a hard limit; it can overshoot by one entry
-per VBlank, by design. The test itself needs no explicit comparison: the <code>move.w</code> that
-loads the remaining budget also sets the CPU's condition flags from the value it just moved, and
-<code>ble.s</code> branches on those flags alone. The loop's exit at the bottom works the same way,
-where <code>cmpa.l</code> sets the flags by comparing the walked pointer against the queue's end
-address and <code>bhi.s</code> reads them.
+<p>Note the check order: the entry's cost is subtracted from the budget <em>speculatively</em>,
+and the result decides. If the subtraction goes negative the entry does not fit, so it is left
+queued, untouched, for next frame's fresh budget, and the committed budget never goes below
+zero. The drain does not overshoot the window by even one entry. The test itself needs no
+explicit comparison: the <code>sub.w</code> sets the CPU's condition flags from the difference it
+just produced, and <code>bmi</code> branches on those flags alone. The loop's exit at the bottom
+works the same way, where <code>cmpa.l</code> sets the flags by comparing the walked pointer
+against the queue's end address and <code>bhi</code> reads them.
 <a href="../m68k/math-logic.html">68000: Math &amp;
 Logic</a> hosts a demo that runs that produce-a-value-then-report-on-it step on any operands you
 type.</p>
@@ -935,20 +946,20 @@ type.</p>
 into <code>.compact</code>, which shifts the undrained tail down to the queue base so those
 entries are still there, at the front, next VBlank:</p>
 
-<pre>.out_of_budget:
+<pre>    .out_of_budget:
         cmpa.l  a0, a3
-        beq.s   .no_drain
-.compact:
-        move.l  (a0)+, (a3)+
+        beq     .no_drain                       <span class="c">// nothing sent - slot already correct</span>
+    .compact:
+        move.l  (a0)+, (a3)+                    <span class="c">// src always above dst - safe forward copy</span>
         move.l  (a0)+, (a3)+
         move.l  (a0)+, (a3)+
         move.w  (a0)+, (a3)+
         cmpa.l  a0, a1
-        bhi.s   .compact
-        move.w  a3, (a2)
-.no_drain:
+        bhi     .compact
+        move.w  a3, (a2)                        <span class="c">// slot = base + surviving entries</span>
+    .no_drain:
         rts</pre>
-<span class="src">engine/system/dma_queue.asm:250</span>
+<span class="src">engine/system/dma_queue.emp:392-404</span>
 
 <p>The budget itself is region-aware and fixed at boot, not adaptive frame-to-frame:</p>
 
@@ -956,19 +967,25 @@ entries are still there, at the front, next VBlank:</p>
 <table>
   <thead><tr><th>Region</th><th>Constant</th><th>Bytes / VBlank</th></tr></thead>
   <tbody>
-    <tr><td>NTSC</td><td><code>DMA_BUDGET_NTSC</code></td><td>7,200</td></tr>
-    <tr><td>PAL</td><td><code>DMA_BUDGET_PAL</code></td><td>15,000</td></tr>
+    <tr><td>NTSC</td><td><code>DMA_BUDGET_NTSC</code></td><td>6,144</td></tr>
+    <tr><td>PAL</td><td><code>DMA_BUDGET_PAL</code></td><td>11,648</td></tr>
   </tbody>
 </table>
 </div>
-<span class="src">engine/constants.asm:123</span>
+<span class="src">engine/system/constants.emp:375-376</span>
 
-<p><code>7,200</code> is not a soft target chosen for comfort: about 7 KB, exactly 225 tiles, is
-all a real NTSC VBlank can DMA to VRAM at all, so the budget sits right at the hardware ceiling.
-PAL's near-double budget follows PAL's far larger blanking window: more dead lines, more transfer
-time.</p>
+<p><code>6,144</code> is not a soft target chosen for comfort. A Genesis tile is 32 bytes, so
+6,144 / 32 is exactly 192 tiles (6 KB on the nose), and that figure is derived from the hardware
+rather than picked. An NTSC VBlank is about 38 blank lines of roughly 488.6 68K cycles each;
+at about 2.7 cycles per DMA byte that is a raw ceiling near 6,876 bytes. The constant is that
+ceiling times an approximately 0.89 safety margin, which pays for the non-DMA tail of the VBlank
+handler that the window-charged model never charges against the budget. PAL's <code>11,648</code>
+(11,648 / 32 = 364 tiles) is the same derivation over PAL's much longer blanking window: more
+dead lines, more transfer time, roughly 13,029 raw bytes before the same margin. Both figures
+come from the engine's own derivation comment, which counts a deliberately conservative 72 PAL
+blank lines rather than the full geometric 89.</p>
 
-<p>Boot writes the region-appropriate constant into <code>DMA_Budget_Default</code>, and step 7
+<p>Boot writes the region-appropriate constant into <code>DMA_Budget_Default</code>, and step 2
 of the pipeline (section 4) copies it into <code>DMA_Budget_Remaining</code> unconditionally,
 every VBlank, win or lose. A shrink-after-a-lag-frame scheme and a temporary post-lag boost to
 Deferrable were both part of the original design; neither is built. <code>DMA_Budget_Remaining</code>
@@ -982,13 +999,13 @@ either fit or they spill.</p>
   <div class="dmapacker">
     <div class="dmap-toprow">
       <span>VBlank window:</span>
-      <button type="button" class="ntc-btn" id="dmapNtsc" aria-pressed="true">NTSC · 7,200 B</button>
-      <button type="button" class="ntc-btn" id="dmapPal" aria-pressed="false">PAL · 15,000 B</button>
+      <button type="button" class="ntc-btn" id="dmapNtsc" aria-pressed="true">NTSC · 6,144 B</button>
+      <button type="button" class="ntc-btn" id="dmapPal" aria-pressed="false">PAL · 11,648 B</button>
       <button type="button" class="ntc-btn" id="dmapReset" aria-pressed="false">Clear window</button>
     </div>
     <div class="dmap-blocks" id="dmapBlocks" role="group" aria-label="Transfer blocks: click one to add it to the VBlank window"></div>
     <div class="dmap-bar" id="dmapBar" aria-hidden="true"></div>
-    <div class="dmap-cap" id="dmapCap" aria-live="polite">0 of 7,200 bytes used. Click a block above to enqueue it.</div>
+    <div class="dmap-cap" id="dmapCap" aria-live="polite">0 of 6,144 bytes used. Click a block above to enqueue it.</div>
     <div>
       <span style="font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.1em; text-transform:uppercase;">Spilled to next frame</span>
       <div class="dmap-nextframe" id="dmapNext" aria-live="polite"></div>
@@ -997,12 +1014,12 @@ either fit or they spill.</p>
   <figcaption>DMA budget packer: click a block to enqueue it into this frame's VBlank window,
   click a placed block to remove it; once the window fills, further blocks spill into the next
   frame instead of being lost (static fallback: the budget table above states the two fixed
-  window sizes and the compaction behavior on overrun). This visualizer uses the DMA budget as a
-  strict cutoff for clarity. Aeon's current queue processing checks the budget before starting each
-  entry, so the real engine may exceed the target by the size of one final DMA entry.</figcaption>
+  window sizes and the compaction behavior on overrun). The strict cutoff the visualizer uses is
+  the real behavior: the drain subtracts an entry's cost before committing it, so an entry that
+  would not fit is left queued and the window is never overshot.</figcaption>
 </figure>
 
-<p>Two safety details round out the enqueue path, both in <code>QueueDMATransfer</code>, the
+<p>Two safety details round out the enqueue path, both in <code>QueueDMA_Deferrable.transfer</code>, the
 shared core all three <code>QueueDMA_*</code> entry points fall through to. First, a RAM source
 address ($FF0000+) can set bit 23 after being shifted for the VDP, which the chip would
 misinterpret as a VRAM-to-VRAM copy flag instead of a normal 68K-to-VDP transfer; the routine
@@ -1012,7 +1029,7 @@ landing mid-write into a queue slot can never tear an entry.</p>
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>128KB boundary splitting is implemented, not deferred.</strong> The VDP's DMA source
   address only auto-increments its low 17 bits; a transfer that crosses a 128KB boundary wraps
-  within the same block and corrupts. <code>QueueDMATransfer</code> detects the crossing with a
+  within the same block and corrupts. The shared core detects the crossing with a
   sub+sub carry check and, on a hit, splits the request into two queue entries in the same
   sub-queue: the first finishing exactly at the boundary, the second resuming from the wrapped
   source with the correct destination offset. If only one free slot remains, the second half is
@@ -1021,14 +1038,14 @@ landing mid-write into a queue slot can never tear an entry.</p>
   <p class="prov-label">Who does what</p>
   <div class="prov">
     <span class="yes">Flamewing Ultra DMA Queue ✓ boundary-safety design this borrows</span>
-    <span class="yes">Aeon ✓ shipped in QueueDMATransfer's .split path</span>
+    <span class="yes">Aeon ✓ shipped in the shared core's .split path</span>
   </div>
 </div>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>No double-buffered queues.</strong> Vectorman writes to one queue buffer while draining
   another, then swaps, to guarantee a mid-enqueue interrupt never corrupts an in-progress drain.
-  Aeon gets the same guarantee more cheaply: <code>QueueDMATransfer</code> already masks
+  Aeon gets the same guarantee more cheaply: the shared core already masks
   interrupts for the few instructions it takes to write one entry, so there is no window for a
   VBlank to interrupt an enqueue in a way double buffering would prevent. Skipping the second
   buffer saves 448 bytes of RAM outright.
@@ -1047,8 +1064,8 @@ buffer to the same VRAM address, and each palette line is always a fixed 32-byte
 <code>BuildStaticDMA</code> pre-computes the entire 14-byte queue entry once, at boot, and
 <code>Enqueue_Dirty_Buffers</code> just block-copies the pre-built entry into the Critical queue
 whenever the corresponding dirty flag says something actually changed. No source/dest/length math,
-no boundary check, no SR masking, none of <code>QueueDMATransfer</code>'s per-call overhead;
-just a macro-driven copy.</p>
+no boundary check, no SR masking, none of the shared enqueue core's per-call overhead;
+just a spliced copy.</p>
 
 <details class="explain">
   <summary>New here? · Why bother pre-computing something the CPU could just calculate each time?</summary>
@@ -1066,17 +1083,17 @@ just a macro-driven copy.</p>
   </div>
 </details>
 
-<pre><span class="k">BuildStaticDMA</span>:
-        moveq   <span class="n">#-$6C</span>, d0                      <span class="c">; $94 sign-extended</span>
-        move.l  <span class="n">#$93979695</span>, d5
+<pre><span class="k">pub proc BuildStaticDMA</span> () clobbers(d0-d3/d5/a0) {
+        moveq   <span class="n">#-$6C</span>, d0                       <span class="c">// $94 sign-extended</span>
+        move.l  <span class="n">#$93979695</span>, d5                  <span class="c">// reg markers $93/$97/$96/$95 - one movep.l lands all four at offsets 2/4/6/8</span>
 
-        <span class="c">; Palette line 0: Palette_Buffer+$00 -&gt; CRAM $0000, 32 bytes</span>
-        lea     (Static_Pal_Line0).w, a0
-        move.l  <span class="n">#dmaSource(Palette_Buffer)</span>, d1
-        move.w  <span class="n">#dmaLength(32)</span>, d3
-        move.l  <span class="n">#vdpComm(0, CRAM, DMA)</span>, d2
-        bsr.w   .build_entry</pre>
-<span class="src">engine/system/buffers.asm:36</span>
+        <span class="c">// Palette line 0: Palette_Buffer+$00 -&gt; CRAM $0000, 32 bytes</span>
+        lea     Static_Pal_Line0, a0            <span class="c">// (Static_Pal_Line0).w</span>
+        move.l  <span class="n">#SRC_PAL_LINE0</span>, d1
+        move.w  <span class="n">#dma_length(32)</span>, d3
+        move.l  <span class="n">#vdp_comm(0, VdpTarget.Cram, VdpOp.Dma)</span>, d2
+        jbsr    .build_entry</pre>
+<span class="src">engine/system/buffers.emp:102-111</span>
 
 <p>That first line looks like a typo and is not. <code>moveq</code>'s immediate is a <em>signed</em>
 byte, so the marker byte <code>$94</code> cannot be written as 148; the same eight bits read as a
@@ -1093,24 +1110,30 @@ Notation</a> explains why one byte can be 148 and -108 at the same time.</p>
 (per-cell and per-line, picked by whichever parallax mode is active). All seven exist before the
 game loop ever runs.</p>
 
-<pre><span class="k">Enqueue_Dirty_Buffers</span>:
-        move.b  (Palette_Dirty).w, d0
-        beq.w   .no_pal
+<pre><span class="k">pub proc Enqueue_Dirty_Buffers</span> () clobbers(d0/a1-a2) requires(vblank) {
+        move.b  Palette_Dirty, d0               <span class="c">// (Palette_Dirty).w</span>
+        beq     .no_pal
         btst    <span class="n">#0</span>, d0
-        beq.s   .skip_pal0
-        queueStaticDMA DMA_Critical_Slot, DMA_Critical_End, Static_Pal_Line0
-.skip_pal0:
-<span class="c">; ... one btst/queueStaticDMA pair per palette line ...</span>
-.skip_pal3:
-        moveq   <span class="n">#0</span>, d0
-        move.b  d0, (Palette_Dirty).w
-.no_pal:
-        tst.b   (Sprite_Table_Dirty).w
-        beq.s   .no_spr
-        queueStaticDMA DMA_Critical_Slot, DMA_Critical_End, Static_Sprite_DMA
-        move.b  d0, (Sprite_Table_Dirty).w
-.no_spr:</pre>
-<span class="src">engine/system/buffers.asm:128</span>
+        beq     .skip_pal0
+        queue_static_dma(Static_Pal_Line0)
+        bcs     .skip_pal0                      <span class="c">// dropped -&gt; leave bit 0 set</span>
+        bclr    <span class="n">#0</span>, Palette_Dirty               <span class="c">// enqueued -&gt; clear bit 0</span>
+    .skip_pal0:
+<span class="c">// … one btst/queue_static_dma/bcs group per palette line …</span>
+    .skip_pal3:
+    .no_pal:
+        tst.b   Sprite_Table_Dirty              <span class="c">// (Sprite_Table_Dirty).w</span>
+        beq     .no_spr
+        tst.b   Sprite_Emit_Active              <span class="c">// NEW-3: a drop-retained dirty +</span>
+        bne     .no_spr                         <span class="c">//   mid-emit buffer = torn ship;</span>
+                                                <span class="c">//   keep dirty armed, retry next</span>
+                                                <span class="c">//   VBlank (worst case one extra</span>
+                                                <span class="c">//   stale-SAT frame, on a lag frame)</span>
+        queue_static_dma(Static_Sprite_DMA)
+        bcs     .no_spr                         <span class="c">// dropped -&gt; leave flag set for retry</span>
+        clr.b   Sprite_Table_Dirty              <span class="c">// enqueued -&gt; clear</span>
+    .no_spr:</pre>
+<span class="src">engine/system/buffers.emp:212-249</span>
 
 <p><code>Palette_Dirty</code> is a 4-bit mask, one bit per 32-byte palette line, so a frame where
 only the water line's colors cycle sends 32 bytes, not 128. HScroll works differently: the
@@ -1120,20 +1143,20 @@ depending on parallax mode, <code>Static_Hscroll_Cell</code> (112 bytes, per-cel
 <code>Static_Hscroll_Line</code> (896 bytes, whenever a per-line horizontal deformation table is
 active on either plane), never a computed variable-range transfer.</p>
 
-<div class="decision"><span class="d-tag">Decision</span> <span style="color:#EE8888;">Known issue</span>
-  <strong>The dirty flag clears even when the DMA was dropped.</strong> Look again at the excerpt
-  above: <code>Palette_Dirty</code> and <code>Sprite_Table_Dirty</code> are cleared
-  <em>unconditionally</em>, immediately after the <code>queueStaticDMA</code> call, regardless of
-  whether the Critical queue actually had room. If the Critical queue was already full (eight
-  slots, all spoken for by something else that frame), the enqueue silently fails and the dirty
-  bit that would have triggered a retry next frame is already gone. The failure scenario is
-  concrete: a palette change lands on a frame where the Critical queue happens to be saturated,
-  the DMA never fires, the dirty flag is cleared anyway, and the stale colors persist on screen
-  indefinitely with no automatic path back to correct, until something else marks that line dirty
-  again. Confirmed live in code as of the 2026-07-16 optimization review; not yet fixed.
-  <p class="prov-label">Status</p>
+<div class="decision"><span class="d-tag">Decision</span>
+  <strong>A dropped enqueue leaves its dirty bit set.</strong> Look again at the excerpt above:
+  every <code>queue_static_dma</code> is followed by a <code>bcs</code>, because the template
+  returns carry set when the Critical queue had no room. Only on carry clear is the bit cleared.
+  This closes a real bug the 2026-07-16 optimization review found live: the flags used to be
+  cleared unconditionally, so a palette change landing on a frame where the Critical queue happened
+  to be saturated lost both its DMA and the dirty bit that would have retried it, and the stale
+  colors persisted with no automatic path back to correct. Now the worst case is one frame of
+  delay. The sprite table carries a second guard on the same principle,
+  <code>Sprite_Emit_Active</code>: a retained dirty flag plus a mid-emit buffer would ship a torn
+  sprite table, so that pairing defers to the next VBlank too.
+  <p class="prov-label">Who does what</p>
   <div class="prov">
-    <span class="no">Live bug, unfixed as of this page</span>
+    <span class="yes">Aeon ✓ carry-gated clear, drops retry next VBlank</span>
   </div>
 </div>
 
@@ -1177,13 +1200,14 @@ with a VRAM address word and a flags/count word, bit 15 set for column mode (wor
 drain, autoincrement $80) or clear for row mode (longword-packed drain, autoincrement $02), and
 the whole buffer is terminated by a zero address:</p>
 
-<pre><span class="k">VInt_DrawLevel</span>:
+<pre><span class="k">pub proc</span> VInt_DrawLevel () <span class="k">clobbers</span>(d0-d1/a0/a5-a6) <span class="k">requires</span>(vblank) {
+        <span class="c">// ... the autoincrement postcondition, explained below ...</span>
+        lea     VDP_DATA, a6
+        lea     VDP_CTRL_OFF(a6), a5               <span class="c">// a5 = VDP_CTRL (= a6 + VDP_CTRL-VDP_DATA)</span>
         tst.w   Plane_Buffer_Ptr
-        beq     .reset                             <span class="c">// nothing to draw</span>
+        beq     .done                              <span class="c">// nothing to draw - still restore autoinc</span>
 
         lea     Plane_Buffer, a0
-        lea     VDP_DATA, a6
-        lea     VDP_CTRL_OFF(a6), a5
 
     .next:
         moveq   <span class="n">#0</span>, d0
@@ -1194,30 +1218,30 @@ the whole buffer is terminated by a zero address:</p>
 
         <span class="c">// -- ROW entry: autoincrement $02, longword drain --</span>
         move.w  <span class="n">#$8F02</span>, (a5)
-        lsl.l   <span class="n">#2</span>, d0
-        addq.w  <span class="n">#1</span>, d0
-        ror.w   <span class="n">#2</span>, d0
-        swap    d0
+        vdp_comm_reg(d0, VdpTarget.Vram, VdpOp.Write, clr: <span class="n">false</span>)
         move.l  d0, (a5)
     .drain_row:
         move.l  (a0)+, (a6)
         dbf     d1, .drain_row
         jbra    .next</pre>
-<span class="src">engine/level/plane_buffer.emp:381</span>
+<span class="src">engine/level/plane_buffer.emp:421-452</span>
 
-<p>The bit twiddling between the register write and the drain loop is rearranging a VRAM address into
-the shape the control port wants (section 2). Three of those mechanisms are worth carrying in your
-pocket: <code>lsl.l</code> slides every bit left and feeds zeros in at the bottom,
-<code>ror.w</code> rotates the low word around so bits falling off one end reappear at the other,
-and <code>swap</code> exchanges the register's two 16-bit halves in place. The
-<code>dbf d1, .drain_row</code> closing the loop is the counted-loop instruction: it decrements the
-low word of <code>d1</code> and branches back until the result passes -1, which is why a count
-loaded as N runs the body N plus one times.
-<a href="../m68k/flow.html#dbcc">68000: Flow</a> owns it.
-<a href="../m68k/shifts-bits.html">68000: Shifts &amp;
-Bits</a> owns the shifts and rotates, with a visualizer for what falls out and what fills in;
-<code>swap</code> lives with the other movers on
-<a href="../m68k/moving-data.html">Moving Data</a>.</p>
+<p>The line between the register write and the drain loop is rearranging a VRAM address into the
+shape the control port wants (section 2). That rearrangement used to be four hand-written
+instructions here, a shift, an add, a rotate and a <code>swap</code>, repeated at every site that
+talked to the control port. It is now one named call, <code>vdp_comm_reg</code>, which the
+assembler works out at build time and which costs the same instructions it replaced. The win is not
+speed, it is that the shape of a VDP command is written down in exactly one place instead of being
+re-derived by hand wherever a routine needs one, so it cannot be got subtly wrong at the fifth site.
+<a href="../emp/reading-emp.html">Reading .emp</a> covers what build-time work like this is.</p>
+
+<p>The <code>dbf d1, .drain_row</code> closing the loop is the counted-loop instruction: it
+decrements the low word of <code>d1</code> and branches back until the result passes -1, which is
+why a count loaded as N runs the body N plus one times.
+<a href="../m68k/flow.html#dbcc">68000: Flow</a> owns it. If you want the shifts and rotates that
+call is doing on your behalf, <a href="../m68k/shifts-bits.html">68000: Shifts &amp; Bits</a> owns
+them, with a visualizer for what falls out and what fills in, and <code>swap</code> lives with the
+other movers on <a href="../m68k/moving-data.html">Moving Data</a>.</p>
 
 <p>Each producer checks remaining capacity before writing (worst case for a column: two headers
 plus 64 data words). On overflow, the update is silently dropped for that frame; the routines'
@@ -1295,20 +1319,20 @@ a second shadow set of registers it can swap in, all of which
 Model</a> lays out. So instead of
 a held fence, <code>VInt_Level</code> and <code>VInt_Lag</code> both bracket the whole VDP/DMA
 window with a single flag in Z80 RAM, <code>SND_CTRL_DMA_ACTIVE</code>. Raising that flag at the
-start and clearing it at the end each need a momentary <code>stopZ80</code>, just long enough to
+start and clearing it at the end each need a momentary bus hold, just long enough to
 write one byte (you have to own the bus to touch Z80 RAM at all). That pair of one-byte writes is
 the only bus-hold in the sound build. The DMA burst itself, everything between the brackets, runs
-with the Z80 free:</p>
+with the Z80 free. Both shapes are one body: the sound-off fence is the same
+<code>with z80_stopped</code> context carrying a comptime condition, so it holds the bus around
+the entire pipeline in a no-sound build and lowers to nothing at all in a sound build:</p>
 
-<pre>    ifdef SOUND_DRIVER_ENABLED
-        stopZ80
-        move.b  <span class="n">#1</span>, (SND_Z80_BASE+SND_CTRL_DMA_ACTIVE).l   <span class="c">; raise: DMA window open (Z80 -&gt; DRAIN)</span>
-        startZ80
-    endif
-    ifndef SOUND_DRIVER_ENABLED
-        stopZ80
-    endif</pre>
-<span class="src">engine/system/vblank.asm:49</span>
+<pre>        <span class="k">if</span> SOUND_DRIVER_ENABLED == <span class="n">1</span> {
+            <span class="k">with</span> z80_stopped {
+                move.b  <span class="n">#1</span>, SND_DMA_ACTIVE_SLOT <span class="c">// raise: DMA window open (Z80 -&gt; DRAIN)</span>
+            }
+        }
+        <span class="k">with</span> z80_stopped <span class="k">if</span> SOUND_DRIVER_ENABLED == <span class="n">0</span> {</pre>
+<span class="src">engine/system/vblank.emp:83-92</span>
 
 <div class="decision"><span class="d-tag">Decision</span>
   <strong>A flag bracket, not a held fence, in sound-on builds.</strong> While
@@ -1357,45 +1381,41 @@ bend a background instead of just sliding it.</p>
   </div>
 </details>
 
-<p>The dispatch mechanism is built and wired today; nothing installed on top of it yet is. The
-HBlank vector points at a tiny, permanent ROM stub that reads a handler pointer from RAM and
-calls through it:</p>
+<p>The dispatch mechanism is built and wired today; nothing installed on top of it yet is. There
+is no ROM stub in the path at all: the HBlank vector points straight at six executable bytes of
+work RAM, and installing a raster program means patching a <code>jmp</code> into them:</p>
 
-<pre><span class="k">HBlank_Dispatch</span>:
-        movem.l d0-d1/a0, -(sp)
-        movea.l (HBlank_Handler_Ptr).w, a0
-        jsr     (a0)
-        movem.l (sp)+, d0-d1/a0
-        rte</pre>
-<span class="src">engine/system/hblank.asm:12</span>
+<pre><span class="k">pub proc HBlank_Install</span> (a0: HBlankHandler, d0: u8) clobbers(d1) {
+        move.w  <span class="n">#HBLANK_SLOT_JMP</span>, HBlank_Vector_Slot        <span class="c">// jmp.l opcode</span>
+        move.l  a0, HBlank_Vector_Slot + <span class="n">2</span>                  <span class="c">// handler target</span></pre>
+<span class="src">engine/system/hblank.emp:52-54</span>
 
-<p>The contract is strict on purpose: an installed handler may clobber only <code>d0-d1/a0</code>,
-because this stub can run 224 times in a single frame and every register it saved would be paid
-for on every one of those lines. Boot installs <code>HBlank_Null</code>, a bare <code>rts</code>,
-as the default:</p>
+<p>The contract is strict on purpose, and strict in the other direction from a wrapper: the
+handler is entered raw, so it must save and restore <em>every</em> register it touches itself and
+must end with <code>rte</code>, not <code>rts</code>. Nothing is saved on its behalf, because this
+path can run 224 times in a single frame and every register saved would be paid for on every one
+of those lines. Boot leaves the slot holding a bare <code>rte</code>, written as one longword so
+the second slot word decodes to <code>rte</code> as well:</p>
 
-<pre><span class="k">HBlank_Null</span>:
-        rts</pre>
-<span class="src">engine/system/hblank.asm:22</span>
+<pre>        move.l  <span class="n">#$4E734E73</span>, HBlank_Vector_Slot</pre>
+<span class="src">engine/system/boot.emp:296</span>
 
-<p>That "does nothing" handler is not free: the dispatch overhead plus the interrupt entry and
-exit, movem save, jsr, rts, movem restore, rte, runs roughly 180 cycles per scanline, not the 20
-or so you might assume from reading the handler itself. For scale, the blanking gap is only about
-90 of the roughly 490 68000 cycles a scanline lasts, so even the do-nothing dispatch spills past
-HBlank into the next visible line; a handler that must land its write inside the gap has almost
-no room left after the overhead. A proposed
-RAM-trampoline fix, not yet applied, would shortcut the indirect call for the common empty-table
-case and bring that down to roughly 76 cycles. Today, H-interrupts are disabled at boot (VDP
-register $00 = $04, HInt off) and nothing in the shipped engine turns them back on, so this
-per-scanline cost is not currently being paid at all. It becomes real the moment a section
-enables H-INT and installs a non-null handler.</p>
+<p>Uninstalling writes the same idle <code>rte</code> back <em>before</em> clearing the enable bit,
+so an H-interrupt still in flight lands on a legal instruction and no-ops. What the slot buys is
+the cost: an armed line pays one <code>jmp</code> on top of the CPU's own interrupt entry and exit,
+instead of the <code>movem</code> save, indirect <code>jsr</code>, <code>rts</code> and
+<code>movem</code> restore a ROM dispatch stub would add. For scale, the blanking gap is only about
+90 of the roughly 490 68000 cycles a scanline lasts, so a handler that must land its write inside
+the gap needs every cycle the seam can give it. Today, H-interrupts are disabled at boot (VDP
+register $00 = $04, HInt off) and nothing in the shipped engine turns them back on, so nothing is
+being paid at all. It becomes real the moment a section enables H-INT and installs a handler.</p>
 
 <p>The raster command table walker, the system that would actually install per-section stackable
 effects (shadow/highlight lighting, palette gradients, water-line splits) through this seam, is
-design-stage: zero handlers exist beyond <code>HBlank_Null</code> as of this page. The pointer
-indirection above is ready to receive it; nothing currently does. Four of the five commercial
+design-stage: zero handlers exist as of this page. The slot above is ready to receive one;
+nothing currently does. Four of the five commercial
 disassemblies studied while designing Aeon (Vectorman, Thunder Force IV, Gunstar Heroes, Alien
-Soldier) RAM-patch HBlank the same way, which is why the dispatch shape was worth building ahead
+Soldier) RAM-patch HBlank the same way, which is why the seam was worth building ahead
 of the walker that will eventually use it.</p>
 
 <footer class="page">Part of the Empyrean wiki · last updated 2026-07-17 · <a href="../index.html">Back to hub</a><br>
@@ -1551,7 +1571,7 @@ function expandAll(btn){
     { name: 'One tile', bytes: 32 },
     { name: '16-tile art burst', bytes: 512 }
   ];
-  let budget = 7200;
+  let budget = 6144;
   let placed = [];   // {name, bytes}
   let spilled = [];
   let uid = 0;       // monotonic id so identical blocks never collide
@@ -1593,8 +1613,8 @@ function expandAll(btn){
     placed = keep;
     render();
   }
-  ntscBtn.addEventListener('click', () => setBudget(7200, true));
-  palBtn.addEventListener('click', () => setBudget(15000, false));
+  ntscBtn.addEventListener('click', () => setBudget(6144, true));
+  palBtn.addEventListener('click', () => setBudget(11648, false));
   resetBtn.addEventListener('click', () => { placed = []; spilled = []; render(); });
 
   function render(){
