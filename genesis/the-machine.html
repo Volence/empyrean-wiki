@@ -219,11 +219,24 @@ details.explain summary::-webkit-details-marker{display:none;}
 .bxin b{font-size:.72rem; color:#44CC88;}
 .bxin.vm{border-color:#4466EE; background:rgba(68,102,238,.06);}
 .bxin.vm b{color:#88AAEE;}
-.bxarb{font-family:var(--mono); font-size:.7rem; color:var(--gold); align-self:flex-start;
-  border:1px solid var(--gold); border-radius:3px; background:rgba(238,170,0,.06);
+/* The arbiter is glue, not a processor, so it wears the glue colour rather than the CPU gold.
+   It used to be gold, and a play-tester read it and the 68000 as related parts because they
+   looked alike. In this figure colour means what a part DOES; the rows mean which bus it is on. */
+.bxarb{font-family:var(--mono); font-size:.7rem; color:#AAAACC; align-self:flex-start;
+  border:1px solid #AAAACC; border-radius:3px; background:rgba(170,170,204,.06);
   padding:.35rem .7rem; max-width:100%;}
 .bxarb i{display:block; color:var(--dim); font-size:.6rem; font-style:normal;
   letter-spacing:.06em;}
+/* Key for the box colours, same shape as the memory map's legend below. A figure whose colours
+   carry meaning owes the reader the meaning. */
+.bxleg{display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin-top:.8rem;
+  font-family:var(--mono); font-size:.62rem; color:var(--dim); max-width:40rem;}
+.bxleg span::before{content:"\25A0 ";}
+.bxleg .k-cpu::before{color:#EEAA00;} .bxleg .k-vdp::before{color:#4466EE;}
+.bxleg .k-snd::before{color:#44CC88;} .bxleg .k-mem::before{color:#666688;}
+.bxleg .k-glue::before{color:#AAAACC;}
+.bxnote{font-family:var(--mono); font-size:.62rem; color:var(--dim); max-width:40rem;
+  margin:.5rem 0 0; line-height:1.6;}
 
 /* section 2: the clock tree */
 .ctree{display:flex; flex-direction:column; align-items:center; gap:0;}
@@ -339,23 +352,14 @@ details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
   <a href="#s7"><span class="n">7</span>A tour of one frame</a>
 </nav>
 
-<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Every address and value on
-this page is written in hexadecimal, base 16, marked by a leading <code>$</code> that is
-notation and never part of the number. One hex digit stands for exactly four bits, so the six
-digits of <code>$FF0000</code> are 24 bits of address. If you would rather read any of these
-numbers in another base, the
-<a href="../basics/numbers-and-notation.html">numbers and notation page</a> has a live
-converter.</p>
-
-<p style="color:var(--dim); font-size:.85rem;">Most of this page is true of every Genesis ever
-built. Where it is not, the claim carries a small badge naming what it depends on:
-<span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Most of this page is true of
+every Genesis ever built. Where it is not, the claim carries a small badge naming what it depends
+on: <span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
 for a figure that changes with the console's region,
 <span class="vary rev" title="Varies with the motherboard revision: not every Genesis board behaves this way.">Board revision</span>
 for behaviour that changes with which machine you opened, and
 <span class="vary att" title="True of a bare console with a plain cartridge and nothing in the expansion port.">Bare console</span>
-for something that holds only with nothing plugged into the expansion port. The badges mark the
-places this page knows of where the answer depends on which machine is in front of you.</p>
+for something that holds only with nothing plugged into the expansion port.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; One machine, five parts</h2>
@@ -367,46 +371,105 @@ learning by name, though only four of them are separate chips: one of the sound 
 inside the video chip, and how many packages the rest occupy depends on which revision of the
 board you opened
 <span class="vary rev" title="Varies with the motherboard revision: the same five functions are spread over a different number of chips on different boards.">Board revision</span>.
-Learn what the five parts do and which wires they hang off, and the rest of
-this track is detail.</p>
+The glue gets named too, a little further down, because the rest of this track keeps leaning on
+it.</p>
+
+<p>The wires come first, though, because the wires are what decide which part can talk to which
+and who has to wait for whom. A
+<span class="term" data-def="The shared set of wires carrying addresses and data between chips. Only one device can use a bus at a time, so anything else that wants it waits.">bus</span>
+is the shared set of wires carrying addresses and data between chips. Only one device can use a
+bus at a time, so anything else that wants it waits. That second half is the whole reason the
+wiring is worth learning before the parts are: two chips on the same bus take turns and can hold
+each other up, while two chips on different buses genuinely run at the same time.</p>
+
+<p>A Genesis has three buses, and every part in it hangs off one of them:</p>
+
+<ul>
+<li>A <b>16-bit system bus</b>. The 68000 and the VDP are on it; so are the work RAM and the
+cartridge. This is the bus the memory map in section 3 describes.</li>
+<li>An <b>8-bit private bus</b>, the Z80's. The Z80, the YM2612 and the eight kilobytes of sound
+RAM live here, and nothing else does.</li>
+<li>The <b>video bus</b>, which belongs to the VDP alone and connects it to its video memory,
+with the colour and scroll memories sitting on the die itself. No other chip touches any of it,
+which is why no address in the 68000's map is a byte of video memory.</li>
+</ul>
+
+<details class="explain"><summary>New here? &middot; Why does it matter who owns a bus?</summary>
+<div class="x-body">
+<p>Take the definition apart. One group of the wires carries an address, saying which location
+the processor wants; another group carries the data going to or coming from that location; a few
+more carry timing and direction signals. Every chip on the bus is listening to all of it at
+once.</p>
+<p>The catch is that only one device may drive those wires at a time. If two chips both put a
+value on the data lines, the result is not two values, it is nonsense. So a bus needs a rule
+about who is allowed to talk, and on this machine that rule is enforced by a part whose only job
+it is.</p>
+<p>That is why "which bus is this chip on" is a real question with real consequences, and not
+just a diagram detail. Two chips on the same bus take turns and can hold each other up. Two chips
+on different buses genuinely run at the same time, and neither has to wait unless one of them
+reaches into the other's bus. The Genesis gets both: the Z80 and its FM chip work away
+undisturbed on their own wires, and the moment either processor reaches across, somebody
+stalls.</p>
+</div>
+</details>
+
+<p>Now the parts, each one on the wires it hangs off.</p>
 
 <p>The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. Game logic runs here.">68000</span>
-is the main processor, and it runs the game: physics, collision, objects, menus, the lot. Its
-registers are 32 bits wide, it moves 16 bits at a time to and from the outside world, and it
-addresses a 24-bit space, which is what fixes its world at sixteen megabytes.</p>
+is the main processor, and it runs the game: physics, collision, objects, menus, the lot. It sits
+on the system bus, which is where it finds everything it needs: the cartridge it fetches its
+instructions straight out of, the work RAM it keeps its variables in, the video chip it sends the
+picture to, and the I/O chip the controllers plug into. It addresses a 24-bit space, which is what
+fixes its world at sixteen megabytes, and section 3 is the map of what answers where inside
+it.</p>
 
 <p>The <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz, with its own memory and its own bus. On a Genesis it conventionally runs the sound driver.">Z80</span>
-is the second processor: eight bits wide, with a 64 KB address map of its own and eight
-kilobytes of RAM to live in. Half that map is genuinely private; the top half is a moving window
-onto the 68000's world, which is how the Z80 reaches cartridge ROM. On a Genesis it
-conventionally runs the sound driver, and once the
-68000 has loaded that driver into its RAM, the Z80 steps through it on its own wires.</p>
+is the second processor, and it is a computer in its own right rather than a helper: its own bus,
+its own memory, its own program, its own clock. On a Genesis it conventionally runs the sound
+driver, and once the 68000 has loaded that driver into its RAM, the Z80 steps through it on its
+own wires with neither processor checking on the other. It is not sealed off, though. Half of the
+world the Z80 can address is genuinely private; the top half is a moving window onto the 68000's,
+which is how the Z80 reaches cartridge ROM, and every time it looks through that window somebody
+waits.</p>
 
 <p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span>,
-the Video Display Processor, draws the picture. It owns three memories of its own that no other
-chip can address, and it produces every pixel by itself once a program has told it what to draw.
-Section 6 is about those three memories and the very small keyhole through which the 68000 talks
-to them.</p>
+the Video Display Processor, draws the picture, and it draws all of it: once a program has told
+it what to put on screen, it produces every pixel by itself, to the television's schedule, without
+the 68000's help. It sits on the system bus like everything else, so the 68000 can talk to
+it. What it draws from, though, is memory of its own that no other chip can address, out on the
+video bus that belongs to it alone. Section 6 is about those memories and the very small keyhole
+through which the 68000 reaches them.</p>
 
-<p>The two sound chips are where the wiring gets interesting. The
+<p>The two sound chips are where the wiring gets interesting, because they are not on the same
+wires. The
 <span class="term" data-def="The six-channel FM synthesizer chip that gives the Genesis its signature sound. Channel six can play raw samples instead (the DAC).">YM2612</span>
-is the FM synthesiser: six channels of frequency-modulation synthesis, the source of the sound
-people mean when they say a game sounds like a Mega Drive. One of its six channels can be handed
-over to a DAC that plays recorded audio a byte at a time, which is how drums and voice clips get out of a
-cartridge. The <span class="term" data-def="The Programmable Sound Generator: a simple chip with three square-wave tone channels and one noise channel.">PSG</span>
-is far simpler: three square-wave tone channels and one noise channel, an SN76489-compatible
-part. And it is not a separate chip at all. The PSG core is built into the VDP's die, which means
-the thing that makes the beeps is physically inside the thing that draws the picture.</p>
+is the FM synthesiser, the source of the sound people mean when they say a game sounds like a
+Mega Drive, and it hangs off the Z80's private bus, right next to the Z80 itself. One of its
+channels can be handed over to a DAC that plays recorded audio a byte at a time, which is how
+drums and voice clips get out of a cartridge, and which means the Z80 has to go and fetch those
+bytes from the cartridge on the far side of the machine. The
+<span class="term" data-def="The Programmable Sound Generator: a simple chip with three square-wave tone channels and one noise channel.">PSG</span>
+is far simpler, making plain tones and noise rather than instruments. And it is not a separate
+chip at all: the PSG core is built into the VDP's die, which puts the thing that makes the beeps
+inside the thing that draws the picture, on the 68000's bus rather than the Z80's.</p>
 
-<p>Two more parts are worth naming even though they never appear in a screenshot. An I/O chip
-carries the version register, the three ports (two for controllers, one for expansion) and the
-serial lines. And a
-<span class="term" data-def="The chip that decides which processor gets a shared bus, and stalls the other one until the bus is free.">bus arbiter</span>
-sits between the two processors. When the 68000 wants the Z80's
-<span class="term" data-def="The shared set of wires carrying addresses and data between chips. Only one device can use a bus at a time, so anything else that wants it waits.">bus</span>,
-or the Z80 reaches out into the 68000's, the arbiter is the part that actually stalls one and
-lets the other through. The two processors are not wired to each other's pins; they are wired to
-the arbiter.</p>
+<p>Those are the five. The glue is two more parts, and neither ever appears in a screenshot. An I/O
+chip carries the version
+<span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span>,
+the three ports (two for controllers, one for expansion) and the serial lines. Both of those
+words are worth pinning down now, because the rest of the track uses them constantly. A register
+is a small storage slot inside a chip: the ones inside a processor hold the values it is working
+on, and the ones inside a hardware chip like the VDP say how that chip should behave. A port is
+either a socket on the case, like the two a controller plugs into, or an address a chip listens
+at, like the two the video chip is reached through; both senses are standard, and this page uses
+both.</p>
+
+<p>The other glue part is a
+<span class="term" data-def="The chip that decides which processor gets a shared bus, and stalls the other one until the bus is free.">bus arbiter</span>,
+and it sits between the two processors. When the 68000 wants the Z80's bus, or the Z80 reaches
+out into the 68000's, the arbiter is the part that actually stalls one and lets the other
+through. The two processors are not wired to each other's pins. They are wired to the arbiter,
+and it is the only way across.</p>
 
 <details class="explain"><summary>New here? &middot; Why would a console have two brains?</summary>
 <div class="x-body">
@@ -427,18 +490,6 @@ nowhere at all, are a story with real sources behind it and it is not settled on
 matters here is the shape: two processors, two private memories, and an arbiter in between.</p>
 </div>
 </details>
-
-<p>Those parts are not all on one set of wires. There are three buses:</p>
-
-<ul>
-<li>A <b>16-bit system bus</b>. The 68000 and the VDP are on it; so are the work RAM and the
-cartridge. This is the bus the memory map in section 3 describes.</li>
-<li>An <b>8-bit private bus</b>, the Z80's. The Z80, the YM2612 and the eight kilobytes of sound
-RAM live here, and nothing else does.</li>
-<li>The <b>video bus</b>, which belongs to the VDP alone and connects it to its video memory,
-with the colour and scroll memories sitting on the die itself. No other chip touches any of it,
-which is why no address in the 68000's map is a byte of video memory.</li>
-</ul>
 
 <figure class="diagram">
   <div class="bxd">
@@ -468,14 +519,27 @@ which is why no address in the 68000's map is a byte of video memory.</li>
     <div class="bxbus vid">
       <p class="bxlab">video bus (the VDP's own, reached by nothing else)</p>
       <div class="bxrow">
+        <div class="bx vdp"><b>VDP</b><i>the same chip again, on its other bus</i></div>
         <div class="bx mem"><b>VRAM</b><i>64 KB</i></div>
       </div>
     </div>
   </div>
-  <figcaption>The five parts placed on the three buses they actually hang off. The PSG, the
-  colour memory and the scroll memory are drawn inside the VDP because that is where they are;
-  only VRAM sits out on the video bus. The YM2612 is on the far side of the arbiter from the PSG.
-  The one picture to remember from this page: the two sound chips are not neighbours.
+  <div class="bxleg">
+    <span class="k-cpu">processor</span>
+    <span class="k-vdp">video: the VDP, and the memories on its die</span>
+    <span class="k-snd">sound</span>
+    <span class="k-mem">memory out on a bus</span>
+    <span class="k-glue">glue: the parts that wire the others together</span>
+  </div>
+  <p class="bxnote">Colour says what a part does. Position says which bus it is on: one row per
+  bus. A dashed inner box is a part that sits inside the chip drawn around it.</p>
+  <figcaption>The five parts and the two glue parts, each drawn on the bus it hangs off. The VDP
+  appears twice because it is the one part on two buses: the system bus, where the 68000 reaches
+  it through its ports, and the video bus it owns alone. The PSG, the colour memory and the
+  scroll memory are drawn inside the VDP because that is where they are; only VRAM sits out on
+  the video bus. The arbiter is drawn between the two processors' buses because that is the only
+  way across, and the YM2612 is on the far side of it from the PSG. The one picture to remember
+  from this page: the two sound chips are not neighbours.
   </figcaption>
 </figure>
 
@@ -491,22 +555,18 @@ the video chip can turn into a rule about audio, why a long transfer into video 
 consequences for the beeps, and why the two sound chips are programmed in completely different
 styles.</p>
 
-<details class="explain"><summary>New here? &middot; What is a bus, and why does it matter who owns it?</summary>
-<div class="x-body">
-<p>A bus is a bundle of shared wires. One group of them carries an address, saying which location
-the processor wants; another group carries the data going to or coming from that location; a few
-more carry timing and direction signals. Every chip on the bus is listening to all of it at
-once.</p>
-<p>The catch is that only one device may drive those wires at a time. If two chips both put a
-value on the data lines, the result is not two values, it is nonsense. So a bus needs a rule
-about who is allowed to talk, and on this machine that rule is enforced by a part whose only job
-it is.</p>
-<p>That is why "which bus is this chip on" is a real question with real consequences, and not
-just a diagram detail. Two chips on the same bus take turns and can hold each other up. Two chips
-on different buses genuinely run at the same time, and neither has to wait unless one of them
-reaches into the other's bus. The Genesis gets both: the Z80 and its FM chip work away
-undisturbed on their own wires, and the moment either processor reaches across, somebody
-stalls.</p>
+<details class="refbox"><summary>The five parts by the numbers</summary>
+<div class="enc-body">
+<div class="tbl"><table>
+  <tr><th>Part</th><th>Numbers</th></tr>
+  <tr><td>68000</td><td>Registers 32 bits wide; moves 16 bits at a time to and from the outside world; addresses a 24-bit space, which is the sixteen megabytes of section 3</td></tr>
+  <tr><td>Z80</td><td>Eight bits wide, with a 64 KB address map of its own and eight kilobytes of RAM to live in</td></tr>
+  <tr><td>VDP</td><td>Three memories of its own, none of them on the 68000's map: 64 KB of VRAM out on the video bus, plus the colour and scroll memories on the die. Sizes in section 6</td></tr>
+  <tr><td>YM2612</td><td>Six channels of frequency-modulation synthesis, one of which can play recorded samples instead</td></tr>
+  <tr><td>PSG</td><td>Three square-wave tone channels and one noise channel, an SN76489-compatible part</td></tr>
+</table></div>
+<p class="enc-note">Every clock figure is section 2's rather than this table's, because they all
+come out of one crystal and the divisors are the interesting part.</p>
 </div>
 </details>
 
@@ -516,14 +576,25 @@ stalls.</p>
 the VDP draws the picture, the YM2612 is the FM synthesiser, and the PSG makes the simple tones
 from inside the VDP's own die.</li>
 <li>Three buses: the 68000's 16-bit system bus, the Z80's private 8-bit bus, and the VDP's video
-bus, which no other chip reaches.</li>
-<li>The bus arbiter sits between the two processors, so either one reaching into the other's
-world stalls somebody.</li>
+bus, which no other chip reaches. Only one device can use a bus at a time, so anything else that
+wants it waits.</li>
+<li>Two glue parts: an I/O chip carrying the version register and the three ports, and a bus
+arbiter between the two processors, so either one reaching into the other's world stalls
+somebody.</li>
 </ul>
 </div>
 
 <!-- ================================================================ -->
 <h2 id="s2">2 &middot; One crystal, every clock</h2>
+
+<p>Everything in this section is a clock, so start there. A clock is a signal that flips between
+two voltages over and over, at a fixed rate. It carries no information at all. Its whole job is to
+be a metronome: on each tick, every chip listening to it moves one step further through whatever
+it was doing. One of those ticks is one cycle, which is the unit every timing figure on this
+track is counted in, and a megahertz is a million ticks a second, so 7.67 MHz is about 7,670,000
+of them every second. The ticking itself comes from a crystal, a sliver of quartz that vibrates
+at a very stable frequency when you put a voltage across it. That crystal is the oscillator the
+next paragraph means.</p>
 
 <p>There is one oscillator in a Genesis, and every clock in this section is that oscillator
 divided by a whole number. Not approximately, not nominally: exactly, by an integer.</p>
@@ -573,7 +644,11 @@ clock by seven.</p>
 <p>Because every clock is the same crystal divided, no two parts of the machine can drift apart.
 They are locked in a fixed ratio for as long as the console is powered: the 68000 gets exactly 15
 of its cycles for every 7 the Z80 gets, on every console, at every temperature, forever. That is
-a genuinely useful property, because a timing relationship you measure once holds always.</p>
+the two divisors turned upside down, and it is worth reading twice, because the 7 and the 15 swap
+chips between the two sentences. Dividing by the smaller number is what makes a chip faster, so
+the 68000, on master over 7, is the one that racks up 15 cycles in the time the Z80 takes to rack
+up 7. It is a genuinely useful property, because a timing relationship you measure once holds
+always.</p>
 
 <p><span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
 It also means a PAL console is not a differently tuned machine. Its crystal is about 0.9
@@ -582,20 +657,21 @@ percent slower than an NTSC one, and every single clock in the machine comes dow
 a separate effect entirely, and it comes from how a frame is built rather than from this
 fraction of a percent.</p>
 
-<details class="explain"><summary>New here? &middot; What is a clock, and what does 7.67 MHz mean?</summary>
+<details class="explain"><summary>New here? &middot; What is a cycle count actually counting?</summary>
 <div class="x-body">
-<p>A clock is a signal that flips between two voltages over and over, at a fixed rate. It carries
-no information at all. Its whole job is to be a metronome: on each tick, every chip listening to
-it moves one step further through whatever it was doing.</p>
-<p>"7.67 MHz" means 7,670,000 of those ticks every second, near enough. A 68000 instruction costs
-some whole number of ticks, so knowing the tick rate is what turns "this routine takes 300
-cycles" into "this routine takes 39 microseconds". That conversion is why cycle counts are worth
-counting at all.</p>
-<p>A crystal is where the ticking comes from: a sliver of quartz that vibrates at a very stable
-frequency when you put a voltage across it. Stable is the operative word, and it is not the same
-as exact. The eight digits above are the frequency the part is cut for; any individual console
-sits a hair off it and moves a little as the case warms up. What does not move is the
-relationship between the chips, because that is division, and division does not drift.</p>
+<p>A 68000 instruction costs some whole number of ticks, and different instructions cost
+different numbers of them. That is why code on this track is measured in cycles rather than in
+seconds: the count belongs to the instructions themselves and does not change from console to
+console.</p>
+<p>Knowing the tick rate is what turns a count into a time. "This routine takes 300 cycles"
+becomes "this routine takes 39 microseconds" only once you know that 7.67 MHz is 7,670,000 ticks
+a second, near enough. That conversion is why cycle counts are worth counting at all, and it is
+also why it matters that the real figure is 7.67 and not the 8 MHz on the spec sheet further
+down.</p>
+<p>One caution about the crystal. Stable is the operative word, and it is not the same as exact.
+The eight digits above are the frequency the part is cut for; any individual console sits a hair
+off it and moves a little as the case warms up. What does not move is the relationship between
+the chips, because that is division, and division does not drift.</p>
 </div>
 </details>
 
@@ -704,6 +780,13 @@ difference players notice comes from how a frame is built instead.</li>
 <!-- ================================================================ -->
 <h2 id="s3">3 &middot; The 68000's map of the world</h2>
 
+<p style="color:var(--dim); font-size:.85rem;">Addresses start here, so a word about how they are
+written. Every address and value from this point on is in hexadecimal, base 16, marked by a
+leading <code>$</code> that is notation and never part of the number. One hex digit stands for
+exactly four bits, so the six digits of <code>$FF0000</code> are 24 bits of address. The
+<a href="../basics/numbers-and-notation.html">numbers and notation page</a> has a live converter
+if you would rather read any of them in another base.</p>
+
 <p>The 68000 puts 23 address lines on its pins, A1 to A23, and carries the lowest bit of the
 address in two separate strobe signals that say which half of a 16-bit word it wants. That comes
 to a 24-bit address space, so it can name 2^24 distinct byte addresses: <code>$000000</code>
@@ -737,44 +820,14 @@ It is called memory-mapped I/O, and it is why the map below repays learning.</p>
 </div>
 </details>
 
-<p>Here is that map with every region marked by what actually happens when you touch it. Every
-hazard in the reveals is also stated in the prose below, so a reader who clicks nothing is never
-left holding a trap.</p>
-
-<figure class="diagram">
-  <div class="mmap" id="mmap">
-    <button type="button" class="mmr v-ok" data-i="0"><span class="a">$000000-$3FFFFF</span><span class="nm">cartridge ROM</span><span class="vd">works</span></button>
-    <button type="button" class="mmr v-junk" data-i="1"><span class="a">$400000-$7FFFFF</span><span class="nm">Sega reserved: expansion</span><span class="vd">junk</span></button>
-    <button type="button" class="mmr v-hang" data-i="2"><span class="a">$800000-$9FFFFF</span><span class="nm">Sega reserved</span><span class="vd">hangs</span></button>
-    <button type="button" class="mmr v-ok" data-i="3"><span class="a">$A00000-$A0FFFF</span><span class="nm">Z80 address space</span><span class="vd">works</span></button>
-    <button type="button" class="mmr v-ok" data-i="4"><span class="a">$A10000-$A1001F</span><span class="nm">I/O: version, controller ports</span><span class="vd">works</span></button>
-    <button type="button" class="mmr v-ok" data-i="5"><span class="a">$A11000-$A11200</span><span class="nm">control registers</span><span class="vd">works</span></button>
-    <button type="button" class="mmr v-ok" data-i="6"><span class="a">$A13000-$A130FF</span><span class="nm">cartridge /TIME</span><span class="vd">works</span></button>
-    <button type="button" class="mmr v-ok" data-i="7"><span class="a">$A14000</span><span class="nm">TMSS register</span><span class="vd">works</span></button>
-    <button type="button" class="mmr v-hang" data-i="8"><span class="a">$B00000-$BFFFFF</span><span class="nm">Sega reserved</span><span class="vd">hangs</span></button>
-    <button type="button" class="mmr v-ok" data-i="9"><span class="a">$C00000-$C0001F</span><span class="nm">VDP ports, and the PSG</span><span class="vd">works</span></button>
-    <button type="button" class="mmr v-hang" data-i="10"><span class="a">$C00020-$C0003F</span><span class="nm">just past the ports</span><span class="vd">hangs</span></button>
-    <button type="button" class="mmr v-mir" data-i="11"><span class="a">$E00000-$FEFFFF</span><span class="nm">Sega: access prohibited</span><span class="vd">mirror</span></button>
-    <button type="button" class="mmr v-ok" data-i="12"><span class="a">$FF0000-$FFFFFF</span><span class="nm">work RAM, 64 KB</span><span class="vd">works</span></button>
-  </div>
-  <div class="mmleg">
-    <span class="l-ok">works: a device answers</span>
-    <span class="l-junk">junk: open bus, the read returns leftovers and the write vanishes</span>
-    <span class="l-hang">hangs: nothing completes the bus cycle, the 68000 waits forever</span>
-    <span class="l-mir">mirror: memory from elsewhere answering at a second set of addresses</span>
-  </div>
-  <div class="vcap" id="mmcap" aria-live="polite">Select a region to read what answers there and what happens if you touch it. Low addresses at the top; not to scale.</div>
-  <figcaption>The 68000's sixteen megabytes, low addresses at the top, not to scale. The lesson
-  without a click is the colour of the rows: the gaps between the chips are not spare room, and
-  they are not all the same kind of gap.</figcaption>
-</figure>
-
 <p>Three things can happen when the 68000 puts an address on the bus, and the difference between
 the second and the third is the difference between a bug you can chase and a console you have to
 unplug.</p>
 
 <p>Some addresses <b>work</b>. A chip is listening, it answers, and the transfer completes. That
-is ROM, work RAM, the VDP's ports, the I/O registers.</p>
+is ROM, work RAM, the VDP's ports, the I/O registers. Working means the bus cycle completes, not
+that every access does what you meant: cartridge ROM answers every read and quietly discards
+every write, because it is read-only memory, and the 68000 is told nothing either way.</p>
 
 <p>Some addresses <b>answer with junk</b>. Nothing out there is driving the data lines, so what
 comes back is whatever was already floating on them. The precise description, from Charles
@@ -792,9 +845,14 @@ attached:</p>
 <pre>    move.w  ($500000).l,d0     <span class="c">; d0 now holds junk, and nothing said so</span>
     move.w  #$1234,($500000).l <span class="c">; this write goes nowhere at all</span>
     tst.w   d0                 <span class="c">; the flags describe the junk, perfectly happily</span></pre>
-<p>The instructions are ordinary and correct. The 68000 has no way to tell you that the first one
-answered with garbage, because from its side the bus cycle completed normally. This is how a
-stray pointer corrupts a game quietly, three frames after the actual mistake.</p>
+<p>The instructions are ordinary and correct. That third one tests the value it was handed and
+sets the
+<span class="term" data-def="One bit in the flag register recording a fact about the last result, such as whether it came out zero, negative, or carried past the end of the byte. A conditional instruction reads a flag rather than looking at the value itself.">flags</span>,
+which are the few bits the 68000 keeps to describe the last result it saw, and which a later
+instruction can branch on. They describe the junk as faithfully as they would describe a real
+number, because the 68000 has no way to tell you the first line answered with garbage: from its
+side the bus cycle completed normally. This is how a stray pointer corrupts a game quietly, three
+frames after the actual mistake.</p>
 </div>
 
 <p>And some addresses <b>hang the machine</b>. The 68000 does not finish a bus cycle on its own
@@ -824,6 +882,40 @@ arrives, and nothing ever will, and it goes on waiting. This is also why "the co
 to.</p>
 </div>
 </details>
+
+<p>Here is the map, with every region coloured by which of those three happens when you touch it.
+The legend carries a fourth colour, mirror, which is not a fourth outcome: a mirror is one device
+answering at more than one set of addresses, so it works, and work RAM later in this section is
+the example. Every trap in the reveals is stated in this section's prose too, so a reader who
+clicks nothing is never left holding one.</p>
+
+<figure class="diagram">
+  <div class="mmap" id="mmap">
+    <button type="button" class="mmr v-ok" data-i="0"><span class="a">$000000-$3FFFFF</span><span class="nm">cartridge ROM</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-junk" data-i="1"><span class="a">$400000-$7FFFFF</span><span class="nm">Sega reserved: expansion</span><span class="vd">junk</span></button>
+    <button type="button" class="mmr v-hang" data-i="2"><span class="a">$800000-$9FFFFF</span><span class="nm">Sega reserved</span><span class="vd">hangs</span></button>
+    <button type="button" class="mmr v-ok" data-i="3"><span class="a">$A00000-$A0FFFF</span><span class="nm">Z80 address space</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="4"><span class="a">$A10000-$A1001F</span><span class="nm">I/O: version, controller ports</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="5"><span class="a">$A11000-$A11200</span><span class="nm">control registers</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="6"><span class="a">$A13000-$A130FF</span><span class="nm">cartridge /TIME</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="7"><span class="a">$A14000</span><span class="nm">TMSS register</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-hang" data-i="8"><span class="a">$B00000-$BFFFFF</span><span class="nm">Sega reserved</span><span class="vd">hangs</span></button>
+    <button type="button" class="mmr v-ok" data-i="9"><span class="a">$C00000-$C0001F</span><span class="nm">VDP ports, and the PSG</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-hang" data-i="10"><span class="a">$C00020-$C0003F</span><span class="nm">just past the ports</span><span class="vd">hangs</span></button>
+    <button type="button" class="mmr v-mir" data-i="11"><span class="a">$E00000-$FEFFFF</span><span class="nm">Sega: access prohibited</span><span class="vd">mirror</span></button>
+    <button type="button" class="mmr v-ok" data-i="12"><span class="a">$FF0000-$FFFFFF</span><span class="nm">work RAM, 64 KB</span><span class="vd">works</span></button>
+  </div>
+  <div class="mmleg">
+    <span class="l-ok">works: a device answers</span>
+    <span class="l-junk">junk: open bus, the read returns leftovers and the write vanishes</span>
+    <span class="l-hang">hangs: nothing completes the bus cycle, the 68000 waits forever</span>
+    <span class="l-mir">mirror: memory from elsewhere answering at a second set of addresses</span>
+  </div>
+  <div class="vcap" id="mmcap" aria-live="polite">Select a region to read what answers there and what happens if you touch it. Low addresses at the top; not to scale.</div>
+  <figcaption>The 68000's sixteen megabytes, low addresses at the top, not to scale. The lesson
+  without a click is the colour of the rows: the gaps between the chips are not spare room, and
+  they are not all the same kind of gap.</figcaption>
+</figure>
 
 <p>Which regions do which, and both of the hangs below rest on one chain of evidence apiece, so
 they are worth stating with their provenance attached. Charles MacDonald's hardware-tested notes
@@ -865,8 +957,11 @@ pointing anything that dumps a range of memory at the VDP's block, because a rea
 <code>$C00000-$C0001F</code> passes straight through the PSG.
 </div>
 
-<p>Work RAM is 64 KB and its canonical address is <code>$FF0000</code> to <code>$FFFFFF</code>.
-Two true statements about the space just below it answer different questions and should not be
+<p>Work RAM is 64 KB and its canonical address is <code>$FF0000</code> to <code>$FFFFFF</code>. It
+holds every variable a game keeps, and it holds the stack: the block of memory a processor uses
+for return addresses and values it is putting aside for a moment, which on this machine starts at
+the top of the 64 KB and grows downward as things are pushed onto it. Two true statements about
+the space just below it answer different questions and should not be
 merged. Sega's map labels <code>$E00000-$FEFFFF</code> ACCESS PROHIBITED, which is a rule: do not
 go there. The community documents that the same range answers anyway, because the RAM's address
 decoding is partial and its 64 KB repeats through the whole range, which is a
@@ -912,7 +1007,10 @@ because that is where it is: a shipped game's own source file records section 1'
 without a word of comment about it.</p>
 
 <p>The 24-bit address bus turns up in a shipped game as a practical problem, and this is how
-Sonic 2 solves it:</p>
+Sonic 2 solves it. Nothing below is an instruction either: <code>function</code> gives the
+assembler a formula it can apply to a number, <code>phase</code> tells it to number what follows
+as though that code sat at the address given, and <code>&amp;</code> is a bitwise AND, which
+keeps only the bits set on both sides:</p>
 
 <pre><span class="c">; ---------------------------------------------------------------------------</span>
 <span class="c">; I run the main 68k RAM addresses through this function</span>
@@ -1007,8 +1105,9 @@ happened to be in 1990, preserved in a document that outlived it.</p>
 
 <p>Because ROM is at the bottom of the map, the first thing the 68000 reads out of reset is the
 cartridge, on a console without the security system in the way. It begins by reading two
-longwords from address zero. The first is the value to load
-into the stack pointer; the second is the address of the first instruction to run. Neither is
+longwords from address zero, a longword being four bytes on this processor. The first is the value
+to load into the stack pointer, the register that holds where the top of section 3's stack
+currently is; the second is the address of the first instruction to run. Neither is
 code. Both are data the cartridge supplies, and a Genesis ROM therefore does not begin with a
 program at all, it begins with a table:</p>
 
@@ -1077,9 +1176,10 @@ ROMEndLoc:
 	dc.l (RAM_End-1)&amp;$FFFFFF	<span class="c">; End address of RAM</span></pre>
 <span class="src">s2disasm/s2.asm:171-176</span>
 
-<p>Note the <code>&amp;$FFFFFF</code> on the two RAM lines. That is the 24-bit bus again, and it
-is the same fact the <code>ramaddr</code> trick in section 3 was working around, seen from the
-other end: the game's RAM labels carry the high <code>$FFFF0000</code> spelling, and the header
+<p>Note the <code>&amp;$FFFFFF</code> on the two RAM lines. That is the bitwise AND from section 3
+again, and here it keeps the bottom 24 bits of a number and throws away everything above them. It
+is the 24-bit bus again too, and the same fact the <code>ramaddr</code> trick in section 3 was
+working around, seen from the other end: the game's RAM labels carry the high <code>$FFFF0000</code> spelling, and the header
 wants the 24-bit truth, so the extra bits are masked off on the way in.</p>
 
 <p><span class="vary rev" title="Revision-dependent: the earliest consoles have no security system, and consoles from hardware revision 1 onward do.">Board revision</span>
@@ -1220,11 +1320,23 @@ hang is a bus cycle that never completes, with no exception taken and no way bac
 sixteen-megabyte map in section 3.</p>
 
 <p><span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>
-is the big one: 64 kilobytes, and the only general-purpose store of the three. Tile art lives in
-it. So do the nametables, which are the grids saying which tile goes in which cell of a scrolling
-plane; so does the sprite table; so does the horizontal scroll table. Where each of those sits
-inside the 64 KB is not fixed by the hardware. The program tells the VDP where it put them, which
-means a Genesis game's video memory layout is a budget somebody chose.</p>
+is the big one: 64 kilobytes, and the only general-purpose store of the three. Four things live in
+it, and each is worth a sentence rather than a name.</p>
+
+<p>Tile art is the bulk of it. A tile is a small square image, eight pixels by eight, and
+everything the VDP draws is built out of them. The nametables are the grids that place those
+tiles: a plane is one of the scrolling layers of the picture, a cell is one 8x8 square of that
+layer, and the nametable is the list saying which tile goes in which cell. The sprite table is
+the list of every
+<span class="term" data-def="A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.">sprite</span>,
+which is an image the chip moves around freely instead of locking to a grid: Sonic and the
+badniks rather than the scenery. And the horizontal scroll table holds the sideways scroll
+values the chip reads as it works its way down the picture, which is what lets one layer slide
+past another.</p>
+
+<p>Where each of those sits inside the 64 KB is not fixed by the hardware. The program tells the
+VDP where it put them, which means a Genesis game's video memory layout is a budget somebody
+chose.</p>
 
 <p><span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>
 is the colour memory: 64 slots arranged as four palettes of sixteen, each slot holding a nine-bit
@@ -1298,9 +1410,9 @@ and the window that opens there is when bulk video work is comfortable.</li>
 <h2 id="s7">7 &middot; A tour of one frame</h2>
 
 <p><span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
-Put the five parts together and run them for one frame, which is just under a sixtieth of a
-second on an NTSC console and just under a fiftieth on a PAL one. Nothing in this section is new;
-it is the same five parts, all moving at once.</p>
+Put the five parts and their glue together and run them for one frame, which is just under a
+sixtieth of a second on an NTSC console and just under a fiftieth on a PAL one. Nothing in this
+section is new. It is the same five parts on the same three buses, all moving at once.</p>
 
 <p><b>The VDP is drawing.</b> It walks down the picture one
 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span>
@@ -1310,16 +1422,11 @@ fetches the tiles those entries name, looks each pixel's colour up in CRAM, and 
 sprites overlap that line. The 68000 is not involved, and nothing requires it to watch: all it
 can see of the beam is the H/V counter at <code>$C00008</code>, if it goes looking. How a scrolling
 plane is built out of nametable words, what happens when two things want the same pixel, and how
-the window layer takes over a rectangle of the screen are the video chip's own subject:
-<a href="vdp-planes.html">the VDP and planes</a> covers the planes, the
-<a href="vdp-planes.html#priority">priority bit</a> that decides which of two layers a cell belongs
-to, and the <a href="vdp-planes.html#window">window</a>. What a tile actually is, an 8x8 image at
-four bits per pixel occupying 32 bytes, and how 64 KB of VRAM gets divided between art and tables,
-is the subject after that. So is colour: nine bits per colour, four palettes of sixteen, and the
-reason Genesis pictures band the way they do. So is the sprite table, which is a list in VRAM of
-up to eighty entries in the wider mode, each naming a position, a size, some tiles and a link to
-the next one, with per-scanline limits that decide which of them get drawn when there are too
-many.</p>
+the <a href="vdp-planes.html#window">window</a> takes over a rectangle of the screen are the video
+chip's own subject: <a href="vdp-planes.html">the VDP and planes</a> covers all of it, including
+the <a href="vdp-planes.html#priority">priority bit</a> that decides which of two layers a cell
+belongs to. Tiles and the VRAM budget, colour and CRAM, and the sprite table with its per-line
+limits are the pages after that.</p>
 
 <p><b>Meanwhile the 68000 is running the game</b>, fetching its instructions straight out of the
 cartridge at the bottom of the map and keeping every value it changes in work RAM at the top. ROM
