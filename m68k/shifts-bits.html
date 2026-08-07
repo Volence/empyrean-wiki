@@ -381,17 +381,19 @@ signed arithmetic and want the overflow flagged, and LSL when you just want to m
 about sign.</p>
 
 <div class="gotcha"><span class="g-tag">Gotcha</span>
-<b>Every instruction on this page is barred from the video chip.</b> The memory forms below shift or
-rotate a word wherever you point them, and the bit instructions in section 3 do the same, so it is
-natural to aim one at video memory. You cannot. All of them read the destination before writing it
+<b>Almost every instruction on this page is barred from the video chip.</b> The memory forms below shift or
+rotate a word wherever you point them, and BSET, BCLR and BCHG in section 3 do the same, so it is
+natural to aim one at video memory. You cannot. Each of them reads the destination before writing it
 back, and the VDP's data port is not memory: it is a port with a direction, set by the control write
 before it. Read from it while it is set up for writing and the VDP withholds
 <span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>
 and stalls the 68000; write to it while it is set up for reading and the address advances without
 storing anything. Sega's development manual names the instructions it rules out for this reason, and
-it is most of this page: ASL, ASR, LSL, LSR, ROL, ROR, ROXL, ROXR, BCHG, BSET, BCLR and TAS, alongside
-CLR, NEG, NEGX, NOT, NBCD, Scc and the immediate-form arithmetic on other pages. Read the word into a
-data register, work on it there, and write it back.</div>
+it is nearly all of this page: ASL, ASR, LSL, LSR, ROL, ROR, ROXL, ROXR, BCHG, BSET and BCLR, alongside
+CLR, NEG, NOT, Scc, TAS and the immediate-form arithmetic on other pages. BTST is the one exception
+here, because it only reads. That does not make it safe against the port: a read still has to match
+the direction the control write set. Read the word into a data register, work on it there, and write
+it back.</div>
 
 <details class="explain">
   <summary>New here? &middot; A shift is a cheap multiply or divide by a power of two</summary>

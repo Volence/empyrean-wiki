@@ -1081,18 +1081,22 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
   </div>
   <figcaption>PEA copies a code address into stack RAM, and rts jumps to whatever the top slot holds (static fallback: pea Return_Here(pc) copies the code address $00020010 into the stack slot at $00FFFEFC, dropping sp by the 4 bytes it stored; a following rts reads those 4 bytes back, sets the PC to $00020010, and sp steps back up to $00FFFF00, exactly as if a real call had pushed the return address).</figcaption>
   </figure>
-  <p>Which is why the one real use in the Sonic 2 disassembly is not parameter passing: it is a
-  deliberate, commented "fake call" trick. The routine pushes the address right after itself,
-  then branches (not calls) into shared code, so that shared code's own <code>rts</code> returns
-  to the label following the PEA, exactly as if the PEA'd branch had been a subroutine call all
-  along:</p>
+  <p>Which makes the honest answer about this instruction sharper than "it is rare": <b>the retail
+  Sonic 2 ROM contains no PEA at all.</b> The instruction appears exactly twice in the whole
+  disassembly, and both sit inside optional blocks the default build does not assemble, added by
+  the disassembly's maintainers rather than shipped by Sega. So the example below is real,
+  commented, working 68000 code, and it is worth reading, but nobody's Mega Drive ever ran it.
+  What it shows is a deliberate "fake call" trick: the routine pushes the address right after
+  itself, then branches (not calls) into shared code, so that shared code's own <code>rts</code>
+  returns to the label following the PEA, exactly as if the PEA'd branch had been a subroutine
+  call all along:</p>
   <pre>	<span class="c">; This is just a fancy efficient way of doing 'if true then call this, else call that'.</span>
 	pea	+(pc)
 	tst.w	(Two_player_mode).w
 	beq.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY
 	bra.w	CalculateVRAMAddressOfBlockForPlayer1.AbsoluteXAbsoluteY_DoubleResolution
 +</pre>
-  <span class="src">s2disasm/s2.asm:20004-20009 (DrawInitialBG_LoadWholeBackground_512x256)</span>
+  <span class="src">s2disasm/s2.asm:20004-20009 (DrawInitialBG_LoadWholeBackground_512x256, inside the disassembly's optional <code>fixBugs</code> block, which the default build leaves out)</span>
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   This is an unusual, advanced idiom, not PEA's typical job of parameter passing, and it is worth
   reading twice: the PEA supplies the return address a plain <code>bsr</code>/<code>jsr</code>
@@ -1100,7 +1104,9 @@ $00020010:  Return_Here:	<span class="c">; the label names this spot; the assemb
   destinations with a branch rather than duplicating the call. The consumer of the pushed address
   is the <code>rts</code> at the end of the shared code: an rts pops whatever 4 bytes sit on top
   of the stack and jumps there, with no idea whether a jsr or a PEA put them there. A second,
-  structurally identical use of the same trick exists later in the same file, at line 29666.</div>
+  structurally identical use of the same trick exists later in the same file, at line 29666, and
+  it is in an optional block too: those two are every PEA in the disassembly, and the shipped game
+  has neither.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   If the address will be used more than once, <a href="#lea">LEA</a> it into a spare register and
   push that with <code>move.l An,-(sp)</code>; PEA only wins when the address is needed exactly
