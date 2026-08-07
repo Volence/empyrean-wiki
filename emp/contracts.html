@@ -661,7 +661,7 @@ can express. .emp calls those <b>contexts</b>, and a routine demands one with
 <span class="clause">requires(...)</span>.</p>
 
 <p>The engine's one live example is timing. A handful of routines are only safe to run during
-<span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>,
+<span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>,
 the short gap between frames when the display is not being drawn. Reading the controllers is
 one of them:</p>
 

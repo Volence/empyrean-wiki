@@ -498,7 +498,7 @@ together:</p>
 <span class="src">engine/structs.emp:137-157</span>
 
 <p>Game code writes registers through a <code>setVDPReg</code> write-through that updates the shadow and
-sets a bit in a dirty mask; once per <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>, <code>Flush_VDP_Shadow</code> walks all 19 fields and writes only
+sets a bit in a dirty mask; once per <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>, <code>Flush_VDP_Shadow</code> walks all 19 fields and writes only
 the ones whose dirty bit is set. On a typical gameplay frame zero to three registers actually
 change, so the flush skips sixteen-plus writes it would otherwise have to make blind.</p>
 
@@ -531,7 +531,7 @@ not something the engine itself does.</p>
 top to bottom, and then the beam has to fly back up to start over. On NTSC, 224 of 262 lines per
 frame are actually visible; the remaining 38 are dead time from the display's point of view, but
 they are the only window where the CPU can safely rewrite video memory without the change tearing
-across a half-drawn picture. That window is called <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>, and almost everything on the rest of this
+across a half-drawn picture. That window is called <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>, and almost everything on the rest of this
 page is about using it well.</p>
 
 <details class="explain">
@@ -1289,7 +1289,7 @@ re-measured against this engine's own worst case.</p>
 <!-- ================================================================ -->
 <h2 id="s8">8 · The Z80 and DMA</h2>
 
-<p>The classic rule, repeated in every Genesis hardware reference, is: halt the <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz. In Aeon it runs the entire sound driver autonomously, leaving the 68000 free.">Z80</span> before
+<p>The classic rule, repeated in every Genesis hardware reference, is: halt the <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz, with its own memory and its own bus. On a Genesis it conventionally runs the sound driver.">Z80</span> before
 starting any DMA, release it after. The two CPUs share one bus, and a Z80 fetch landing mid-transfer
 can corrupt the data in flight. Every reference engine follows this rule literally: hold
 <code>stopZ80</code> across the entire DMA window.</p>

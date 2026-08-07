@@ -1,0 +1,2078 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis: The VDP &amp; Planes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🧱%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+/* ============================================================
+   Page-specific styles: The VDP & Planes (The Genesis)
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE;
+    rgba components from 0/34/68/102/136/170/204/238)
+   ============================================================ */
+
+/* collapsed deep reference (lifted from m68k/moving-data.html) */
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary::-webkit-details-marker{display:none;}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* a 16-bit word drawn as labelled bit fields */
+.bitword{display:flex; font-family:var(--mono); font-size:.68rem; margin:.6rem 0;
+  border:1px solid var(--line); border-radius:4px; overflow:hidden; max-width:42rem;}
+.bitword .bf{padding:.35rem .5rem; border-right:1px solid var(--line); text-align:center;}
+.bitword .bf:last-child{border-right:0;}
+.bitword .bf.b-tile{background:rgba(68,102,238,.15); color:#88AAEE; flex:1;}
+.bitword .bf.b-pal{background:rgba(238,170,0,.15); color:#EEAA00;}
+.bitword .bf.b-pri{background:rgba(204,102,170,.15); color:#CC66AA;}
+.bitword .bf.b-flip{background:rgba(68,204,136,.15); color:#44CC88;}
+.bitword .bf.b-cd{background:rgba(204,102,170,.15); color:#CC66AA;}
+.bitword .bf.b-addr{background:rgba(68,102,238,.15); color:#88AAEE; flex:1;}
+.bitword .bf.b-reg{background:rgba(238,170,0,.15); color:#EEAA00;}
+.bitword .bf.b-data{background:rgba(170,170,204,.15); color:var(--dim); flex:1;}
+.bitword .bf.b-zero{background:rgba(0,0,0,.25); color:var(--dim);}
+
+/* the two command-word layouts, stacked so the prefix lines up */
+.cmdforms{display:flex; flex-direction:column; gap:.9rem; margin:.9rem 0;}
+.cmdforms .cf-t{font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); margin:0 0 .2rem;}
+.cmdforms .bitword{margin:0;}
+
+/* generic toy scaffolding */
+.toy{max-width:44rem;}
+.toy-row{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin:.45rem 0;}
+.toy-row .lbl{font-family:var(--mono); font-size:.7rem; letter-spacing:.06em;
+  color:var(--dim); min-width:6.4rem;}
+.tbtn{font-family:var(--mono); font-size:.7rem; padding:.3rem .65rem; cursor:pointer;
+  border-radius:3px; background:transparent; color:var(--dim); border:1px solid var(--line);}
+.tbtn[aria-pressed="true"]{border-color:var(--accent); color:var(--ink); background:rgba(68,102,238,.18);}
+.tbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.tbtn.reset{color:var(--learn); border-color:var(--learn);}
+.toycap{font-family:var(--mono); font-size:.72rem; color:var(--dim); line-height:1.5;
+  margin:.7rem 0 0; max-width:42rem;}
+
+/* nametable composer */
+.ntcomposer{display:flex; flex-wrap:wrap; gap:1.4rem; align-items:flex-start;}
+.ntc-controls{display:flex; flex-direction:column; gap:.5rem; font-family:var(--mono); font-size:.72rem;}
+.tilepick{display:flex; gap:3px;}
+.tilepick button{width:1.9rem; height:1.9rem; padding:0; border:1px solid var(--line);
+  background:#000000; cursor:pointer;}
+.tilepick button canvas{width:100%; height:100%; display:block; image-rendering:pixelated;}
+.tilepick button.sel{outline:2px solid var(--ink); outline-offset:1px;}
+.tilepick button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel);
+  color:var(--ink); border:1px solid var(--line); border-radius:3px; padding:.2rem .3rem;}
+#ntcGrid{display:grid; grid-template-columns:repeat(4,2.6rem); grid-template-rows:repeat(4,2.6rem);
+  gap:2px; background:var(--line); border:1px solid var(--line); width:max-content;}
+.ntc-cell{background:#000000; cursor:pointer; padding:0; border:0;}
+.ntc-cell canvas{width:100%; height:100%; display:block; image-rendering:pixelated;}
+.ntc-cell:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+.ntc-cell.cursel{outline:2px solid var(--gold); outline-offset:-2px;}
+.ntc-canvaswrap{display:flex; flex-direction:row; gap:1.2rem; align-items:flex-start; flex-wrap:wrap;}
+.ntc-labeled{display:flex; flex-direction:column; gap:.35rem;}
+.ntc-caplabel{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim);}
+.ntc-preview canvas{width:4rem; height:4rem; image-rendering:pixelated; border:1px solid var(--line);}
+.ntc-word{font-family:var(--mono); font-size:.78rem; color:var(--ink);}
+.ntc-word .bin{display:block; color:var(--dim); font-size:.72rem; letter-spacing:.06em;}
+
+/* priority stacker */
+.stack-wrap{display:flex; flex-wrap:wrap; gap:1.4rem; align-items:flex-start;}
+.stage{position:relative; width:14rem; height:9rem; background:#000022;
+  border:1px solid var(--line); border-radius:3px; flex:0 0 auto;}
+.stage .actor{position:absolute; font-family:var(--mono); font-size:.66rem;
+  letter-spacing:.04em; padding:.2rem .35rem; border:1px solid var(--line);}
+.stage .a-b{left:.5rem; top:.5rem; width:7.5rem; height:4.6rem; background:#004444; color:#88EECC;}
+.stage .a-a{left:4.6rem; top:.5rem; width:7.5rem; height:4.6rem; background:#442266; color:#EEAAEE;}
+.stage .a-s{left:2.6rem; top:3.2rem; width:7.5rem; height:4.2rem; background:#664400; color:#EECC88;}
+.stage .bd{position:absolute; right:.35rem; bottom:.2rem; font-family:var(--mono);
+  font-size:.6rem; color:#666688;}
+.stacklist{list-style:none; padding:0; margin:0; font-family:var(--mono); font-size:.72rem;
+  border:1px solid var(--line); border-radius:3px; min-width:15rem;}
+.stacklist li{padding:.25rem .6rem; border-bottom:1px solid var(--line); color:var(--dim);
+  display:flex; justify-content:space-between; gap:1rem; max-width:none;}
+.stacklist li:last-child{border-bottom:0;}
+.stacklist li.on{color:var(--ink); background:rgba(68,102,238,.15);}
+.stacklist li .rk{color:#666688;}
+
+/* plane-size picker */
+.psz-out{font-family:var(--mono); font-size:.76rem; line-height:1.7; margin:.6rem 0 0;}
+.psz-out .num{color:var(--gold);}
+.psz-bar{position:relative; height:1.5rem; background:#000000; border:1px solid var(--line);
+  border-radius:3px; margin:.5rem 0 .2rem; overflow:hidden;}
+.psz-fill{height:100%; width:0; background:rgba(68,102,238,.55); transition:none;}
+.psz-fill.over{background:rgba(204,102,170,.55);}
+.psz-cap{position:absolute; top:0; bottom:0; left:50%; width:2px; background:var(--gold);}
+.psz-scale{font-family:var(--mono); font-size:.62rem; color:var(--dim); display:flex;
+  justify-content:space-between;}
+.verdict{font-family:var(--mono); font-size:.74rem; padding:.35rem .6rem; border-radius:3px;
+  display:inline-block; margin-top:.5rem;}
+.verdict.ok{color:var(--learn); border:1px solid var(--learn);}
+.verdict.no{color:#CC66AA; border:1px solid #CC66AA;}
+
+/* the H32 VRAM map bar */
+.vbar{display:flex; height:2.2rem; border:1px solid var(--line); border-radius:3px;
+  overflow:hidden; margin:.6rem 0 .3rem; min-width:26rem;}
+.vbar span{display:flex; align-items:center; justify-content:center; font-family:var(--mono);
+  font-size:.6rem; color:var(--ink); overflow:hidden; white-space:nowrap;
+  border-right:1px solid var(--line);}
+.vbar span:last-child{border-right:0;}
+.vb-art{background:rgba(68,102,238,.3);}
+.vb-win{background:rgba(68,204,136,.35);}
+.vb-hs{background:rgba(238,170,0,.35);}
+.vb-free{background:rgba(0,0,0,.5); color:#666688;}
+.vb-sat{background:rgba(204,102,170,.35);}
+.vb-pa{background:rgba(68,102,238,.55);}
+.vb-pb{background:rgba(68,102,238,.75);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / THE GENESIS / THE VDP &amp; PLANES</p>
+  <p class="eyebrow">The Genesis</p>
+  <h1>The VDP &amp; Planes</h1>
+  <p class="sub">The Genesis draws its picture with a chip that owns its own memory and will
+  not let the CPU near it. Everything the machine shows has to squeeze through two 16-bit
+  ports, land in the right table, and be described by a 16-bit word per 8x8 cell. This page
+  is that whole story: the ports and the command word, the read-modify-write hazard that
+  turns ordinary 68000 instructions into hangs, the planes and their six legal sizes, the
+  two scroll tables, the one priority bit that produces seven layers, and the Window layer
+  that replaces plane A rather than sitting on top of it.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>The chip that owns its own memory</a>
+  <a href="#ports"><span class="n">2</span>Two ports and one command word</a>
+  <a href="#rmw"><span class="n">3</span>The read-before-write hazard</a>
+  <a href="#nametable"><span class="n">4</span>A plane is a grid of words</a>
+  <a href="#sizes"><span class="n">5</span>Plane sizes: six, from one cap</a>
+  <a href="#hscroll"><span class="n">6</span>Scrolling sideways</a>
+  <a href="#vscroll"><span class="n">7</span>Scrolling vertically</a>
+  <a href="#priority"><span class="n">8</span>Priority: one bit, seven layers</a>
+  <a href="#window"><span class="n">9</span>The Window plane</a>
+  <a href="#left-column"><span class="n">10</span>Three things called the left column bug</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">This page assumes only what
+<a href="the-machine.html">The Machine</a> teaches: that the console is
+<a href="the-machine.html#s1">several chips sharing one address bus</a>, that
+<a href="the-machine.html#s3">the video chip's two ports sit at fixed addresses in the 68000's
+map</a>, and that <a href="the-machine.html#s6">the VDP owns three memories of its own</a>.
+Everything else is built here.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; The chip that owns its own memory</h2>
+
+<p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span>
+is not a peripheral the 68000 writes pictures into. It is a second processor with three
+private memories of its own, and it reads them itself, every scanline, to build the picture.
+The 68000 never sees any of the three. It cannot put an address on the bus and read a byte of
+video memory the way it reads work RAM, because those memories are not wired to the 68000's
+address bus at all.</p>
+
+<div class="tbl">
+<table>
+<tr><th>Memory</th><th>Size</th><th>Holds</th><th>One entry is</th></tr>
+<tr><td><b>VRAM</b></td><td>65,536 bytes</td><td>anything the VDP draws from: tile art, the plane maps, the sprite list, the horizontal scroll table</td><td>a byte</td></tr>
+<tr><td><b>CRAM</b></td><td>128 bytes</td><td>64 colour slots, as four palettes of sixteen</td><td>one 9-bit colour in a 16-bit word</td></tr>
+<tr><td><b>VSRAM</b></td><td>80 bytes</td><td>40 vertical scroll values, 20 per plane</td><td>one scroll value in a 16-bit word</td></tr>
+</table>
+</div>
+
+<p>Only <span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>
+is general purpose. <span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>
+and <span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span>
+are fixed in size and fixed in purpose, and nothing else can be stored in them. VRAM is the
+one that has to be budgeted, because everything a game shows competes for the same 65,536
+bytes: Sega's own inventory of what lives there runs to seven kinds of thing, and the tile art
+is only one of them. Section 5 spends that budget on a real layout.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why can't the CPU just write to video memory?</summary>
+  <div class="x-body">
+    <p>On a modern machine there is one address space and video memory is part of it. Write to
+    the right address and a pixel changes. That is not how this console is built.</p>
+    <p>The 68000 has one set of address wires, and everything it can reach hangs off them:
+    the cartridge, work RAM, the controller ports, the video chip's two ports. The video
+    chip's 64KB is on the OTHER side of that chip, wired to nothing but the VDP itself. There
+    is no address the 68000 can name that means "byte 300 of video memory", in the same way
+    there is no phone number that means "the third drawer of my neighbour's desk". You have to
+    ask the neighbour.</p>
+    <p>So every access is a two-part conversation. First you tell the VDP where you want to
+    go and whether you are reading or writing. Then you push or pull 16 bits at a time through
+    a single doorway. The whole of the next section is the grammar of that conversation, and
+    almost every performance decision a Genesis game makes comes back to the fact that the
+    doorway is narrow and only open wide between frames.</p>
+  </div>
+</details>
+
+<p>One consequence is worth stating before anything else, because it shapes the rest of the
+page: the VDP reads its memories on its own schedule, and it does not stop to be polite.
+While the picture is being drawn the chip is busy fetching tiles and scroll values, so the
+CPU's accesses have to fit around it. That is why bulk video work happens in
+<span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>,
+the short gap between frames when the VDP is not drawing anything.</p>
+
+<!-- ================================================================ -->
+<h2 id="ports">2 &middot; Two ports and one command word</h2>
+
+<p>There are two doorways, both 16 bits wide, both at fixed addresses in the 68000's map.</p>
+
+<div class="tbl">
+<table>
+<tr><th>Address</th><th>Port</th><th>What it is for</th></tr>
+<tr><td><code>$C00000</code></td><td>data port</td><td>the bytes themselves, going in or coming out</td></tr>
+<tr><td><code>$C00004</code></td><td>control port</td><td>written: a command word. Read: the VDP's status</td></tr>
+</table>
+</div>
+
+<p>Each port answers at a second address as well, <code>$C00002</code> and <code>$C00006</code>,
+which Sega documents as functionally equivalent to the first. Charles MacDonald's
+hardware-tested notes record that the VDP in fact has
+<span class="term" data-def="An address range that answers as a copy of another one, because the hardware decodes only some of the address lines.">mirrors</span>
+right across a much larger window, <code>$C00000</code> to <code>$DFFFFF</code>, and that reading an
+address inside that window which does not match the decode pattern locks the machine. That
+last part is recorded by one source only, so treat it as his measurement rather than as a
+settled fact, and stay on the four documented addresses.</p>
+
+<h3>The command word, form one: set a register</h3>
+
+<p>The VDP has 24 write-only configuration
+<span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span>,
+numbered 0 to 23, plus one read-only status register. None of them has an address. You set one
+by writing a single 16-bit word to the CONTROL port, shaped like this:</p>
+
+<div class="cmdforms">
+  <div>
+    <p class="cf-t">Register write, one word to $C00004</p>
+    <div class="bitword" aria-hidden="true">
+      <span class="bf b-cd">1 0<br>D15-D14</span>
+      <span class="bf b-zero">0<br>D13</span>
+      <span class="bf b-reg">RS4-RS0<br>D12-D8</span>
+      <span class="bf b-data">DATA<br>D7-D0</span>
+    </div>
+    <p style="font-size:.8rem; margin:.2rem 0 0;">In arithmetic: <code>$8000 | (register &lt;&lt; 8) | value</code>.
+    Register 16 set to <code>$11</code> is the word <code>$9011</code>.</p>
+  </div>
+  <div>
+    <p class="cf-t">Address set, two words to $C00004</p>
+    <div class="bitword" aria-hidden="true">
+      <span class="bf b-cd">CD1 CD0<br>D15-D14</span>
+      <span class="bf b-addr">A13-A0<br>D13-D0</span>
+    </div>
+    <div class="bitword" aria-hidden="true">
+      <span class="bf b-zero">0 (eight bits)<br>D15-D8</span>
+      <span class="bf b-cd">CD5-CD2<br>D7-D4</span>
+      <span class="bf b-zero">0 0<br>D3-D2</span>
+      <span class="bf b-addr">A15 A14<br>D1-D0</span>
+    </div>
+  </div>
+</div>
+
+<p>Put the two layouts next to each other and the thing that separates them becomes visible.
+The register form always begins <code>10</code>. The address form begins with CD1 and CD0, the
+low two bits of the six-bit operation code, and the six documented operations use only three of
+the four possible pairs there: <code>00</code> for the three reads, <code>01</code> for a VRAM
+or VSRAM write, <code>11</code> for a CRAM write. <code>10</code> is the one combination no
+documented operation produces, in DMA form or otherwise. So a first word beginning
+<code>10</code> cannot be the start of an address command, and a first word that does not begin
+<code>10</code> cannot be a register write. That is enough to tell the two apart on the first
+word alone, which is why one form is one word and the other is two. No source states this as a
+described mechanism; it is what the two published layouts add up to, which is why it is worked
+out here in the open rather than asserted.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why is the address split across two words?</summary>
+  <div class="x-body">
+    <p>A VRAM address needs 16 bits, and there are 16 bits in the first word, but two of them
+    were already spent saying what kind of access this is. So the low 14 bits of the address
+    ride in the first word and the top two bits are stranded in the second word, in its two
+    lowest positions, as far from the rest of the address as it is possible to get.</p>
+    <p>Nobody assembles that by hand twice. Every engine writes it once as a helper:</p>
+    <p><code>((address &amp; $3FFF) &lt;&lt; 16) | ((address &amp; $C000) &gt;&gt; 14) | command</code></p>
+    <p>Read it as three deposits into one 32-bit value. The low 14 bits of the address get
+    shifted up into the high word, because the high word is the first word sent. The top two
+    bits get shifted DOWN to the bottom, which is where the second word wants them. The command
+    bits are dropped in last. Send the whole longword to the control port and the 68000's two
+    halves of the write become the VDP's two words, in order.</p>
+  </div>
+</details>
+
+<p>A shipped game explains the same layout in its own words. This comment sits above Sonic 2's
+plane-drawing routine, and it is one of the clearest statements of the split anywhere:</p>
+
+<pre><span class="c">; control register:</span>
+<span class="c">;    CD1 CD0 A13 A12 A11 A10 A09 A08     (D31-D24)</span>
+<span class="c">;    A07 A06 A05 A04 A03 A02 A01 A00     (D23-D16)</span>
+<span class="c">;     ?   ?   ?   ?   ?   ?   ?   ?      (D15-D8)</span>
+<span class="c">;    CD5 CD4 CD3 CD2  ?   ?  A15 A14     (D7-D0)</span>
+<span class="c">;</span>
+<span class="c">;	A00-A15 - address</span>
+<span class="c">;	CD0-CD3 - code</span>
+<span class="c">;	CD4 - 1 if VRAM copy DMA mode. 0 otherwise.</span>
+<span class="c">;	CD5 - DMA operation</span>
+<span class="c">;</span>
+<span class="c">;	Bits CD3-CD0:</span>
+<span class="c">;	0000 - VRAM read</span>
+<span class="c">;	0001 - VRAM write</span>
+<span class="c">;	0011 - CRAM write</span>
+<span class="c">;	0100 - VSRAM read</span>
+<span class="c">;	0101 - VSRAM write</span>
+<span class="c">;	1000 - CRAM read</span></pre>
+<span class="src">s2disasm/s2.asm:1639-1656 (the header comment above PlaneMapToVRAM_H40)</span>
+
+<p>And the encoder it documents, from the same tree's macro file. <code>vdpCommDelta</code> is
+the scatter on its own, used to step an address; <code>vdpComm</code> is the whole command:</p>
+
+<pre><span class="c">; makes a VDP address difference</span>
+vdpCommDelta function addr,((addr&amp;$3FFF)&lt;&lt;16)|((addr&amp;$C000)&gt;&gt;14)
+
+<span class="c">; makes a VDP command</span>
+vdpComm function addr,type,rwd,(((type&amp;rwd)&amp;3)&lt;&lt;30)|((addr&amp;$3FFF)&lt;&lt;16)|(((type&amp;rwd)&amp;$FC)&lt;&lt;2)|((addr&amp;$C000)&gt;&gt;14)
+
+<span class="c">; values for the type argument</span>
+VRAM = %100001
+CRAM = %101011
+VSRAM = %100101
+
+<span class="c">; values for the rwd argument</span>
+READ = %001100
+WRITE = %000111
+DMA = %100111</pre>
+<span class="src">s2disasm/s2.macros.asm:4-18</span>
+
+<p>Those six constants are the same table Sega prints, spelled as bit masks that get ANDed
+together: <code>VRAM</code> and <code>WRITE</code> come out as <code>%000001</code>, which is
+the VRAM write code below.</p>
+
+<h3>The operation codes</h3>
+
+<p>Six operations are documented, and they are what the CD bits select:</p>
+
+<div class="tbl">
+<table>
+<tr><th>Operation</th><th>CD5</th><th>CD4</th><th>CD3</th><th>CD2</th><th>CD1</th><th>CD0</th></tr>
+<tr><td>VRAM write</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
+<tr><td>CRAM write</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+<tr><td>VSRAM write</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+<tr><td>VRAM read</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td>CRAM read</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td>VSRAM read</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+</table>
+</div>
+
+<p>CD0 is the write flag: it is 1 for all three writes and 0 for all three reads. After that the
+tidiness stops. VSRAM is picked out by CD2, but CRAM READ is picked out by CD3 while CRAM WRITE
+is picked out by CD1. There is no rule to remember here, and that is the honest lesson: the
+encoding is irregular enough that every engine wraps it in a macro and never types it again.</p>
+
+<p>Setting CD5 turns the same command into a
+<span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span>
+operation to the same destination, which is why the disassembly comment above calls CD5 "DMA
+operation". What the DMA modes are, how the length and source registers are loaded, and what
+each one costs are another page's business; nothing on this page needs them. The third DMA mode,
+the VRAM-to-VRAM copy, has no row above for a reason: the manual's table does not carry its code,
+and this page does not assert one. The disassembly comment further up offers CD4 as the
+VRAM-copy bit, which is one game's annotation rather than a documented code.</p>
+
+<h3>Auto-increment, and the size of an access</h3>
+
+<p>You do not re-issue the address for every word. Register 15 holds an
+<span class="term" data-def="A VDP register holding a step that is added to the video memory address after every access, so a run of writes lands in consecutive places.">auto-increment</span>
+value, a plain number from 0 to 255 that the VDP adds to its internal address after EVERY
+access, in Sega's words independent of the data size. Set it to 2 and a run of word writes
+walks forward through memory. Set it to 128 and consecutive writes land 128 bytes apart, which
+on a 64-cell-wide plane means straight down a column instead of along a row.</p>
+
+<p>Access size is where the manual will actively mislead you. Its printed text says the data
+port accepts byte writes. Charles MacDonald measured what the hardware does instead: a write to
+the VDP data or control port is interpreted as a 16-bit write with the low byte duplicated into
+the high byte, whether the address you wrote to was even or odd. So a byte write is not a byte
+write; it is a word write of a value you did not intend. Write words or longwords. A longword
+write is exactly two word writes on either port, and for the control port Sega says explicitly
+that the high half goes first, which is what makes the two-word address command work as a single
+<code>move.l</code>.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>A byte write to the data port writes a word.</b> <code>move.b #$40,(a6)</code> aimed at
+  <code>$C00000</code> does not put <code>$40</code> anywhere by itself: the VDP takes
+  <code>$4040</code>. The manual's own text implies byte access works, and the correction is
+  measurement, not documentation, which is exactly the kind of gap that makes this track
+  insist on a second source for anything load-bearing.
+</div>
+
+<p>One more rule, and it is the one most likely to bite somebody writing a VDP helper for the
+first time: according to plutiedev, setting a register clears whatever address you had pending,
+so after any register write you must issue the address command again before touching the data
+port. No other source we hold states it. It ships here attributed rather than flat, because a
+single source is honest when it is named and an impostor when it is not.</p>
+
+<p>Registers 0, 1 and 10 carry the display enable and the two interrupt enables plus the
+line counter that decides how often the horizontal interrupt fires; registers 2, 3, 4, 5 and 13
+say where the plane maps, the window map, the sprite list and the horizontal scroll table live
+in VRAM; register 7 picks the
+<span class="term" data-def="The color the VDP shows wherever no plane or sprite pixel is drawn. One register picks it from any of the 64 color slots.">backdrop</span>
+colour; register 11 sets the scroll modes (sections 6 and 7); register 12 sets the display
+width, the interlace mode and shadow/highlight; register 15 is the auto-increment above;
+register 16 is the plane size (section 5); registers 17 and 18 place the Window (section 9);
+and registers 19 to 23 configure DMA. Registers 6, 8, 9 and 14 have no documented function at
+all. Every one of those is spelled out with its bit layout in the file below, which is the last
+time this wiki prints the whole register table.</p>
+
+<details class="refbox">
+  <summary>Reference &middot; the complete VDP register file, all 24</summary>
+  <div class="enc-body">
+    <p style="font-size:.85rem;">Sega numbers these in decimal; the assembly spelling is the
+    control word <code>$80xx + reg</code>. Bit layouts run most significant bit first. Rows
+    restate what the prose above and the sections below teach; nothing lives only here.</p>
+    <div class="tbl">
+    <table>
+    <tr><th>Reg</th><th>Word</th><th>Name</th><th>Bits, D7 to D0</th><th>What it does</th></tr>
+    <tr><td>0</td><td><code>$80</code></td><td>Mode set 1</td><td><code>0 0 LCB IE1 0 1 M3 0</code></td><td>LCB blanks the leftmost 8 pixels (section 10). IE1 enables the horizontal interrupt. M3 freezes the H/V counter.</td></tr>
+    <tr><td>1</td><td><code>$81</code></td><td>Mode set 2</td><td><code>VR DISP IE0 M1 M2 1 0 0</code></td><td>DISP turns the display on. IE0 enables the vertical interrupt. M1 enables DMA. M2 selects the taller PAL display. Bit 2 selects mode 5 rather than the Master System's mode 4. Sega prints bit 7 as 0 and sources disagree about what it selects.</td></tr>
+    <tr><td>2</td><td><code>$82</code></td><td>Plane A map base</td><td><code>0 0 SA15 SA14 SA13 0 0 0</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
+    <tr><td>3</td><td><code>$83</code></td><td>Window map base</td><td><code>0 0 WD15 WD14 WD13 WD12 WD11 0</code></td><td>address divided by <code>$800</code>; WD11 must be 0 in H40, so the table is <code>$1000</code>-aligned there (section 9)</td></tr>
+    <tr><td>4</td><td><code>$84</code></td><td>Plane B map base</td><td><code>0 0 0 0 0 SB15 SB14 SB13</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
+    <tr><td>5</td><td><code>$85</code></td><td>Sprite table base</td><td><code>0 AT15 AT14 AT13 AT12 AT11 AT10 AT9</code></td><td>address divided by <code>$200</code>; AT9 must be 0 in H40. The sprite table's own format belongs to the sprites material.</td></tr>
+    <tr><td>6</td><td><code>$86</code></td><td>(none)</td><td><code>0 0 0 0 0 0 0 0</code></td><td>Sega documents no function</td></tr>
+    <tr><td>7</td><td><code>$87</code></td><td>Backdrop colour</td><td><code>0 0 CPT1 CPT0 COL3 COL2 COL1 COL0</code></td><td>which palette and which slot the backdrop shows (section 8)</td></tr>
+    <tr><td>8</td><td><code>$88</code></td><td>(none)</td><td><code>0 0 0 0 0 0 0 0</code></td><td>Sega documents no function</td></tr>
+    <tr><td>9</td><td><code>$89</code></td><td>(none)</td><td><code>0 0 0 0 0 0 0 0</code></td><td>Sega documents no function</td></tr>
+    <tr><td>10</td><td><code>$8A</code></td><td>HInt counter</td><td><code>HIT7 to HIT0</code></td><td>scanlines between horizontal interrupts; the interrupt itself belongs to the frame material</td></tr>
+    <tr><td>11</td><td><code>$8B</code></td><td>Mode set 3</td><td><code>0 0 0 0 IE2 VSCR HSCR LSCR</code></td><td>IE2 enables the external interrupt. VSCR picks the vertical scroll mode (section 7); HSCR and LSCR pick the horizontal one (section 6). Both apply to both planes.</td></tr>
+    <tr><td>12</td><td><code>$8C</code></td><td>Mode set 4</td><td><code>RS0 0 0 0 S/TE LSM1 LSM0 RS1</code></td><td>RS0 and RS1 must match: both 0 is H32, both 1 is H40. S/TE enables shadow and highlight, which belongs to the colour material. LSM selects interlace, and the combination <code>10</code> is prohibited.</td></tr>
+    <tr><td>13</td><td><code>$8D</code></td><td>HScroll table base</td><td><code>0 0 HS15 HS14 HS13 HS12 HS11 HS10</code></td><td>address divided by <code>$400</code> (section 6)</td></tr>
+    <tr><td>14</td><td><code>$8E</code></td><td>Pattern generator base</td><td>Sega prints all zeros</td><td>no documented function. Single-sourced reports tie its bits to the 128KB VRAM configuration, which no retail console has.</td></tr>
+    <tr><td>15</td><td><code>$8F</code></td><td>Auto-increment</td><td><code>INC7 to INC0</code></td><td>0 to 255, added after every access (above)</td></tr>
+    <tr><td>16</td><td><code>$90</code></td><td>Plane size</td><td><code>0 0 VSZ1 VSZ0 0 0 HSZ1 HSZ0</code></td><td>sets BOTH planes; <code>00</code> is 32 cells, <code>01</code> is 64, <code>11</code> is 128, <code>10</code> is prohibited (section 5)</td></tr>
+    <tr><td>17</td><td><code>$91</code></td><td>Window H position</td><td><code>RIGT 0 0 WHP5 WHP4 WHP3 WHP2 WHP1</code></td><td>split position in units of 2 cells; RIGT picks which side of it the window occupies (section 9)</td></tr>
+    <tr><td>18</td><td><code>$92</code></td><td>Window V position</td><td><code>DOWN 0 0 WVP4 WVP3 WVP2 WVP1 WVP0</code></td><td>split position in units of 1 cell; DOWN picks which side (section 9)</td></tr>
+    <tr><td>19</td><td><code>$93</code></td><td>DMA length low</td><td><code>LG7 to LG0</code></td><td>DMA setup; the DMA operations are another page's material</td></tr>
+    <tr><td>20</td><td><code>$94</code></td><td>DMA length high</td><td><code>LG15 to LG8</code></td><td>DMA setup</td></tr>
+    <tr><td>21</td><td><code>$95</code></td><td>DMA source low</td><td><code>SA8 to SA1</code></td><td>DMA setup</td></tr>
+    <tr><td>22</td><td><code>$96</code></td><td>DMA source mid</td><td><code>SA16 to SA9</code></td><td>DMA setup</td></tr>
+    <tr><td>23</td><td><code>$97</code></td><td>DMA source high</td><td><code>DMD1 DMD0 SA22 to SA17</code></td><td>DMA setup; the two DMD bits pick which of the DMA operations runs</td></tr>
+    </table>
+    </div>
+    <p class="enc-note">Sega counts 25 registers by including the read-only status register,
+    which is what the control port returns when you read it. VSRAM entries are 11 bits wide as
+    stored, of which 10 do anything outside the double-resolution interlace mode.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="rmw">3 &middot; The hazard: instructions that read before they write</h2>
+
+<p>This is the section the whole page owes its readers. The 68000 has a large family of
+instructions that quietly read their destination before writing it: they are called
+<span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.">read-modify-write</span>
+instructions, and on ordinary memory the extra read is invisible and harmless. Aimed at the
+VDP it is neither.</p>
+
+<p>Sega states the mechanism in two bullets, and they fail in opposite directions:</p>
+
+<ul>
+<li><b>A read while the port is set up for writing hangs the machine.</b> In Sega's words, the
+VDP suspends the 68000, and it does that by never returning
+<span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>.
+The 68000 waits for that signal to know a bus cycle finished. It does not arrive, so the CPU
+waits forever. Nothing recovers it.</li>
+<li><b>A write while the port is set up for reading does nothing at all,</b> except advance the
+address. No data is stored. There is no error, no flag, no symptom other than the picture being
+wrong later.</li>
+</ul>
+
+<p>Read the first bullet again, because it is stronger than it looks: <b>a wrong-mode read on
+its own is enough to hang the console.</b> Nothing has to be written afterwards. That is the
+mechanism, and it is the reason the instruction list below is what it is.</p>
+
+<p>Sega says <b>VRAM</b>, seven times on that page, and never once says CRAM, VSRAM, "data port"
+or "control port", so VRAM is the only scope that goes in Sega's mouth. In the wiki's own voice,
+the hazard is a property of the PORT'S DIRECTION rather than of VRAM specifically, and applies
+just as much when the pending target is CRAM or VSRAM. That is corroborated rather than assumed:
+the Genesis Plus GX emulator core, whose behaviour is built from hardware testing, rejects a
+data-port read while any of the three write codes is pending and rejects a data-port write while
+any of the three read codes is pending, with exactly Sega's two failures, and its comments say
+the first case normally locks the VDP until a hard reset.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b><code>clr.w $C00000</code> hangs the machine.</b> Not corrupts, not ignores: hangs, with
+  the 68000 stalled waiting for a DTACK that never comes. CLR on this processor reads its
+  destination before it writes the zero, and that read is the thing the VDP will not tolerate.
+  It is also Sega's own worked example.
+</div>
+
+<p>Sega then lists the instructions this rules out, grouped its own way. Nothing else anywhere
+enumerates this list, so it is worth saying plainly that the roster below is Sega's alone, and
+that every other source describes the port behaviour and leaves the instruction-level
+consequence to the reader:</p>
+
+<div class="tbl">
+<table>
+<tr><th>Sega's group</th><th>Instructions</th></tr>
+<tr><td>single operand commands</td><td><code>CLR NBCD NEG NEGX NOT Scc TAS</code></td></tr>
+<tr><td>bit handling commands</td><td><code>BCHG BSET BCLR</code></td></tr>
+<tr><td>shift and rotate commands</td><td><code>ASR ASL LSR LSL ROR ROL ROXR ROXL</code></td></tr>
+<tr><td>immediate commands</td><td><code>ADDI ADDQ ANDI CMPI EORI ORI SUBI SUBQ</code></td></tr>
+</table>
+</div>
+
+<p>Twenty-six mnemonics. <code>BTST</code> is not among them, and that omission is correct
+rather than an oversight: BTST only reads, so it has nothing to write back. It is still subject
+to the mechanism above, which cares about direction rather than about writing.</p>
+
+<p><code>CMPI</code> is the oddity on that list. It reads twice and writes nothing, so Sega's own
+closing parenthetical, which justifies the whole roster on the grounds that "read and write
+operations are made to a single destination in these commands", is simply not true of it. The
+economical explanation is that Sega swept in the entire immediate group at once: the list is
+organised by addressing-mode family, not by bus behaviour. Treat CMPI as a curiosity of how the
+list was assembled, not as evidence for anything. The fact that a wrong-mode read alone is fatal
+comes from the mechanism paragraph, not from CMPI's presence.</p>
+
+<p>The same page opens with a separate statement about <code>TAS</code>: it is not supported on
+the Genesis at all, and if you issue one the test happens but the write is ignored and never
+performed. That is a different failure from the two above, and TAS appears in both places, so it
+is the extreme member of the family rather than a lone special case. The
+<a href="../m68k/system.html#tas">68000 System page</a> covers TAS as an instruction.</p>
+
+<p>An independent second source reaches the same warning by its own route. plutiedev, teaching
+VDP setup, says not to use <code>clr</code> for it, because a quirk of the 68000 makes the
+instruction do a dummy read before writing back a zero and the VDP gets confused when that
+happens; and it generalises further than Sega does, to "don't use <code>clr</code> when dealing
+with any hardware registers". Same instruction, same mechanism, different publisher and
+different reasoning. The hazard is not a single-source claim.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why would an instruction read something it is about to overwrite?</summary>
+  <div class="x-body">
+    <p>Because on the 68000 it is usually free, and because most of these instructions genuinely
+    need the old value. <code>addq.w #1,(a0)</code> has to know what is there before it can add
+    one. <code>bset #3,(a0)</code> has to keep the seven bits it is not touching. <code>lsr.w
+    (a0)</code> has to have the bits before it can slide them.</p>
+    <p><code>clr</code> is the one that surprises people, because logically it needs nothing:
+    it is writing zero. The original 68000 reads anyway. It is a quirk of that chip's
+    implementation, and later members of the family stopped doing it, which is why the habit
+    survives in code written for other machines.</p>
+    <p>On real memory none of this matters. Reading a byte of work RAM and then writing it back
+    costs a few cycles and changes nothing else. A port is different: reading it is an ACTION,
+    with a direction the VDP has been told to expect, and doing it at the wrong moment is not a
+    wasted cycle but a wrong move in a protocol.</p>
+  </div>
+</details>
+
+<p>Now the practical shape of it, which is why this page exists. Every instruction on that list
+is an ordinary, sensible 68000 idiom.
+<a href="../m68k/moving-data.html#clr">CLR</a> is how you zero something.
+<a href="../m68k/flow.html#scc">Scc</a> looks like a pure write and is not.
+<a href="../m68k/shifts-bits.html#asl">The shifts and rotates</a> operate on memory perfectly
+happily. <a href="../m68k/math-logic.html#addq">ADDQ</a> is the cheapest way to bump a value by
+one. Aim any of them at the VDP and you get a hang or a silent no-op. The fix is always the
+same and never clever: <b>read the value into a data register, work on it there, and write it
+back with MOVE.</b> If what you actually wanted was to fill video memory with zeros, that is a
+DMA fill's job, not CLR's.</p>
+
+<!-- ================================================================ -->
+<h2 id="nametable">4 &middot; A plane is a grid of words</h2>
+
+<p>A <span class="term" data-def="One of the scrolling tile layers the VDP draws. A plane is a grid of cells, and each cell names the tile to draw there.">plane</span>
+is not a picture. It is a table. The VDP divides a plane into 8x8-pixel cells and keeps one
+16-bit word per cell in VRAM, and that table is called a
+<span class="term" data-def="A grid map in VRAM saying which tile to draw in each 8x8 cell of a plane, plus that cell's palette, flip and priority bits.">nametable</span>.
+The word does not contain any pixels. It names a
+<span class="term" data-def="An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.">tile</span>
+that lives elsewhere in VRAM and says four things about how to draw it there.</p>
+
+<div class="bitword" aria-hidden="true">
+  <span class="bf b-pri">PRI<br>D15</span>
+  <span class="bf b-pal">PALETTE<br>D14-D13</span>
+  <span class="bf b-flip">V FLIP<br>D12</span>
+  <span class="bf b-flip">H FLIP<br>D11</span>
+  <span class="bf b-tile">TILE INDEX<br>D10-D0</span>
+</div>
+
+<p>High to low: one priority bit, a two-bit palette number (0 to 3, which of the four
+sixteen-colour palettes this cell paints with), a vertical flip bit, a horizontal flip bit, and
+an eleven-bit tile index. Eleven bits reach 0 to 2047, and 2047 is not an arbitrary ceiling:
+VRAM is 65,536 bytes and a tile is 32 of them, so 2048 tiles is exactly what fits. The field and
+the memory are sized to each other.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>Vertical flip is bit 12 and horizontal flip is bit 11,</b> which is the reverse of the
+  order most people guess, and an easy one to get backwards. If your
+  tiles come out mirrored along the wrong axis, this is why.
+</div>
+
+<p>The tile itself, in one line, because the tile format belongs to its own material: 8x8
+pixels, 4 bits per pixel, 32 bytes, and the index in the word is a tile NUMBER rather than an
+address. The byte address is the index times 32, which works only because every tile is the
+same size. Sonic 2 spells that conversion out as its own helper,
+<code>tiles_to_bytes</code>, whose whole body is a mask down to eleven bits and a shift left
+by 5.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why name a tile instead of just storing the pixels?</summary>
+  <div class="x-body">
+    <p>Count the bytes. A 320x224 screen is 71,680 pixels. At 4 bits each that is 35,840 bytes
+    of pixels for one screenful, and the VDP only has 65,536 bytes in total, for everything,
+    forever. A game that stored its picture as pixels would spend more than half its video
+    memory on one still frame and have nothing left for a second one.</p>
+    <p>Now count it the other way. A screen is 40 by 28 cells, which is 1120 cells, and each
+    cell costs 2 bytes: 2240 bytes for the whole screen map. The tiles it points at are shared,
+    so a brick wall of 300 cells can be four distinct tiles used seventy-five times each. The
+    map is small and the art is reused, and that is the entire economy of the machine.</p>
+    <p>The flip bits are part of the same bargain. A tile drawn mirrored is a second picture
+    for no extra bytes, which is why so much Genesis art is symmetrical: the artist got the
+    right half free.</p>
+    <p>Scrolling falls out of it too. Because the map is a grid of small numbers rather than a
+    bitmap, moving the whole background is not a matter of moving any pixels at all. It is a
+    number in a scroll table, which sections 6 and 7 are about.</p>
+  </div>
+</details>
+
+<p>The cells are stored row by row, left to right and then down, with the plane's top-left cell
+first. So a cell's offset into the table is <code>(width * row + column) * 2</code>, where
+width is the plane's width in cells, not the screen's. Sega's own worked table for a 32-wide
+plane runs <code>$0000, $0002</code> and on to <code>$003E</code> across the first row, with
+<code>$0040</code> starting the second.</p>
+
+<p>Here is the word, defined and then constructed, in a shipped game. Sonic 2 writes the bit
+budget down as constants:</p>
+
+<pre><span class="c">; Art tile stuff</span>
+flip_x              =      (1&lt;&lt;11)
+flip_y              =      (1&lt;&lt;12)
+palette_bit_0       =      5
+palette_bit_1       =      6
+palette_line_0      =      (0&lt;&lt;13)
+palette_line_1      =      (1&lt;&lt;13)
+palette_line_2      =      (2&lt;&lt;13)
+palette_line_3      =      (3&lt;&lt;13)
+high_priority_bit   =      7
+high_priority       =      (1&lt;&lt;15)
+palette_mask        =      $6000
+tile_mask           =      $07FF
+nontile_mask        =      $F800
+drawing_mask        =      $7FFF</pre>
+<span class="src">s2disasm/s2.constants.asm:2159-2173</span>
+
+<p>and then packs the whole word in one expression. <code>make_block_tile</code> is the
+nametable word exactly as the diagram above draws it, and <code>make_art_tile</code> is the
+same thing without the flip fields, for objects that keep their flips elsewhere:</p>
+
+<pre>make_art_tile function addr,pal,pri,((pri&amp;1)&lt;&lt;15)|((pal&amp;3)&lt;&lt;13)|(addr&amp;tile_mask)
+make_art_tile_2p function addr,pal,pri,((pri&amp;1)&lt;&lt;15)|((pal&amp;3)&lt;&lt;13)|((addr&amp;tile_mask)&gt;&gt;1)
+make_block_tile function addr,flx,fly,pal,pri,((pri&amp;1)&lt;&lt;15)|((pal&amp;3)&lt;&lt;13)|((fly&amp;1)&lt;&lt;12)|((flx&amp;1)&lt;&lt;11)|(addr&amp;tile_mask)
+make_block_tile_2p function addr,flx,fly,pal,pri,((pri&amp;1)&lt;&lt;15)|((pal&amp;3)&lt;&lt;13)|((fly&amp;1)&lt;&lt;12)|((flx&amp;1)&lt;&lt;11)|((addr&amp;tile_mask)&gt;&gt;1)
+tiles_to_bytes function addr,((addr&amp;$7FF)&lt;&lt;5)</pre>
+<span class="src">s2disasm/s2.macros.asm:261-265</span>
+
+<p>And a consumer with a name any player knows. Object 25 is the ring; this is the line in its
+init routine that decides what the ring is drawn from, asking for palette 1 and low priority:</p>
+
+<pre>	move.w	#make_art_tile(ArtTile_ArtNem_Ring,1,0),art_tile(a0)</pre>
+<span class="src">s2disasm/s2.asm:24851 (Obj25_Init, the ring)</span>
+
+<p>Writing a whole rectangle of those words into a plane is the other half of the idea, and it
+is short enough to read in one go. This routine takes a command word in <code>d0</code>, a
+width in <code>d1</code>, a height in <code>d2</code> and a source pointer in <code>a1</code>,
+and walks the plane one row at a time:</p>
+
+<pre>PlaneMapToVRAM_H40:
+	lea	(VDP_data_port).l,a6
+	move.l	#vdpCommDelta(planeLoc(64,0,1)),d4	<span class="c">; $800000</span>
+
+-	move.l	d0,VDP_control_port-VDP_data_port(a6)	<span class="c">; move d0 to VDP_control_port</span>
+	move.w	d1,d3
+
+-	move.w	(a1)+,(a6)	<span class="c">; from source address to destination in VDP</span>
+	dbf	d3,-		<span class="c">; next tile</span>
+
+	add.l	d4,d0		<span class="c">; increase destination address by $80 (1 line)</span>
+	dbf	d2,--		<span class="c">; next line</span>
+
+	rts</pre>
+<span class="src">s2disasm/s2.asm:1666-1679</span>
+
+<p>The inner loop is one <code>move.w</code> per cell straight into the data port. The outer
+loop re-issues the address command once per row and adds a row's worth of address to it, because
+the rectangle being written is narrower than the plane, so the auto-increment cannot carry the
+address from the end of one row to the start of the next. <code>$80</code> is one row of a
+64-cell-wide plane: 64 cells times 2 bytes.</p>
+
+<p><b>Every bit of the word is spoken for.</b> There are no reserved bits and no spare ones. A
+game that wants a flag of its own has to borrow one, and one did: the streak wipe on Sonic 2's
+SEGA logo screen uses bit 10 of each stored word as a "fill the rest of this line with me" flag,
+tests it, and clears it before the word ever reaches the VDP:</p>
+
+<pre>	move.w	(a2)+,d4	<span class="c">; Read one pattern name table entry</span>
+	bclr	#$A,d4		<span class="c">; Test bit $A and clear (flag for end of line)</span>
+	beq.s	+			<span class="c">; Branch if bit was clear</span>
+	bsr.w	loc_3A742	<span class="c">; Fill rest of line with this set of pixels</span>
++
+	move.w	d4,(a6)		<span class="c">; Write PNT entry</span>
+	dbf	d3,-</pre>
+<span class="src">s2disasm/s2.asm:78142-78148 (the SEGA screen streak wipe)</span>
+
+<p>Bit 10 is the top bit of the tile index, so this trick is only legal because those streak
+tiles all sit below index <code>$400</code> and never need it. That is not an exception to the
+rule; it is a game exploiting the fact that IT does not need a bit the hardware still does.</p>
+
+<figure class="diagram">
+  <div class="ntcomposer toy">
+    <div class="ntc-controls">
+      <div class="toy-row">
+        <span class="lbl" id="ntcTileLbl">Tile</span>
+        <span class="tilepick" id="ntcTilePick" role="group" aria-labelledby="ntcTileLbl"></span>
+      </div>
+      <div class="toy-row">
+        <span class="lbl" id="ntcPalLbl">Palette</span>
+        <select class="ntc-sel" id="ntcPal" aria-labelledby="ntcPalLbl">
+          <option value="0">0</option><option value="1">1</option>
+          <option value="2">2</option><option value="3">3</option>
+        </select>
+      </div>
+      <div class="toy-row">
+        <span class="lbl">Flip</span>
+        <button type="button" class="tbtn" id="ntcFlipH" aria-pressed="false">H flip</button>
+        <button type="button" class="tbtn" id="ntcFlipV" aria-pressed="false">V flip</button>
+      </div>
+      <div class="toy-row">
+        <span class="lbl">Priority</span>
+        <button type="button" class="tbtn" id="ntcPri" aria-pressed="false">High priority</button>
+      </div>
+      <div class="toy-row">
+        <span class="lbl">&nbsp;</span>
+        <button type="button" class="tbtn reset" id="ntcClear">Clear the plane</button>
+      </div>
+      <div class="ntc-word" id="ntcWordText">word = $0000<span class="bin">0000 0000 0000 0000</span></div>
+      <div class="bitword" id="ntcBits" aria-hidden="true"></div>
+      <div style="font-family:var(--mono); font-size:.68rem; color:var(--dim);" id="ntcMacro">make_block_tile($000,0,0,0,0)</div>
+    </div>
+    <div class="ntc-canvaswrap">
+      <div class="ntc-labeled"><span class="ntc-caplabel">4x4 of plane A, one low-priority sprite across it</span>
+        <div id="ntcGrid" role="group" aria-label="4 by 4 nametable grid, click a cell to write the current word there"></div></div>
+      <div class="ntc-labeled ntc-preview"><span class="ntc-caplabel">current tile</span>
+        <canvas id="ntcPreview" width="8" height="8"></canvas></div>
+    </div>
+  </div>
+  <p class="toycap" id="ntcCap" aria-live="polite">Pick a tile and its flags, then click a cell to
+  write that nametable word there. A low-priority sprite crosses the middle two rows: cells you
+  place with the priority bit clear are drawn behind it, cells you place with the bit set are
+  drawn in front.</p>
+  <figcaption>Nametable composer: a plane is a map of words, not a grid of pixels. The four
+  palettes really do hold sixteen colours each; these six tiles use only a few of them (static
+  fallback: the bit diagram above is the fixed layout of every word this toy can produce).</figcaption>
+</figure>
+
+<p>One bridge worth having before the sprite material: a sprite names its tiles with a word in
+exactly this format, priority, palette and flip bits included. The difference is scope. On a
+plane the word describes ONE cell; on a sprite the same bits apply to the whole sprite, however
+many tiles it is built from.</p>
+
+<!-- ================================================================ -->
+<h2 id="sizes">5 &middot; Plane sizes: six, generated by one cap</h2>
+
+<p>Planes come in six sizes, and the six are worth learning as a consequence rather than as a
+list, because the consequence is one sentence and the list is not: <b>a nametable may not exceed
+8192 bytes.</b> A cell costs 2 bytes, so that is 4096 cells, and the legal shapes are exactly the
+ones whose width times height fits under it.</p>
+
+<div class="tbl">
+<table>
+<tr><th>Width x height, in cells</th><th>Cells</th><th>Bytes</th><th></th></tr>
+<tr><td>32 x 32</td><td>1024</td><td>2048</td><td>legal</td></tr>
+<tr><td>32 x 64</td><td>2048</td><td>4096</td><td>legal</td></tr>
+<tr><td>32 x 128</td><td>4096</td><td>8192</td><td>legal, exactly at the cap</td></tr>
+<tr><td>64 x 32</td><td>2048</td><td>4096</td><td>legal</td></tr>
+<tr><td>64 x 64</td><td>4096</td><td>8192</td><td>legal, exactly at the cap</td></tr>
+<tr><td>128 x 32</td><td>4096</td><td>8192</td><td>legal, exactly at the cap</td></tr>
+<tr class="hi"><td>64 x 128</td><td>8192</td><td>16384</td><td>does not exist</td></tr>
+<tr class="hi"><td>128 x 64</td><td>8192</td><td>16384</td><td>does not exist</td></tr>
+<tr class="hi"><td>128 x 128</td><td>16384</td><td>32768</td><td>does not exist</td></tr>
+</table>
+</div>
+
+<p>Register 16 sets the size, and it sets it for BOTH planes at once. There is no way to give
+plane A and plane B different shapes. Each axis gets a two-bit field: <code>00</code> is 32
+cells, <code>01</code> is 64, <code>11</code> is 128, and <code>10</code> is prohibited, so the
+register cannot even spell a size that is not one of the three. Three widths times three heights
+is nine combinations, the cap removes three of them, and six is what is left.</p>
+
+<figure class="diagram">
+  <div class="toy">
+    <div class="toy-row">
+      <span class="lbl">Width</span>
+      <button type="button" class="tbtn" data-h="32" aria-pressed="false">32</button>
+      <button type="button" class="tbtn" data-h="64" aria-pressed="false">64</button>
+      <button type="button" class="tbtn" data-h="128" aria-pressed="false">128</button>
+    </div>
+    <div class="toy-row">
+      <span class="lbl">Height</span>
+      <button type="button" class="tbtn" data-v="32" aria-pressed="false">32</button>
+      <button type="button" class="tbtn" data-v="64" aria-pressed="false">64</button>
+      <button type="button" class="tbtn" data-v="128" aria-pressed="false">128</button>
+    </div>
+    <div class="toy-row">
+      <span class="lbl">&nbsp;</span>
+      <button type="button" class="tbtn reset" id="pszReset">Reset</button>
+    </div>
+    <div class="psz-out" id="pszOut">Pick a width and a height.</div>
+    <div class="psz-bar"><div class="psz-fill" id="pszFill"></div><div class="psz-cap"></div></div>
+    <div class="psz-scale"><span>0 bytes</span><span>8192, the cap</span><span>16,384 bytes</span></div>
+    <div id="pszVerdictWrap"></div>
+  </div>
+  <p class="toycap" id="pszCap" aria-live="polite">Nothing chosen yet.</p>
+  <figcaption>Plane-size picker: the six sizes are not a list to memorise, they are everything
+  that fits under an 8192-byte cap (static fallback: 32x128, 64x64 and 128x32 land exactly on
+  the cap; 64x128, 128x64 and 128x128 are twice it or more, and the VDP has no setting for
+  them).</figcaption>
+</figure>
+
+<p>Planes wrap, endlessly, in both directions. Scroll past the right edge of a 64-cell plane and
+cell 0 comes round again. That is what makes a small plane usable at all, and it is also the
+reason a plane smaller than the screen repeats visibly: an H40 display is 40 cells wide, so a
+32-cell-wide plane shows eight cells of itself twice. The smallest plane that covers an H40
+screen with no horizontal repeat is 64 wide, which is one reason 64 is such a common choice.</p>
+
+<p>Sonic 2 picks three different sizes in one ROM, which shows plainly that the size is a
+per-scene decision rather than a property of the machine:</p>
+
+<pre>	move.w	#$9001,(a6)		<span class="c">; Scroll table size: 64x32</span></pre>
+<span class="src">s2disasm/s2.asm:4831 (entering a Zone)</span>
+
+<pre>	move.w	#$9003,(a6)		<span class="c">; Scroll table size: 128x32 ($2000 bytes)</span></pre>
+<span class="src">s2disasm/s2.asm:4108 (the SEGA logo screen)</span>
+
+<pre>	move.w	#$9011,(a6)		<span class="c">; Scroll table size: 64x64</span></pre>
+<span class="src">s2disasm/s2.asm:1116 (the ending sequence)</span>
+
+<p>Read the low nibble as the width field and the second nibble as the height field:
+<code>$01</code> is width 64 and height 32, <code>$03</code> is width 128 and height 32,
+<code>$11</code> is 64 by 64. The Special Stage takes <code>$9003</code> as well.</p>
+
+<h3>Where the nametables live</h3>
+
+<p>Each plane's table has a base register, and each base register has its own granularity, which
+is a small trap in itself: plane A and plane B are placed in units of <code>$2000</code>, the
+window in units of <code>$800</code>, the sprite table in units of <code>$200</code>, and the
+horizontal scroll table in units of <code>$400</code>. Here is a whole VDP being configured on
+the frame a player enters a Zone, with three of those divisors visible in one glance:</p>
+
+<pre>	lea	(VDP_control_port).l,a6
+	move.w	#$8B03,(a6)		<span class="c">; EXT-INT disabled, V scroll by screen, H scroll by line</span>
+	move.w	#$8200|(VRAM_Plane_A_Name_Table/$400),(a6)	<span class="c">; PNT A base: $C000</span>
+	move.w	#$8400|(VRAM_Plane_B_Name_Table/$2000),(a6)	<span class="c">; PNT B base: $E000</span>
+	move.w	#$8500|(VRAM_Sprite_Attribute_Table/$200),(a6)	<span class="c">; Sprite attribute table base: $F800</span>
+	move.w	#$9001,(a6)		<span class="c">; Scroll table size: 64x32</span>
+	move.w	#$8004,(a6)		<span class="c">; H-INT disabled</span>
+	move.w	#$8720,(a6)		<span class="c">; Background palette/color: 2/0</span>
+	move.w	#$8C81,(a6)		<span class="c">; H res 40 cells, no interlace</span></pre>
+<span class="src">s2disasm/s2.asm:4826-4834 (the level-entry path)</span>
+
+<p>One caution about that excerpt, since it is the kind of thing a reader copies: the plane A
+line divides by <code>$400</code>, not by <code>$2000</code>. It is not wrong, and it is not
+lucky either. Register 2 holds the address divided by <code>$2000</code> in bits 5 to 3, so the
+byte it wants is <code>(address / $2000) &lt;&lt; 3</code>, and shifting up three places after
+dividing by <code>$2000</code> is the same operation as dividing by <code>$400</code> for any
+base that is <code>$2000</code>-aligned, which every legal plane base is. The identity holds
+everywhere and still teaches the wrong granularity. Take the rule from the register, not from
+the arithmetic that happens to work.</p>
+
+<p>Sega's own worked example of a whole VRAM layout is a good place to see everything coexist.
+This is an H32 setup, with a window, a full scroll table and a sprite table, and the tiles
+living in whatever is left:</p>
+
+<figure class="diagram">
+  <div class="vbar" role="img" aria-label="A 64KB VRAM map: tile art occupies the first 45,056 bytes, then the window nametable, the horizontal scroll table, 512 free bytes, the sprite table, then plane A and plane B filling the top 16KB.">
+    <span class="vb-art" style="width:68.75%">tile art, 45,056 B</span>
+    <span class="vb-win" style="width:3.125%">win</span>
+    <span class="vb-hs" style="width:1.5625%">HS</span>
+    <span class="vb-free" style="width:0.78125%">.</span>
+    <span class="vb-sat" style="width:0.78125%">S</span>
+    <span class="vb-pa" style="width:12.5%">plane A 8K</span>
+    <span class="vb-pb" style="width:12.5%">plane B 8K</span>
+  </div>
+  <figcaption>The 64KB of VRAM, spent: Sega's worked H32 layout. Tables take 19,968 bytes and
+  everything else is art.</figcaption>
+</figure>
+
+<div class="tbl">
+<table>
+<tr><th>Resident</th><th>Base register</th><th>Address</th><th>Size</th></tr>
+<tr><td>Tile art (and sprite art)</td><td>fixed at <code>$0000</code></td><td><code>$0000-$AFFF</code></td><td>45,056 bytes</td></tr>
+<tr><td>Window nametable</td><td>3, value <code>$2C</code></td><td><code>$B000-$B7FF</code></td><td>2048 bytes</td></tr>
+<tr><td>Horizontal scroll table</td><td>13, value <code>$2E</code></td><td><code>$B800-$BBFF</code></td><td>1024 bytes</td></tr>
+<tr><td>unused, usable for art</td><td></td><td><code>$BC00-$BDFF</code></td><td>512 bytes</td></tr>
+<tr><td>Sprite table (<span class="term" data-def="The Sprite Attribute Table: the list in VRAM describing every sprite's position, size, tiles and drawing order.">SAT</span>)</td><td>5, value <code>$5F</code></td><td><code>$BE00-$BFFF</code></td><td>512 bytes</td></tr>
+<tr><td>Plane A nametable</td><td>2, value <code>$30</code></td><td><code>$C000-$DFFF</code></td><td>8192 bytes</td></tr>
+<tr><td>Plane B nametable</td><td>4, value <code>$07</code></td><td><code>$E000-$FFFF</code></td><td>8192 bytes</td></tr>
+</table>
+</div>
+
+<p>Every register value in that table is the address divided by the register's own granularity
+and shifted into its field: <code>$C000 / $2000</code> is 6, and 6 in bits 5 to 3 is
+<code>$30</code>. The tables cost 19,968 bytes, leaving 45,568 for art, which is 1424 tiles of
+the 2048 the index field can reach. That is the shape of a Genesis VRAM budget: the ceiling
+is 2048 tiles, and the tables take their bite out of it before a single tile of art is loaded. A single screenful of unique 8x8 tiles at H40 is
+1120 of them, which is why Genesis art repeats, flips and re-palettes so relentlessly.</p>
+
+<p>Sega notes in the same place that these areas may overlap deliberately, so one table can be
+shared between the scroll planes and the Window, and that the tile art's base is fixed at
+<code>$0000</code> and cannot be moved. It lives in whatever the movable tables do not claim.</p>
+
+<p>A homebrew source states the plane-size encoding unusually clearly, by
+writing the bit legend next to every register value. It is one author's notes rather than a
+hardware document, so it is here to explain rather than to prove, and note that four of the
+registers it labels "Unknown/Unused" do exist and simply have no documented function:</p>
+
+<pre>DT_VDP:		dc.b	$00					<span class="c">; $92	; 7654 3210 - Window Vertical Position</span>
+		dc.b	$00					<span class="c">; $91	; 7654 3210 - Window Horizontal Position</span>
+		dc.b	%00010001				<span class="c">; $90	; 00VV 00HH - Plane Y Size (00-20|01-40|11-80) | Plane X size (00-20|01-40|11-80)</span>
+		dc.b	$02					<span class="c">; $8F	; 7654 3210 - Auto Increament</span>
+		dc.b	$00					<span class="c">; $8E	; Unknown/Unused Register</span></pre>
+<span class="src">MD-OS/Screen Desktop/Desktop.asm:6-10</span>
+
+<p>Its <code>%00010001</code> is <code>$11</code>, the 64 by 64 setting, with the two fields
+sitting where the legend says.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What does it mean for a plane to wrap?</summary>
+  <div class="x-body">
+    <p>Imagine the plane's map printed on a cylinder, then that cylinder bent round into a
+    doughnut so the top meets the bottom too. There is no edge anywhere on it. When the VDP
+    works out which cell to fetch for a screen position, it takes the scroll value, adds the
+    screen position, and then keeps only enough of the result to name a cell in the plane. Run
+    off the right side and you arrive at the left side, in the same row, seamlessly.</p>
+    <p>That is not a feature somebody implemented; it is what happens when you keep the low bits
+    of a number and throw the rest away. It is also why a level wider than 64 cells cannot just
+    be one enormous plane. Games instead keep the plane small and constantly rewrite the column
+    of cells that is about to scroll into view, so the map is a moving window onto a much larger
+    level held in ordinary work RAM or ROM.</p>
+  </div>
+</details>
+
+<p>Register writes are not a one-time boot ritual either. They can be changed part way down a
+frame, and a shipped game does exactly that. Sonic 2's two-player split screen waits for the
+horizontal blanking gap, blanks the display for a moment, points plane A at a completely
+different nametable, and rewrites the vertical scroll values, all halfway down the picture:</p>
+
+<pre>-	move.w	(VDP_control_port).l,d0	<span class="c">; loop start: Wait until we're in the H-blank region</span>
+	andi.w	#4,d0
+	beq.s	-	<span class="c">; loop end</span>
+
+
+	move.w	(VDP_Reg1_val).w,d0
+	andi.b	#$BF,d0
+	move.w	d0,(VDP_control_port).l		<span class="c">; Display disable</span>
+
+	move.w	#$8200|(VRAM_Plane_A_Name_Table_2P/$400),(VDP_control_port).l	<span class="c">; PNT A base: $A000</span>
+
+	<span class="c">; Update V-Scroll.</span>
+	move.l	#vdpComm($0000,VSRAM,WRITE),(VDP_control_port).l
+	move.l	(Vscroll_Factor_P2_HInt).w,(VDP_data_port).l</pre>
+<span class="src">s2disasm/s2.asm:1190-1203 (inside H_Int, the two-player split screen)</span>
+
+<p>The top half of the screen and the bottom half are drawn from two different plane A tables in
+the same frame. Raster effects are versions of that idea, and the timing side of it belongs to
+the frame and interrupt material rather than here.</p>
+
+<!-- ================================================================ -->
+<h2 id="hscroll">6 &middot; Scrolling sideways: the HScroll table</h2>
+
+<p>Horizontal scrolling is not done by moving anything. It is a number, added to the position
+the VDP is about to fetch from, and the interesting part is how MANY of those numbers there
+are. Register 11 has two bits that decide, and like the plane size they apply to both planes at
+once:</p>
+
+<div class="tbl">
+<table>
+<tr><th>HSCR</th><th>LSCR</th><th>Sega's name</th><th>How many values</th></tr>
+<tr><td>0</td><td>0</td><td>full screen</td><td>one pair, for the whole picture</td></tr>
+<tr><td>0</td><td>1</td><td>prohibited</td><td>see below</td></tr>
+<tr><td>1</td><td>0</td><td>each 1 cell</td><td>one pair per 8-pixel row of cells</td></tr>
+<tr><td>1</td><td>1</td><td>each 1 line</td><td>one pair per scanline</td></tr>
+</table>
+</div>
+
+<p>The values live in VRAM, in a table whose base is register 13, and they are interleaved:
+plane A first, then plane B, then plane A again, for the whole length of the table. A
+<span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span>
+is one horizontal line of the picture, and an NTSC display draws 224 visible ones, so the three
+modes work out as:</p>
+
+<div class="tbl">
+<table>
+<tr><th>Mode</th><th>Entries the VDP reads</th><th>Bytes it reads</th></tr>
+<tr><td>full screen</td><td>2</td><td>4</td></tr>
+<tr><td>per cell row</td><td>56, being 28 rows times 2 planes</td><td>112</td></tr>
+<tr><td>per scanline</td><td>448, being 224 lines times 2 planes</td><td>896</td></tr>
+</table>
+</div>
+
+<p>The table itself is 1KB of VRAM whatever mode you are in, of which 896 bytes are used on a
+224-line display and 960 on the taller PAL one. Cell mode does not save you any video memory: it
+reads one entry in eight and reserves the rest anyway. What it saves is the per-frame cost of
+getting the values there, and on this machine that is usually the scarcer resource.</p>
+
+<details class="explain">
+  <summary>New here? &middot; How does one number per line make a background bend?</summary>
+  <div class="x-body">
+    <p>The VDP draws the picture one scanline at a time, top to bottom. Before it draws a line
+    it needs to know where in the plane that line starts, and in per-line mode it looks that up
+    fresh, from this table, for every single line.</p>
+    <p>So give line 0 the value 100, line 1 the value 101, line 2 the value 102, and the
+    background slides one pixel further left with every line down the screen. The plane itself
+    has not moved and no pixel has been rewritten. You have simply told the chip a different lie
+    about where the row starts, 224 times.</p>
+    <p>Stack a few bands of different values and you get parallax: the distant clouds barely
+    move, the middle hills move a bit, the ground under Sonic's feet moves fast. It costs one
+    buffer in work RAM and one transfer per frame, and it is one of the most recognisable Genesis
+    effects there is.</p>
+  </div>
+</details>
+
+<p>Each value is 10 bits, 0 to 1023; the top six bits of the word are ignored by the VDP, and
+Sega explicitly says software may use them for its own purposes. The range is not arbitrary:
+plane widths in pixels are 256, 512 or 1024, and 1024 divides all three, so the scroll value
+wraps in step with the plane no matter which size you chose. Adding to the value shifts the
+plane to the RIGHT; subtracting shifts it left and wraps, so 0 minus 5 is 1019.</p>
+
+<p>Emerald Hill Zone is the whole chain in one place. First the mode, set on the frame the
+player enters the Zone:</p>
+
+<pre>	move.w	#$8B03,(a6)		<span class="c">; EXT-INT disabled, V scroll by screen, H scroll by line</span></pre>
+<span class="src">s2disasm/s2.asm:4827</span>
+
+<p>Then the buffer being filled in bands, one longword per scanline, each longword being the
+plane A word and the plane B word side by side because that is the order the table wants them
+in. The band sizes are this one game's art direction, not a rule; what is hardware is that
+every line gets its own entry:</p>
+
+<pre>SwScrl_EHZ:
+	<span class="c">; Use different background scrolling code for two player mode.</span>
+	tst.w	(Two_player_mode).w
+	bne.w	SwScrl_EHZ_2P
+
+	<span class="c">; Update the background's vertical scrolling.</span>
+	move.w	(Camera_BG_Y_pos).w,(Vscroll_Factor_BG).w
+
+	<span class="c">; Update the background's (and foreground's) horizontal scrolling.</span>
+	<span class="c">; This creates an elaborate parallax effect.</span>
+	lea	(Horiz_Scroll_Buf).w,a1
+	move.w	(Camera_X_pos).w,d0
+	neg.w	d0
+	move.w	d0,d2
+	swap	d0
+	move.w	#0,d0
+
+	<span class="c">; Do 22 lines.</span>
+	move.w	#22-1,d1
+-	move.l	d0,(a1)+
+	dbf	d1,-
+
+	move.w	d2,d0
+	asr.w	#6,d0
+
+	<span class="c">; Do 58 lines.</span>
+	move.w	#58-1,d1
+-	move.l	d0,(a1)+
+	dbf	d1,-</pre>
+<span class="src">s2disasm/s2.asm:15253-15281 (SwScrl_EHZ, the Emerald Hill parallax)</span>
+
+<p>Follow the two bands. Each <code>move.l</code> writes one longword, and a longword lands
+high half first, so the high word of <code>d0</code> is the plane A entry and the low word is
+plane B's. The camera position is negated once, because the plane has to move left when the
+camera moves right. For the first 22 lines the high word holds that negated position and the low
+word is zero: plane A tracks the camera at full speed while plane B does not move at all, which
+is why the sky at the top of Emerald Hill sits still. For the next 58 lines the high word is
+untouched, so plane A keeps full speed, while the low word is reloaded and shifted right by six,
+which is an arithmetic divide by 64. Those background hills scroll at one sixty-fourth of the
+foreground's speed. Then the whole 896-byte buffer is shipped to VRAM in one transfer during the
+vertical blank:</p>
+
+<pre>	dma68kToVDP Horiz_Scroll_Buf,VRAM_Horiz_Scroll_Table,VRAM_Horiz_Scroll_Table_Size,VRAM</pre>
+<span class="src">s2disasm/s2.asm:756 (inside Vint_Level)</span>
+
+<p>The buffer is built while the picture is being drawn and delivered in the gap between frames.
+That split, compute anywhere, transfer only in the blank, is the rhythm of the whole machine.</p>
+
+<h3>The mode Sega calls prohibited</h3>
+
+<p>The remaining combination, HSCR 0 with LSCR 1, is marked PROHIBITED in Sega's register table.
+The silicon does not treat it as an error. Two independent sources describe the same specific
+behaviour: it scrolls per line, but the VDP only ever reads the first sixteen entries of the
+table, so the pattern repeats every eight lines. And there is a shipping user, the unlicensed
+version of Populous, which relies on it.</p>
+
+<p class="prov-label">Prohibited does not mean inert</p>
+<div class="prov">
+  <span class="yes">Unlicensed Populous ships in mode 01</span>
+  <span class="yes">first 16 entries only, repeating every 8 lines</span>
+  <span>documented independently by Charles MacDonald and by plutiedev</span>
+</div>
+
+<p>Which is worth knowing for two reasons. If you are writing a game, do not use it: a mode the
+documentation refuses is a mode no revision of the chip promises to keep. If you are reading
+somebody else's ROM, or writing an emulator, "prohibited" tells you what Sega would support, not
+what the hardware does.</p>
+
+<!-- ================================================================ -->
+<h2 id="vscroll">7 &middot; Scrolling vertically: VSRAM</h2>
+
+<p>Vertical scrolling works the same way and lives somewhere else entirely. Its values are not
+in VRAM at all; they are in
+<span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span>,
+the 80-byte memory from section 1, reached through the same two ports with the VSRAM operation
+code instead of the VRAM one. That is the whole reason VSRAM exists as a separate memory: the
+vertical scroll values are read so often that they got their own storage rather than competing
+for VRAM bandwidth.</p>
+
+<p>One bit chooses the mode, VSCR in register 11. Clear it and the VDP reads the first pair of
+entries only, one for each plane, and the whole picture scrolls together. Set it and the VDP
+reads a value per column instead. On a 40-cell display that is all 40 entries, which is 20
+column positions times 2 planes, and 20 is the key number: each vertical scroll value covers
+TWO cells, so the granularity is 16 pixels across, never 8. Adding to the value shifts the plane UP relative to the display, which is the opposite
+sense to the horizontal table, where adding shifts right.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why would you want columns to scroll independently?</summary>
+  <div class="x-body">
+    <p>Because it buys effects that would otherwise cost a redraw. A row of pillars that sink
+    into the floor at different rates, a wall that ripples, a lift shaft where one column of the
+    background rises while the rest holds still, a title screen where letters drop in one strip
+    at a time. Each is one number per 16-pixel column, written once per frame.</p>
+    <p>The classic use is not an effect at all, though. It is depth: give the background columns
+    slightly different vertical offsets as the camera pans and the far layer appears to have
+    parallax in both axes rather than only sideways.</p>
+    <p>Note what you cannot do with it. There is no per-scanline vertical scrolling on this
+    chip, the way there is per-scanline horizontal scrolling. Vertical granularity stops at the
+    16-pixel column, and that asymmetry is why sideways effects are everywhere on the Genesis
+    and vertical ones are rare.</p>
+  </div>
+</details>
+
+<p>Each entry is 11 bits wide as stored, and only 10 of those do anything unless the display is
+in the double-resolution interlace mode. The manual describes the top bits of the word as
+indefinite, so do not read anything into them.</p>
+
+<h3>The column -1 defect</h3>
+
+<p>Two-cell vertical scrolling has a documented failure at the very left edge of the screen, and
+it is worth stating precisely because it wears a confusing name. <b>When two-cell vertical
+scrolling is combined with a horizontal scroll that is not on a cell boundary, the leftmost
+16-pixel column can take the wrong vertical scroll value, and draws garbage.</b></p>
+
+<p>The mechanism, from Kabuto's hardware testing, is that the VDP naturally renders two extra
+tiles to the left of the visible border, so that there are pixels available when the picture is
+scrolled to the right. That off-screen strip is nicknamed column -1. When the vertical scroll
+values are handed out per column and the horizontal scroll has pushed the columns out of
+alignment, column -1 can be fed the wrong one, and part of it is on screen.</p>
+
+<p>Two independent sources describe the defect and its mechanism, so its existence is not in
+doubt. What varies is the folklore around it: one set of Mega Drive graphics notes, rasterscroll,
+records that developers typically hid the column behind a black bar made of sprites, and adds
+that a black bar creeping in from the left is often a sign that column scrolling is about to
+start. No game is named, and that is a claim about what programmers did rather than about what
+the chip does, so take it as colour. The hardware also offers its own answer, a register bit
+that blanks the leftmost 8 pixels outright, and that bit is section 10's business.</p>
+
+<p>This is not the Window's boundary defect, which is a different mechanism in a different part
+of the chip. Section 10 exists to keep the two apart.</p>
+
+<!-- ================================================================ -->
+<h2 id="priority">8 &middot; Priority: one bit, seven layers</h2>
+
+<p>Start with what the priority bit is not, because the common wrong models all start from
+something it is not. It is not a depth value: there is no number to compare, only a bit
+that is set or clear. It is not a property of a plane: it lives in the nametable word, so one
+cell of plane A can be high while the cell next to it is low. And it is not a sprite ordering
+mechanism.</p>
+
+<p>What it is: <b>one bit per CELL and one bit per SPRITE.</b> That is it. Each of the three
+things the VDP can draw, plane B, plane A and the sprites, is split in two by its own bit, and
+with the backdrop underneath everything that gives a stack of seven levels:</p>
+
+<div class="tbl">
+<table>
+<tr><th>Front to back</th><th>Level</th></tr>
+<tr><td>1</td><td>sprites with priority set</td></tr>
+<tr><td>2</td><td>plane A cells with priority set</td></tr>
+<tr><td>3</td><td>plane B cells with priority set</td></tr>
+<tr><td>4</td><td>sprites with priority clear</td></tr>
+<tr><td>5</td><td>plane A cells with priority clear</td></tr>
+<tr><td>6</td><td>plane B cells with priority clear</td></tr>
+<tr><td>7</td><td>the <span class="term" data-def="The color the VDP shows wherever no plane or sprite pixel is drawn. One register picks it from any of the 64 color slots.">backdrop</span> colour</td></tr>
+</table>
+</div>
+
+<p>Read down it and the pattern is regular: sprites, A, B, then sprites, A, B again, then the
+backdrop. Setting a bit does not move a thing to the front; it moves it up one tier, from the
+lower group of three to the upper group of three, keeping its place within the group.</p>
+
+<details class="explain">
+  <summary>New here? &middot; If it is one bit, how do you get seven layers?</summary>
+  <div class="x-body">
+    <p>Because the bit is not a layer number. There are only three things that can put a pixel on
+    the screen: plane B, plane A, and the sprites. Their order among themselves is fixed and never
+    changes: sprites in front, then plane A, then plane B. That is three layers, and no bit can
+    reorder them.</p>
+    <p>What the bit does is split each of those three in half. Every plane cell and every sprite
+    belongs either to the lower copy of its layer or to the upper copy, and all three upper copies
+    sit in front of all three lower copies. Three layers, doubled, is six, plus the backdrop
+    underneath everything makes seven.</p>
+    <p>The consequence people find surprising is what it does NOT buy you. Lifting a plane A cell
+    into the upper group puts it in front of every sprite in the lower group, and behind every
+    sprite in the upper group. You cannot put a plane cell in front of a high-priority sprite at
+    all, because there is no eighth level for it to go to. If a game needs that, it draws the thing
+    as a sprite.</p>
+    <p>And notice what the split is per. Not per plane: per CELL. Two neighbouring cells of plane
+    A can be in different groups, which is how a foreground pillar and the wall behind it live in
+    the same nametable.</p>
+  </div>
+</details>
+
+<figure class="diagram">
+  <div class="stack-wrap toy">
+    <div>
+      <div class="toy-row">
+        <span class="lbl">Sprite bit</span>
+        <button type="button" class="tbtn" id="stkS" aria-pressed="false">0</button>
+      </div>
+      <div class="toy-row">
+        <span class="lbl">Plane A cell</span>
+        <button type="button" class="tbtn" id="stkA" aria-pressed="false">0</button>
+      </div>
+      <div class="toy-row">
+        <span class="lbl">Plane B cell</span>
+        <button type="button" class="tbtn" id="stkB" aria-pressed="false">0</button>
+      </div>
+      <div class="stage" id="stkStage">
+        <div class="actor a-b" id="stkAB">plane B cell</div>
+        <div class="actor a-a" id="stkAA">plane A cell</div>
+        <div class="actor a-s" id="stkAS">sprite</div>
+        <span class="bd">backdrop</span>
+      </div>
+    </div>
+    <ul class="stacklist" id="stkList"></ul>
+  </div>
+  <p class="toycap" id="stkCap" aria-live="polite">All three priority bits are 0, so all three
+  actors sit in the lower group: sprite, then plane A, then plane B.</p>
+  <figcaption>Priority stacker: one bit per participant, seven layers, and a high-priority plane
+  cell beats only the LOW-priority sprites (static fallback: with every bit clear the order is
+  sprite over plane A over plane B; setting plane A alone lifts it above the sprite; setting the
+  sprite as well puts the sprite back on top).</figcaption>
+</figure>
+
+<details class="refbox">
+  <summary>Reference &middot; Sega's eight-row priority truth table</summary>
+  <div class="enc-body">
+    <p style="font-size:.85rem;">Sega documents priority as a table rather than as a stack: for
+    each combination of the three bits, the resulting front-to-back order of that one sprite,
+    that one plane A cell, that one plane B cell and the background. All eight rows are the
+    seven-level stack above with the levels nobody occupies removed, which is what makes the
+    stack a safe simplification rather than a lossy one.</p>
+    <div class="tbl">
+    <table>
+    <tr><th>Sprite</th><th>Plane A</th><th>Plane B</th><th>Order, front to back</th></tr>
+    <tr><td>0</td><td>0</td><td>0</td><td>S &gt; A &gt; B &gt; background</td></tr>
+    <tr><td>1</td><td>0</td><td>0</td><td>S &gt; A &gt; B &gt; background</td></tr>
+    <tr><td>0</td><td>1</td><td>0</td><td>A &gt; S &gt; B &gt; background</td></tr>
+    <tr><td>1</td><td>1</td><td>0</td><td>S &gt; A &gt; B &gt; background</td></tr>
+    <tr><td>0</td><td>0</td><td>1</td><td>B &gt; S &gt; A &gt; background</td></tr>
+    <tr><td>1</td><td>0</td><td>1</td><td>S &gt; B &gt; A &gt; background</td></tr>
+    <tr><td>0</td><td>1</td><td>1</td><td>A &gt; B &gt; S &gt; background</td></tr>
+    <tr><td>1</td><td>1</td><td>1</td><td>S &gt; A &gt; B &gt; background</td></tr>
+    </table>
+    </div>
+    <p class="enc-note">Worked check on the two rows that look surprising. With only plane B set
+    (row 5) the stack ranks B at level 3, the sprite at level 4 and plane A at level 5, so B
+    beats the sprite and the sprite beats A: B, S, A. With both planes set and the sprite clear
+    (row 7) the ranks are A at 2, B at 3 and the sprite at 4: A, B, S. The background is always
+    last, which is why it never moves in this table.</p>
+  </div>
+</details>
+
+<h3>Three things people get wrong</h3>
+
+<p><b>"A high-priority plane tile draws above the sprites."</b> Above the LOW-priority sprites,
+and below the high-priority ones. This is the misconception the stack exists to kill, and the
+vague version, "above most sprites", is worse than the wrong version because it sounds careful.
+The precise statement is the one the table gives: setting a plane cell's bit lifts it above
+every sprite that has not set its own.</p>
+
+<p><b>"The sprite's priority bit decides which sprite is on top."</b> It has nothing to do with
+sprite-versus-sprite ordering. Two sprites that overlap are ordered by their position in the
+sprite list, and a low-priority sprite can happily cover a high-priority one, which is a
+technique real games use for masking. The bit only describes the sprite's relationship to the
+background planes. Which sprite wins against which other sprite belongs to the sprite material.</p>
+
+<p><b>"The Window is a fourth layer."</b> It is not, and one widely-read reference has this
+wrong, listing the Window above sprites in its own tier. Four sources including Sega's own
+manual say the Window occupies plane A's place in this stack exactly. Section 9 is that fact in
+full.</p>
+
+<p>There is no clean excerpt in any shipped Sonic disassembly that DEMONSTRATES a plane cell
+beating a sprite, which is worth saying rather than papering over. The priority bit is set
+constantly and commented almost never: it is the last argument of every
+<code>make_art_tile</code> call, and Sonic 2's main source file carries over a thousand lines
+that pass it as a bare 0 or 1 with no explanation attached. So here is an invented one, showing what a game is saying when it sets it:</p>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not from a shipped game</span>
+<pre><span class="c">; a foreground pillar the player walks BEHIND: plane A, priority set</span>
+	dc.w	make_block_tile($120,0,0,2,1)	<span class="c">; $C120</span>
+
+<span class="c">; ordinary background wall on the same plane: priority clear</span>
+	dc.w	make_block_tile($121,0,0,2,0)	<span class="c">; $4121</span>
+
+<span class="c">; the player object, priority clear, so the pillar covers it</span>
+	move.w	#make_art_tile($780,0,0),art_tile(a0)</pre>
+  <p style="font-size:.88rem; margin-top:.5rem;">Two cells of the same plane, two rows apart in
+  the same table, and they behave differently: the pillar draws over the player and the wall
+  draws under it. Nothing about the plane changed. One bit in one word did.</p>
+</div>
+
+<p>One priority behaviour belongs elsewhere but is worth flagging here so it is not a surprise:
+when the shadow and highlight mode is enabled, a high-priority background cell also forces
+everything in its 8x8 area to normal brightness, whether or not the cell contains any opaque
+pixels. That interaction is the colour material's business.</p>
+
+<!-- ================================================================ -->
+<h2 id="window">9 &middot; The Window: the plane that replaces plane A</h2>
+
+<p>The <span class="term" data-def="A third tile layer that never scrolls and takes over a rectangle of the screen from plane A.">Window plane</span>
+is a third tilemap with one job: hold still. It never scrolls. It is pinned to the display, so a
+score line or a status bar drawn on it stays put no matter what the rest of the picture is doing.
+It has its own nametable, separate from plane A's, with its own base register.</p>
+
+<p><b>Where the Window is displayed, plane A is not.</b> This is the load-bearing fact of the
+whole section and the one most often got wrong. The Window is not composited over plane A: it
+takes plane A's place, in that region, entirely. Sega's manual says plane A is not displayed in
+the area where the Window is displayed. Charles MacDonald's notes say the two cannot overlap and
+that the Window is treated exactly the same as plane A for priority. plutiedev says they share a
+layer. rasterscroll says the VDP treats them as the same plane for priority purposes. Four
+sources, no disagreement, and it has a consequence you can see: a transparent pixel in a Window
+cell does not reveal plane A underneath. It reveals plane B, or the backdrop.</p>
+
+<p>In the priority stack of section 8, the Window sits exactly where plane A sits. It is not a
+fourth layer, it does not float above sprites, and a Window cell's own priority bit works
+exactly like a plane A cell's.</p>
+
+<details class="explain">
+  <summary>New here? &middot; If it replaces plane A, what is it actually for?</summary>
+  <div class="x-body">
+    <p>Think about what a scrolling game needs at the top of the screen: rings, time, score,
+    lives. Those are drawn from tiles like everything else, and if they were on plane A they
+    would slide away the moment the camera moved.</p>
+    <p>There are three ways out. Draw the display as sprites, which costs sprite slots and sprite
+    pixels on the busiest scanlines. Rewrite the plane A cells under the display every frame to
+    cancel the scroll, which costs work and goes wrong at the edges. Or turn on the Window over
+    those rows, which costs one register write and nothing per frame.</p>
+    <p>The price is that plane A genuinely stops existing there, so whatever the Window shows has
+    to be everything you want in that rectangle. That is why the Window is usually a solid band
+    at the top or bottom of the screen rather than a floating panel: a floating panel would punch
+    a hole in the background.</p>
+  </div>
+</details>
+
+<p>The Window's shape is fixed, not chosen. Its nametable is 32 by 32 cells in the 256-pixel
+display mode and 64 by 32 in the 320-pixel one, which is 2KB and 4KB respectively, and it follows
+the display width rather than any register. The base register is number 3, in units of
+<code>$800</code>, with one extra rule: in the wider mode its lowest address bit, WD11, must be
+zero, so the table has to be <code>$1000</code>-aligned there.</p>
+
+<p>Two registers place it, and each holds a direction bit plus a split position:</p>
+
+<div class="tbl">
+<table>
+<tr><th>Register</th><th>Direction bit</th><th>Split position</th></tr>
+<tr><td>17 (<code>$91</code>)</td><td>RIGT: clear puts the Window LEFT of the split, set puts it right</td><td>five bits, in units of <b>2 cells</b>, so 16 pixels</td></tr>
+<tr><td>18 (<code>$92</code>)</td><td>DOWN: clear puts the Window ABOVE the split, set puts it below</td><td>five bits, in units of <b>1 cell</b>, so 8 pixels</td></tr>
+</table>
+</div>
+
+<p>The two combine, so a Window can be a band, a corner block or an L shape rather than only a
+strip. Writing zero to both registers turns it off: the split is at position 0 with the
+"left" and "above" sense, so the Window occupies nothing. That is the standard way to switch it
+off, which is why <code>$9100</code> and <code>$9200</code> appear in so many boot tables. Sonic
+2 writes exactly those two values and never uses the Window for anything.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>The manual contradicts itself about this register pair, twice.</b> One footnote on the
+  register page gives the horizontal position in units of one cell; the chapter text, the worked
+  examples and every outside source say two. And one sentence in the Window chapter says the
+  Window's nametable base is register 13; three other places in the same manual say register 3,
+  and register 13 is the horizontal scroll table. The correct values are the ones above. This is
+  a good thing to have met once: a first-party document is the best source available and is still
+  a document, written by people, and the only defence is reading a second one.
+</div>
+
+<h3>The Window boundary defect, exactly</h3>
+
+<p>There is a real hardware defect at the Window's vertical edge, and it has a narrow trigger.
+<b>When the Window is anchored to the LEFT and plane A is scrolled horizontally by an amount that
+is not a multiple of 16 pixels, the two cells of plane A immediately to the RIGHT of the Window
+boundary fetch the wrong tiles and draw garbage.</b></p>
+
+<p>Sega documents the symptom and its extent, in its own words: only when the Window is set to
+the left and plane A is moved in the horizontal direction, the character corresponding to two
+cells on the right side of the boundary will be disfigured. It also documents both escapes.
+There is no malfunction when the Window is on the left and plane A moves only vertically, and
+none when the Window is anchored to the right. Sega's own workaround, printed as a caption on
+its diagram, is to mask those two cells with high-priority plane A tiles.</p>
+
+<p>Sega does not give the 16-pixel part of the trigger. One set of community VDP notes does, and
+it is the only source we hold that does, so that half of the statement above rests on a single
+leg and is flagged rather than folded quietly into Sega's account. It is worth flagging twice
+over, because the same notes are the reference section 8 catches putting the Window above
+sprites. The two accounts do not contradict each other: Sega gives the symptom and the extent,
+those notes give the alignment condition, and the merged rule above is stated in this page's own
+voice.</p>
+
+<p>Neither of the sources we hold shows the defect. Both describe it and neither prints a
+picture, so what is above is the symptom exactly as sourced, and no further: which two cells,
+which side, and what turns it off.</p>
+
+<p>Shipped games used the Window sparingly. Sonic 2 never uses it at all: the only writes to
+either position register anywhere in its source are <code>$9100</code> and <code>$9200</code>,
+both of which switch it off. Sonic 3 and Knuckles uses it rarely, and the two uses are the two
+obvious shapes.</p>
+
+<p>The Data Select screen turns it on across the whole display, which is what a menu that must
+not scroll wants:</p>
+
+<pre>	move.w	#$8338,(a6)
+	move.w	#$8406,(a6)
+	move.w	#$8700,(a6)
+	move.w	#$8B00,(a6)
+	move.w	#$8C81,(a6)
+	move.w	#$9003,(a6)
+	move.w	#$9280,(a6)</pre>
+<span class="src">skdisasm/sonic3k.asm:16022-16028 (SaveScreen, the Data Select screen)</span>
+
+<p>Decode the two that matter with the rules above. <code>$83</code> is the Window base
+register, and <code>$38</code> puts WD15 to WD11 in bits 5 to 1, so the base is
+<code>($38 / 2) x $800</code> = <code>$E000</code>, with WD11 clear as the 320-pixel mode set by
+<code>$8C81</code> requires. <code>$92</code> is the vertical position register, and
+<code>$80</code> is DOWN set with a split of 0: the Window occupies everything below row zero,
+which is the entire screen. Plane A is not displayed at all while that is true.</p>
+
+<p>The other use is a band. The Death Egg platform at the end of Launch Base Zone act 2 copies
+rows out of the plane A nametable into the Window's table first, so the two match at the
+seam:</p>
+
+<pre>SpecialVInt_LBZ2WindowCopy:
+		lea	(VRAM_buffer).w,a0		<span class="c">; Used specifically by the Death Egg platform at the end of LBZ2</span>
+		move.w	(Draw_delayed_rowcount).w,d0</pre>
+<span class="src">skdisasm/sonic3k.asm:102523-102525</span>
+
+<p>then turns the Window on, five cells down from the top:</p>
+
+<pre>		move.w	#$8320,VDP_control_port-VDP_data_port(a6)		<span class="c">; VRAM command $8320 - Window at base address $8000</span>
+		move.w	#$9285,VDP_control_port-VDP_data_port(a6)		<span class="c">; VRAM command $9285 - Window starts 5 cells down from top</span></pre>
+<span class="src">skdisasm/sonic3k.asm:102560-102561</span>
+
+<p>and turns it off again by zeroing the vertical position register when the sequence ends:</p>
+
+<pre>		move.w	#$9200,VDP_control_port-VDP_data_port(a6)			<span class="c">; VRAM command $9200 - Zero out window position</span></pre>
+<span class="src">skdisasm/sonic3k.asm:102599</span>
+
+<p>Both values decode the same way. <code>$20</code> puts WD15 to WD11 in bits 5 to 1, so the
+Window base is <code>($20 / 2) x $800</code> = <code>$8000</code>, with WD11 clear again.
+<code>$85</code> is DOWN set with a split of 5, so this time the Window occupies everything from
+cell row 5 downward rather than the whole screen. Below that line the picture is drawn from the
+Window's own table and does not scroll.</p>
+
+<!-- ================================================================ -->
+<h2 id="left-column">10 &middot; Three things called "the left column bug"</h2>
+
+<p>The left-hand edge of a Genesis screen has a bad reputation, and the phrase "the left column
+bug" gets attached to at least three unrelated things. Two are defects with different mechanisms
+in different parts of the chip, and the third is a deliberate feature at the screen's left edge.
+Conflating them is the easiest way to end up debugging the wrong one, and they do not even
+happen in the same place: one of the three has nothing to do with the left edge at all.</p>
+
+<div class="tbl">
+<table>
+<tr><th>Name</th><th>What it actually is</th><th>Taught in</th></tr>
+<tr><td><b>The Window boundary defect</b></td><td>The two cells of plane A immediately right of a LEFT-anchored Window draw the wrong tiles, when plane A is scrolled horizontally off a 16-pixel multiple. Nothing to do with the screen edge; it happens wherever the boundary is.</td><td><a href="#window">Section 9</a></td></tr>
+<tr><td><b>The VSRAM column -1 defect</b></td><td>The leftmost 16-pixel column of the screen takes the wrong vertical scroll value, when two-cell vertical scrolling is combined with a horizontal scroll that is off a cell boundary.</td><td><a href="#vscroll">Section 7</a></td></tr>
+<tr><td><b>Left column blank</b></td><td>Not a bug at all. Register 0, bit 5, deliberately blanks the leftmost 8 pixels of the display. It is the hardware's own answer to artefacts at the very left edge, which is where the column -1 defect shows.</td><td>here</td></tr>
+</table>
+</div>
+
+<p>The third one deserves its explanation here since nowhere else claims it. Setting bit 5 of
+register 0 turns the leftmost 8-pixel column of the picture off: it draws as the backdrop colour,
+whatever the planes and sprites have there. Sega's register diagram prints that bit as a plain
+zero and documents nothing; plutiedev documents what it does, so it ships here attributed to
+plutiedev rather than as a flat fact.</p>
+
+<p>Eight pixels is a cheap price for a column that cannot show an artefact at the screen's
+edge. Note what it does not reach, though, and this is the whole reason the three are separated
+here: the Window boundary defect is not a left-edge phenomenon. It damages the two cells to the
+right of the Window boundary, and that boundary sits at the horizontal position register's split,
+which is at least 16 pixels in, because a split of zero means the Window occupies nothing.
+Blanking the first 8 pixels cannot touch it. Sega's remedy for that one is the high-priority mask
+in section 9, and no register bit substitutes for it.</p>
+
+<p>The lesson of this section is the naming discipline rather than any one of the three facts.
+When somebody says "the left column bug", the first question is always which one, and the second
+is whether they mean a defect or the fix for one.</p>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot; <a href="../index.html">Back to hub</a> &middot; Previous: <a href="the-machine.html">The Machine</a></footer>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- Nametable composer ----
+   Bit packing is the hardware layout exactly: pri<<15 | pal<<13 | vflip<<12 | hflip<<11 | tile.
+   The stage carries a low-priority sprite across its middle rows so the priority bit has a
+   visible consequence: a cell placed with the bit set draws in front of it, clear draws behind. */
+(function(){
+  const CH = ['00','22','44','66','88','AA','CC','EE'];
+  function cram(r,g,b){
+    const cl = v => CH[Math.max(0, Math.min(7, Math.round(v)))];
+    return '#' + cl(r) + cl(g) + cl(b);
+  }
+  // Four palettes of SIXTEEN entries, as the hardware has. Slot 0 is transparent.
+  const PAL_RAMP = [
+    t => [t*3, t*5, 2 + t*5],
+    t => [t*2, 2 + t*5, t*4],
+    t => [2 + t*5, t*2, 1 + t*4],
+    t => [1 + t*6, 1 + t*5, t*2]
+  ];
+  const PALETTES = PAL_RAMP.map(f => {
+    const p = [null];
+    for (let i = 1; i < 16; i++){ const c = f(i/15); p.push(cram(c[0], c[1], c[2])); }
+    return p;
+  });
+  const BACKDROP = '#000022';
+
+  // Six 8x8 tiles as grids of palette indices. 0 is transparent.
+  const TILES = [
+    { name: 'solid', px: [
+        [9,9,9,9,9,9,9,9],[9,9,9,9,9,9,9,9],[9,9,9,9,9,9,9,9],[9,9,9,9,9,9,9,9],
+        [9,9,9,9,9,9,9,9],[9,9,9,9,9,9,9,9],[9,9,9,9,9,9,9,9],[9,9,9,9,9,9,9,9]] },
+    { name: 'brick', px: [
+        [6,6,6,6,6,6,6,6],[12,12,12,12,12,12,12,12],[6,0,6,6,6,0,6,6],[6,0,6,6,6,0,6,6],
+        [6,6,6,6,6,6,6,6],[12,12,12,12,12,12,12,12],[6,6,0,6,6,6,0,6],[6,6,0,6,6,6,0,6]] },
+    { name: 'slope', px: [
+        [0,0,0,0,0,0,0,13],[0,0,0,0,0,0,13,13],[0,0,0,0,0,13,13,13],[0,0,0,0,13,13,13,13],
+        [0,0,0,13,13,13,13,13],[0,0,13,13,13,13,13,13],[0,13,13,13,13,13,13,13],[13,13,13,13,13,13,13,13]] },
+    { name: 'dot', px: [
+        [0,0,3,3,3,3,0,0],[0,3,9,9,9,9,3,0],[3,9,9,15,15,9,9,3],[3,9,15,15,15,15,9,3],
+        [3,9,15,15,15,15,9,3],[3,9,9,15,15,9,9,3],[0,3,9,9,9,9,3,0],[0,0,3,3,3,3,0,0]] },
+    { name: 'stripe', px: [
+        [6,6,0,0,6,6,0,0],[6,6,0,0,6,6,0,0],[0,0,6,6,0,0,6,6],[0,0,6,6,0,0,6,6],
+        [6,6,0,0,6,6,0,0],[6,6,0,0,6,6,0,0],[0,0,6,6,0,0,6,6],[0,0,6,6,0,0,6,6]] },
+    { name: 'blank', px: [
+        [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]] }
+  ];
+
+  // The sprite: a 28x8 lozenge lying across plane rows 1 and 2 (plane pixels y 12 to 19).
+  const SPRITE_COLOR = '#EEAA00';
+  function spriteAt(px, py){
+    if (py < 12 || py > 19) return false;
+    const inset = (py === 12 || py === 19) ? 6 : 2;
+    return px >= inset && px <= 31 - inset;
+  }
+
+  const PROMPT = 'Pick a tile and its flags, then click a cell to write that nametable word ' +
+    'there. A low-priority sprite crosses the middle two rows: cells you place with the ' +
+    'priority bit clear are drawn behind it, cells you place with the bit set are drawn in front.';
+
+  let curTile = 0, curPal = 0, flipH = false, flipV = false, pri = false;
+  const gridState = new Array(16).fill(null);
+
+  const tilePick = document.getElementById('ntcTilePick');
+  const palSel = document.getElementById('ntcPal');
+  const flipHBtn = document.getElementById('ntcFlipH');
+  const flipVBtn = document.getElementById('ntcFlipV');
+  const priBtn = document.getElementById('ntcPri');
+  const clearBtn = document.getElementById('ntcClear');
+  const wordText = document.getElementById('ntcWordText');
+  const bitsEl = document.getElementById('ntcBits');
+  const macroEl = document.getElementById('ntcMacro');
+  const preview = document.getElementById('ntcPreview').getContext('2d');
+  const cap = document.getElementById('ntcCap');
+  const grid = document.getElementById('ntcGrid');
+  const swatches = [], cells = [];
+
+  function paintTile(ctx, px, pal, fh, fv){
+    for (let y = 0; y < 8; y++){
+      for (let x = 0; x < 8; x++){
+        const idx = px[fv ? 7-y : y][fh ? 7-x : x];
+        if (!idx) continue;
+        ctx.fillStyle = pal[idx];
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+  function paintSprite(ctx, cx, cy){
+    ctx.fillStyle = SPRITE_COLOR;
+    for (let y = 0; y < 8; y++){
+      for (let x = 0; x < 8; x++){
+        if (spriteAt(cx + x, cy + y)) ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+  function fill(ctx, color){ ctx.fillStyle = color; ctx.fillRect(0,0,8,8); }
+
+  TILES.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'tile ' + i + ', ' + t.name);
+    const cv = document.createElement('canvas');
+    cv.width = 8; cv.height = 8;
+    b.appendChild(cv);
+    if (i === 0) b.classList.add('sel');
+    b.addEventListener('click', () => {
+      curTile = i;
+      swatches.forEach(s => s.classList.remove('sel'));
+      b.classList.add('sel');
+      pending();
+    });
+    swatches.push(b);
+    tilePick.appendChild(b);
+  });
+
+  function drawSwatches(){
+    swatches.forEach((b, i) => {
+      const ctx = b.querySelector('canvas').getContext('2d');
+      fill(ctx, BACKDROP);
+      paintTile(ctx, TILES[i].px, PALETTES[curPal], false, false);
+    });
+  }
+
+  function computeWord(tile, pal, fh, fv, pr){
+    return (pr?1:0)<<15 | (pal&3)<<13 | (fv?1:0)<<12 | (fh?1:0)<<11 | (tile&0x7FF);
+  }
+  function hex4(w){ return '$' + w.toString(16).toUpperCase().padStart(4,'0'); }
+  function bin16(w){
+    const s = w.toString(2).padStart(16,'0');
+    return s.slice(0,4) + ' ' + s.slice(4,8) + ' ' + s.slice(8,12) + ' ' + s.slice(12);
+  }
+
+  function updateWord(){
+    const w = computeWord(curTile, curPal, flipH, flipV, pri);
+    wordText.innerHTML = 'word = ' + hex4(w) + '<span class="bin">' + bin16(w) + '</span>';
+    bitsEl.innerHTML =
+      '<span class="bf b-pri">PRI ' + (pri?1:0) + '</span>' +
+      '<span class="bf b-pal">PAL ' + curPal + '</span>' +
+      '<span class="bf b-flip">VF ' + (flipV?1:0) + '</span>' +
+      '<span class="bf b-flip">HF ' + (flipH?1:0) + '</span>' +
+      '<span class="bf b-tile">TILE ' + curTile + '</span>';
+    macroEl.textContent = 'make_block_tile($' +
+      curTile.toString(16).toUpperCase().padStart(3,'0') + ',' +
+      (flipH?1:0) + ',' + (flipV?1:0) + ',' + curPal + ',' + (pri?1:0) + ')';
+    fill(preview, BACKDROP);
+    paintTile(preview, TILES[curTile].px, PALETTES[curPal], flipH, flipV);
+    drawSwatches();
+  }
+  /* The at-rest rule: changing a control must not leave the last placement narrated, because
+     the flags it describes are no longer the ones the controls hold. */
+  function pending(){ updateWord(); cap.textContent = PROMPT; }
+
+  palSel.addEventListener('change', () => { curPal = +palSel.value; pending(); });
+  flipHBtn.addEventListener('click', () => { flipH = !flipH; flipHBtn.setAttribute('aria-pressed', flipH); pending(); });
+  flipVBtn.addEventListener('click', () => { flipV = !flipV; flipVBtn.setAttribute('aria-pressed', flipV); pending(); });
+  priBtn.addEventListener('click', () => { pri = !pri; priBtn.setAttribute('aria-pressed', pri); pending(); });
+
+  function redrawCell(i){
+    const st = gridState[i];
+    const ctx = cells[i].querySelector('canvas').getContext('2d');
+    const cx = (i % 4) * 8, cy = Math.floor(i / 4) * 8;
+    fill(ctx, BACKDROP);
+    if (st && st.pri){
+      paintSprite(ctx, cx, cy);
+      paintTile(ctx, TILES[st.tile].px, PALETTES[st.pal], st.fh, st.fv);
+    } else {
+      if (st) paintTile(ctx, TILES[st.tile].px, PALETTES[st.pal], st.fh, st.fv);
+      paintSprite(ctx, cx, cy);
+    }
+  }
+
+  for (let i = 0; i < 16; i++){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ntc-cell';
+    b.setAttribute('aria-label', 'cell ' + (i+1) + ', empty');
+    const cv = document.createElement('canvas');
+    cv.width = 8; cv.height = 8;
+    b.appendChild(cv);
+    b.addEventListener('click', () => {
+      gridState[i] = { tile: curTile, pal: curPal, fh: flipH, fv: flipV, pri: pri };
+      cells.forEach(c => c.classList.remove('cursel'));
+      b.classList.add('cursel');
+      redrawCell(i);
+      const w = computeWord(curTile, curPal, flipH, flipV, pri);
+      b.setAttribute('aria-label', 'cell ' + (i+1) + ', word ' + hex4(w));
+      const overlaps = (i >= 4 && i <= 11);
+      cap.textContent = 'Cell ' + (i+1) + ' now holds the word ' + hex4(w) + ', which is '
+        + bin16(w) + ' in binary: tile ' + curTile + ' (' + TILES[curTile].name + '), palette '
+        + curPal + (flipH ? ', H flipped' : '') + (flipV ? ', V flipped' : '')
+        + ', priority ' + (pri ? '1' : '0') + '. '
+        + (overlaps
+            ? (pri ? 'The sprite crosses this cell, and the cell is drawn in front of it.'
+                   : 'The sprite crosses this cell, and the cell is drawn behind it.')
+            : 'The sprite does not reach this cell, so the priority bit changes nothing you can see here.');
+    });
+    cells.push(b);
+    grid.appendChild(b);
+  }
+
+  clearBtn.addEventListener('click', () => {
+    for (let i = 0; i < 16; i++){
+      gridState[i] = null;
+      cells[i].classList.remove('cursel');
+      cells[i].setAttribute('aria-label', 'cell ' + (i+1) + ', empty');
+      redrawCell(i);
+    }
+    cap.textContent = 'The plane is cleared. Every cell is back to the backdrop, and the sprite is the only thing drawn.';
+  });
+
+  for (let i = 0; i < 16; i++) redrawCell(i);
+  updateWord();
+})();
+
+/* ---- Priority stacker ----
+   Ranks are the seven-level stack, front to back:
+   1 sprite high, 2 plane A high, 3 plane B high, 4 sprite low, 5 plane A low, 6 plane B low,
+   7 backdrop. Checked against all eight rows of Sega's truth table. */
+(function(){
+  const LEVELS = [
+    'sprites, priority 1',
+    'plane A cells, priority 1',
+    'plane B cells, priority 1',
+    'sprites, priority 0',
+    'plane A cells, priority 0',
+    'plane B cells, priority 0',
+    'the backdrop colour'
+  ];
+  const bits = { S: false, A: false, B: false };
+  const btn = { S: document.getElementById('stkS'), A: document.getElementById('stkA'), B: document.getElementById('stkB') };
+  const box = { S: document.getElementById('stkAS'), A: document.getElementById('stkAA'), B: document.getElementById('stkAB') };
+  const list = document.getElementById('stkList');
+  const cap = document.getElementById('stkCap');
+  const NAME = { S: 'the sprite', A: 'the plane A cell', B: 'the plane B cell' };
+
+  function rank(k){
+    if (k === 'S') return bits.S ? 1 : 4;
+    if (k === 'A') return bits.A ? 2 : 5;
+    return bits.B ? 3 : 6;
+  }
+
+  function render(){
+    const ranks = { S: rank('S'), A: rank('A'), B: rank('B') };
+    ['S','A','B'].forEach(k => {
+      box[k].style.zIndex = String(7 - ranks[k]);
+      btn[k].textContent = bits[k] ? '1' : '0';
+      btn[k].setAttribute('aria-pressed', bits[k] ? 'true' : 'false');
+    });
+    const occupant = {};
+    occupant[ranks.S] = 'S'; occupant[ranks.A] = 'A'; occupant[ranks.B] = 'B';
+    list.innerHTML = LEVELS.map((label, idx) => {
+      const level = idx + 1;
+      const here = occupant[level];
+      return '<li class="' + (here ? 'on' : '') + '"><span>' + label + '</span><span class="rk">'
+        + (here ? NAME[here] : '') + '</span></li>';
+    }).join('');
+    const order = ['S','A','B'].sort((x,y) => ranks[x] - ranks[y]).map(k => NAME[k]);
+    cap.textContent = 'Sprite bit ' + (bits.S?1:0) + ', plane A bit ' + (bits.A?1:0)
+      + ', plane B bit ' + (bits.B?1:0) + '. Front to back where they overlap: '
+      + order[0] + ', then ' + order[1] + ', then ' + order[2]
+      + ', then the backdrop.';
+  }
+
+  ['S','A','B'].forEach(k => {
+    btn[k].addEventListener('click', () => { bits[k] = !bits[k]; render(); });
+  });
+  render();
+})();
+
+/* ---- Plane-size picker ---- */
+(function(){
+  const CAP = 8192;
+  const out = document.getElementById('pszOut');
+  const fillEl = document.getElementById('pszFill');
+  const verdictWrap = document.getElementById('pszVerdictWrap');
+  const cap = document.getElementById('pszCap');
+  const reset = document.getElementById('pszReset');
+  const hBtns = [...document.querySelectorAll('[data-h]')];
+  const vBtns = [...document.querySelectorAll('[data-v]')];
+  let h = null, v = null;
+
+  function pending(){
+    out.textContent = 'Pick a width and a height.';
+    fillEl.style.width = '0';
+    fillEl.classList.remove('over');
+    verdictWrap.innerHTML = '';
+    cap.textContent = 'Nothing chosen yet.';
+  }
+
+  function show(){
+    if (h === null || v === null){
+      out.textContent = h === null ? 'Now pick a width.' : 'Now pick a height.';
+      fillEl.style.width = '0';
+      fillEl.classList.remove('over');
+      verdictWrap.innerHTML = '';
+      cap.textContent = 'One axis chosen. Pick the other and the arithmetic runs.';
+      return;
+    }
+    const cells = h * v, bytes = cells * 2, ok = bytes <= CAP;
+    out.innerHTML = 'cells = <span class="num">' + h + '</span> x <span class="num">' + v
+      + '</span> = <span class="num">' + cells.toLocaleString('en-US') + '</span><br>'
+      + 'bytes = <span class="num">' + cells.toLocaleString('en-US')
+      + '</span> x 2 = <span class="num">' + bytes.toLocaleString('en-US') + '</span>';
+    fillEl.style.width = Math.min(100, (bytes / (CAP * 2)) * 100) + '%';
+    fillEl.classList.toggle('over', !ok);
+    verdictWrap.innerHTML = ok
+      ? '<span class="verdict ok">Legal. ' + bytes.toLocaleString('en-US') + ' of 8192 bytes.</span>'
+      : '<span class="verdict no">Refused. ' + bytes.toLocaleString('en-US') + ' bytes is '
+        + (bytes / CAP) + ' times the 8192-byte cap, and register 16 has no setting for it.</span>';
+    cap.textContent = h + ' by ' + v + ' cells is ' + cells.toLocaleString('en-US')
+      + ' cells, so ' + bytes.toLocaleString('en-US') + ' bytes. '
+      + (ok ? 'That fits under the 8192-byte cap, so it is one of the six legal sizes.'
+            : 'That is over the 8192-byte cap, so this size does not exist on the hardware.');
+  }
+
+  function mark(btns, val, attr){
+    btns.forEach(b => b.setAttribute('aria-pressed', b.dataset[attr] === String(val) ? 'true' : 'false'));
+  }
+  hBtns.forEach(b => b.addEventListener('click', () => { h = +b.dataset.h; mark(hBtns, h, 'h'); show(); }));
+  vBtns.forEach(b => b.addEventListener('click', () => { v = +b.dataset.v; mark(vBtns, v, 'v'); show(); }));
+  reset.addEventListener('click', () => {
+    h = null; v = null;
+    hBtns.concat(vBtns).forEach(b => b.setAttribute('aria-pressed','false'));
+    pending();
+  });
+  pending();
+})();
+
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+</div>
+
+</body>
+</html>

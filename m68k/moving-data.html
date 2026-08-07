@@ -1493,7 +1493,9 @@ carry meaning, without touching memory at all.</p>
   <span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>
   and stall the 68000, and a write aimed at it while it is set up for reading advances the address
   without storing anything. CLR does both halves, so it cannot work here whichever mode the port is
-  in. Zero VRAM with a DMA fill, or with ordinary MOVE writes.</p></div>
+  in. Zero VRAM with a DMA fill, or with ordinary MOVE writes. CLR is one of twenty-six instructions
+  Sega rules out this way, and the full list and mechanism live on
+  <a href="../genesis/vdp-planes.html#rmw">The VDP &amp; Planes</a>.</p></div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Zeroing a whole data register? <code>moveq #0,d0</code> (see <a href="#moveq">MOVEQ</a>) clears
   all 32 bits in 4 cycles; <code>clr.l d0</code> takes 6 and <code>clr.w</code> leaves the top

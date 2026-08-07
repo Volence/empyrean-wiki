@@ -2360,7 +2360,10 @@ wrong.</p>
   makes the VDP withhold
   <span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>
   and stall the 68000. Sega's development manual lists Scc among the instructions it rules out for
-  exactly this reason, alongside CLR, the shifts and rotates, and the bit instructions.</p></div>
+  exactly this reason, alongside CLR, the shifts and rotates, and the bit instructions. The hazard is
+  the video chip's rather than the 68000's, and
+  <a href="../genesis/vdp-planes.html#rmw">The VDP &amp; Planes</a> carries the whole list and the
+  mechanism behind it.</p></div>
 
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   If you want 1 and 0 rather than $FF and $00, the manual's own suggestion is to follow the Scc

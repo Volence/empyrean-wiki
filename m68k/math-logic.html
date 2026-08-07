@@ -477,7 +477,9 @@ storing anything. Sega's development manual rules out ten instructions from this
 ADDI, ADDQ, SUBI, SUBQ, ANDI, ORI, EORI, CMPI, <a href="#neg">NEG</a> and <a href="#not">NOT</a>. Move
 the value into a data register, do the arithmetic there, and write it back. Note that
 <a href="#cmpi">CMPI</a> is on that list even though it never writes anything: reading the port in the
-wrong mode is enough on its own.</div>
+wrong mode is enough on its own. The restriction belongs to the video chip rather than to the 68000,
+and <a href="../genesis/vdp-planes.html#rmw">The VDP &amp; Planes</a> states it in full, with all
+twenty-six instructions Sega names.</div>
 
 <details class="explain">
   <summary>New here? &middot; Why are there four different ways to add?</summary>

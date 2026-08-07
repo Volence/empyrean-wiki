@@ -349,7 +349,7 @@ details.explain summary::-webkit-details-marker{display:none;}
 <h2 id="s1">1 · The first 256 bytes</h2>
 
 <p>A Sega Genesis ROM does not begin with code. It begins with a table: 64 longword addresses,
-occupying exactly the first 256 bytes of the cartridge. When power is applied, the <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. All engine logic runs here.">68000</span> reads
+occupying exactly the first 256 bytes of the cartridge. When power is applied, the <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. Game logic runs here.">68000</span> reads
 the first entry into its stack pointer and the second into its program counter, and those two
 reads <em>are</em> the boot process, as far as the CPU is concerned. Everything else on this
 page is just what the code at that second address chooses to do.</p>
@@ -859,7 +859,7 @@ needs to get it running.</p>
   </div>
 </details>
 
-<p>The bus dance is precise. The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. All engine logic runs here.">68000</span> asserts the <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz. In Aeon it runs the entire sound driver autonomously, leaving the 68000 free.">Z80</span>'s reset line, requests the shared bus,
+<p>The bus dance is precise. The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. Game logic runs here.">68000</span> asserts the <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz, with its own memory and its own bus. On a Genesis it conventionally runs the sound driver.">Z80</span>'s reset line, requests the shared bus,
 releases reset, and polls until the bus is granted. Both of those lines are just addresses to
 write: $A11200 holds or releases the Z80's reset, and $A11100 requests or releases its bus. Only
 then can it copy a program into Z80
@@ -1153,7 +1153,7 @@ that spending is
 <a href="section-02-vdp-frame.html#s5">section 5 of the
 VDP page</a>; boot's whole share of it is choosing which of the two numbers to write.</p>
 
-<p>(Frame-timing figures like "262 vs 313 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanlines</span>" and "~18,600 vs ~43,500 <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span> cycles" are
+<p>(Frame-timing figures like "262 vs 313 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanlines</span>" and "~18,600 vs ~43,500 <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span> cycles" are
 hardware background you'll find in a Genesis reference; the engine deliberately does not
 carry them as named constants.)</p>
 
@@ -1339,7 +1339,7 @@ near-identical example value $2704.</p>
 <span class="src">engine/system/vblank.emp:290-296 · engine/irq.emp:48-56</span>
 
 <p>One loose end the excerpts above leave out: the interrupt side lowers
-<code>VBlank_Ready</code> itself on the way out of every <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where the engine does almost all of its time-critical work.">VBlank</span>, normal or lag, so the ready
+<code>VBlank_Ready</code> itself on the way out of every <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>, normal or lag, so the ready
 signal is consumed exactly once per interrupt and can never carry over into a frame that did
 not earn it.</p>
 

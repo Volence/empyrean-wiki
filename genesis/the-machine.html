@@ -1,0 +1,1379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis: The Machine</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🗺️%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+/* ============================================================
+   Page-specific styles: The Machine (Genesis hardware track)
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* Safari draws its own disclosure marker on top of ours - hide it */
+details.explain summary::-webkit-details-marker{display:none;}
+
+/* shared live-caption line under a widget */
+.vcap{font-family:var(--mono); font-size:.78rem; margin-top:.9rem; min-height:3.4rem;
+  color:var(--ink); border-top:1px dashed var(--line); padding-top:.6rem; max-width:40rem;}
+.vcap b{color:var(--gold); font-weight:normal;}
+
+/* section 1: boxes and buses */
+.bxd{display:flex; flex-direction:column; gap:1rem;}
+.bxbus{border-top:3px solid var(--line); padding-top:.5rem;}
+.bxbus.vid{border-top-color:#4466EE;}
+.bxbus.snd8{border-top-color:#44CC88;}
+.bxlab{font-family:var(--mono); font-size:.6rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--dim); margin:0 0 .5rem; max-width:40rem;}
+.bxrow{display:flex; flex-wrap:wrap; gap:.5rem;}
+.bx{border:1px solid var(--line); border-radius:3px; background:var(--panel2);
+  padding:.4rem .6rem; min-width:8rem; font-family:var(--mono);}
+.bx b{display:block; font-size:.82rem; font-weight:normal; color:var(--ink);}
+.bx i{display:block; font-size:.6rem; font-style:normal; color:var(--dim);
+  letter-spacing:.04em; line-height:1.45;}
+.bx.cpu{border-color:#EEAA00;} .bx.cpu b{color:#EEAA00;}
+.bx.vdp{border-color:#4466EE;} .bx.vdp b{color:#88AAEE;}
+.bx.snd{border-color:#44CC88;} .bx.snd b{color:#44CC88;}
+.bx.mem{border-color:#666688;}
+.bx.io{border-color:#AAAACC;}
+.bxin{margin-top:.4rem; border:1px dashed #44CC88; border-radius:3px;
+  padding:.25rem .45rem; background:rgba(68,204,136,.06);}
+.bxin b{font-size:.72rem; color:#44CC88;}
+.bxin.vm{border-color:#4466EE; background:rgba(68,102,238,.06);}
+.bxin.vm b{color:#88AAEE;}
+.bxarb{font-family:var(--mono); font-size:.7rem; color:var(--gold); align-self:flex-start;
+  border:1px solid var(--gold); border-radius:3px; background:rgba(238,170,0,.06);
+  padding:.35rem .7rem; max-width:100%;}
+.bxarb i{display:block; color:var(--dim); font-size:.6rem; font-style:normal;
+  letter-spacing:.06em;}
+
+/* section 2: the clock tree */
+.ctree{display:flex; flex-direction:column; align-items:center; gap:0;}
+.ctog{display:flex; gap:.4rem; margin:0 0 .9rem; align-self:center;}
+.rbtn{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase;
+  padding:.3rem .8rem; border-radius:3px; cursor:pointer; background:transparent;
+  color:var(--dim); border:1px solid var(--line);}
+.rbtn[aria-pressed="true"]{border-color:var(--gold); color:var(--gold);
+  background:rgba(238,170,0,.08);}
+.rbtn:focus-visible{outline:2px solid var(--ink); outline-offset:2px;}
+.cxtal{border:1px solid var(--gold); background:rgba(238,170,0,.08); border-radius:4px;
+  padding:.5rem 1rem; text-align:center; font-family:var(--mono);}
+.cxtal .cx-n{display:block; font-size:.6rem; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--dim);}
+.cxtal .cx-v{display:block; font-size:1rem; color:var(--gold);}
+.cstem{width:0; height:1.1rem; border-left:2px solid var(--line);}
+.cfan{display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center;}
+.cnode{font-family:var(--mono); text-align:center; cursor:pointer; border-radius:3px;
+  border:1px solid var(--line); background:var(--panel2); color:var(--dim);
+  padding:.45rem .7rem; min-width:9.5rem;}
+.cnode:hover{background:var(--panel);}
+.cnode:focus-visible{outline:2px solid var(--ink); outline-offset:1px;}
+.cnode.sel{background:#222244; outline:2px solid var(--ink); outline-offset:1px;}
+.cnode .cd{display:block; font-size:.58rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--dim);}
+.cnode .cn{display:block; font-size:.85rem; color:var(--ink); margin:.1rem 0;}
+.cnode .cf{display:block; font-size:.68rem; color:#88AAEE;}
+
+/* section 3: the memory map explorer */
+.mmap{display:flex; flex-direction:column; gap:3px; width:30rem; max-width:100%;}
+.mmr{font-family:var(--mono); font-size:.66rem; display:flex; align-items:baseline;
+  gap:.6rem; text-align:left; padding:.42rem .6rem; border:1px solid var(--line);
+  background:var(--panel2); color:var(--dim); cursor:pointer; border-radius:2px;}
+.mmr:hover{background:var(--panel);}
+.mmr:focus-visible{outline:2px solid var(--ink); outline-offset:1px;}
+.mmr.sel{background:#222244; outline:2px solid var(--ink); outline-offset:1px;}
+.mmr .a{white-space:nowrap; min-width:9.5rem;}
+.mmr .nm{flex:1;}
+.mmr .vd{font-size:.56rem; letter-spacing:.14em; text-transform:uppercase;
+  border:1px solid currentColor; border-radius:2px; padding:.02rem .35rem; white-space:nowrap;}
+.mmr.v-ok{border-color:#666688;} .mmr.v-ok .vd{color:#AAAACC;}
+.mmr.v-junk{border-color:#EEAA00; color:#EEAA00;} .mmr.v-junk .vd{color:#EEAA00;}
+.mmr.v-hang{border-color:#CC66AA; color:#CC66AA;} .mmr.v-hang .vd{color:#CC66AA;}
+.mmr.v-mir{border-color:#444466;} .mmr.v-mir .vd{color:#666688;}
+.mmleg{display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin-top:.7rem;
+  font-family:var(--mono); font-size:.62rem; color:var(--dim); max-width:40rem;}
+.mmleg span::before{content:"\25A0 ";}
+.mmleg .l-ok::before{color:#AAAACC;} .mmleg .l-junk::before{color:#EEAA00;}
+.mmleg .l-hang::before{color:#CC66AA;} .mmleg .l-mir::before{color:#666688;}
+
+/* collapsed deep reference (same shape as the 68000 pages) */
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary::-webkit-details-marker{display:none;}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / THE GENESIS / THE MACHINE</p>
+  <p class="eyebrow">The Genesis</p>
+  <h1>The Machine</h1>
+  <p class="sub">Five chips, three buses, one crystal, and a sixteen-megabyte map that says
+  which chip answers at which address. This is the front door of the hardware track: what a
+  Sega Genesis is made of, how the parts are wired to one another, what happens when a program
+  reaches for an address nothing is listening at, and how the whole thing moves through one
+  frame. Everything here is true of the silicon, for every game ever made on the machine.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>One machine, five chips</a>
+  <a href="#s2"><span class="n">2</span>One crystal, every clock</a>
+  <a href="#s3"><span class="n">3</span>The 68000's map of the world</a>
+  <a href="#s4"><span class="n">4</span>The cartridge</a>
+  <a href="#s5"><span class="n">5</span>Two processors, two worlds</a>
+  <a href="#s6"><span class="n">6</span>The VDP and its three memories</a>
+  <a href="#s7"><span class="n">7</span>A tour of one frame</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Every address and value on
+this page is written in hexadecimal, base 16, marked by a leading <code>$</code> that is
+notation and never part of the number. One hex digit stands for exactly four bits, so the six
+digits of <code>$FF0000</code> are 24 bits of address. If you would rather read any of these
+numbers in another base, the
+<a href="../basics/numbers-and-notation.html">numbers and notation page</a> has a live
+converter.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; One machine, five chips</h2>
+
+<p>Open a Sega Genesis and the interesting part is small. Two processors, one video chip, two
+sound chips, and a handful of glue parts to wire them together. Everything else in the case is
+power, a cartridge slot, two controller sockets and an expansion port. Learn what those five
+chips are and which wires they hang off, and the rest of this track is detail.</p>
+
+<p>The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. Game logic runs here.">68000</span>
+is the main processor, and it runs the game: physics, collision, objects, menus, the lot. Its
+registers are 32 bits wide, it moves 16 bits at a time to and from the outside world, and it has
+24 address lines, which is the number that fixes its world at sixteen megabytes.</p>
+
+<p>The <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz, with its own memory and its own bus. On a Genesis it conventionally runs the sound driver.">Z80</span>
+is the second processor: eight bits wide, with a 64 KB address space entirely its own and eight
+kilobytes of RAM to live in. On a Genesis it conventionally runs the sound driver, and once the
+68000 has loaded that driver into its RAM, the Z80 steps through it on its own wires.</p>
+
+<p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span>,
+the Video Display Processor, draws the picture. It owns three memories of its own that no other
+chip can address, and it produces every pixel by itself once a program has told it what to draw.
+Section 6 is about those three memories and the very small keyhole through which the 68000 talks
+to them.</p>
+
+<p>The two sound chips are where the wiring gets interesting. The
+<span class="term" data-def="The six-channel FM synthesizer chip that gives the Genesis its signature sound. Channel six can play raw samples instead (the DAC).">YM2612</span>
+is the FM synthesiser: six channels of frequency-modulation synthesis, the source of the sound
+people mean when they say a game sounds like a Mega Drive. One of its six channels can be handed
+over to a DAC that plays recorded audio a byte at a time, which is how drums and voice clips get out of a
+cartridge. The <span class="term" data-def="The Programmable Sound Generator: a simple chip with three square-wave tone channels and one noise channel.">PSG</span>
+is far simpler: three square-wave tone channels and one noise channel, an SN76489-compatible
+part. And it is not a separate chip at all. The PSG core is built into the VDP's die, which means
+the thing that makes the beeps is physically inside the thing that draws the picture.</p>
+
+<p>Two more parts are worth naming even though they never appear in a screenshot. An I/O chip
+carries the version register, the three ports (two for controllers, one for expansion) and the
+serial lines. And a
+<span class="term" data-def="The chip that decides which processor gets a shared bus, and stalls the other one until the bus is free.">bus arbiter</span>
+sits between the two processors. When the 68000 wants the Z80's
+<span class="term" data-def="The shared set of wires carrying addresses and data between chips. Only one device can use a bus at a time, so anything else that wants it waits.">bus</span>,
+or the Z80 reaches out into the 68000's, the arbiter is the part that actually stalls one and
+lets the other through. The two processors are not wired to each other's pins; they are wired to
+the arbiter.</p>
+
+<details class="explain"><summary>New here? &middot; Why would a console have two brains?</summary>
+<div class="x-body">
+<p>Because two of the jobs a game has to do are both on deadlines, and neither will wait for the
+other.</p>
+<p>Game logic is bursty. Some frames are cheap and some frames are a boss fight with forty
+objects on screen, and the work simply takes as long as it takes. Sound is the opposite: it is
+relentless and it is unforgiving. A music driver has to touch its chips on a schedule measured in
+small fractions of a frame, every frame, forever. If it is late, you do not get a slightly slow
+note; you get an audible glitch, because human ears notice timing errors that eyes would never
+see.</p>
+<p>Ask one processor to do both and the sound loses every argument, because the moment the game
+gets busy the driver gets starved. Give the sound a processor of its own, with its own memory and
+its own wires, and it keeps its schedule while the main processor is buried in collision code.
+Neither one has to know what the other is doing.</p>
+<p>The particular reasons this machine put its sound on a Z80, rather than somewhere else or
+nowhere at all, are a story with real sources behind it and it is not settled on this page. What
+matters here is the shape: two processors, two private memories, and an arbiter in between.</p>
+</div>
+</details>
+
+<p>Those parts are not all on one set of wires. There are three buses:</p>
+
+<ul>
+<li>A <b>16-bit system bus</b>. The 68000 and the VDP are on it; so are the work RAM and the
+cartridge. This is the bus the memory map in section 3 describes.</li>
+<li>An <b>8-bit private bus</b>, the Z80's. The Z80, the YM2612 and the eight kilobytes of sound
+RAM live here, and nothing else does.</li>
+<li>The <b>video bus</b>, which belongs to the VDP alone and connects it to its video memory,
+with the colour and scroll memories sitting on the die itself. No other chip touches any of it,
+which is why no address in the 68000's map is a byte of video memory.</li>
+</ul>
+
+<figure class="diagram">
+  <div class="bxd">
+    <div class="bxbus">
+      <p class="bxlab">16-bit system bus</p>
+      <div class="bxrow">
+        <div class="bx cpu"><b>68000</b><i>main CPU, 24 address lines</i></div>
+        <div class="bx vdp"><b>VDP</b><i>draws the picture</i>
+          <div class="bxin"><b>PSG</b><i>3 tone + 1 noise, on this die</i></div>
+          <div class="bxin vm"><b>CRAM</b><i>64 colours, on this die</i></div>
+          <div class="bxin vm"><b>VSRAM</b><i>scroll values, on this die</i></div>
+        </div>
+        <div class="bx mem"><b>work RAM</b><i>64 KB</i></div>
+        <div class="bx mem"><b>cartridge ROM</b><i>up to 4 MB</i></div>
+        <div class="bx io"><b>I/O chip</b><i>version register, 2 controller ports + EXT</i></div>
+      </div>
+    </div>
+    <div class="bxarb">bus arbiter<i>either processor can stall the other to borrow its bus</i></div>
+    <div class="bxbus snd8">
+      <p class="bxlab">8-bit private bus (the Z80's)</p>
+      <div class="bxrow">
+        <div class="bx cpu"><b>Z80</b><i>second CPU</i></div>
+        <div class="bx snd"><b>YM2612</b><i>6 FM channels, one can play samples</i></div>
+        <div class="bx mem"><b>sound RAM</b><i>8 KB</i></div>
+      </div>
+    </div>
+    <div class="bxbus vid">
+      <p class="bxlab">video bus (the VDP's own, reached by nothing else)</p>
+      <div class="bxrow">
+        <div class="bx mem"><b>VRAM</b><i>64 KB</i></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>The five chips placed on the three buses they actually hang off. The PSG, the
+  colour memory and the scroll memory are drawn inside the VDP because that is where they are;
+  only VRAM sits out on the video bus. The YM2612 is on the far side of the arbiter from the PSG.
+  The one picture to remember from this page: the two sound chips are not neighbours.
+  </figcaption>
+</figure>
+
+<p>That layout puts the two sound chips on opposite sides of the machine, and it is the single
+most useful fact on this page. The YM2612 hangs off the Z80's private bus, so the 68000 cannot
+touch it without taking the Z80's bus away first. The PSG is inside the VDP on the 68000's bus,
+so the Z80 cannot touch it without reaching out across the arbiter into the 68000's world. Sound
+is not cleanly "the Z80's department": it is split down the middle by the wiring, and half of it
+lives inside the video chip.</p>
+
+<p>Nothing on this page depends on that fact yet. Everything later does. It is why a rule about
+the video chip can turn into a rule about audio, why a long transfer into video memory has
+consequences for the beeps, and why the two sound chips are programmed in completely different
+styles.</p>
+
+<details class="explain"><summary>New here? &middot; What is a bus, and why does it matter who owns it?</summary>
+<div class="x-body">
+<p>A bus is a bundle of shared wires. One group of them carries an address, saying which location
+the processor wants; another group carries the data going to or coming from that location; a few
+more carry timing and direction signals. Every chip on the bus is listening to all of it at
+once.</p>
+<p>The catch is that only one device may drive those wires at a time. If two chips both put a
+value on the data lines, the result is not two values, it is nonsense. So a bus needs a rule
+about who is allowed to talk, and on this machine that rule is enforced by a part whose only job
+it is.</p>
+<p>That is why "which bus is this chip on" is a real question with real consequences, and not
+just a diagram detail. Two chips on the same bus take turns and can hold each other up. Two chips
+on different buses genuinely run at the same time and never wait for one another. The Genesis
+gets both: the Z80 and its FM chip work away undisturbed on their own wires, while the 68000 and
+the video chip share theirs.</p>
+</div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s2">2 &middot; One crystal, every clock</h2>
+
+<p>There is one oscillator in a Genesis, and every clock in this section is that oscillator
+divided by a whole number. Not approximately, not nominally: exactly, by an integer.</p>
+
+<p>On an NTSC console the
+<span class="term" data-def="The single oscillator every other clock in the console is divided down from, which is why all the parts stay in step with each other.">master clock</span>
+runs at 53,693,175 Hz. On a PAL console it runs at 53,203,424 Hz. From there: the 68000 gets one
+seventh of it, the Z80 gets one fifteenth, the YM2612 gets the same seventh the 68000 does, and
+the PSG gets the same fifteenth as the Z80.</p>
+
+<p>Two figures in that picture come from Sega and the rest do not, and the difference is worth
+keeping straight. Of the clocks in this tree, Sega printed only the CPU's: 7.67 MHz on an NTSC
+console and 7.60 MHz on a PAL one. The two crystal values did not come from Sega either. The NTSC
+one is given identically, to eight digits, by three independently written emulator codebases; the
+PAL one is the figure three of four sources give, and the fourth is settled against by the
+arithmetic in the reference box below. Every divisor is the scene's, worked back out of the
+hardware. What makes all of it trustworthy is that it reproduces Sega's two printed figures
+exactly: 53,693,175 divided by 7 is 7,670,453.6 Hz, which is 7.67 MHz at the precision Sega
+quoted, and 53,203,424 divided by 7 is 7,600,489.1 Hz, which is 7.60 MHz. So the right way to say
+it is that the 68000 runs at one seventh of the master clock, and not that Sega divides the master
+clock by seven.</p>
+
+<figure class="diagram">
+  <div class="ctog" role="group" aria-label="Console region">
+    <button type="button" class="rbtn" id="ck-ntsc" data-r="0" aria-pressed="true">NTSC</button>
+    <button type="button" class="rbtn" id="ck-pal" data-r="1" aria-pressed="false">PAL</button>
+  </div>
+  <div class="ctree">
+    <div class="cxtal"><span class="cx-n" id="ck-rn">NTSC master crystal</span><span class="cx-v" id="ck-mv">53,693,175 Hz</span></div>
+    <div class="cstem"></div>
+    <div class="cfan" id="ck-fan">
+      <button type="button" class="cnode" data-i="0"><span class="cd">master / 7</span><span class="cn">68000</span><span class="cf">7,670,453.6 Hz</span></button>
+      <button type="button" class="cnode" data-i="1"><span class="cd">master / 15</span><span class="cn">Z80</span><span class="cf">3,579,545 Hz</span></button>
+      <button type="button" class="cnode" data-i="2"><span class="cd">master / 7</span><span class="cn">YM2612</span><span class="cf">7,670,453.6 Hz</span></button>
+      <button type="button" class="cnode" data-i="3"><span class="cd">master / 15</span><span class="cn">PSG</span><span class="cf">3,579,545 Hz</span></button>
+    </div>
+  </div>
+  <div class="vcap" id="ck-cap" aria-live="polite">NTSC selected. One crystal feeds all four chips. Pick a chip to read how its clock comes out of it, or switch region and watch every figure move together.</div>
+  <figcaption>The clock tree, stopping at the two processors and the two sound chips. Without a
+  single click the lesson is already on screen: four chips, one crystal, four integer divisors,
+  and a PAL console is the same machine with a slower crystal rather than a differently tuned
+  one. Sega printed the two CPU figures (7.67 and 7.60 MHz); the crystal values and every divisor
+  here are scene derivations that reproduce those two figures exactly.</figcaption>
+</figure>
+
+<p>Because every clock is the same crystal divided, no two parts of the machine can drift apart.
+They are locked in a fixed ratio for as long as the console is powered: the 68000 gets exactly 15
+of its cycles for every 7 the Z80 gets, on every console, at every temperature, forever. That is
+a genuinely useful property, because a timing relationship you measure once holds always.</p>
+
+<p>It also means a PAL console is not a differently tuned machine. Its crystal is about 0.9
+percent slower than an NTSC one, and every single clock in the machine comes down by that same
+0.9 percent together. The large speed difference players notice between a PAL and an NTSC game is
+a separate effect entirely, and it comes from how a frame is built rather than from this
+fraction of a percent.</p>
+
+<details class="explain"><summary>New here? &middot; What is a clock, and what does 7.67 MHz mean?</summary>
+<div class="x-body">
+<p>A clock is a signal that flips between two voltages over and over, at a fixed rate. It carries
+no information at all. Its whole job is to be a metronome: on each tick, every chip listening to
+it moves one step further through whatever it was doing.</p>
+<p>"7.67 MHz" means 7,670,000 of those ticks every second, near enough. A 68000 instruction costs
+some whole number of ticks, so knowing the tick rate is what turns "this routine takes 300
+cycles" into "this routine takes 39 microseconds". That conversion is why cycle counts are worth
+counting at all.</p>
+<p>A crystal is where the ticking comes from: a sliver of quartz that vibrates at a very precise
+frequency when you put a voltage across it. Precise is the operative word. It is why the number
+above has eight digits rather than being "about 54 megahertz".</p>
+</div>
+</details>
+
+<p>One number in that tree is worth staring at. The Z80's clock, 53,693,175 divided by 15, comes
+out at 3,579,545 Hz with no remainder at all. That figure is the NTSC colourburst frequency, the
+reference every NTSC television signal is built around, and the multiplication runs the other way
+just as cleanly: 3,579,545 x 15 = 53,693,175. True colourburst is 315/88 MHz, which is
+3,579,545.4545 and so on forever, so the crystal is cut to the rounded figure and the Z80 ends up
+a fraction of a hertz under. What the arithmetic does not say is why. No Sega document found
+states a reason for the choice, so the relationship is stated here as a fact about the numbers
+and nothing further is claimed from it.</p>
+
+<details class="explain"><summary>New here? &middot; Why divide one crystal instead of giving each chip its own?</summary>
+<div class="x-body">
+<p>The obvious alternative is one oscillator per chip, each cut to the frequency that chip wants.
+It would work. What it would cost is the relationship between them.</p>
+<p>Two independent crystals are never quite in the ratio you ordered. Manufacturing tolerance,
+temperature and age all move them a little, and they move them by different amounts, so the ratio
+between the two chips wanders slowly and unrepeatably. Anything you measured about how their
+timings line up would be true today and slightly untrue tomorrow.</p>
+<p>Divide one crystal instead and the ratio is not approximately fixed, it is exactly fixed,
+because the division is counting. A divide-by-seven circuit emits one pulse for every seven it
+receives, and there is no way for that to be 6.98. Whatever else moves, the parts stay in step
+with each other, and code can rely on that. It is also, as it happens, one part instead of
+several.</p>
+</div>
+</details>
+
+<p>A shipped game carries the same arithmetic in its own source. This is the clock section of
+Sonic 2's constants file, and it is the whole tree in five lines. Nothing here is an instruction;
+these are names the assembler works out before the ROM exists:</p>
+
+<pre><span class="c">; ---------------------------------------------------------------------------</span>
+<span class="c">; Clocks</span>
+Master_Clock    = <span class="n">53693175</span>
+M68000_Clock    = Master_Clock/<span class="n">7</span>
+Z80_Clock       = Master_Clock/<span class="n">15</span>
+FM_Sample_Rate  = M68000_Clock/(<span class="n">6</span>*<span class="n">6</span>*<span class="n">4</span>)
+PSG_Sample_Rate = Z80_Clock/<span class="n">16</span></pre>
+<span class="src">s2disasm/s2.constants.asm:2116-2122</span>
+
+<p>The first line is the crystal, written as a plain integer number of hertz. The next two are the
+two divisors, and they are the same 7 and 15 the tree above shows. The last two go one step
+further, past the clock a chip is fed and into what the chip does with it. <code>6*6*4</code> is
+144, so the FM sample rate is the master clock divided by 1008, about 53,267 samples a second: the
+YM2612 divides its input by six and then spends 24 slots producing one sample. The PSG line
+divides the Z80's clock by a further 16 to reach the PSG's internal tone clock, about 223,722 Hz.
+Neither of those last two figures appears in any Sega document; like the divisors, they are
+back-computed, and this file is a shipped game showing its working.</p>
+
+<div class="gotcha"><span class="g-tag">Gotcha &middot; the 8 MHz Genesis</span>
+You will see "68000 at 8 MHz, Z80 at 4 MHz" everywhere, and whoever told you that can cite Sega
+for it. The Genesis Technical Overview prints exactly those figures on its specification-summary
+page. The <em>same document</em>, describing the version register, prints "NTSC CPU clock 7.67
+MHz". Both are Sega's. The 8 and the 4 are the parts' nominal ratings, what those chips are sold
+as being able to run at, and not the clocks this console applies to them. The applied clocks are
+one seventh and one fifteenth of the crystal, which is 7.67 MHz and 3.58 MHz. The two errors are
+not the same size: 8 MHz is 4.3 percent above the 68000's real clock, while 4 MHz is about 11.7
+percent above the Z80's. If you are checking a timing calculation against a spec sheet, this is an
+easy way to be wrong and not know it.</div>
+
+<details class="refbox"><summary>Full clock reference, NTSC and PAL</summary>
+<div class="enc-body">
+<div class="tbl"><table>
+  <tr><th>Clock</th><th>Divisor</th><th>NTSC</th><th>PAL</th></tr>
+  <tr><td>Master crystal</td><td>the source</td><td>53,693,175 Hz</td><td>53,203,424 Hz</td></tr>
+  <tr><td>68000</td><td>master / 7</td><td>7,670,453.6 Hz</td><td>7,600,489.1 Hz</td></tr>
+  <tr><td>Z80</td><td>master / 15</td><td>3,579,545 Hz</td><td>3,546,894.9 Hz</td></tr>
+  <tr><td>YM2612 input</td><td>master / 7</td><td>7,670,453.6 Hz</td><td>7,600,489.1 Hz</td></tr>
+  <tr><td>YM2612 FM sample rate</td><td>input / 6 / 24 = master / 1008</td><td>53,267.0 Hz</td><td>52,781.2 Hz</td></tr>
+  <tr><td>PSG input</td><td>master / 15</td><td>3,579,545 Hz</td><td>3,546,894.9 Hz</td></tr>
+  <tr><td>PSG internal tone clock</td><td>input / 16 = master / 240</td><td>223,721.6 Hz</td><td>221,680.9 Hz</td></tr>
+</table></div>
+<p class="enc-note">Where each figure comes from, because the tiers are not equal. Sega printed
+the 7.67 and 7.60 MHz CPU figures. The NTSC crystal value is given identically, to eight digits,
+by three independently written emulator codebases; the documentary provenance usually quoted for
+both crystals is a 1993 Sega service manual that nobody in this wiki's sourcing has opened, so no
+claim is made here about Sega documenting the crystal. Every divisor, and both sound-chip rates,
+are scene derivations from emulator source and hardware measurement, and they reproduce Sega's
+two printed figures exactly.</p>
+<p class="enc-note">A PAL footnote for the curious: PAL colourburst is 4,433,618.75 Hz, and twelve
+times that is 53,203,425, one hertz above the crystal figure. The same rounded-multiple pattern as
+NTSC, at a different ratio. There is a competing PAL crystal figure in circulation, 53,203,395 Hz,
+which does not fit that arithmetic nearly as well; the value used here is the one three sources
+agree on.</p>
+<p class="enc-note">This table deliberately stops at the two processors and the two sound chips.
+The clocks that drive the picture, and the number of master cycles a scanline costs, belong with
+the frame rather than here, and one of them carries a caveat that a flat table row would get
+wrong.</p>
+</div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s3">3 &middot; The 68000's map of the world</h2>
+
+<p>The 68000 has 24 address lines, so it can name 2^24 distinct byte addresses: <code>$000000</code>
+through <code>$FFFFFF</code>, sixteen megabytes. Almost none of that is memory. On this machine an
+address is a question put to the whole system bus at once, and the
+<span class="term" data-def="The list of what answers at each address. One address bus reaches ROM, RAM, the video chip and the controller ports, and the map says which is which.">memory map</span>
+is the list of which chip is listening for it.</p>
+
+<p>Sega drew that map in its own manual and it is worth learning in Sega's shape. Cartridge ROM
+at the bottom, from <code>$000000</code> up to <code>$400000</code>. Then a box labelled SEGA
+RESERVED, and then a second, separate box also labelled SEGA RESERVED. Then SYSTEM I/O at
+<code>$A00000</code>, which holds the Z80's world, the controller ports and a handful of control
+registers. Then a third reserved box. Then the VDP at <code>$C00000</code>. Then, at the top,
+WORK RAM, drawn with everything from <code>$E00000</code> to <code>$FEFFFF</code> marked ACCESS
+PROHIBITED and the RAM itself at <code>$FF0000</code>.</p>
+
+<details class="explain"><summary>New here? &middot; What is a memory map?</summary>
+<div class="x-body">
+<p>A processor has one set of address wires and no idea what is on the other end of them. When it
+wants a value it puts a number on those wires and waits for something to answer. It does not know
+whether the answer will come from a memory chip, a video chip or a controller port, and it does
+not care: an address is just a number it broadcasts.</p>
+<p>So somebody has to decide, when the console is designed, which chip listens for which numbers.
+That decision is the memory map, and it is made in the wiring, not in software. Writing the number
+$C00004 on the address wires reaches the video chip on a Genesis because a designer wired the
+video chip to notice addresses that start with $C. Nothing about the number itself says
+"video".</p>
+<p>This is why the same instruction can store a value in memory or command a hardware chip, with
+no difference in the code at all. The instruction is identical; the address decides who hears it.
+It is called memory-mapped I/O, and it is the whole reason the map below is a thing worth
+learning.</p>
+</div>
+</details>
+
+<p>Here is that map with every region marked by what actually happens when you touch it. Every
+hazard in the reveals is also stated in the prose below, so a reader who clicks nothing is never
+left holding a trap.</p>
+
+<figure class="diagram">
+  <div class="mmap" id="mmap">
+    <button type="button" class="mmr v-ok" data-i="0"><span class="a">$000000-$3FFFFF</span><span class="nm">cartridge ROM</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-junk" data-i="1"><span class="a">$400000-$7FFFFF</span><span class="nm">Sega reserved: expansion</span><span class="vd">junk</span></button>
+    <button type="button" class="mmr v-hang" data-i="2"><span class="a">$800000-$9FFFFF</span><span class="nm">Sega reserved</span><span class="vd">hangs</span></button>
+    <button type="button" class="mmr v-ok" data-i="3"><span class="a">$A00000-$A0FFFF</span><span class="nm">Z80 address space</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="4"><span class="a">$A10000-$A1001F</span><span class="nm">I/O: version, controller ports</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="5"><span class="a">$A11000-$A11200</span><span class="nm">control registers</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="6"><span class="a">$A13000-$A130FF</span><span class="nm">cartridge /TIME</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-ok" data-i="7"><span class="a">$A14000</span><span class="nm">TMSS register</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-hang" data-i="8"><span class="a">$B00000-$BFFFFF</span><span class="nm">Sega reserved</span><span class="vd">hangs</span></button>
+    <button type="button" class="mmr v-ok" data-i="9"><span class="a">$C00000-$C0001F</span><span class="nm">VDP ports, and the PSG</span><span class="vd">works</span></button>
+    <button type="button" class="mmr v-hang" data-i="10"><span class="a">$C00020-$C0003F</span><span class="nm">just past the ports</span><span class="vd">hangs</span></button>
+    <button type="button" class="mmr v-mir" data-i="11"><span class="a">$E00000-$FEFFFF</span><span class="nm">Sega: access prohibited</span><span class="vd">mirror</span></button>
+    <button type="button" class="mmr v-ok" data-i="12"><span class="a">$FF0000-$FFFFFF</span><span class="nm">work RAM, 64 KB</span><span class="vd">works</span></button>
+  </div>
+  <div class="mmleg">
+    <span class="l-ok">works: a device answers</span>
+    <span class="l-junk">junk: open bus, the read returns leftovers and the write vanishes</span>
+    <span class="l-hang">hangs: nothing completes the bus cycle, the 68000 waits forever</span>
+    <span class="l-mir">mirror: memory from elsewhere answering at a second set of addresses</span>
+  </div>
+  <div class="vcap" id="mmcap" aria-live="polite">Select a region to read what answers there and what happens if you touch it. Low addresses at the top; not to scale.</div>
+  <figcaption>The 68000's sixteen megabytes, low addresses at the top, not to scale. The lesson
+  without a click is the colour of the rows: the gaps between the chips are not spare room, and
+  they are not all the same kind of gap.</figcaption>
+</figure>
+
+<p>Three things can happen when the 68000 puts an address on the bus, and the difference between
+the second and the third is the difference between a bug you can chase and a console you have to
+unplug.</p>
+
+<p>Some addresses <b>work</b>. A chip is listening, it answers, and the transfer completes. That
+is ROM, work RAM, the VDP's ports, the I/O registers.</p>
+
+<p>Some addresses <b>answer with junk</b>. Nothing out there is driving the data lines, so what
+comes back is whatever was already floating on them. The precise description, from Charles
+MacDonald's hardware-tested notes, is that a read returns "the MSB of the next instruction to be
+fetched, with the LSB set to zero": in plainer words the top byte of the instruction the 68000 was
+about to fetch anyway, with a zero byte underneath it. Writes go nowhere. Nothing traps, nothing
+is logged, and the program carries on holding a number it believes it read from somewhere. That is
+<span class="term" data-def="What you read from an address nothing is wired to. On a Genesis it is the top byte of the instruction the 68000 was about to fetch, with a zero byte under it. Not an error, which is exactly the problem.">open bus</span>,
+and the fact that it is not treated as an error is exactly what makes it dangerous.</p>
+
+<div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<p>A game has no reason to read an unmapped address, so there is no shipped excerpt to quote
+here. This is what it would look like if you did, on a console with no expansion hardware
+attached:</p>
+<pre>    move.w  ($500000).l,d0     <span class="c">; d0 now holds junk, and nothing said so</span>
+    move.w  #$1234,($500000).l <span class="c">; this write goes nowhere at all</span>
+    tst.w   d0                 <span class="c">; the flags describe the junk, perfectly happily</span></pre>
+<p>The instructions are ordinary and correct. The 68000 has no way to tell you that the first one
+answered with garbage, because from its side the bus cycle completed normally. This is how a
+stray pointer corrupts a game quietly, three frames after the actual mistake.</p>
+</div>
+
+<p>And some addresses <b>hang the machine</b>. The 68000 does not finish a bus cycle on its own
+schedule. It puts the address out and then waits for the addressed device to raise a signal called
+<span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>,
+meaning "done". If nothing out there is listening, nothing ever raises it, and the 68000 waits. Not
+for a while: forever. There is no timeout in the chip, no exception, no vector, no error screen and
+no way back. Meanwhile the VDP carries on drawing the picture that is already in its memory and the
+Z80 carries on playing music, which is why a hung Genesis so often looks alive.</p>
+
+<details class="explain"><summary>New here? &middot; Why can the CPU not just notice that nobody answered?</summary>
+<div class="x-body">
+<p>Because it has no way to tell the difference between "nobody is there" and "somebody is there
+and is being slow".</p>
+<p>Here is the whole mechanism, at its dumbest. The 68000 wants a value. It puts the address on
+the address wires, says "read", and then it waits. It is waiting for one particular wire to be
+pulled low by whatever chip owns that address, which is the chip's way of saying "the data is on
+the wires now, take it". That wire is called DTACK, for data transfer acknowledge.</p>
+<p>Waiting is the correct behaviour, and it is what makes the machine work at all. Memory chips
+of different speeds can share one bus precisely because each one takes as long as it needs and
+tells the processor when it is ready. A slow device is not an error; it is a device that raises
+DTACK late.</p>
+<p>So when the 68000 addresses a hole, it does not see an error. It sees a device that has not
+finished yet, and it does the same thing it would do for a slow ROM: it waits. Nothing ever
+arrives, and nothing ever will, and it goes on waiting. This is also why "the console froze" and
+"the game crashed" are genuinely different failures on this machine, which section 5 comes back
+to.</p>
+</div>
+</details>
+
+<p>Which regions do which, and both of the hangs below rest on one chain of evidence apiece, so
+they are worth stating with their provenance attached. Charles MacDonald's hardware-tested notes
+record that <code>$800000-$9FFFFF</code>, the second of Sega's reserved boxes, locks the machine
+on any access, read or write; that is the range the 32X later mapped itself into, and although
+other sources list the region, MacDonald's is the one that reports the hazard.
+<code>$B00000-$BFFFFF</code> has nothing to assert DTACK on a standard console either, so accesses
+there hang as well, and that one is reported by two people in a single SpritesMind hardware
+thread rather than by two independent chains of evidence. The first reserved box behaves
+differently, and Sega drawing the two as separate boxes turns out to match the hardware:
+<code>$400000-$7FFFFF</code> answers with open-bus junk on a bare console and lets the program
+keep running. It is the expansion window, which is where a Sega CD maps itself when one is
+attached.</p>
+
+<p>The traps inside regions that otherwise work are the ones that catch people, and they are
+single-sourced too. Charles MacDonald's hardware-tested notes record that two windows inside the
+Z80 area,
+<code>$A07F00-$A07FFF</code> and <code>$A0FF00-$A0FFFF</code>, lock the machine when the 68000
+reads or writes them. plutiedev states that accessing <code>$C00020</code> to
+<code>$C0003F</code> hangs up, which is also what MacDonald's rule for how the VDP decodes
+addresses predicts: the VDP answers only to addresses matching a particular bit pattern and locks
+up on the rest, which is likewise why its ports appear to repeat at many addresses that are not
+the canonical ones. And two ports inside the VDP's own block are traps in their own right, which
+is the next box.</p>
+
+<div class="gotcha"><span class="g-tag">Gotcha &middot; the two VDP addresses that only work one way</span>
+The PSG's port at <code>$C00011</code> sits in the middle of the VDP's address block, next to
+ports you read all the time, and it cannot be read at all. Its neighbour is the mirror image:
+the H/V counter at <code>$C00008</code> can only be read, and writing it is the fatal direction.
+Charles MacDonald's hardware-tested notes are the source for both, and record the same outcome
+for both: the machine locks. Neither mistake produces an error you can see, so the symptom is a
+console that has simply stopped with the last picture still on screen. Worth remembering before
+pointing anything that dumps a range of memory at the VDP's block, because a read of
+<code>$C00000-$C0001F</code> passes straight through the PSG.
+</div>
+
+<p>Work RAM is 64 KB and its canonical address is <code>$FF0000</code> to <code>$FFFFFF</code>.
+Two true statements about the space just below it answer different questions and should not be
+merged. Sega's map labels <code>$E00000-$FEFFFF</code> ACCESS PROHIBITED, which is a rule: do not
+go there. The community documents that the same range answers anyway, because the RAM's address
+decoding is partial and its 64 KB repeats through the whole range, which is a
+<span class="term" data-def="An address range that answers as a copy of another one, because the hardware decodes only some of the address lines.">mirror</span>
+and a description of behaviour. Both are correct. Use <code>$FF0000</code>, know the mirror exists
+as an electrical fact, and note that the machine's own documentation forbids relying on it.</p>
+
+<p>Here is the map as a shipped game spells it out. These are declarations, not instructions:
+Sonic 2's constants file naming every hardware address the game will touch, grouped by device.
+Read it as the game's own copy of the map above.</p>
+
+<pre><span class="c">; ---------------------------------------------------------------------------</span>
+<span class="c">; VDP addressses</span>
+VDP_data_port =			<span class="n">$C00000</span> <span class="c">; (8=r/w, 16=r/w)</span>
+VDP_control_port =		<span class="n">$C00004</span> <span class="c">; (8=r/w, 16=r/w)</span>
+PSG_input =			<span class="n">$C00011</span>
+
+<span class="c">; ---------------------------------------------------------------------------</span>
+<span class="c">; Z80 addresses</span>
+Z80_RAM =			<span class="n">$A00000</span> <span class="c">; start of Z80 RAM</span>
+Z80_RAM_End =			<span class="n">$A02000</span> <span class="c">; end of non-reserved Z80 RAM</span>
+Z80_Bus_Request =		<span class="n">$A11100</span>
+Z80_Reset =			<span class="n">$A11200</span>
+
+Security_Addr =			<span class="n">$A14000</span>
+
+<span class="c">; ---------------------------------------------------------------------------</span>
+<span class="c">; I/O Area </span>
+HW_Version =			<span class="n">$A10001</span>
+HW_Port_1_Data =		<span class="n">$A10003</span>
+HW_Port_2_Data =		<span class="n">$A10005</span>
+HW_Expansion_Data =		<span class="n">$A10007</span>
+HW_Port_1_Control =		<span class="n">$A10009</span>
+HW_Port_2_Control =		<span class="n">$A1000B</span>
+HW_Expansion_Control =		<span class="n">$A1000D</span></pre>
+<span class="src">s2disasm/s2.constants.asm:2124-2147</span>
+
+<p>Three things fall out of it. The Z80 is reachable as a block of the 68000's addresses starting
+at <code>$A00000</code>, and the game marks the end of the usable part at <code>$A02000</code>,
+which is eight kilobytes later. The security address is the TMSS register from section 4. And
+<code>PSG_input = $C00011</code> is filed under the VDP heading, alongside the two video ports,
+because that is where it is: a shipped game's own source file records section 1's wiring fact
+without a word of comment about it.</p>
+
+<p>The 24-bit address bus turns up in a shipped game as a practical problem, and this is how
+Sonic 2 solves it:</p>
+
+<pre><span class="c">; ---------------------------------------------------------------------------</span>
+<span class="c">; I run the main 68k RAM addresses through this function</span>
+<span class="c">; to let them work in both 16-bit and 32-bit addressing modes.</span>
+ramaddr function x,-(-x)&amp;$FFFFFFFF
+
+<span class="c">; ---------------------------------------------------------------------------</span>
+<span class="c">; RAM variables - General</span>
+	phase	ramaddr($FFFF0000)	<span class="c">; Pretend we're in the RAM</span>
+RAM_Start:</pre>
+<span class="src">s2disasm/s2.constants.asm:1050-1058</span>
+
+<p>Work RAM is at <code>$FF0000</code>, but the game declares it at <code>$FFFF0000</code> and
+says so in the comment: "Pretend we're in the RAM". Both spellings reach the same byte, because
+the 68000 holds addresses as 32 bits and only puts the low 24 on the wires, so the top eight are
+thrown away before anything is decoded. Declaring the high spelling is what lets the assembler use
+the 68000's short absolute form, whose 16-bit address is sign-extended into the top of the map.
+The consumer of this one line is every <code>.w</code> operand in the rest of the disassembly. The
+68000 side of that arithmetic is taught in full on
+<a href="../m68k/programming-model.html#s4">Pointers and the memory map</a>, and the addressing
+mode itself on <a href="../m68k/addressing-modes.html#s4">Absolute, immediate and PC-relative
+modes</a>.</p>
+
+<p>Two closing notes about regions this page names and does not open. The three I/O ports are on
+the map: <code>$A10003</code> and <code>$A10005</code> for the two controllers, <code>$A10007</code>
+for the expansion port, each with a direction-control register beside it. What you write and read
+there to get a button state out of a pad is a protocol of its own, and this track does not yet
+cover it. And the VDP's ports carry a
+restriction that has nothing to do with addresses: a whole family of 68000 instructions must never
+be aimed at them, because of what those instructions do to a port that behaves differently on
+reads and writes. That one is
+<a href="vdp-planes.html#rmw">spelled out on the VDP page</a>, and it is worth reading before you
+write your first <code>clr.w</code> at a video address.</p>
+
+<details class="refbox"><summary>Every named address in the 68000 map</summary>
+<div class="enc-body">
+<div class="tbl"><table>
+  <tr><th>Address</th><th>What answers</th></tr>
+  <tr><td><code>$000000-$3FFFFF</code></td><td>Cartridge ROM, up to 4 MB</td></tr>
+  <tr><td><code>$400000-$7FFFFF</code></td><td>Sega reserved: the expansion window. Open-bus junk on a bare console</td></tr>
+  <tr><td><code>$800000-$9FFFFF</code></td><td>Sega reserved. Any access locks the machine; the range the 32X later used</td></tr>
+  <tr><td><code>$A00000-$A0FFFF</code></td><td>The Z80's address space seen from the 68000. <code>$A08000-$A0FFFF</code> mirrors <code>$A00000-$A07FFF</code>, because address line 15 is ignored</td></tr>
+  <tr><td><code>$A10001</code></td><td>Version register, byte, at an odd address: overseas bit, PAL bit, disk bit, and a four-bit hardware revision</td></tr>
+  <tr><td><code>$A10003</code> / <code>$A10005</code> / <code>$A10007</code></td><td>Data registers for controller port 1, controller port 2, EXT</td></tr>
+  <tr><td><code>$A10009</code> / <code>$A1000B</code> / <code>$A1000D</code></td><td>Control registers (pin direction) for the same three ports</td></tr>
+  <tr><td><code>$A1000F-$A1001F</code></td><td>TxData, RxData and serial control for each of the three ports</td></tr>
+  <tr><td><code>$A11000</code></td><td>Memory mode register. Sega documents it for the development cartridge's refresh signal only: write-only, bit D8 only, 0 selects ROM mode and 1 selects D-RAM mode. Nothing is claimed here about a production console</td></tr>
+  <tr><td><code>$A11100</code></td><td>Z80 bus request</td></tr>
+  <tr><td><code>$A11200</code></td><td>Z80 reset</td></tr>
+  <tr><td><code>$A13000-$A130FF</code></td><td>The <code>/TIME</code> region, 256 bytes: an access here pulls the cartridge's <code>/TIME</code> line, which is how on-cartridge hardware such as a bank mapper or a save-RAM latch is reached</td></tr>
+  <tr><td><code>$A14000</code> (and <code>$A14002</code>)</td><td>TMSS: the longword "SEGA" goes here</td></tr>
+  <tr><td><code>$A14101</code></td><td>TMSS cartridge-enable register</td></tr>
+  <tr><td><code>$B00000-$BFFFFF</code></td><td>Sega reserved. Nothing asserts DTACK on a standard console, so accesses hang</td></tr>
+  <tr><td><code>$C00000</code> / <code>$C00002</code></td><td>VDP data port, and its mirror</td></tr>
+  <tr><td><code>$C00004</code> / <code>$C00006</code></td><td>VDP control port, and its mirror</td></tr>
+  <tr><td><code>$C00008-$C0000E</code></td><td>H/V counter, read-only</td></tr>
+  <tr><td><code>$C00011</code> (and <code>$13</code>, <code>$15</code>, <code>$17</code>)</td><td>PSG, write-only</td></tr>
+  <tr><td><code>$C0001C</code> / <code>$C0001E</code></td><td>VDP debug register</td></tr>
+  <tr><td><code>$FF0000-$FFFFFF</code></td><td>Work RAM, 64 KB, mirrored downward through <code>$E00000</code></td></tr>
+</table></div>
+<p class="enc-note">The individual hazards are attributed in the prose above rather than in this
+table, because several of them rest on one source and a bare table row would hide that.</p>
+</div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s4">4 &middot; The cartridge</h2>
+
+<p>The cartridge is wired into the bottom of the map, <code>$000000</code> to
+<code>$3FFFFF</code>: four megabytes of address space, which is the hard ceiling on a plain
+cartridge without extra hardware on the board to page more in. There is no loading. A Genesis
+game is not copied anywhere before it runs; the ROM chip <em>is</em> part of the address space,
+and the 68000 fetches instructions straight out of the plastic.</p>
+
+<p>A caution about reading official documents, from this exact spot. Sega's own binder states the
+ROM area three different ways: a front-matter bullet says one megabyte, the memory-map figure
+draws four (<code>$000000-$3FFFFF</code>), and an appendix advising emulator authors says to
+enable 512 KB. The figure is the one to trust. The bullet is a snapshot of what cartridges
+happened to be in 1990, preserved in a document that outlived it.</p>
+
+<p>Because ROM is at the bottom of the map, the very first thing the 68000 ever reads is the
+cartridge. It begins by reading two longwords from address zero. The first is the value to load
+into the stack pointer; the second is the address of the first instruction to run. Neither is
+code. Both are data the cartridge supplies, and a Genesis ROM therefore does not begin with a
+program at all, it begins with a table:</p>
+
+<pre>Vectors:
+	dc.l System_Stack	<span class="c">; Initial stack pointer value</span>
+	dc.l EntryPoint		<span class="c">; Start of program</span>
+	dc.l ErrorTrap		<span class="c">; Bus error</span>
+	dc.l ErrorTrap		<span class="c">; Address error (4)</span></pre>
+<span class="src">s2disasm/s2.asm:85-89</span>
+
+<p>The first eight bytes of the ROM are those first two entries, and the 68000 consumes them
+before it executes anything. The rest of the table is the
+<span class="term" data-def="The table at the very start of memory holding the addresses the CPU jumps to when an exception happens, one four-byte slot each. The 68000 defines 256 of them, but a Genesis game uses only the first 64, which is why the cartridge header begins at $100.">vector table</span>:
+one four-byte slot for each kind of thing that can interrupt or derail the processor, holding the
+address to jump to when it happens. All four lines above are slots in it: the first two are the
+boot pair the processor swallows at reset, and the next two, bus error and address error, both
+point at the same handler, which is what section 5 is about. The 68000 defines 256 slots; a Genesis
+cartridge uses the first 64, because the ROM header begins immediately after them at
+<code>$100</code>. Which slot means what, on the 68000's side, is laid out on
+<a href="../m68k/programming-model.html#vectors">the programming model page</a>; which two of them
+the video chip raises, and when, belongs with the frame.</p>
+
+<details class="explain"><summary>New here? &middot; How does a console know where a game starts?</summary>
+<div class="x-body">
+<p>It does not know, and it never looks. There is no operating system on a Genesis, no loader, no
+file system, no header to parse. What there is instead is an agreement, fixed in the silicon of
+the processor itself.</p>
+<p>When a 68000 is reset it does exactly two things before running anything: it reads four bytes
+from address 0 into its stack pointer, and four bytes from address 4 into its program counter.
+Then it starts fetching instructions from wherever that second number pointed. That is the entire
+start-up procedure.</p>
+<p>The rest follows from the map. The cartridge is wired at the bottom of the address space, so
+address 0 and address 4 are the first eight bytes on the cartridge, so a Genesis ROM's first eight
+bytes are two addresses the game chose. Plug in a cartridge and the machine falls straight into
+it. It is also why those first eight bytes cannot be code: the processor has already eaten them
+as data before it runs a single instruction.</p>
+</div>
+</details>
+
+<p>Straight after the vector table comes the header, and it is worth reading as a description of
+the machine rather than as metadata. Most of these fields are text a person reads and the machine
+never does. The console-name field on the first line is the exception, and a load-bearing one: on
+a console with the security system, the boot ROM reads those bytes and refuses to run a cartridge
+whose first line does not say SEGA:</p>
+
+<pre>Header:
+	dc.b <span class="n">"SEGA GENESIS    "</span> <span class="c">; Console name</span>
+	dc.b <span class="n">"(C)SEGA 1992.SEP"</span> <span class="c">; Copyright holder and release date (generally year)</span>
+	dc.b <span class="n">"SONIC THE       "</span> <span class="c">; Domestic name</span>
+	dc.b <span class="n">"      HEDGEHOG 2"</span>
+	dc.b <span class="n">"                "</span>
+	dc.b <span class="n">"SONIC THE       "</span> <span class="c">; International name</span>
+	dc.b <span class="n">"      HEDGEHOG 2"</span></pre>
+<span class="src">s2disasm/s2.asm:151-158</span>
+
+<p>Further down, four fields stop being metadata and become a small memory map of their own,
+declaring where this cartridge's ROM and RAM begin and end:</p>
+
+<pre>	dc.l StartOfRom		<span class="c">; Start address of ROM</span>
+<span class="c">; dword_1A4</span>
+ROMEndLoc:
+	dc.l EndOfRom-1		<span class="c">; End address of ROM</span>
+	dc.l RAM_Start&amp;$FFFFFF		<span class="c">; Start address of RAM</span>
+	dc.l (RAM_End-1)&amp;$FFFFFF	<span class="c">; End address of RAM</span></pre>
+<span class="src">s2disasm/s2.asm:171-176</span>
+
+<p>Note the <code>&amp;$FFFFFF</code> on the two RAM lines. That is the 24-bit bus again, and it
+is the same fact the <code>ramaddr</code> trick in section 3 was working around, seen from the
+other end: the game's RAM labels carry the high <code>$FFFF0000</code> spelling, and the header
+wants the 24-bit truth, so the extra bits are masked off on the way in.</p>
+
+<p>One more thing the cartridge may have to do before the machine will cooperate. On consoles from
+the second hardware revision onward, the video chip stays locked until the program writes the four
+ASCII letters SEGA to <code>$A14000</code>. Miss it and the next video access locks the machine.
+Which consoles behave this way is readable from the version register at <code>$A10001</code>, whose
+low four bits are the hardware revision: revision 1 and up want the letters. This is the mechanism
+usually called
+<span class="term" data-def="The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.">TMSS</span>,
+and the name is worth pinning to what the documents actually say, because Sega's own manual is a
+strange witness here.</p>
+
+<p class="prov-label">What Sega's own manual says about it</p>
+<div class="prov">
+  <span class="yes">The check ships as a code listing, LIST 2</span>
+  <span class="yes">Introduced as "the U.S. security software"</span>
+  <span class="yes">Reads the version register, masks the low nibble, writes "SEGA" to $A14000</span>
+  <span class="no">Never uses the word TMSS</span>
+  <span class="no">Never documents $A14000 as a register</span>
+</div>
+
+<p>So the four letters are first-party documented and the register is not. Sega published the
+recipe as a piece of code you were expected to copy, in the same shape every shipping game uses,
+and never wrote down what the address is or what it does. Every description of the register itself
+comes from the scene taking the machine apart afterwards.</p>
+
+<!-- ================================================================ -->
+<h2 id="s5">5 &middot; Two processors, two worlds</h2>
+
+<p>The 68000 runs the game. The Z80 conventionally runs the sound driver, out of its own eight
+kilobytes of RAM on its own bus. Mostly neither waits for the other, neither can see the other's
+memory without asking, and most of the time they are genuinely running at once rather than taking
+turns.</p>
+
+<p>They are not sealed off from each other, because each can reach into the other's world, and
+that is what the bus arbiter is for. A 68000 that wants to touch the Z80's RAM or the FM chip must
+first ask for the Z80's bus and wait until the request is granted. Granting is not instantaneous,
+and there is no fixed number of cycles anyone can quote for it, so code asks and then polls until
+the answer comes back. The same is true in the other direction: a Z80 fetching a sample out of
+cartridge ROM is borrowing the 68000's bus, and the 68000 pays for it in stalled cycles.</p>
+
+<p>The registers that drive that handshake, the polling loop everyone writes, the 64 KB world the
+Z80 sees from its own side, and the sourced story of why sound ended up on this processor are all
+a subject of their own, with enough material to fill a page, and none of it is settled here. What
+this page owes you is the shape: two processors, two private memories, one arbiter between them,
+and no shared program.</p>
+
+<p>The clearest demonstration of that independence is three instructions long and it is in a
+shipped game. Every unhandled exception in Sonic 2 points at one address: a bus error, an address
+error, an illegal instruction, a division by zero, an interrupt nobody asked for. All of them
+arrive here, and this is all that is here:</p>
+
+<pre><span class="c">; ===========================================================================</span>
+<span class="c">; Crash/Freeze the 68000. Note that the Z80 continues to run, so the music keeps playing.</span>
+<span class="c">; loc_200:</span>
+ErrorTrap:
+	nop	<span class="c">; delay</span>
+	nop	<span class="c">; delay</span>
+	bra.s	ErrorTrap	<span class="c">; Loop indefinitely.</span></pre>
+<span class="src">s2disasm/s2.asm:185-191</span>
+
+<p>Read the comment first, because it is doing the teaching. "Crash/Freeze the 68000. Note that
+the Z80 continues to run, so the music keeps playing."</p>
+
+<p>The code does nothing, deliberately. Two <a href="../m68k/system.html#nop"><code>nop</code></a>
+instructions, the 68000's way of spending time without changing anything, and then a branch back
+to the label above them. The 68000 is now in a loop it will never leave, and that is the intended
+behaviour: a game that has hit an error it cannot handle should stop where it is rather than run
+wild through memory corrupting things on its way out.</p>
+
+<p>What it conspicuously does not do is stop the machine. The Z80 has its own program, in its own
+RAM, on its own bus, stepped by its own divided clock, and nothing in that three-instruction loop
+touches any of it. It goes on walking through the music one row at a time and goes on feeding the
+sound chips. The VDP goes on drawing whatever was last written into its memory. So the observable
+symptom of a Genesis game hitting an unhandled
+<span class="term" data-def="A forced detour: the CPU stops what it is doing, looks up an address in the vector table, and jumps there. Caused by hardware (an interrupt) or by the program itself (a trap, a bad instruction, a bad address).">exception</span>
+is a frozen picture with the music playing cheerfully on, and anyone who has played enough Mega
+Drive games has seen exactly that.</p>
+
+<p>It is also worth pinning down how this differs from the hangs in section 3, because they look
+identical on a television and are not the same failure. Here the 68000 is executing instructions.
+Something went wrong, the processor took an exception, looked the handler up in the vector table
+from section 4, jumped there, and is now running a loop as fast as it can. A DTACK hang is one
+level below that: the processor never completes the bus cycle at all, so it is not executing
+anything, and no exception is taken because nothing ever tells it the access failed. There is no
+timeout in the chip and nothing on the board reports the failure, so as far as the 68000 knows it
+is still waiting for a slow device. One is a program that has given up. The other is a processor
+that has stopped being a processor.</p>
+
+<details class="explain"><summary>New here? &middot; The game has crashed. Why is there still music?</summary>
+<div class="x-body">
+<p>Because on this machine "the game" and "the music" are two different computers, and only one
+of them crashed.</p>
+<p>The mental model most people arrive with is a single brain that does everything, so when the
+picture freezes the sound should stop too, the way a stalled program stops producing all of its
+output at once. That model is right for most computers you have used and wrong for this one.</p>
+<p>The Z80 is not a subroutine the 68000 calls. It is a processor with its own copy of a program,
+sitting in memory the 68000 cannot see without asking permission, stepping through that program on
+its own clock. Nothing about the 68000 being stuck reaches it. It does not check on the 68000; it
+has no way to and no reason to. It just carries on with the driver it was given, which is a loop
+that reads the next note out of a table and writes it to a sound chip.</p>
+<p>The same reasoning explains the other half of what you see. The picture freezes rather than
+going black because the VDP is a third independent thing: it redraws the screen from its own
+memory sixty times a second, and it will keep redrawing the last thing anybody wrote there
+indefinitely. A frozen Genesis is three chips, two of which are still working perfectly.</p>
+</div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="s6">6 &middot; The VDP and its three memories</h2>
+
+<p>The video chip owns three separate memories, and not one of them appears anywhere on the
+sixteen-megabyte map in section 3.</p>
+
+<p><span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>
+is the big one: 64 kilobytes, and the only general-purpose store of the three. Tile art lives in
+it. So do the nametables, which are the grids saying which tile goes in which cell of a scrolling
+plane; so does the sprite table; so does the horizontal scroll table. Where each of those sits
+inside the 64 KB is not fixed by the hardware. The program tells the VDP where it put them, which
+means a Genesis game's video memory layout is a budget somebody chose.</p>
+
+<p><span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>
+is the colour memory: 64 slots arranged as four palettes of sixteen, each slot holding a nine-bit
+colour, and the whole thing is 128 bytes. Every colour on screen at any instant is one of those 64
+entries. That is the constraint that gives Genesis pictures their particular look.</p>
+
+<p><span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span>
+is the smallest: 80 bytes of vertical scroll values, one 16-bit entry each, so forty of them. Two
+entries would be enough to scroll two whole planes up and down; the rest are there so that
+columns of the picture can scroll by different amounts, which is where a lot of the depth in a
+Mega Drive background comes from.</p>
+
+<p>None of the three can be addressed by the 68000, and this is the fact that shapes everything a
+program does with graphics. There is no address in the map that is a byte of VRAM. What exists
+instead is a keyhole: two ports in the 68000's address space, a data port at <code>$C00000</code>
+and a control port at <code>$C00004</code>, through which the processor first writes a command
+saying which of the three memories it wants and at what address, and then moves the bytes through
+the data port. Bulk transfers go the same way but
+are driven by the VDP itself rather than by the CPU, which is what
+<span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span>
+is. The three memories and the keyhole model are the opening of
+<a href="vdp-planes.html#s1">the VDP page</a>, and the two ports and the exact shape of that
+command word are <a href="vdp-planes.html#ports">its section on the ports</a>.</p>
+
+<details class="explain"><summary>New here? &middot; Why can the CPU not just write to video memory?</summary>
+<div class="x-body">
+<p>Because the video chip is reading that memory almost all the time, and it cannot be interrupted
+while it does.</p>
+<p>Think about what the VDP has to do. Every scanline of the picture, sixty times a second, it must
+fetch nametable entries, then the tiles they name, then the sprites that overlap that line, then
+the colours for every pixel it produces. That is a lot of reading, on a schedule set by the
+television, and being late is not an option because the electron beam does not wait.</p>
+<p>If the 68000 shared those wires, every access it made would be a chip that owns a deadline
+being told to wait its turn. So it does not share them. VRAM sits on the VDP's own private bus, and
+the only way in is to hand the VDP an address and a value and let it do the write itself, when it
+has a spare moment.</p>
+<p>That is what the two ports are: not a window onto video memory, but a request desk. It is also
+why the phrase "you can only update graphics during the blanking interval" turns up everywhere.
+When the beam is drawing, the VDP has very few spare moments; between frames, it has nothing else
+to do at all.</p>
+</div>
+</details>
+
+<p>The VDP also keeps the machine's time. It raises an
+<span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupt</span>
+when it finishes the visible picture, and it can raise a second one at a point part-way down the
+picture that the program controls. Those two interrupts are how a game stays in step with the
+display: they are the reason game code runs sixty times a second rather than as fast as it can.
+The window the first one opens, between one frame and the next, is called
+<span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>,
+and it is the only comfortable time for bulk video updates. The scanline-by-scanline machinery,
+the two interrupts and exactly what fits in that window are the frame's own subject. For this page
+it is enough to know that the part which draws the picture is also the part that keeps the
+beat.</p>
+
+<!-- ================================================================ -->
+<h2 id="s7">7 &middot; A tour of one frame</h2>
+
+<p>Put the five chips together and run them for one frame, which is a sixtieth of a second on an
+NTSC console and a fiftieth on a PAL one. Nothing in this section is new; it is the whole page
+moving at once.</p>
+
+<p><b>The VDP is drawing.</b> It walks down the picture one
+<span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span>
+at a time, a picture 320 pixels wide, or 256 in the narrower mode the chip also offers. For each
+line it reads nametable entries out of VRAM over its own private video bus,
+fetches the tiles those entries name, looks each pixel's colour up in CRAM, and mixes in whichever
+sprites overlap that line. The 68000 is not involved and cannot watch it happen. How a scrolling
+plane is built out of nametable words, what happens when two things want the same pixel, and how
+the window layer takes over a rectangle of the screen are the video chip's own subject:
+<a href="vdp-planes.html">the VDP and planes</a> covers the planes, the
+<a href="vdp-planes.html#priority">priority bit</a> that decides which of two layers a cell belongs
+to, and the <a href="vdp-planes.html#window">window</a>. What a tile actually is, an 8x8 image at
+four bits per pixel occupying 32 bytes, and how 64 KB of VRAM gets divided between art and tables,
+is the subject after that. So is colour: nine bits per colour, four palettes of sixteen, and the
+reason Genesis pictures band the way they do. So is the sprite table, which is a list in VRAM of
+up to eighty entries in the wider mode, each naming a position, a size, some tiles and a link to
+the next one, with per-scanline limits that decide which of them get drawn when there are too
+many.</p>
+
+<p><b>Meanwhile the 68000 is running the game</b>, out of work RAM at the top of its map, executing
+code straight out of the cartridge at the bottom of it. This is where the physics, the object
+logic and the collision happen. What it mostly cannot do right now is push data at the video chip,
+because the VDP is busy reading VRAM for the picture and has almost no spare moments to service
+requests. So the frame's video work piles up in RAM waiting for a window.</p>
+
+<p><b>Meanwhile the Z80 is running the sound driver</b>, out of its own eight kilobytes, on its own
+bus, at one fifteenth of the same crystal. It walks its music data one row at a time and writes the
+YM2612 directly, because the FM chip is on its bus. When it wants the PSG it has to reach across
+the arbiter into the 68000's world instead, because the PSG is inside the VDP: section 1's
+asymmetry, showing up as two different pieces of code in the same driver. If it is playing a
+recorded sample it is also fetching bytes out of cartridge ROM, which means borrowing the 68000's
+bus and slowing the 68000 down a little every time.</p>
+
+<p><b>Then the last visible line is drawn and the VDP raises its interrupt.</b> The 68000 drops
+whatever it was doing and jumps to the handler whose address is sitting in the vector table from
+section 4. <span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>
+has opened: for a short window the VDP is not drawing, so its memories are finally available at
+full speed. This is when the frame's video work actually happens.
+The new sprite table goes out, the new scroll values, any changed palette entries, any new art. The
+bulk of it is not copied by the processor at all but by DMA, where the VDP is told a source in
+68000 memory and a length and does the copying itself, considerably faster than the CPU could, and
+holding the 68000 still while it works. That is why a Genesis game's entire graphics budget is
+really a measurement of what fits in this window, and it is why the window's size, the cost of a
+transfer, and the queue that decides what gets sent first are a topic in their own right, along
+with the two interrupts and the scanline counting behind them.</p>
+
+<p><b>Then the beam returns to the top and it all starts again</b>, sixty times a second on an
+NTSC machine and fifty on a PAL one, for as long as the console is on. The Z80 never noticed any of
+it; it has been keeping its own time from the same crystal the whole way through.</p>
+
+<p>That is the machine. Everything after this page takes one piece of it and opens it up: the video
+chip and its planes first, then tiles and VRAM, colour and CRAM, sprites, DMA, the frame and its
+interrupts, the two processors and the bus between them, and the two sound chips.</p>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot; <a href="../index.html">Back to hub</a> &middot; Next: <a href="vdp-planes.html">The VDP &amp; Planes</a></footer>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- the clock tree ---- */
+(function(){
+  const REGIONS = [
+    {nm:'NTSC', master:53693175, txt:'53,693,175 Hz',
+     sega:'Sega printed 7.67 MHz for the CPU on an NTSC console, and this is that figure.'},
+    {nm:'PAL', master:53203424, txt:'53,203,424 Hz',
+     sega:'Sega printed 7.60 MHz for the CPU on a PAL console, and this is that figure.'}
+  ];
+  const CHIPS = [
+    {nm:'68000', div:7, ord:'seventh'},
+    {nm:'Z80', div:15, ord:'fifteenth'},
+    {nm:'YM2612', div:7, ord:'seventh'},
+    {nm:'PSG', div:15, ord:'fifteenth'}
+  ];
+  const EXTRA = [
+    ['', ''],
+    ['It comes out exact, with no remainder at all, and the figure is the NTSC colourburst frequency.',
+     'On this crystal the division leaves a remainder; the exact colourburst relationship is the NTSC crystal\'s.'],
+    ['The FM chip is fed the same clock the 68000 gets, even though it sits on the far side of the arbiter on the Z80\'s bus.',
+     'The FM chip is fed the same clock the 68000 gets, even though it sits on the far side of the arbiter on the Z80\'s bus.'],
+    ['The PSG is fed the same clock the Z80 gets, even though it lives inside the VDP on the 68000\'s bus.',
+     'The PSG is fed the same clock the Z80 gets, even though it lives inside the VDP on the 68000\'s bus.']
+  ];
+  const group = (s) => s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  function freq(master, div){
+    if (master % div === 0) return group(String(master / div)) + ' Hz';
+    const v = master / div;
+    const whole = Math.floor(v);
+    const dec = Math.round((v - whole) * 10);
+    if (dec === 10) return group(String(whole + 1)) + '.0 Hz';
+    return group(String(whole)) + '.' + dec + ' Hz';
+  }
+  const mhz = (master, div) => (master / div / 1000000).toFixed(2);
+
+  const fan = document.getElementById('ck-fan');
+  const nodes = [...fan.querySelectorAll('.cnode')];
+  const cap = document.getElementById('ck-cap');
+  const rname = document.getElementById('ck-rn');
+  const mval = document.getElementById('ck-mv');
+  const rbtns = [...document.querySelectorAll('.rbtn')];
+  let region = 0, sel = null;
+
+  nodes.forEach((b, i) => {
+    b.setAttribute('aria-label', CHIPS[i].nm + ', master clock divided by ' + CHIPS[i].div);
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => { sel = i; paint(); narrate(); });
+  });
+  rbtns.forEach((b, i) => {
+    b.addEventListener('click', () => { region = i; paint(); narrate(); });
+  });
+
+  function paint(){
+    const R = REGIONS[region];
+    rname.textContent = R.nm + ' master crystal';
+    mval.textContent = R.txt;
+    rbtns.forEach((b, i) => b.setAttribute('aria-pressed', i === region ? 'true' : 'false'));
+    nodes.forEach((b, i) => {
+      b.querySelector('.cf').textContent = freq(R.master, CHIPS[i].div);
+      const on = (sel === i);
+      b.classList.toggle('sel', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  function narrate(){
+    const R = REGIONS[region];
+    if (sel === null){
+      cap.innerHTML = '<b>' + R.nm + ' selected.</b> One crystal feeds all four chips. Pick a chip to read how its clock comes out of it.';
+      return;
+    }
+    const C = CHIPS[sel];
+    let s = '<b>' + C.nm + ' &middot; ' + R.nm + '</b><br>The ' + C.nm + ' runs at one ' + C.ord +
+      ' of the master clock: ' + R.txt + ' / ' + C.div + ' = ' + freq(R.master, C.div) +
+      ', about ' + mhz(R.master, C.div) + ' MHz.';
+    if (sel === 0) s += ' ' + R.sega;
+    const e = EXTRA[sel][region];
+    if (e) s += ' ' + e;
+    cap.innerHTML = s;
+  }
+  paint();
+})();
+
+/* ---- the memory map explorer ---- */
+(function(){
+  const D = [
+    'The cartridge, up to four megabytes of it, and the first thing the 68000 ever reads: the vector table at $000000 with the header behind it. Reads answer; writes go nowhere, because it is read-only memory.',
+    'Sega\'s map calls this SEGA RESERVED. On a bare console nothing is wired here, so reads return open-bus junk (the top byte of the instruction the 68000 was about to fetch, with a zero byte under it) and writes are ignored. The program carries on none the wiser. A Sega CD maps itself into this window when one is attached.',
+    'Sega\'s second SEGA RESERVED box, and it behaves nothing like the first: Charles MacDonald\'s hardware-tested notes record that reading or writing any address here locks the machine. This is the range the 32X later used, and other sources list the region without reporting the hazard, so MacDonald is the leg it rests on.',
+    'The Z80\'s world seen from the 68000, and reachable only once the 68000 has been granted the Z80\'s bus. $A08000-$A0FFFF is a mirror of $A00000-$A07FFF, because address line 15 is ignored. Two windows inside it are traps: Charles MacDonald\'s hardware-tested notes record that reading or writing $A07F00-$A07FFF or $A0FF00-$A0FFFF locks the machine.',
+    'The I/O chip: the version register at $A10001 (overseas bit, PAL bit, disk bit, hardware revision) and, for each of the three ports, a data register, a pin-direction register and three serial registers. The pad protocol that turns those registers into button states is not covered on this track yet.',
+    'Three control registers. $A11100 requests and releases the Z80\'s bus; $A11200 holds and releases its reset line. Both are driven through the bus arbiter rather than by the 68000 directly. $A11000 is the memory mode register, which Sega documents only for the development cartridge\'s refresh signal: write-only, one bit, ROM mode or D-RAM mode. Nothing is claimed here about what it does on a production console.',
+    'The /TIME region, 256 bytes wide. An access here pulls the cartridge\'s /TIME line, which is how hardware on the cartridge board itself, such as a bank mapper or a save-RAM latch, gets reached. What answers depends entirely on what cartridge is plugged in.',
+    'The register a later console demands the four ASCII letters SEGA at, before it will let a program near the video chip. Sega\'s own manual carries the write inside a code listing and never describes the register.',
+    'Sega\'s third reserved box. On a standard console nothing here asserts DTACK, so an access never completes and the machine hangs; a cartridge that asserted DTACK itself could make it answer. Reported by two people in one SpritesMind hardware thread, which is one chain of evidence rather than two, so it is worth knowing where the claim comes from.',
+    'The video chip\'s keyhole: the data port at $C00000, the control port at $C00004, the read-only H/V counter at $C00008, and the PSG\'s write-only port at $C00011. Two traps here, both recorded in Charles MacDonald\'s hardware-tested notes: reading any PSG address locks the machine, and so does writing the H/V counter.',
+    'Just past the ports, and it hangs. plutiedev states it flatly, and it is what MacDonald\'s rule for the VDP\'s address decoding predicts: the VDP answers only to addresses matching a particular bit pattern and locks up on the rest.',
+    'Sega\'s map labels this ACCESS PROHIBITED, which is a rule. The community documents that work RAM answers here anyway, repeating over and over, because the RAM\'s address decoding is partial, which is a behaviour. Both are true and they answer different questions. Use $FF0000.',
+    'The 68000\'s own memory: 64 kilobytes holding every variable the game keeps, plus the stack, which grows downward from the top. This is the canonical address for it and the one to use.'
+  ];
+  const cap = document.getElementById('mmcap');
+  const btns = [...document.querySelectorAll('#mmap button')];
+  let sel = null;
+  btns.forEach((b, i) => {
+    b.setAttribute('aria-pressed', 'false');
+    const label = b.querySelector('.a').textContent + ' &middot; ' + b.querySelector('.nm').textContent +
+      ' &middot; ' + b.querySelector('.vd').textContent;
+    b.setAttribute('aria-label', label.replace(/ &middot; /g, ', '));
+    b.addEventListener('click', () => {
+      if (sel) { sel.classList.remove('sel'); sel.setAttribute('aria-pressed', 'false'); }
+      sel = b;
+      b.classList.add('sel');
+      b.setAttribute('aria-pressed', 'true');
+      cap.innerHTML = '<b>' + label + '</b><br>' + D[i];
+    });
+  });
+})();
+
+/* ---- term tooltips ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+</div>
+
+</body>
+</html>

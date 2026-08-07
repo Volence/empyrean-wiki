@@ -393,7 +393,9 @@ it is nearly all of this page: ASL, ASR, LSL, LSR, ROL, ROR, ROXL, ROXR, BCHG, B
 CLR, NEG, NOT, Scc, TAS and the immediate-form arithmetic on other pages. BTST is the one exception
 here, because it only reads. That does not make it safe against the port: a read still has to match
 the direction the control write set. Read the word into a data register, work on it there, and write
-it back.</div>
+it back. This is a fact about the video chip rather than about the 68000, and it is stated in full,
+with Sega's whole list and both failure directions, on
+<a href="../genesis/vdp-planes.html#rmw">The VDP &amp; Planes</a>.</div>
 
 <details class="explain">
   <summary>New here? &middot; A shift is a cheap multiply or divide by a power of two</summary>

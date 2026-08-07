@@ -1150,7 +1150,7 @@ instruction is being used for something other than the thing it is named after.<
 <details class="explain">
   <summary>New here? &middot; Why does reading and writing in one instruction need to be special?</summary>
   <div class="x-body">
-    <p>Suppose two processors share one byte of memory as a "someone is using this" flag. Each wants to read the flag, and if it is clear, set it and proceed.</p><p>Written as two instructions, a read and then a write, there is a gap in the middle. If the other processor reads the same byte during that gap, both see it clear, both set it, and both proceed, which is exactly what the flag existed to prevent. The gap does not have to be likely to be fatal; it only has to happen once.</p><p>A <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back, without letting go of the bus in between. TAS is the 68000's only one, and the Genesis does not honour its write.">read-modify-write</span> closes the gap by doing all of it as one indivisible act, holding the bus throughout so nothing can look in between. That is the whole purpose of TAS, and it is why it is the only instruction of its kind the 68000 has.</p>
+    <p>Suppose two processors share one byte of memory as a "someone is using this" flag. Each wants to read the flag, and if it is clear, set it and proceed.</p><p>Written as two instructions, a read and then a write, there is a gap in the middle. If the other processor reads the same byte during that gap, both see it clear, both set it, and both proceed, which is exactly what the flag existed to prevent. The gap does not have to be likely to be fatal; it only has to happen once.</p><p>A <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.">read-modify-write</span> closes the gap by doing all of it as one indivisible act, holding the bus throughout so nothing can look in between. That is the whole purpose of TAS, and it is why it is the only instruction of its kind the 68000 has.</p>
   </div>
 </details>
 
@@ -1216,13 +1216,24 @@ instruction is being used for something other than the thing it is named after.<
   form is the only form of TAS on this machine that does what the manual says it does. Note that the
   engines do not comment the line, so this is an observation about the code and not a claim about what
   the author was thinking.
+  <br><br>
+  TAS also appears on a <em>separate</em> Sega list, of instructions that cannot be aimed at VRAM, and
+  it is on that list for a different reason than the one above. That list is about the video chip's
+  data port, which is not memory but a port with a direction: read it while it is set up for writing
+  and the VDP withholds DTACK and stalls the 68000 outright. It rules out twenty-six instructions,
+  TAS among them. The write-back failure described above is not that mechanism. It happens against
+  any memory at all, the bus cycle completes normally in both halves, and the write is simply never
+  performed. Both are true of TAS at once, which makes it the extreme member of that family rather
+  than the lone special case it looks like here.
+  <a href="../genesis/vdp-planes.html#rmw">The VDP &amp; Planes</a> states the VRAM restriction in
+  full, with Sega's whole list.
   </div>
 
   <details class="refbox">
     <summary>Why the write is discarded, and which consoles differ</summary>
     <div class="enc-body">
     <p>TAS is the 68000's only
-    <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back, without letting go of the bus in between. TAS is the 68000's only one, and the Genesis does not honour its write.">read-modify-write</span>
+    <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.">read-modify-write</span>
     instruction, and it holds the bus for the read and the write together so nothing can slip between
     them. That indivisibility is the point, and it is also what the Genesis hardware does not handle.</p>
     <p>The most detailed explanation available is by Nemesis, author of the Exodus emulator, in a source
