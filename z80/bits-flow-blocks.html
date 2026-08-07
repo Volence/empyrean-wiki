@@ -651,7 +651,7 @@ off. All three take a bit number 0 to 7 and a target that can be any register or
     <span class="fchip f-und" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; documented UNKNOWN after BIT" aria-label="P/V: undefined"><span class="fl-name">P/V</span><span class="fl-state">undef.</span></span>
     <span class="fchip f-clear" tabindex="0" role="note" title="Add/subtract flag, read by DAA; cleared to 0 here" aria-label="N: cleared"><span class="fl-name">N</span><span class="fl-state">clear</span></span>
     <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract; unaffected here" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
-    <span class="fl-caption">Z is the whole point (it is the complement of the tested bit); H is set, N cleared, C untouched; S and P/V are documented UNKNOWN, so never branch on them after BIT</span>
+    <span class="fl-caption">Z is the flag you came for (it is the complement of the tested bit); H is set, N cleared, C untouched; S and P/V are documented UNKNOWN, so never branch on them after BIT</span>
   </div>
 
   <div class="cost"><span class="cchip">8 T-states (register)</span>
@@ -1610,7 +1610,7 @@ copies bytes, the block compare group searches them.</p>
     <span class="fchip f-res" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; the block instructions use it as the BC counter instead, set while BC is not zero after the step" aria-label="P/V: the BC counter"><span class="fl-name">P/V</span><span class="fl-state">count</span></span>
     <span class="fchip f-set" tabindex="0" role="note" title="Add/subtract flag, read by DAA; set to 1 here" aria-label="N: set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
     <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
-    <span class="fl-caption">Z means A matched the byte, P/V means bytes still remain; N is set, C untouched; that two-flag split is the whole idiom</span>
+    <span class="fl-caption">Z means A matched the byte, P/V means bytes still remain; N is set, C untouched; reading those two together is the idiom</span>
   </div>
 
   <div class="cost"><span class="cchip">16 T single step</span><span class="cchip">21 T per repeat</span>

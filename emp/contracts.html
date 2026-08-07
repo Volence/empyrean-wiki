@@ -438,7 +438,7 @@ while protecting the rest:</p>
 <p>Read the second one as a caller. It tells you, without opening the body, that
 <code>d0</code> and <code>d1</code> come back as garbage, that <code>a0</code> and
 <code>a1</code> hold results you are meant to use, and that <code>d2</code> and
-<code>a2</code> are untouched. That is the entire value of the clause: you schedule your own
+<code>a2</code> are untouched. That is what the clause buys you: you schedule your own
 register use around it having read one line.</p>
 
 <details class="explain">
@@ -705,8 +705,8 @@ one ring to the buffer and has to know whether it landed:</p>
     .gated:</pre>
 <span class="src">aeon/engine/objects/entity_window.emp:1035</span>
 
-<p>The <code>bcs .gated</code> on the line right after the call is the whole reason the flag
-result exists. The caller branches on the carry the callee promised. Producer and consumer
+<p>The <code>bcs .gated</code> on the line right after the call is why the flag result exists
+at all. The caller branches on the carry the callee promised. Producer and consumer
 sit in two different files, and the contract is the only thing tying them together: the header
 says an answer rides home in carry, and the caller reads exactly that. Move the answer to a
 different flag without updating the header and the two halves disagree, which is precisely the
@@ -903,7 +903,7 @@ stops a merge rather than a build. On the current engine it fires zero times.</p
 <h2 id="ensure">6 &middot; ensure and assert: two clocks</h2>
 
 <p>Everything so far is checked at build time. But .emp has a second kind of check, and telling
-the two apart is the whole lesson of this section: some things the tool can decide while it is
+the two apart is what this section is for: some things the tool can decide while it is
 building the ROM, and some things are only knowable while the ROM is running. .emp gives each
 its own keyword, and the difference between them is <em>when</em> the check happens.</p>
 

@@ -201,6 +201,13 @@ nav.mini a:hover,nav.mini a:focus-visible{background:rgba(68,102,238,.28); outli
 .mini-h{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
   text-transform:uppercase; color:var(--dim); width:100%; margin:.5rem 0 -.1rem;}
 
+/* ToC section tags: which sections are the core path and which can wait. Deliberately
+   quiet, at the smallest legible size, because this is a signpost and not a warning. */
+nav.toc a .lvl{font-family:var(--mono); font-size:.58rem; letter-spacing:.1em;
+  text-transform:uppercase; margin-left:.5rem; color:var(--learn); opacity:.85;}
+nav.toc a .lvl.adv{color:var(--gold);}
+.tocnote{max-width:42rem; margin:1.1rem 0 0; color:var(--dim); font-size:.9rem;}
+
 /* instruction entry header: mnemonic + syntax */
 .instr{margin:2.2rem 0 0; padding-top:.2rem;}
 .instr h3{display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem; margin-bottom:.5rem;}
@@ -414,6 +421,33 @@ table.synon th{background:var(--panel); font-family:var(--mono); font-size:.66re
 table.synon td.sy-mn{font-family:var(--mono); color:var(--gold); white-space:nowrap;}
 table.synon td.sy-n{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right;}
 
+/* ---- Check yourself: click-to-reveal prediction questions ----
+   LEARNING.md's component, piloted here on a reference page. Styled off the explainer so it
+   reads as the learner layer, but NOT inset and grouped under one heading: a question is
+   something to attempt, not an aside to skim past. The answers are exempt from nothing, so
+   each one restates a fact the prose above it already made. Expand-all deliberately does not
+   reach these, since revealing every answer at once defeats the point. */
+.checkyou{border:1px solid var(--learn); border-radius:4px; margin:2.2rem 0; max-width:42rem;
+  background:rgba(68,204,136,.05); padding:.1rem .9rem .8rem;}
+.checkyou .cy-h{font-family:var(--mono); font-size:.66rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--learn); margin:.8rem 0 .2rem;}
+.checkyou .cy-lead{font-size:.85rem; color:var(--dim); margin:.2rem 0 .2rem; max-width:40rem;}
+.checkyou .qz-item{border-top:1px solid var(--line); padding:.8rem 0 .2rem;}
+.checkyou .qz-q{margin:0 0 .1rem; font-size:.93rem; max-width:40rem;}
+.checkyou .qz-n{font-family:var(--mono); font-size:.72rem; color:var(--learn);
+  letter-spacing:.1em; margin-right:.35rem;}
+.checkyou .teach{margin:.7rem 0 .55rem; max-width:40rem;}
+.checkyou .teach pre{margin:.2rem 0 0;}
+details.qz{border:0; margin:0; padding:0; background:none;}
+details.qz summary{cursor:pointer; list-style:none; font-family:var(--mono); font-size:.68rem;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--learn); padding:.2rem 0;}
+details.qz summary::-webkit-details-marker{display:none;}
+details.qz summary::before{content:"\25B8 ";}
+details.qz[open] summary::before{content:"\25BE ";}
+details.qz summary:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+details.qz .qz-a{font-size:.92rem; padding:.1rem 0 .3rem;}
+details.qz .qz-a p{margin:.6rem 0; max-width:40rem;}
+
 /* this page's fallback captions run long; sentence case reads better than the
    theme's small-caps at that length */
 figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
@@ -438,23 +472,36 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 </header>
 
 <nav class="toc" aria-label="Sections">
-  <a href="#s1"><span class="n">1</span>Returning, the dumb version</a>
-  <a href="#s2"><span class="n">2</span>Goto or call, near or anywhere</a>
-  <a href="#s3"><span class="n">3</span>Conditions</a>
-  <a href="#s4"><span class="n">4</span>Dispatch</a>
-  <a href="#s5"><span class="n">5</span>The tail call</a>
-  <a href="#s6"><span class="n">6</span>Loops</a>
-  <a href="#s7"><span class="n">7</span>The return family</a>
+  <a href="#s1"><span class="n">1</span>Returning, the dumb version<span class="lvl">core</span></a>
+  <a href="#s2"><span class="n">2</span>Goto or call, near or anywhere<span class="lvl">core</span></a>
+  <a href="#s3"><span class="n">3</span>Conditions<span class="lvl">core</span></a>
+  <a href="#s4"><span class="n">4</span>Dispatch<span class="lvl adv">advanced</span></a>
+  <a href="#s5"><span class="n">5</span>The tail call<span class="lvl">core, then advanced</span></a>
+  <a href="#s6"><span class="n">6</span>Loops<span class="lvl">core</span></a>
+  <a href="#s7"><span class="n">7</span>The return family<span class="lvl adv">advanced</span></a>
 </nav>
 
 <nav class="mini" aria-label="Mini-index of this page's instructions">
   <span class="mini-h">Calls and returns</span>
-  <a href="#bsr">BSR</a><a href="#jsr">JSR</a><a href="#rts">RTS</a><a href="#rtr">RTR</a><a href="#rte">RTE</a>
+  <a href="#bsr">BSR</a><a href="#jsr">JSR</a><a href="#rts">RTS</a>
   <span class="mini-h">Gotos</span>
   <a href="#bra">BRA</a><a href="#jmp">JMP</a>
   <span class="mini-h">Deciding</span>
-  <a href="#bcc">Bcc</a><a href="#dbcc">DBcc</a><a href="#scc">Scc</a>
+  <a href="#bcc">Bcc</a><a href="#dbcc">DBcc</a>
+  <span class="mini-h">Keeping an answer instead of acting on it</span>
+  <a href="#scc">Scc</a>
+  <span class="mini-h">Advanced returns, section 7</span>
+  <a href="#rtr">RTR</a><a href="#rte">RTE</a>
 </nav>
+
+<p class="tocnote">If this is your first pass, read sections 1, 2, 3 and 6 in that order and
+stop there. Those four are the spine: how a return works, the two ways to reach a target, what a
+condition is really asking, and the counted loop. Between them they cover the instructions you
+will meet on almost every screen of a disassembly. Section 4, section 7, and the second half of
+section 5 are marked advanced because they are what the spine makes possible rather than part of
+it: jumping to an address the code computed, editing a return address after it has been pushed,
+and the two returns only an exception handler uses. Nothing in the four core sections depends on
+them, so it is safe to skip them now and come back the first time real code sends you looking.</p>
 
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
 instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
@@ -528,7 +575,7 @@ address into the program counter; everything else is discipline.</p>
     and a user <code>a7</code>, with the S bit deciding which one the name reaches. The
     <a href="system.html">System page</a> covers that pair.</p>
     <p><b>The program counter</b> holds the address of the instruction being fetched, and steps
-    along by itself. Redirecting it is the whole job of the instructions on this page, which is
+    along by itself. Redirecting it is the only thing any instruction on this page does, which is
     the cleanest definition of what this page covers. A handful of others move it as a side
     effect of raising an exception, TRAP and CHK among them, and those belong to the System
     page.</p>
@@ -641,7 +688,8 @@ address of the instruction immediately after themselves and then jump, so the ro
 in ends with an <code>rts</code> that finds exactly that address waiting. Two instructions,
 agreeing about four bytes of RAM.</p>
 
-<p>That is the whole calling mechanism, and it is why the rest of this page is possible.
+<p>A call and a return are nothing more than that agreement about four bytes, and the rest of
+this page is what happens when somebody takes the agreement literally.
 <a href="#s5">Section 5</a> ends a routine with a plain <code>bra</code> instead of a call, so the
 routine it jumps to returns to YOUR caller rather than to you. The same section overwrites those
 four bytes with <code>move.l #Elsewhere,(sp)</code> to send a return somewhere it never came
@@ -842,8 +890,8 @@ GameMode_LevelSelect:	bra.w	LevelSelectMenu		<span class="c">; Level select mode
   at the <code>bra.s MainGameLoop</code>. The <code>bra.w</code> it landed on pushed nothing. So
   when <code>SegaScreen</code> eventually runs its <code>rts</code>, control returns past the
   trampoline entirely and lands back on the loop. Those eleven branches are invisible from the
-  callee's point of view, which is the whole point of using <code>bra</code> and not
-  <code>bsr</code> for them. That is <a href="#s5">section 5</a>'s idiom, arriving early.</p>
+  callee's point of view, and staying invisible is exactly why the table is built from
+  <code>bra</code> rather than <code>bsr</code>. That is <a href="#s5">section 5</a>'s idiom, arriving early.</p>
 </div>
 
 <div class="instr" id="bsr">
@@ -1350,8 +1398,9 @@ confuse. This decrements an animation timer:</p>
 and set N as a side effect of doing so, and <code>bpl</code> asks "is N clear", meaning "did that
 subtraction leave a result that is not negative". So the pair reads as: count down, and if we
 have not gone past zero yet, leave. One instruction does the work and reports on it, and the
-branch just reads the report. This is the single most common shape in engine code, and it is
-invisible until you stop expecting to see a comparison.</p>
+branch just reads the report. That split, work in one instruction and the verdict in the next,
+is the harder half of reading 68000 code, and it stays invisible until you stop expecting to see
+a comparison.</p>
 
 <p>That <code>; rts</code> is a s2disasm convention rather than anything the CPU sees, and since
 278 lines of the file carry it, it is worth decoding now. The branch target is <code>+</code>,
@@ -1425,6 +1474,77 @@ velocities are kept well inside a signed word, so nothing ever needs to ask.</p>
     and does not exist on the 68000.</span></p>
   </div>
 </details>
+
+<div class="checkyou">
+  <p class="cy-h">Check yourself</p>
+  <p class="cy-lead">Two predictions before moving on. Work each one out before opening the
+  answer; both are cases where the obvious reading is the wrong one, and neither answer tells you
+  anything this section has not already said.</p>
+
+  <div class="qz-item">
+    <p class="qz-q"><span class="qz-n">1</span>An object is moving LEFT at 16 pixels a frame, so
+    <code>x_vel(a0)</code> holds <code>$FFF0</code>. This code is meant to catch objects moving
+    RIGHT faster than 16. Is the branch taken?</p>
+    <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	move.w	x_vel(a0),d0	<span class="c">; d0 = $FFF0, which is -16</span>
+	cmp.w	<span class="n">#$0010</span>,d0	<span class="c">; compare it against +16</span>
+	bhi.s	TooFast</pre>
+    </div>
+    <details class="qz">
+      <summary>Show the answer</summary>
+      <div class="qz-a">
+        <p><b>Yes, it is taken, so an object drifting left gets treated as one racing right.</b> The
+        subtraction the <code>cmp.w</code> performs is <code>$FFF0</code> minus <code>$0010</code>,
+        which is <code>$FFE0</code>. That result is not zero, so Z is clear. Its top bit is set,
+        so N is 1. It needed no borrow, because as unsigned numbers 65520 really is bigger than
+        16, so C is 0. And it did not overflow, because as signed numbers -16 minus 16 is -32,
+        which fits in a word, so V is 0.</p>
+        <p><code>bhi</code> asks for C clear AND Z clear. It gets both, so it branches. Nothing
+        malfunctioned: <code>bhi</code> is in the unsigned family, and read as unsigned
+        <code>$FFF0</code> is 65520, which is genuinely higher than 16. It is a correct answer to
+        a question the code did not mean to ask.</p>
+        <p>The signed branch reads different flags. <code>bgt</code> wants Z clear AND N matching
+        V, and here N is 1 while V is 0, so they disagree and <code>bgt</code> does not branch.
+        Two mnemonics, one letter apart, opposite behaviour, and both assemble without a
+        murmur.</p>
+        <p>Notice when this bug would have been caught, which is the reason it survives: it is
+        right for every rightward velocity you could test with, and it only misfires once the
+        object turns around.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="qz-item">
+    <p class="qz-q"><span class="qz-n">2</span><code>d0</code> holds exactly <code>$0010</code>.
+    Does this reach <code>IsSixteen</code>?</p>
+    <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	cmp.w	<span class="n">#$0010</span>,d0	<span class="c">; is d0 sixteen?</span>
+	move.w	d0,d1		<span class="c">; keep a copy for the code below</span>
+	beq.s	IsSixteen</pre>
+    </div>
+    <details class="qz">
+      <summary>Show the answer</summary>
+      <div class="qz-a">
+        <p><b>No. The copy destroyed the answer.</b> The <code>cmp.w</code> did set Z, correctly,
+        and then the <code>move.w</code> set it again from the value it moved.
+        <a href="moving-data.html#move">MOVE</a> writes N and Z from the data it copies and forces
+        V and C to zero, exactly as <code>add</code> and <code>cmp</code> do. It is not
+        flag-neutral just because it did no arithmetic.</p>
+        <p>The value copied is <code>$0010</code>, which is not zero, so Z comes out clear and the
+        <code>beq</code> falls through. The code assembles, runs, and quietly asks "was the copied
+        value zero" instead of "was d0 sixteen".</p>
+        <p>The fix is to put the copy above the comparison, so the instruction immediately before
+        the branch is the one you meant to test. The contrast worth carrying is
+        <a href="moving-data.html#movea">MOVEA</a>, the address-register form, which sets no flags
+        at all: on this CPU, whether an instruction disturbs an answer already sitting in the
+        flags is a fact you have to know per instruction.</p>
+        <p>This is the same point the four worked examples above make from the other direction. A
+        branch has no idea which instruction armed it. It reads the flags as they stand, and the
+        last instruction to write them is the one it is really about.</p>
+      </div>
+    </details>
+  </div>
+</div>
 
 <!-- ================================================================ -->
 <h2 id="s4">4 &middot; Dispatch: calling something computed</h2>
@@ -1533,8 +1653,8 @@ addresses, and the loop just does this:</p>
 <p>The comment is the disassembly author's, exclamation mark and all, and it is a fair reaction:
 this single instruction can go to four different places, and reading the line tells you none of
 them. The decision was made once, at entry, and then thousands of decoded rows all jump through
-the same two bytes. That is the whole appeal of a function pointer, and it is also why code like
-this is hard to follow without a debugger. If you are tracing it, <code>a3</code> is the thing to
+the same two bytes. Deciding once and then jumping cheaply forever is what a function pointer
+buys you, and it is also why code like this is hard to follow without a debugger. If you are tracing it, <code>a3</code> is the thing to
 watch.</p>
 
 <p>Third, the case where the call really does need to come back. This is the vertical interrupt
@@ -1931,8 +2051,8 @@ a routine that saves the decompressor's registers first. It is <code>$42(sp)</co
 <code>(sp)</code> only because a good deal has been pushed on top by then, so the address sits
 $42 bytes down; the principle is identical. And this is not a saved return address from a
 <code>bsr</code>, it is the PC an <a href="#rte">RTE</a> will use, which is the same four bytes
-serving a different instruction. Nothing marks either kind, which is the whole theme of this
-page.</p>
+serving a different instruction. Nothing marks either kind, and this page has been saying so
+since <a href="#s1">section 1</a>.</p>
 
 <!-- ================================================================ -->
 <h2 id="s6">6 &middot; Loops</h2>
@@ -2002,8 +2122,8 @@ wrongly, so it is worth being exact.</p>
       loop ends. The <code>dbeq</code> example further down this section is built entirely on
       that difference.</p>
       <p>Notice too that the hand-built version counts to ZERO and the DBcc version counts to
-      MINUS ONE. That is the whole source of the off-by-one below: the two loops are not the same
-      loop with different syntax, they stop on different values.</p>
+      MINUS ONE. Every bit of the off-by-one below comes out of that one difference: the two
+      loops are not the same loop with different syntax, they stop on different values.</p>
     </div>
   </details>
 
@@ -2148,6 +2268,73 @@ VDPInitLoop:
       condition list includes T and F where the Bcc list does not.</span></p>
     </div>
   </details>
+</div>
+
+<div class="checkyou">
+  <p class="cy-h">Check yourself</p>
+  <p class="cy-lead">Two more predictions, both about DBcc, and both about a detail the syntax
+  hides rather than about the off-by-one everyone warns you about.</p>
+
+  <div class="qz-item">
+    <p class="qz-q"><span class="qz-n">3</span><code>d1</code> is loaded with
+    <code>$00010000</code>, which is 65,536. How many times does the body run, and what is left in
+    <code>d1</code>?</p>
+    <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	move.l	<span class="n">#$00010000</span>,d1
+Loop:	<span class="c">; ...the body...</span>
+	dbf	d1,Loop</pre>
+    </div>
+    <details class="qz">
+      <summary>Show the answer</summary>
+      <div class="qz-a">
+        <p><b>The body runs once, and <code>d1</code> ends up holding
+        <code>$0001FFFF</code>.</b> DBcc only ever looks at the LOW WORD of the counter, and the
+        low word of <code>$00010000</code> is <code>$0000</code>. So the body runs, the
+        <code>dbf</code> subtracts one from that low word, the low word becomes
+        <code>$FFFF</code> which is -1, and the loop falls through. The high word is never read
+        and never changed, which is why the 1 is still sitting up there afterwards.</p>
+        <p>The tempting answer is 65,537, the loaded count plus the extra pass, and it would be
+        right if you could write <code>dbf.l</code>. You cannot: the size is fixed at word and the
+        assembler refuses the long form. The register you name is really a 16-bit counter that
+        happens to be living in a 32-bit register, so a loop that needs more passes than a word
+        can count has to be built as a loop inside a loop.</p>
+        <p>Note also that the answer is one pass and not zero. That is the same off-by-one as
+        always: the exit test is "did the decrement produce -1", never "did it produce zero", so a
+        low word of <code>$0000</code> gets exactly the one pass that loading 0 gets.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="qz-item">
+    <p class="qz-q"><span class="qz-n">4</span>A table search in the shape the
+    <code>dbeq</code> example above uses, with the byte it wants sitting at the very end of the
+    table, so the first <code>cmp.b</code> matches and sets Z. How many times does the compare
+    run, and what is in <code>d1</code> when the loop ends?</p>
+    <div class="teach"><span class="t-tag">Teaching example &middot; not engine code</span>
+<pre>	moveq	<span class="n">#5</span>,d1
+-	cmp.b	-(a2),d0	<span class="c">; matches on the very first pass</span>
+	dbeq	d1,-</pre>
+    </div>
+    <details class="qz">
+      <summary>Show the answer</summary>
+      <div class="qz-a">
+        <p><b>The compare runs once, and <code>d1</code> still holds 5.</b> DBcc tests its
+        condition before it touches anything else. EQ is true, so the loop stops right there, and
+        the subtraction never happens at all. The counter is untouched on the pass that ends the
+        loop by condition, which is why <code>d1</code> comes out exactly as it went in.</p>
+        <p>The tempting answer is six passes, and it comes from reading <code>dbeq</code> as "loop
+        while equal". It is the other way round, and the section above gives you the phrasing that
+        keeps it straight: <code>dbeq</code> means "loop UNTIL equal". The condition is a reason to
+        STOP, which is backwards from
+        <a href="#bcc">Bcc</a>, where the condition is a reason to go, and reading the two the
+        same way round is the usual mistake.</p>
+        <p>The timings tell the same story if you would rather not take it on trust. DBcc costs 10
+        cycles when it loops, 12 when the CONDITION ended the loop, and 14 when the COUNTER did.
+        The condition exit is the cheaper of the two exits precisely because it skips the
+        decrement.</p>
+      </div>
+    </details>
+  </div>
 </div>
 
 <!-- ================================================================ -->
@@ -2333,8 +2520,8 @@ wrong.</p>
   <code>move.b #$FF,</code> would be four. Both readings are true, and knowing only the first
   will make you misread nearly every real use.</p>
 
-  <p>Here is one of the eight that is genuinely conditional, and it demonstrates the single most
-  useful fact about Scc for free:</p>
+  <p>Here is one of the eight that is genuinely conditional, and it demonstrates for free the
+  property that makes Scc worth reaching for:</p>
 
   <pre>Obj34_BackgroundIn:	<span class="c">; the blue background (green when playing as Knuckles), coming in</span>
 	moveq	<span class="n">#$10</span>,d0
@@ -2403,7 +2590,7 @@ wrong.</p>
 <p style="margin-top:2.5rem;">That is the whole of flow control on the 68000: two ways to reach a
 target, two ways to decide whether to, one counted loop, one way to keep an answer instead of
 acting on it, and three returns that differ only in how many bytes they take off the stack. The
-system-control instructions that talk to the CPU itself, TRAP, CHK, LINK, STOP and the rest, are
+system, trap and stack-frame instructions, TRAP, CHK, LINK, STOP and the rest, are
 <a href="system.html">a separate page</a>.</p>
 
 <p>If there is one thing to carry away, it is the sentence from <a href="#s1">section 1</a>:
@@ -2412,7 +2599,7 @@ table to the tail call to the six-byte frame built by hand for an <code>rtr</cod
 taking that fact seriously.</p>
 
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot;
 Previous: <a href="shifts-bits.html">Shifts &amp; Bits</a> &middot; Next: <a href="system.html">System</a> &middot;
 <a href="../index.html">Back to hub</a></footer>
 

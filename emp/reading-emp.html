@@ -318,7 +318,7 @@ parcel queued to do it. It has not landed, so this page describes it as it curre
 <details class="explain">
   <summary>New here? · Wait, are these annotations just comments?</summary>
   <div class="x-body">
-    <p>This is the single most common first misreading, so it is worth stating plainly. When you see
+    <p>Almost everyone misreads this the first time, so it is worth stating plainly. When you see
     a line like <code>clobbers(d4, a0)</code> attached to a routine, it looks like documentation: a
     note to a human saying &quot;this routine messes up d4 and a0&quot;. In most assembly, that is
     exactly all such a note could ever be, because the assembler has no idea what the routine really
@@ -540,8 +540,8 @@ you can learn once. Here are the ones you will actually meet in engine source:</
   build</em>; in the plain build it produces nothing at all.</li>
   <li><code>invoke</code>, the way the engine calls out to a game, expands to an absolute
   <code>jsr</code> when the game supplies a routine and to nothing when it does not.</li>
-  <li><code>jbra</code> and <code>jbsr</code> pick a reaching encoding for you, which is the whole of
-  the next section. Plain <code>bra</code>, <code>bsr</code> and the conditional branches written
+  <li><code>jbra</code> and <code>jbsr</code> pick a reaching encoding for you, which is what the
+  next section is about. Plain <code>bra</code>, <code>bsr</code> and the conditional branches written
   without a size suffix are chosen for you too, over a smaller two-step ladder; on the Z80 the same
   goes for an unsized <code>jr</code>, which the assembler may widen to a <code>jp</code>.</li>
   <li><code>with <em>ctx</em> { }</code> wraps its body in a context's acquire and release

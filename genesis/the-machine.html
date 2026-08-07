@@ -284,6 +284,33 @@ details.refbox summary::-webkit-details-marker{display:none;}
 details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
 details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
 .enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* carry-forward: the checkpoint that closes each numbered section. It holds only the two or
+   three facts the sections after it lean on, and every one of them restates prose that is
+   already above it, so nothing lives here alone (AUTHORING.md, the completeness rule).
+   Deliberately a full box in the accent blue, flush to the spine and never inset: the seven of
+   them are meant to read as one running thread through the page, not as a seventh kind of
+   aside. That is why it borrows neither the gotcha's pink left rule nor the decision's gold
+   one. */
+.carry{border:1px solid var(--accent); border-radius:4px; background:rgba(68,102,238,.08);
+  padding:.55rem .9rem .6rem; margin:1.6rem 0 .3rem; max-width:42rem;}
+.carry .c-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#88AAEE; display:block; margin-bottom:.3rem;}
+.carry ul{margin:0; padding-left:1.15rem;}
+.carry li{font-size:.9rem; margin:.18rem 0; max-width:40rem;}
+
+/* variance badge: an inline marker on a claim that is NOT true of every Genesis in every
+   configuration. Three kinds, because the reasons differ and a reader chasing one of them does
+   not care about the other two: region (an NTSC console and a PAL console disagree), board
+   revision (which machine you opened), and what is plugged in (expansion port or cartridge
+   hardware). A claim that holds everywhere carries no badge; badging everything would say
+   nothing. */
+.vary{display:inline-block; font-family:var(--mono); font-size:.58rem; letter-spacing:.14em;
+  text-transform:uppercase; border:1px solid var(--line); color:var(--dim); border-radius:3px;
+  padding:.02rem .4rem; margin:0 .12rem; white-space:nowrap; vertical-align:.08em; cursor:help;}
+.vary.reg{border-color:var(--gold); color:var(--gold);}
+.vary.rev{border-color:var(--accent); color:#88AAEE;}
+.vary.att{border-color:var(--learn); color:var(--learn);}
 </style>
 </head>
 <body>
@@ -320,6 +347,16 @@ numbers in another base, the
 <a href="../basics/numbers-and-notation.html">numbers and notation page</a> has a live
 converter.</p>
 
+<p style="color:var(--dim); font-size:.85rem;">Most of this page is true of every Genesis ever
+built. Where it is not, the claim carries a small badge naming what it depends on:
+<span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
+for a figure that changes with the console's region,
+<span class="vary rev" title="Varies with the motherboard revision: not every Genesis board behaves this way.">Board revision</span>
+for behaviour that changes with which machine you opened, and
+<span class="vary att" title="True of a bare console with a plain cartridge and nothing in the expansion port.">Bare console</span>
+for something that holds only with nothing plugged into the expansion port. The badges mark the
+places this page knows of where the answer depends on which machine is in front of you.</p>
+
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; One machine, five parts</h2>
 
@@ -328,7 +365,9 @@ sound generators, and a handful of glue parts to wire them together. Everything 
 is power, a cartridge slot, two controller sockets and an expansion port. Five parts are worth
 learning by name, though only four of them are separate chips: one of the sound generators lives
 inside the video chip, and how many packages the rest occupy depends on which revision of the
-board you opened. Learn what the five parts do and which wires they hang off, and the rest of
+board you opened
+<span class="vary rev" title="Varies with the motherboard revision: the same five functions are spread over a different number of chips on different boards.">Board revision</span>.
+Learn what the five parts do and which wires they hang off, and the rest of
 this track is detail.</p>
 
 <p>The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. Game logic runs here.">68000</span>
@@ -440,8 +479,8 @@ which is why no address in the 68000's map is a byte of video memory.</li>
   </figcaption>
 </figure>
 
-<p>That layout puts the two sound chips on opposite sides of the machine, and it is the single
-most useful fact on this page. The YM2612 hangs off the Z80's private bus, so the 68000 cannot
+<p>That layout puts the two sound chips on opposite sides of the machine, and the consequences
+run in both directions. The YM2612 hangs off the Z80's private bus, so the 68000 cannot
 touch it without taking the Z80's bus away first. The PSG is inside the VDP on the 68000's bus,
 so the Z80 cannot touch it without reaching out across the arbiter into the 68000's world. Sound
 is not cleanly "the Z80's department": it is split down the middle by the wiring, and half of it
@@ -471,13 +510,26 @@ stalls.</p>
 </div>
 </details>
 
+<div class="carry"><span class="c-tag">Carry forward</span>
+<ul>
+<li>Five parts by name: the 68000 runs the game, the Z80 conventionally runs the sound driver,
+the VDP draws the picture, the YM2612 is the FM synthesiser, and the PSG makes the simple tones
+from inside the VDP's own die.</li>
+<li>Three buses: the 68000's 16-bit system bus, the Z80's private 8-bit bus, and the VDP's video
+bus, which no other chip reaches.</li>
+<li>The bus arbiter sits between the two processors, so either one reaching into the other's
+world stalls somebody.</li>
+</ul>
+</div>
+
 <!-- ================================================================ -->
 <h2 id="s2">2 &middot; One crystal, every clock</h2>
 
 <p>There is one oscillator in a Genesis, and every clock in this section is that oscillator
 divided by a whole number. Not approximately, not nominally: exactly, by an integer.</p>
 
-<p>On an NTSC console the
+<p><span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
+On an NTSC console the
 <span class="term" data-def="The single oscillator every other clock in the console is divided down from, which is why all the parts stay in step with each other.">master clock</span>
 runs at 53,693,175 Hz. On a PAL console it runs at 53,203,424 Hz. From there: the 68000 gets one
 seventh of it, the Z80 gets one fifteenth, the YM2612 gets the same seventh the 68000 does, and
@@ -523,7 +575,8 @@ They are locked in a fixed ratio for as long as the console is powered: the 6800
 of its cycles for every 7 the Z80 gets, on every console, at every temperature, forever. That is
 a genuinely useful property, because a timing relationship you measure once holds always.</p>
 
-<p>It also means a PAL console is not a differently tuned machine. Its crystal is about 0.9
+<p><span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
+It also means a PAL console is not a differently tuned machine. Its crystal is about 0.9
 percent slower than an NTSC one, and every single clock in the machine comes down by that same
 0.9 percent together. The large speed difference players notice between a PAL and an NTSC game is
 a separate effect entirely, and it comes from how a frame is built rather than from this
@@ -636,6 +689,18 @@ wrong.</p>
 </div>
 </details>
 
+<div class="carry"><span class="c-tag">Carry forward</span>
+<ul>
+<li>One crystal, and every clock in the machine is that crystal divided by a whole number, so
+the ratio between any two chips is fixed for as long as the power is on.</li>
+<li>The 68000 gets one seventh of it, 7.67 MHz on an NTSC console; the Z80 gets one fifteenth,
+3.58 MHz. The 8 MHz and 4 MHz figures printed on spec sheets are the parts' ratings, not the
+clocks this console applies to them.</li>
+<li>A PAL console is the same machine on a crystal about 0.9 percent slower. The large PAL speed
+difference players notice comes from how a frame is built instead.</li>
+</ul>
+</div>
+
 <!-- ================================================================ -->
 <h2 id="s3">3 &middot; The 68000's map of the world</h2>
 
@@ -668,8 +733,7 @@ video chip to notice addresses that start with $C. Nothing about the number itse
 "video".</p>
 <p>This is why the same instruction can store a value in memory or command a hardware chip, with
 no difference in the code at all. The instruction is identical; the address decides who hears it.
-It is called memory-mapped I/O, and it is the whole reason the map below is a thing worth
-learning.</p>
+It is called memory-mapped I/O, and it is why the map below repays learning.</p>
 </div>
 </details>
 
@@ -745,7 +809,7 @@ Z80 carries on playing music, which is why a hung Genesis so often looks alive.<
 <div class="x-body">
 <p>Because it has no way to tell the difference between "nobody is there" and "somebody is there
 and is being slow".</p>
-<p>Here is the whole mechanism, at its dumbest. The 68000 wants a value. It puts the address on
+<p>Here is the mechanism, at its dumbest. The 68000 wants a value. It puts the address on
 the address wires, says "read", and then it waits. It is waiting for one particular wire to be
 pulled low by whatever chip owns that address, which is the chip's way of saying "the data is on
 the wires now, take it". That wire is called DTACK, for data transfer acknowledge.</p>
@@ -764,15 +828,19 @@ to.</p>
 <p>Which regions do which, and both of the hangs below rest on one chain of evidence apiece, so
 they are worth stating with their provenance attached. Charles MacDonald's hardware-tested notes
 record that <code>$800000-$9FFFFF</code>, the second of Sega's reserved boxes, locks the machine
-on any access, read or write, on a standard console; that is the range the 32X later mapped
+on any access, read or write, on a standard console
+<span class="vary att" title="True of a bare console. This is the range the 32X maps itself into, so with one attached the same addresses answer.">Bare console</span>;
+that is the range the 32X later mapped
 itself into, and although
 other sources list the region, MacDonald's is the one that reports the hazard.
 <code>$B00000-$BFFFFF</code> has nothing to assert DTACK on a standard console either, so accesses
-there hang as well, and that one is reported by two people in a single SpritesMind hardware
+there hang as well
+<span class="vary att" title="True of a bare console with a plain cartridge. Hardware that asserted DTACK itself would make these addresses answer.">Bare console</span>, and that one is reported by two people in a single SpritesMind hardware
 thread rather than by two independent chains of evidence. The first reserved box behaves
 differently, and Sega drawing the two as separate boxes turns out to match the hardware:
-<code>$400000-$7FFFFF</code> answers with open-bus junk on a bare console and lets the program
-keep running. It is the expansion window, which is where a Sega CD maps itself when one is
+<code>$400000-$7FFFFF</code> answers with open-bus junk on a bare console
+<span class="vary att" title="True of a bare console. This is the expansion window, so with a Sega CD attached these addresses answer for real.">Bare console</span>
+and lets the program keep running. It is the expansion window, which is where a Sega CD maps itself when one is
 attached.</p>
 
 <p>The traps inside regions that otherwise work are the ones that catch people, and they are
@@ -910,6 +978,18 @@ table, because several of them rest on one source and a bare table row would hid
 </div>
 </details>
 
+<div class="carry"><span class="c-tag">Carry forward</span>
+<ul>
+<li>Sixteen megabytes of address space, and almost none of it is memory. An address is a
+question the whole system bus hears at once, and the map decides which chip answers.</li>
+<li>Three outcomes, not two: a device answers, or nothing answers and you get open-bus junk that
+no error ever flags, or nothing completes the bus cycle at all and the 68000 waits forever.</li>
+<li>Four addresses worth knowing by heart: cartridge ROM from <code>$000000</code>, the Z80's
+world at <code>$A00000</code>, the VDP's two ports at <code>$C00000</code>, and work RAM at
+<code>$FF0000</code>.</li>
+</ul>
+</div>
+
 <!-- ================================================================ -->
 <h2 id="s4">4 &middot; The cartridge</h2>
 
@@ -1002,7 +1082,8 @@ is the same fact the <code>ramaddr</code> trick in section 3 was working around,
 other end: the game's RAM labels carry the high <code>$FFFF0000</code> spelling, and the header
 wants the 24-bit truth, so the extra bits are masked off on the way in.</p>
 
-<p>One more thing the cartridge may have to do before the machine will cooperate. On consoles from
+<p><span class="vary rev" title="Revision-dependent: the earliest consoles have no security system, and consoles from hardware revision 1 onward do.">Board revision</span>
+One more thing the cartridge may have to do before the machine will cooperate. On consoles from
 the second hardware revision onward, the video chip stays locked until the program writes the four
 ASCII letters SEGA to <code>$A14000</code>. Miss it and the next video access locks the machine.
 Which consoles behave this way is readable from the version register at <code>$A10001</code>, whose
@@ -1025,6 +1106,18 @@ strange witness here.</p>
 recipe as a piece of code you were expected to copy, in the same shape every shipping game uses,
 and never wrote down what the address is or what it does. Every description of the register itself
 comes from the scene taking the machine apart afterwards.</p>
+
+<div class="carry"><span class="c-tag">Carry forward</span>
+<ul>
+<li>The cartridge is wired into the bottom of the map and nothing is ever loaded from it: the
+68000 fetches its instructions straight out of the plastic.</li>
+<li>The first eight bytes of a ROM are data, not code. The processor swallows them at reset as
+the initial stack pointer and the address of the first instruction, and the rest of the vector
+table follows behind them.</li>
+<li>On a console from hardware revision 1 onward, the program has to write the ASCII letters
+SEGA to <code>$A14000</code> before it touches the video chip.</li>
+</ul>
+</div>
 
 <!-- ================================================================ -->
 <h2 id="s5">5 &middot; Two processors, two worlds</h2>
@@ -1109,6 +1202,17 @@ indefinitely. A frozen Genesis is three chips, two of which are still working pe
 </div>
 </details>
 
+<div class="carry"><span class="c-tag">Carry forward</span>
+<ul>
+<li>The two processors mostly run at the same time. Either one can reach into the other's world,
+but only by asking the arbiter for the bus and waiting an amount of time nobody can quote.</li>
+<li>A 68000 that stops does not stop the Z80 or the VDP, which is why a dead Genesis usually
+shows a frozen picture with the music still playing.</li>
+<li>A crash and a hang are different failures. A crash is a program stuck in a loop it chose; a
+hang is a bus cycle that never completes, with no exception taken and no way back.</li>
+</ul>
+</div>
+
 <!-- ================================================================ -->
 <h2 id="s6">6 &middot; The VDP and its three memories</h2>
 
@@ -1124,7 +1228,7 @@ means a Genesis game's video memory layout is a budget somebody chose.</p>
 
 <p><span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>
 is the colour memory: 64 slots arranged as four palettes of sixteen, each slot holding a nine-bit
-colour, and the whole thing is 128 bytes. Every colour on screen at any instant comes out of
+colour, and all 64 of them together are 128 bytes. Every colour on screen at any instant comes out of
 those 64 entries, and the one thing that stretches the count is the chip's shadow and highlight
 mode, which can show an entry darkened or brightened as well as plain. That is the constraint
 that gives Genesis pictures their particular look.</p>
@@ -1178,12 +1282,25 @@ the two interrupts and exactly what fits in that window are the frame's own subj
 it is enough to know that the part which draws the picture is also the part that keeps the
 beat.</p>
 
+<div class="carry"><span class="c-tag">Carry forward</span>
+<ul>
+<li>Three memories, none of them on the 68000's map: VRAM at 64 kilobytes, CRAM at 128 bytes,
+VSRAM at 80.</li>
+<li>Everything reaches them through a keyhole. A command goes to the control port at
+<code>$C00004</code> saying which memory and which address, and then the bytes go through the
+data port at <code>$C00000</code>, either pushed by the CPU or copied by DMA.</li>
+<li>The VDP also keeps the machine's time. It raises an interrupt when the visible picture ends,
+and the window that opens there is when bulk video work is comfortable.</li>
+</ul>
+</div>
+
 <!-- ================================================================ -->
 <h2 id="s7">7 &middot; A tour of one frame</h2>
 
-<p>Put the five parts together and run them for one frame, which is just under a sixtieth of a
+<p><span class="vary reg" title="Region-dependent: an NTSC console and a PAL console run different figures here.">NTSC / PAL</span>
+Put the five parts together and run them for one frame, which is just under a sixtieth of a
 second on an NTSC console and just under a fiftieth on a PAL one. Nothing in this section is new;
-it is the whole page moving at once.</p>
+it is the same five parts, all moving at once.</p>
 
 <p><b>The VDP is drawing.</b> It walks down the picture one
 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span>
@@ -1240,6 +1357,18 @@ keeping its own time from the same crystal the whole way through.</p>
 <p>That is the machine. Everything after this page takes one piece of it and opens it up: the video
 chip and its planes first, then tiles and VRAM, colour and CRAM, sprites, DMA, the frame and its
 interrupts, the two processors and the bus between them, and the two sound chips.</p>
+
+<div class="carry"><span class="c-tag">Carry forward &middot; into the rest of the track</span>
+<ul>
+<li>Every part is working at once inside a single frame: the VDP walking down the picture, the
+68000 running the game out of ROM into work RAM, and the Z80 stepping the music, all of them
+counting from one crystal.</li>
+<li>Video work waits for the gap between frames, so a game's graphics budget is really a
+measurement of what fits in that window.</li>
+<li>The parts hold each other up only where they touch: a borrowed bus, a DMA that pauses the
+68000, an interrupt that lands on the beat.</li>
+</ul>
+</div>
 
 <footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot; <a href="../index.html">Back to hub</a> &middot; Next: <a href="vdp-planes.html">The VDP &amp; Planes</a></footer>
 

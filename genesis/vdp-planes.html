@@ -307,6 +307,31 @@ select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel
 .vb-sat{background:rgba(204,102,170,.35);}
 .vb-pa{background:rgba(68,102,238,.55);}
 .vb-pb{background:rgba(68,102,238,.75);}
+
+/* variance badge: an inline marker on a claim that is NOT true of every Genesis in every
+   configuration. Two kinds are needed on this page and they are genuinely different things.
+   .reg is the CONSOLE: an NTSC machine and a PAL machine disagree about the figure. .mode is a
+   SETTING: any console can be put into it, except where the mode itself is restricted, and the
+   badge's tooltip carries that restriction. Collapsing the two would teach the wrong thing,
+   because most of what varies on this page varies by register, not by region. A claim that
+   holds everywhere carries no badge; badging everything would say nothing. */
+.vary{display:inline-block; font-family:var(--mono); font-size:.58rem; letter-spacing:.14em;
+  text-transform:uppercase; border:1px solid var(--line); color:var(--dim); border-radius:3px;
+  padding:.02rem .4rem; margin:0 .12rem; white-space:nowrap; vertical-align:.08em; cursor:help;}
+.vary.reg{border-color:var(--gold); color:var(--gold);}
+.vary.mode{border-color:var(--accent); color:#88AAEE;}
+
+/* the end-to-end walkthrough: a .teach block long enough to need internal rhythm. Steps are
+   numbered in the mono voice so the reader can see the shape of the whole thing at a glance,
+   and the payoff line is set apart at the end. */
+.walk{margin:.7rem 0 0;}
+.walk .wstep{font-family:var(--mono); font-size:.66rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--learn); margin:1.1rem 0 .2rem;}
+.walk .wstep:first-child{margin-top:.2rem;}
+.walk p{font-size:.9rem; margin:.4rem 0;}
+.walk pre{margin:.5rem 0;}
+.walk .wsee{border-top:1px dashed var(--learn); margin-top:1rem; padding-top:.7rem;}
+.walk .wsee p{font-size:.95rem;}
 </style>
 </head>
 <body>
@@ -346,6 +371,15 @@ select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel
 <a href="the-machine.html#s3">the video chip's two ports sit at fixed addresses in the 68000's
 map</a>, and that <a href="the-machine.html#s6">the VDP owns three memories of its own</a>.
 Everything else is built here.</p>
+
+<p style="color:var(--dim); font-size:.85rem;">Almost everything on this page is one chip
+behaving one way, and where it is not the claim carries a small badge. Two of them, because two
+different things vary and they are easy to confuse:
+<span class="vary reg" title="Region-dependent: an NTSC console and a PAL console disagree about this figure.">NTSC / PAL</span>
+means the console's region changes the answer, while
+<span class="vary mode" title="A display mode, chosen by a register bit rather than by which console you own. The tooltip on each badge says whether the mode itself is restricted.">V30 mode</span>
+means a display MODE changes it, chosen by a register bit rather than by which machine you own.
+The second one carries a restriction of its own, and each badge says so where it appears.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; The chip that owns its own memory</h2>
@@ -509,7 +543,8 @@ plane-drawing routine, and it is one of the clearest statements of the split any
 <span class="src">s2disasm/s2.asm:1639-1656 (the header comment above PlaneMapToVRAM_H40)</span>
 
 <p>And the encoder it documents, from the same tree's macro file. <code>vdpCommDelta</code> is
-the scatter on its own, used to step an address; <code>vdpComm</code> is the whole command:</p>
+the scatter on its own, used to step an address; <code>vdpComm</code> adds the operation code on
+top of it and hands back something you can send:</p>
 
 <pre><span class="c">; makes a VDP address difference</span>
 vdpCommDelta function addr,((addr&amp;$3FFF)&lt;&lt;16)|((addr&amp;$C000)&gt;&gt;14)
@@ -620,7 +655,7 @@ time this wiki prints the whole register table.</p>
     <table>
     <tr><th>Reg</th><th>Word</th><th>Name</th><th>Bits, D7 to D0</th><th>What it does</th></tr>
     <tr><td>0</td><td><code>$80</code></td><td>Mode set 1</td><td><code>0 0 LCB IE1 0 1 M3 0</code></td><td>LCB blanks the leftmost 8 pixels (section 10). IE1 enables the horizontal interrupt. M3 freezes the H/V counter.</td></tr>
-    <tr><td>1</td><td><code>$81</code></td><td>Mode set 2</td><td><code>VR DISP IE0 M1 M2 1 0 0</code></td><td>DISP turns the display on. IE0 enables the vertical interrupt. M1 enables DMA. M2 selects the taller 30-cell display, the one PAL consoles use. Bit 2 selects mode 5 rather than the Master System's mode 4. Sega prints bit 7 as 0 and sources disagree about what it selects.</td></tr>
+    <tr><td>1</td><td><code>$81</code></td><td>Mode set 2</td><td><code>VR DISP IE0 M1 M2 1 0 0</code></td><td>DISP turns the display on. IE0 enables the vertical interrupt. M1 enables DMA. M2 selects the taller 30-cell display, the one PAL consoles use <span class="vary mode" title="A display MODE, selected by this register bit rather than by the console. Only PAL consoles can select it.">V30 mode</span>. Bit 2 selects mode 5 rather than the Master System's mode 4. Sega prints bit 7 as 0 and sources disagree about what it selects.</td></tr>
     <tr><td>2</td><td><code>$82</code></td><td>Plane A map base</td><td><code>0 0 SA15 SA14 SA13 0 0 0</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
     <tr><td>3</td><td><code>$83</code></td><td>Window map base</td><td><code>0 0 WD15 WD14 WD13 WD12 WD11 0</code></td><td>address divided by <code>$800</code>; WD11 must be 0 in H40, so the table is <code>$1000</code>-aligned there (section 9)</td></tr>
     <tr><td>4</td><td><code>$84</code></td><td>Plane B map base</td><td><code>0 0 0 0 0 SB15 SB14 SB13</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
@@ -822,7 +857,7 @@ by 5.</p>
     for no extra bytes, which is why so much Genesis art is symmetrical: the artist got the
     right half free.</p>
     <p>Scrolling falls out of it too. Because the map is a grid of small numbers rather than a
-    bitmap, moving the whole background is not a matter of moving any pixels at all. It is a
+    bitmap, moving the background is not a matter of moving any pixels at all. It is a
     number in a scroll table, which sections 6 and 7 are about.</p>
   </div>
 </details>
@@ -966,6 +1001,148 @@ rule; it is a game exploiting the fact that IT does not need a bit the hardware 
 exactly this format, priority, palette and flip bits included. The difference is scope. On a
 plane the word describes ONE cell; on a sprite the same bits apply to the whole sprite, however
 many tiles it is built from.</p>
+
+<h3 id="onetile">One tile on the screen, start to finish</h3>
+
+<p>Everything needed for a visible result is now on the table: the two ports, both forms of the
+command word, the auto-increment, and the nametable word. So here is the round trip in one
+piece, with nothing skipped and nothing deferred. It starts from a console that has just been
+switched on and ends with a square you can photograph. Every command word is derived in the
+prose beside it, from the layouts in <a href="#ports">section 2</a>, so you can check the
+arithmetic rather than trust it.</p>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not from a shipped game</span>
+  <div class="walk">
+
+  <p class="wstep">Before the first line</p>
+  <p>Two assumptions, both of them what a real boot sequence does anyway. The console has already
+  satisfied whatever security system it has, so the video chip is unlocked. And VRAM has been
+  cleared to zero, which matters at the end: every cell this walkthrough does not write still
+  holds the word <code>$0000</code>, which names tile 0, and tile 0 is 32 bytes of zero, which
+  is 64 transparent pixels. Two address registers hold the ports, because every line below uses
+  one of them:</p>
+
+<pre>    lea     ($C00000).l,a6      <span class="c">; a6 = the data port</span>
+    lea     ($C00004).l,a5      <span class="c">; a5 = the control port</span></pre>
+
+  <p class="wstep">Step 1 &middot; eleven registers</p>
+  <p>Each of these is the register form of the command word: <code>$8000</code> plus the register
+  number shifted up eight places, plus the byte to store. Register 2 holding <code>$30</code> is
+  therefore the word <code>$8230</code>.</p>
+
+<pre>    move.w  #$8004,(a5)     <span class="c">; reg 0:  no H interrupt, left column shown</span>
+    move.w  #$8144,(a5)     <span class="c">; reg 1:  display ON, mode 5, 28-cell height</span>
+    move.w  #$8230,(a5)     <span class="c">; reg 2:  plane A map at $C000</span>
+    move.w  #$8407,(a5)     <span class="c">; reg 4:  plane B map at $E000</span>
+    move.w  #$857C,(a5)     <span class="c">; reg 5:  sprite list at $F800</span>
+    move.w  #$8700,(a5)     <span class="c">; reg 7:  backdrop = palette 0, colour 0</span>
+    move.w  #$8B00,(a5)     <span class="c">; reg 11: both axes scroll as one whole screen</span>
+    move.w  #$8C81,(a5)     <span class="c">; reg 12: H40, 320 pixels across</span>
+    move.w  #$8D2E,(a5)     <span class="c">; reg 13: horizontal scroll table at $B800</span>
+    move.w  #$8F02,(a5)     <span class="c">; reg 15: auto-increment 2</span>
+    move.w  #$9001,(a5)     <span class="c">; reg 16: both planes 64 cells wide, 32 tall</span></pre>
+
+  <p>Three of those values are arithmetic rather than flags. Register 2 wants plane A's address
+  divided by <code>$2000</code>, sitting in bits 5 to 3: <code>$C000 / $2000</code> is 6, and 6
+  shifted up three places is <code>$30</code>. Register 5 wants the sprite list divided by
+  <code>$200</code>, and <code>$F800 / $200</code> is <code>$7C</code>. Register 13 wants the
+  scroll table divided by <code>$400</code>, and <code>$B800 / $400</code> is <code>$2E</code>.
+  The rest are bits. Register 12's <code>$81</code> is the two H40 bits, which live at opposite
+  ends of the byte and have to match each other. Register 1's <code>$44</code> is the
+  display-enable bit plus the fixed bit that says mode 5 rather than the Master System's mode 4.
+  And register 15's 2 is what lets the runs of writes below carry their own addresses forward.</p>
+
+  <p class="wstep">Step 2 &middot; zero the scroll</p>
+  <p>Horizontal scroll lives in VRAM, in the table register 13 just placed, and it is already
+  zero because VRAM was cleared. Vertical scroll lives in VSRAM, which nothing cleared, so it has
+  to be written. The command is the address form carrying the VSRAM write code, <code>%000101</code>:
+  CD1 and CD0 are <code>01</code>, so the first word is those two bits over fourteen zero address
+  bits, <code>$4000</code>; CD5 to CD2 are <code>0001</code>, which sits in bits 7 to 4 of the
+  second word, making it <code>$0010</code>. Sent high half first, that is one longword.</p>
+
+<pre>    move.l  #$40000010,(a5) <span class="c">; VSRAM write, address $0000</span>
+    move.l  #0,(a6)         <span class="c">; plane A and plane B: vertical scroll 0</span></pre>
+
+  <p class="wstep">Step 3 &middot; three colours</p>
+  <p>A tile's pixels are palette indices, so nothing means anything until there are colours to
+  index. The command is the address form again, this time with the CRAM write code
+  <code>%000011</code>: CD1 and CD0 are both 1, so the first word begins <code>11</code> and
+  carries an address of zero, and every CD bit above them is zero, so the second word is zero
+  too. That is <code>$C0000000</code>.</p>
+
+<pre>    move.l  #$C0000000,(a5) <span class="c">; CRAM write, address $0000</span>
+    move.w  #$0000,(a6)     <span class="c">; colour 0: black, and this is the backdrop</span>
+    move.w  #$000E,(a6)     <span class="c">; colour 1: red</span>
+    move.w  #$0EEE,(a6)     <span class="c">; colour 2: white</span></pre>
+
+  <p>Auto-increment 2 steps exactly one colour slot per word write, so those three land in slots
+  0, 1 and 2 of palette 0 without another command. A colour word packs three 3-bit channels,
+  blue then green then red, and the colour material owns that format in full; all this needs is
+  that <code>$000E</code> is as red as the chip goes and <code>$0EEE</code> is white.</p>
+
+  <p class="wstep">Step 4 &middot; the tile's 32 bytes</p>
+  <p>Tile 1 lives at byte <code>$0020</code>, because a tile is 32 bytes and 1 times 32 is
+  <code>$20</code>. Tile 0 is deliberately left as it was. The command is the VRAM write code,
+  <code>%000001</code>: CD1 and CD0 are <code>01</code>, so the first word is <code>01</code>
+  followed by the low 14 bits of <code>$0020</code>, which is <code>$4020</code>; the top two
+  address bits are zero, so the second word is <code>$0000</code>; the longword is
+  <code>$40200000</code>. Then the pixels, four bits each, two to a byte, left-hand pixel in the
+  high nibble. This square is invented for the occasion, and the hex digits below ARE its
+  pixels:</p>
+
+<pre>    move.l  #$40200000,(a5) <span class="c">; VRAM write, address $0020</span>
+    move.l  #$22222222,(a6) <span class="c">; 2 2 2 2 2 2 2 2</span>
+    move.l  #$21111112,(a6) <span class="c">; 2 1 1 1 1 1 1 2</span>
+    move.l  #$21111112,(a6) <span class="c">; 2 1 1 1 1 1 1 2</span>
+    move.l  #$21111112,(a6) <span class="c">; 2 1 1 1 1 1 1 2</span>
+    move.l  #$21111112,(a6) <span class="c">; 2 1 1 1 1 1 1 2</span>
+    move.l  #$21111112,(a6) <span class="c">; 2 1 1 1 1 1 1 2</span>
+    move.l  #$21111112,(a6) <span class="c">; 2 1 1 1 1 1 1 2</span>
+    move.l  #$22222222,(a6) <span class="c">; 2 2 2 2 2 2 2 2</span></pre>
+
+  <p>Eight longwords is 32 bytes, one row of eight pixels per line, and a longword write to the
+  data port is exactly two word writes, so the auto-increment carries the address forward four
+  bytes at a time all the way through. Colour 2 is the white border, colour 1 is the red
+  fill.</p>
+
+  <p class="wstep">Step 5 &middot; one nametable word</p>
+  <p>Now put that tile somewhere. Plane A's map begins at <code>$C000</code> and the plane is 64
+  cells wide, and cells are stored row by row, so the cell at row 13, column 20 sits at offset
+  <code>(64 x 13 + 20) x 2</code>, which is <code>$6A8</code>, at address <code>$C6A8</code>. The
+  command is the VRAM write code again: the low 14 bits of <code>$C6A8</code> are
+  <code>$06A8</code>, so the first word is <code>$46A8</code>, and the top two address bits are
+  both 1, landing in the bottom two bits of the second word to make it <code>$0003</code>. The
+  longword is <code>$46A80003</code>. The word being stored is <code>$0001</code>: priority bit
+  clear, palette 0, neither flip set, tile index 1.</p>
+
+<pre>    move.l  #$46A80003,(a5) <span class="c">; VRAM write, address $C6A8</span>
+    move.w  #$0001,(a6)     <span class="c">; low priority, palette 0, no flips, tile 1</span></pre>
+
+  <div class="wsee">
+  <p><b>What you see.</b> A black screen, 320 pixels across, with one 8x8 square near the middle
+  of it: a red block inside a white outline, sitting perfectly still. Everything about that
+  picture is now accounted for. It is black because every other cell of both planes still names
+  tile 0, and tile 0 is transparent, so the backdrop colour shows through. The square is where it
+  is because of one number, <code>$C6A8</code>. It is red and white because of two numbers in
+  CRAM. And it stays on screen with the 68000 doing nothing at all from here on, because the VDP
+  redraws it out of its own memory, every frame, without being asked again. Change the address in
+  the command and the square moves. Leave the command alone and keep writing <code>$0001</code>,
+  and the auto-increment lays the same tile along the rest of that row.</p>
+  </div>
+
+  </div>
+</div>
+
+<p>Each step above has a section of its own. The two ports, both command-word forms and the
+auto-increment are <a href="#ports">section 2</a>. The five fields of that
+<code>$0001</code> are the section you just read, and the composer above it builds the same
+word by clicking. Where the plane maps may live, and why register 2 took <code>$30</code>
+rather than anything that looks like <code>$C000</code>, is <a href="#sizes">section 5</a>.
+The two scroll tables this example only zeroed are sections <a href="#hscroll">6</a> and
+<a href="#vscroll">7</a>. The priority bit left clear in the nametable word is
+<a href="#priority">section 8</a>. And the reason not one line above reaches for
+<code>clr</code> to zero anything is <a href="#rmw">section 3</a>.</p>
 
 <!-- ================================================================ -->
 <h2 id="sizes">5 &middot; Plane sizes: six, generated by one cap</h2>
@@ -1196,8 +1373,9 @@ once:</p>
 <p>The values live in VRAM, in a table whose base is register 13, and they are interleaved:
 plane A first, then plane B, then plane A again, for the whole length of the table. A
 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span>
-is one horizontal line of the picture, and an NTSC display draws 224 visible ones, so the three
-modes work out as:</p>
+is one horizontal line of the picture, and an NTSC display draws 224 visible ones
+<span class="vary reg" title="Region-dependent: an NTSC display shows 224 visible lines. A PAL console shows 224 as well until it is put into the taller 240-line mode, which only PAL consoles can select.">NTSC / PAL</span>,
+so the three modes work out as:</p>
 
 <div class="tbl">
 <table>
@@ -1210,7 +1388,9 @@ modes work out as:</p>
 
 <p>Register 13 only carries the top six address bits, so the table always starts on a 1KB
 boundary, and no mode ever reaches past the end of that 1KB page: the longest read is per-line
-scrolling on a 240-line display, at 960 bytes. That is where the habit of drawing the table as a
+scrolling on a 240-line display
+<span class="vary mode" title="The 240-line (V30) display mode, selected by bit M2 of register 1. Only PAL consoles can select it.">V30 mode</span>,
+at 960 bytes. That is where the habit of drawing the table as a
 flat 1KB block comes from, and Sega's own worked layout does exactly that.</p>
 
 <p>The chip reserves nothing, though. It reads what its mode tells it to read and never touches
@@ -1249,8 +1429,8 @@ plane widths in pixels are 256, 512 or 1024, and all three divide 1024, so the s
 wraps in step with the plane no matter which size you chose. Adding to the value shifts the
 plane to the RIGHT; subtracting shifts it left and wraps, so 0 minus 5 is 1019.</p>
 
-<p>Emerald Hill Zone is the whole chain in one place. First the mode, set on the frame the
-player enters the Zone:</p>
+<p>Emerald Hill Zone runs mode, buffer and transfer end to end, in three places you can read
+side by side. First the mode, set on the frame the player enters the Zone:</p>
 
 <pre>	move.w	#$8B03,(a6)		<span class="c">; EXT-INT disabled, V scroll by screen, H scroll by line</span></pre>
 <span class="src">s2disasm/s2.asm:4827</span>
@@ -1669,8 +1849,8 @@ not scroll wants:</p>
 register, and <code>$38</code> puts WD15 to WD11 in bits 5 to 1, so the base is
 <code>($38 / 2) x $800</code> = <code>$E000</code>, with WD11 clear as the 320-pixel mode set by
 <code>$8C81</code> requires. <code>$92</code> is the vertical position register, and
-<code>$80</code> is DOWN set with a split of 0: the Window occupies everything below row zero,
-which is the entire screen. Plane A is not displayed at all while that is true.</p>
+<code>$80</code> is DOWN set with a split of 0: the Window occupies everything below row zero, so
+it covers every row of the display. Plane A is not displayed at all while that is true.</p>
 
 <p>The other use is a band. The Death Egg platform at the end of Launch Base Zone act 2 copies
 rows out of the plane A nametable into the Window's table first, so the two match at the
@@ -1723,8 +1903,8 @@ zero and documents nothing; plutiedev documents what it does, so it ships here a
 plutiedev rather than as a flat fact.</p>
 
 <p>Eight pixels is a cheap price for a column that cannot show an artefact at the screen's
-edge. Note what it does not reach, though, and this is the whole reason the three are separated
-here: the Window boundary defect is not a left-edge phenomenon. It damages the two cells to the
+edge. Note what it does not reach, though, because it is why this section keeps the three
+apart: the Window boundary defect is not a left-edge phenomenon. It damages the two cells to the
 right of the Window boundary, and that boundary sits at the horizontal position register's split,
 which is at least 16 pixels in, because a split of zero means the Window occupies nothing.
 Blanking the first 8 pixels cannot touch it. Sega's remedy for that one is the high-priority mask

@@ -623,7 +623,7 @@ operand grid below carries most of the lesson.</p>
       <span class="og">(HL)</span><span class="og">(IX+d)/(IY+d)</span><span class="og only-a">(BC)/(DE)</span><span class="og only-a">(nn)</span>
     </div>
   </div>
-  <p class="og-note">The two rows look permissive, but three couplings are the whole gotcha, and the
+  <p class="og-note">The two rows look permissive, but three couplings are where it bites, and the
   dashed "A only" chips mark two of them. The crossed <code>n</code> on the destination row is the small
   one: you cannot write into an immediate,
   because a constant is not a place. The three real refusals: <code>ld (hl),(hl)</code> does not exist
@@ -979,7 +979,7 @@ covers both, and one honest contrast with the 68000 that a reader from that trac
   it and loops (see <a href="bits-flow-blocks.html#djnz">DJNZ</a> on the sibling page). The trouble is that
   <code>zFMUpdateTrack</code> uses <code>BC</code> for its own purposes, so without protection the counter
   would be destroyed mid-loop. Bracketing the call with <code>push bc</code> and <code>pop bc</code> keeps
-  the count intact for <code>djnz</code>. This is the single most common reason driver code pushes anything.</p>
+  the count intact for <code>djnz</code>. More driver pushes exist for this reason than for any other.</p>
 
   <div class="gotcha"><span class="g-tag">Gotcha &middot; POP AF rewrites your flags</span><p>
   <code>AF</code>'s low byte is the flag register, so <code>pop af</code> loads whatever 8 bits sit on the
@@ -1380,7 +1380,7 @@ and skip the carry flag, get their own.</p>
 
   <h4 class="member">CP &middot; compare is subtract-and-discard</h4>
   <p><code>CP s</code> computes <code>A - s</code>, sets every flag exactly as <code>SUB</code> would, and
-  then throws the difference away, leaving <code>A</code> untouched. That is the entire trick: you learn how
+  then throws the difference away, leaving <code>A</code> untouched. That is what makes it useful: you learn how
   <code>A</code> relates to a value (equal, above, below) without spending <code>A</code> to find out. It
   never travels alone. A compare exists to be read by the branch on the very next line, so always show the
   two together:</p>
@@ -1544,7 +1544,7 @@ are the source of a classic bug.</p>
   <div class="cost"><span class="cchip">ADD HL 11 T &middot; ADC/SBC HL 15 T</span>
     <span class="cctx">ss = BC/DE/HL/SP</span>
     <span class="cnote"><code>ADD IX,pp</code> and <code>ADD IY,rr</code> are 15 (the index prefix). No
-    additive mode price; these are the whole numbers.</span>
+    additive mode price; each form carries its own flat figure.</span>
   </div>
 
   <div class="opgrid">
@@ -1884,7 +1884,7 @@ Each idiom is a real instruction doing a job its plain name does not advertise.<
 
   <div class="cost"><span class="cchip">4 T-states</span>
     <span class="cctx">the only form; 1 byte, no operand</span>
-    <span class="cnote">CPL takes no operand and has one form, so this number is the whole cost.</span>
+    <span class="cnote">Nothing to add on: <code>CPL</code> has no operand and no second form.</span>
   </div>
 
   <div class="og-note" style="margin-top:.6rem;">No operand grid: <code>CPL</code> is implicitly on
@@ -1941,7 +1941,7 @@ turns up exactly once in the whole Sonic 2 driver, and that one use is worth the
 
   <div class="cost"><span class="cchip">4 T-states</span>
     <span class="cctx">the only form; 1 byte, no operand</span>
-    <span class="cnote">One form, this is the whole cost.</span>
+    <span class="cnote">One form, one figure.</span>
   </div>
 
   <div class="og-note" style="margin-top:.6rem;">No operand grid: <code>DAA</code> works implicitly on
@@ -2022,7 +2022,8 @@ turns up exactly once in the whole Sonic 2 driver, and that one use is worth the
 
   <div class="cost"><span class="cchip">8 T-states</span>
     <span class="cctx">the only form; 2 bytes (ED-prefixed), no operand</span>
-    <span class="cnote">One form, this is the whole cost.</span>
+    <span class="cnote">The two bytes are the <code>ED</code> prefix plus the opcode; there is no shorter
+    encoding.</span>
   </div>
 
   <div class="og-note" style="margin-top:.6rem;">No operand grid: <code>NEG</code> negates <code>A</code>
@@ -2073,7 +2074,7 @@ turns up exactly once in the whole Sonic 2 driver, and that one use is worth the
 
   <div class="cost"><span class="cchip">4 T-states</span>
     <span class="cctx">both; 1 byte each, no operand</span>
-    <span class="cnote">One form each, this is the whole cost.</span>
+    <span class="cnote">Neither has a variant, so neither has a variant's price.</span>
   </div>
 
   <div class="og-note" style="margin-top:.6rem;">No operand grid: both act on the carry flag alone and take
@@ -2135,7 +2136,7 @@ turns up exactly once in the whole Sonic 2 driver, and that one use is worth the
 
   <p>Each <code>add a,a</code> doubles <code>A</code> and pushes its top bit out into the carry, so after two
   of them the carry holds bit 6 of the original byte. The code wants the opposite of that bit, and
-  <code>ccf</code> is the whole answer: one instruction, no branch, no spare register. Its consumer is the
+  <code>ccf</code> gets it in one instruction, with no branch and no spare register. Its consumer is the
   very next line. <code>sbc a,a</code> subtracts <code>A</code> from itself along with the carry, which
   leaves <code>$00</code> when the carry was clear and <code>$FF</code> when it was set, smearing the flipped
   bit across a whole byte; the store then keeps that byte as the driver's PAL flag. Two instructions turn one

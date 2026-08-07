@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empyrean: Glossary</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🔤%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+
+/* ============================================================
+   Page-specific styles: the glossary
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE)
+   ============================================================ */
+
+/* filter bar. Sticky because the list is long enough that a reader who has scrolled
+   past the header still wants to narrow it without scrolling back. */
+.gfilter{position:sticky; top:0; z-index:5; background:var(--ground);
+  border-bottom:1px solid var(--line); padding:.7rem 0 .6rem; margin:0 0 .4rem;}
+.gfilter label{display:block; font-family:var(--mono); font-size:.68rem;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--dim); margin:0 0 .35rem;}
+.gf-row{display:flex; flex-wrap:wrap; align-items:center; gap:.6rem;}
+.gfilter input{font-family:var(--mono); font-size:.85rem; background:var(--panel);
+  color:var(--ink); border:1px solid var(--line); border-radius:4px; padding:.45rem .75rem;
+  flex:1 1 16rem; min-width:0; max-width:26rem;}
+.gfilter input::placeholder{color:var(--dim);}
+.gfilter input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;
+  border-color:var(--accent);}
+.g-count{font-family:var(--mono); font-size:.7rem; color:var(--dim); margin:0;}
+.g-nojs{font-size:.8rem; color:var(--dim); margin:.4rem 0 0;}
+.s-hide{display:none !important;}
+
+/* the A-Z strip: nav.toc chips, one per letter that actually has terms */
+nav.toc.az{gap:.3rem;}
+nav.toc.az a{min-width:1.6rem; text-align:center; padding:.18rem .4rem;}
+nav.toc.az a.az-off{opacity:.3;}
+
+/* entries */
+.gg{margin:0;}
+h2.gl-h{font-size:.95rem; margin:2rem 0 .3rem; border-bottom:1px solid var(--line);
+  padding-bottom:.25rem;}
+dl.glist{margin:0;}
+.gt{padding:.7rem 0; border-bottom:1px solid var(--panel);}
+.gt-n{font-family:var(--mono); font-size:.95rem; color:var(--ink); letter-spacing:.02em;}
+/* the dd keeps prose flush with the term rather than taking the browser's 40px indent,
+   which on a phone is reading width spent on nothing. */
+.gt-d{margin:.2rem 0 0; margin-inline-start:0; max-width:42rem; font-size:.93rem;
+  color:var(--ink);}
+.gt-go{display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:.5rem;
+  margin:.35rem 0 0; font-family:var(--mono); font-size:.7rem; letter-spacing:.06em;
+  color:var(--accent); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.2rem .55rem;}
+.gt-go:hover,.gt-go:focus-visible{border-color:var(--accent); outline:none;
+  color:var(--ink);}
+.gt-go .gt-sec{color:var(--dim); text-transform:none;}
+.gt-no{display:inline-block; margin:.35rem 0 0; font-family:var(--mono);
+  font-size:.7rem; letter-spacing:.06em; color:var(--dim);}
+.g-none{color:var(--gold); font-family:var(--mono); font-size:.8rem; margin:1.5rem 0;}
+.g-top{margin:2.5rem 0 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="index.html">EMPYREAN</a> / GLOSSARY</p>
+  <p class="eyebrow">The Empyrean Wiki</p>
+  <h1>Glossary</h1>
+  <p class="sub">The 82 terms this wiki defines, in one searchable list, each carrying the same
+  wording the pages' own tooltips are copied from and, where a page teaches the term, a link there.</p>
+  <nav class="toc az" aria-label="Jump to a letter">
+    <a href="#letter-sym" data-letter="#">#</a>
+    <a href="#letter-a" data-letter="A">A</a>
+    <a href="#letter-b" data-letter="B">B</a>
+    <a href="#letter-c" data-letter="C">C</a>
+    <a href="#letter-d" data-letter="D">D</a>
+    <a href="#letter-e" data-letter="E">E</a>
+    <a href="#letter-f" data-letter="F">F</a>
+    <a href="#letter-h" data-letter="H">H</a>
+    <a href="#letter-i" data-letter="I">I</a>
+    <a href="#letter-j" data-letter="J">J</a>
+    <a href="#letter-m" data-letter="M">M</a>
+    <a href="#letter-n" data-letter="N">N</a>
+    <a href="#letter-o" data-letter="O">O</a>
+    <a href="#letter-p" data-letter="P">P</a>
+    <a href="#letter-r" data-letter="R">R</a>
+    <a href="#letter-s" data-letter="S">S</a>
+    <a href="#letter-t" data-letter="T">T</a>
+    <a href="#letter-u" data-letter="U">U</a>
+    <a href="#letter-v" data-letter="V">V</a>
+    <a href="#letter-w" data-letter="W">W</a>
+    <a href="#letter-y" data-letter="Y">Y</a>
+    <a href="#letter-z" data-letter="Z">Z</a>
+  </nav>
+</header>
+
+<div class="gfilter">
+  <label for="gq">Filter the glossary</label>
+  <div class="gf-row">
+    <input type="search" id="gq" placeholder="Try: plane, carry, the VDP copies data by itself"
+      autocomplete="off" aria-describedby="gcount">
+    <p class="g-count" id="gcount" role="status" aria-live="polite">82 terms</p>
+  </div>
+  <noscript><p class="g-nojs">Filtering needs JavaScript. The whole list is below either
+  way, in alphabetical order.</p></noscript>
+</div>
+
+<p>Typing matches the term <em>and</em> its definition, so a half-remembered phrase finds the word:
+searching <code>copies data by itself</code> lands on DMA. Every entry has a stable anchor, so
+<code>glossary.html#vdp</code> links straight to a definition from anywhere.</p>
+
+<p>81 of the 82 terms link to the page that owns them. The remaining one is defined here and nowhere else, because the page that will teach it is not written yet; it says so under its definition rather than sending you somewhere that only mentions the word in passing.</p>
+
+<p class="g-none s-hide" id="gnone" hidden>Nothing matches that. Try a shorter word, or a word from
+the definition rather than the name.</p>
+
+<!-- The entries below are a mechanical copy of glossary.json, which is the wiki's source of
+     truth for definitions: term text, definition wording and ordering all come from that file,
+     and lint_wiki.py holds every page tooltip to the same wording. Change a definition in
+     glossary.json and regenerate this list; never edit one here. -->
+<section class="gg" id="letter-sym" data-letter="#">
+<h2 class="gl-h">Symbols &amp; numbers</h2>
+<dl class="glist">
+<div class="gt" id="emp">
+<dt class="gt-n">.emp</dt>
+<dd class="gt-d"><span class="gt-def">The source language of the Aeon engine: classic 68000 and Z80 instructions wrapped in a checked structure of modules, procedures and contracts, assembled by Sigil.</span>
+<a class="gt-go" href="emp/reading-emp.html#s1">Reading .emp<span class="gt-sec">1 &middot; What .emp is</span></a>
+</dd>
+</div>
+<div class="gt" id="68000">
+<dt class="gt-n">68000</dt>
+<dd class="gt-d"><span class="gt-def">The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. Game logic runs here.</span>
+<a class="gt-go" href="genesis/the-machine.html#s1">Genesis: The Machine<span class="gt-sec">1 &middot; One machine, five parts</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-a" data-letter="A">
+<h2 class="gl-h">A</h2>
+<dl class="glist">
+<div class="gt" id="accumulator">
+<dt class="gt-n">accumulator</dt>
+<dd class="gt-d"><span class="gt-def">The special register (A on the Z80) that most 8-bit arithmetic and logic operations read from and write their result back to.</span>
+<a class="gt-go" href="z80/programming-model.html#s2">Z80: The Programming Model<span class="gt-sec">2 &middot; The accumulator and the 8-bit registers</span></a>
+</dd>
+</div>
+<div class="gt" id="ascii">
+<dt class="gt-n">ASCII</dt>
+<dd class="gt-d"><span class="gt-def">A widely used table that gives each letter, digit, and symbol a number, so text can be stored as bytes.</span>
+<a class="gt-go" href="basics/numbers-and-notation.html#s8">Numbers &amp; Notation<span class="gt-sec">8 &middot; Letters are numbers too</span></a>
+</dd>
+</div>
+<div class="gt" id="auto-increment">
+<dt class="gt-n">auto-increment</dt>
+<dd class="gt-d"><span class="gt-def">A VDP register holding a step that is added to the video memory address after every access, so a run of writes lands in consecutive places.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#ports">Genesis: The VDP &amp; Planes<span class="gt-sec">2 &middot; Two ports and one command word</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-b" data-letter="B">
+<h2 class="gl-h">B</h2>
+<dl class="glist">
+<div class="gt" id="backdrop">
+<dt class="gt-n">backdrop</dt>
+<dd class="gt-d"><span class="gt-def">The color the VDP shows wherever no plane or sprite pixel is drawn. One register picks it from any of the 64 color slots.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#priority">Genesis: The VDP &amp; Planes<span class="gt-sec">8 &middot; Priority: one bit, seven layers</span></a>
+</dd>
+</div>
+<div class="gt" id="binary">
+<dt class="gt-n">binary</dt>
+<dd class="gt-d"><span class="gt-def">Counting with only two digits, 0 and 1, the way digital hardware stores every value.</span>
+<a class="gt-go" href="basics/numbers-and-notation.html#s2">Numbers &amp; Notation<span class="gt-sec">2 &middot; Binary</span></a>
+</dd>
+</div>
+<div class="gt" id="bit">
+<dt class="gt-n">bit</dt>
+<dd class="gt-d"><span class="gt-def">The smallest piece of information: one of two values, usually written 0 or 1.</span>
+<a class="gt-go" href="basics/numbers-and-notation.html#s1">Numbers &amp; Notation<span class="gt-sec">1 &middot; Bits, bytes, nibbles</span></a>
+</dd>
+</div>
+<div class="gt" id="block-instruction">
+<dt class="gt-n">block instruction</dt>
+<dd class="gt-d"><span class="gt-def">A Z80 instruction that copies or compares a run of bytes in one step, walking the pointer registers HL and DE and counting BC down; the repeating forms (ending in R, like LDIR) re-run themselves until the count reaches zero.</span>
+<a class="gt-go" href="z80/bits-flow-blocks.html#s7">Z80: Bits, Flow &amp; Blocks<span class="gt-sec">7 &middot; Block instructions</span></a>
+</dd>
+</div>
+<div class="gt" id="branch">
+<dt class="gt-n">branch</dt>
+<dd class="gt-d"><span class="gt-def">An instruction that changes which instruction runs next, either always or only when a condition is true. A branch reaches its target by counting bytes forward or backward from itself.</span>
+<a class="gt-go" href="m68k/flow.html#s3">68000: Flow<span class="gt-sec">3 &middot; Conditions: what a branch actually tests</span></a>
+</dd>
+</div>
+<div class="gt" id="build-shape">
+<dt class="gt-n">build shape</dt>
+<dd class="gt-d"><span class="gt-def">One of the several ROMs a single .emp source can produce, such as a plain release build or a debug build, chosen by build-time settings so each ROM carries only the code its shape asks for.</span>
+<a class="gt-go" href="emp/reading-emp.html#s6">Reading .emp<span class="gt-sec">6 &middot; One source, several ROMs</span></a>
+</dd>
+</div>
+<div class="gt" id="bus">
+<dt class="gt-n">bus</dt>
+<dd class="gt-d"><span class="gt-def">The shared set of wires carrying addresses and data between chips. Only one device can use a bus at a time, so anything else that wants it waits.</span>
+<a class="gt-go" href="genesis/the-machine.html#s1">Genesis: The Machine<span class="gt-sec">1 &middot; One machine, five parts</span></a>
+</dd>
+</div>
+<div class="gt" id="bus-arbiter">
+<dt class="gt-n">bus arbiter</dt>
+<dd class="gt-d"><span class="gt-def">The chip that decides which processor gets a shared bus, and stalls the other one until the bus is free.</span>
+<a class="gt-go" href="genesis/the-machine.html#s5">Genesis: The Machine<span class="gt-sec">5 &middot; Two processors, two worlds</span></a>
+</dd>
+</div>
+<div class="gt" id="byte">
+<dt class="gt-n">byte</dt>
+<dd class="gt-d"><span class="gt-def">Eight bits: one unit of memory, holding a value from 0 to 255.</span>
+<a class="gt-go" href="basics/numbers-and-notation.html#s1">Numbers &amp; Notation<span class="gt-sec">1 &middot; Bits, bytes, nibbles</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-c" data-letter="C">
+<h2 class="gl-h">C</h2>
+<dl class="glist">
+<div class="gt" id="comptime">
+<dt class="gt-n">comptime</dt>
+<dd class="gt-d"><span class="gt-def">Work the assembler does while building, before the ROM exists: values computed, code selected or generated, and checks run, none of which costs any bytes or cycles at run time.</span>
+<a class="gt-go" href="emp/reading-emp.html#s6">Reading .emp<span class="gt-sec">6 &middot; One source, several ROMs</span></a>
+</dd>
+</div>
+<div class="gt" id="condition-code">
+<dt class="gt-n">condition code</dt>
+<dd class="gt-d"><span class="gt-def">One of the bits the processor sets to describe the last result, such as whether it was zero or negative. A conditional instruction reads these bits rather than looking at the values themselves.</span>
+<a class="gt-go" href="m68k/programming-model.html#s2">68000: The Programming Model<span class="gt-sec">2 &middot; The status register and condition codes</span></a>
+</dd>
+</div>
+<div class="gt" id="contract">
+<dt class="gt-n">contract</dt>
+<dd class="gt-d"><span class="gt-def">A machine-checked promise a procedure makes about the registers it changes, preserves and returns, and the conditions it needs. The assembler reads the body and holds the header to it, at warning tier or, for the provable clauses, at error tier.</span>
+<a class="gt-go" href="emp/contracts.html#s1">.emp: Contracts<span class="gt-sec">1 &middot; The problem contracts solve</span></a>
+</dd>
+</div>
+<div class="gt" id="cram">
+<dt class="gt-n">CRAM</dt>
+<dd class="gt-d"><span class="gt-def">Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.</span>
+<a class="gt-go" href="genesis/the-machine.html#s6">Genesis: The Machine<span class="gt-sec">6 &middot; The VDP and its three memories</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-d" data-letter="D">
+<h2 class="gl-h">D</h2>
+<dl class="glist">
+<div class="gt" id="dac">
+<dt class="gt-n">DAC</dt>
+<dd class="gt-d"><span class="gt-def">The raw-sample channel on the FM chip: it plays recorded audio (like drums) one byte at a time, in place of FM channel six.</span>
+<a class="gt-go" href="genesis/the-machine.html#s1">Genesis: The Machine<span class="gt-sec">1 &middot; One machine, five parts</span></a>
+</dd>
+</div>
+<div class="gt" id="dispatch">
+<dt class="gt-n">dispatch</dt>
+<dd class="gt-d"><span class="gt-def">Choosing which routine to run by looking its address up at run time instead of naming it in the instruction.</span>
+<a class="gt-go" href="m68k/flow.html#s4">68000: Flow<span class="gt-sec">4 &middot; Dispatch: calling something computed</span></a>
+</dd>
+</div>
+<div class="gt" id="dma">
+<dt class="gt-n">DMA</dt>
+<dd class="gt-d"><span class="gt-def">Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.</span>
+<a class="gt-go" href="genesis/the-machine.html#s6">Genesis: The Machine<span class="gt-sec">6 &middot; The VDP and its three memories</span></a>
+</dd>
+</div>
+<div class="gt" id="dtack">
+<dt class="gt-n">DTACK</dt>
+<dd class="gt-d"><span class="gt-def">The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.</span>
+<a class="gt-go" href="genesis/the-machine.html#s3">Genesis: The Machine<span class="gt-sec">3 &middot; The 68000's map of the world</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-e" data-letter="E">
+<h2 class="gl-h">E</h2>
+<dl class="glist">
+<div class="gt" id="exception">
+<dt class="gt-n">exception</dt>
+<dd class="gt-d"><span class="gt-def">A forced detour: the CPU stops what it is doing, looks up an address in the vector table, and jumps there. Caused by hardware (an interrupt) or by the program itself (a trap, a bad instruction, a bad address).</span>
+<a class="gt-go" href="m68k/programming-model.html#s6">68000: The Programming Model<span class="gt-sec">6 &middot; Exceptions and when the PC goes wrong</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-f" data-letter="F">
+<h2 class="gl-h">F</h2>
+<dl class="glist">
+<div class="gt" id="flag">
+<dt class="gt-n">flag</dt>
+<dd class="gt-d"><span class="gt-def">One bit in the flag register recording a fact about the last result, such as whether it came out zero, negative, or carried past the end of the byte. A conditional instruction reads a flag rather than looking at the value itself.</span>
+<a class="gt-go" href="z80/programming-model.html#s4">Z80: The Programming Model<span class="gt-sec">4 &middot; Flags and the AF save pair</span></a>
+</dd>
+</div>
+<div class="gt" id="flag-register">
+<dt class="gt-n">flag register</dt>
+<dd class="gt-d"><span class="gt-def">A register whose individual bits each record a fact about the last result, such as whether it was zero or negative, so a later instruction can branch on it.</span>
+<a class="gt-go" href="z80/programming-model.html#s4">Z80: The Programming Model<span class="gt-sec">4 &middot; Flags and the AF save pair</span></a>
+</dd>
+</div>
+<div class="gt" id="frame-pointer">
+<dt class="gt-n">frame pointer</dt>
+<dd class="gt-d"><span class="gt-def">An address register left pointing at a stack frame, so the routine can find its temporary values at fixed offsets even as the stack pointer moves.</span>
+<a class="gt-go" href="m68k/system.html#link">68000: System<span class="gt-sec">LINK and UNLK</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-h" data-letter="H">
+<h2 class="gl-h">H</h2>
+<dl class="glist">
+<div class="gt" id="half-carry">
+<dt class="gt-n">half-carry</dt>
+<dd class="gt-d"><span class="gt-def">A flag set when an add or subtract carries between bit 3 and bit 4 of a byte; the Z80 uses it to fix up binary-coded-decimal arithmetic.</span>
+<a class="gt-go" href="z80/programming-model.html#s4">Z80: The Programming Model<span class="gt-sec">4 &middot; Flags and the AF save pair</span></a>
+</dd>
+</div>
+<div class="gt" id="hblank">
+<dt class="gt-n">HBlank</dt>
+<dd class="gt-d"><span class="gt-def">The tiny gap at the end of each scanline. An interrupt can run here for per-line tricks like bending the background mid-screen.</span>
+<a class="gt-go" href="aeon/section-02-vdp-frame.html#s9">Aeon: The VDP &amp; the Frame<span class="gt-sec">9 &middot; The HBlank seam</span></a>
+</dd>
+</div>
+<div class="gt" id="hexadecimal">
+<dt class="gt-n">hexadecimal</dt>
+<dd class="gt-d"><span class="gt-def">Counting in base 16, digits 0 to 9 then A to F. One hex digit is exactly four bits, so a byte is two hex digits.</span>
+<a class="gt-go" href="basics/numbers-and-notation.html#s3">Numbers &amp; Notation<span class="gt-sec">3 &middot; Hexadecimal</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-i" data-letter="I">
+<h2 class="gl-h">I</h2>
+<dl class="glist">
+<div class="gt" id="immediate-value">
+<dt class="gt-n">immediate value</dt>
+<dd class="gt-d"><span class="gt-def">A constant written directly inside the instruction itself, rather than fetched from a register or memory. On the Z80 it is written as a plain number, like the 5 in ld a, 5.</span>
+<a class="gt-go" href="z80/loads-and-arithmetic.html#s1">Z80: Loads &amp; Arithmetic<span class="gt-sec">1 &middot; How to read a Z80 instruction</span></a>
+</dd>
+</div>
+<div class="gt" id="index-register">
+<dt class="gt-n">index register</dt>
+<dd class="gt-d"><span class="gt-def">A 16-bit register (IX or IY on the Z80) that holds a base address, so an instruction can reach memory at that address plus a small signed offset.</span>
+<a class="gt-go" href="z80/programming-model.html#s5">Z80: The Programming Model<span class="gt-sec">5 &middot; Index registers</span></a>
+</dd>
+</div>
+<div class="gt" id="interrupt">
+<dt class="gt-n">interrupt</dt>
+<dd class="gt-d"><span class="gt-def">A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.</span>
+<a class="gt-go" href="m68k/programming-model.html#s6">68000: The Programming Model<span class="gt-sec">6 &middot; Exceptions and when the PC goes wrong</span></a>
+</dd>
+</div>
+<div class="gt" id="interrupt-mask">
+<dt class="gt-n">interrupt mask</dt>
+<dd class="gt-d"><span class="gt-def">Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 0 permits everything and a mask of 7 blocks every ordinary interrupt; level 7 is non-maskable and can still get through.</span>
+<a class="gt-go" href="m68k/programming-model.html#s2">68000: The Programming Model<span class="gt-sec">2 &middot; The status register and condition codes</span></a>
+</dd>
+</div>
+<div class="gt" id="interrupt-mode">
+<dt class="gt-n">interrupt mode</dt>
+<dd class="gt-d"><span class="gt-def">One of three ways the Z80 can be set to respond to a maskable interrupt, chosen with IM 0, IM 1, or IM 2. The Genesis uses IM 1, where an interrupt always jumps to the fixed address $0038.</span>
+<a class="gt-go" href="z80/bits-flow-blocks.html#s6">Z80: Bits, Flow &amp; Blocks<span class="gt-sec">6 &middot; Waiting and interrupts</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-j" data-letter="J">
+<h2 class="gl-h">J</h2>
+<dl class="glist">
+<div class="gt" id="jump-table">
+<dt class="gt-n">jump table</dt>
+<dd class="gt-d"><span class="gt-def">A list of addresses held in memory, one per case, that code indexes into so it can jump to the entry matching a value it is holding.</span>
+<a class="gt-go" href="m68k/flow.html#s4">68000: Flow<span class="gt-sec">4 &middot; Dispatch: calling something computed</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-m" data-letter="M">
+<h2 class="gl-h">M</h2>
+<dl class="glist">
+<div class="gt" id="master-clock">
+<dt class="gt-n">master clock</dt>
+<dd class="gt-d"><span class="gt-def">The single oscillator every other clock in the console is divided down from, which is why all the parts stay in step with each other.</span>
+<a class="gt-go" href="genesis/the-machine.html#s2">Genesis: The Machine<span class="gt-sec">2 &middot; One crystal, every clock</span></a>
+</dd>
+</div>
+<div class="gt" id="memory-map">
+<dt class="gt-n">memory map</dt>
+<dd class="gt-d"><span class="gt-def">The list of what answers at each address. One address bus reaches ROM, RAM, the video chip and the controller ports, and the map says which is which.</span>
+<a class="gt-go" href="genesis/the-machine.html#s3">Genesis: The Machine<span class="gt-sec">3 &middot; The 68000's map of the world</span></a>
+</dd>
+</div>
+<div class="gt" id="mirror">
+<dt class="gt-n">mirror</dt>
+<dd class="gt-d"><span class="gt-def">An address range that answers as a copy of another one, because the hardware decodes only some of the address lines.</span>
+<a class="gt-go" href="genesis/the-machine.html#s3">Genesis: The Machine<span class="gt-sec">3 &middot; The 68000's map of the world</span></a>
+</dd>
+</div>
+<div class="gt" id="module">
+<dt class="gt-n">module</dt>
+<dd class="gt-d"><span class="gt-def">One .emp file, and the unit the language scopes names in: everything it declares is private to it unless marked public, and it names which section of the ROM its code belongs to.</span>
+<a class="gt-go" href="emp/reading-emp.html#s2">Reading .emp<span class="gt-sec">2 &middot; A real file, top to bottom</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-n" data-letter="N">
+<h2 class="gl-h">N</h2>
+<dl class="glist">
+<div class="gt" id="nametable">
+<dt class="gt-n">nametable</dt>
+<dd class="gt-d"><span class="gt-def">A grid map in VRAM saying which tile to draw in each 8x8 cell of a plane, plus that cell's palette, flip and priority bits.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#nametable">Genesis: The VDP &amp; Planes<span class="gt-sec">4 &middot; A plane is a grid of words</span></a>
+</dd>
+</div>
+<div class="gt" id="nibble">
+<dt class="gt-n">nibble</dt>
+<dd class="gt-d"><span class="gt-def">Four bits, half a byte: exactly one hexadecimal digit, with 16 possible values.</span>
+<a class="gt-go" href="basics/numbers-and-notation.html#s1">Numbers &amp; Notation<span class="gt-sec">1 &middot; Bits, bytes, nibbles</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-o" data-letter="O">
+<h2 class="gl-h">O</h2>
+<dl class="glist">
+<div class="gt" id="opcode">
+<dt class="gt-n">opcode</dt>
+<dd class="gt-d"><span class="gt-def">The byte or bytes that name one instruction to the CPU. It is what the assembler turns a line of your source into, and what the processor fetches and executes.</span>
+<span class="gt-no">No page teaches this one yet</span>
+</dd>
+</div>
+<div class="gt" id="open-bus">
+<dt class="gt-n">open bus</dt>
+<dd class="gt-d"><span class="gt-def">What you read from an address nothing is wired to. On a Genesis it is the top byte of the instruction the 68000 was about to fetch, with a zero byte under it. Not an error, which is exactly the problem.</span>
+<a class="gt-go" href="genesis/the-machine.html#s3">Genesis: The Machine<span class="gt-sec">3 &middot; The 68000's map of the world</span></a>
+</dd>
+</div>
+<div class="gt" id="operand">
+<dt class="gt-n">operand</dt>
+<dd class="gt-d"><span class="gt-def">The value an instruction works on. Most 68000 instructions take a source operand (read from) and a destination operand (written to); an addressing mode is how each one says where its value lives.</span>
+<a class="gt-go" href="m68k/addressing-modes.html#s1">68000: Addressing Modes<span class="gt-sec">1 &middot; How an instruction names its operand</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-p" data-letter="P">
+<h2 class="gl-h">P</h2>
+<dl class="glist">
+<div class="gt" id="palette">
+<dt class="gt-n">palette</dt>
+<dd class="gt-d"><span class="gt-def">A set of 16 colors in CRAM. Every tile and sprite picks one of the four palettes.</span>
+<a class="gt-go" href="aeon/section-02-vdp-frame.html#s1">Aeon: The VDP &amp; the Frame<span class="gt-sec">1 &middot; What the VDP draws with</span></a>
+</dd>
+</div>
+<div class="gt" id="plane">
+<dt class="gt-n">plane</dt>
+<dd class="gt-d"><span class="gt-def">One of the scrolling tile layers the VDP draws. A plane is a grid of cells, and each cell names the tile to draw there.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#nametable">Genesis: The VDP &amp; Planes<span class="gt-sec">4 &middot; A plane is a grid of words</span></a>
+</dd>
+</div>
+<div class="gt" id="priority">
+<dt class="gt-n">priority</dt>
+<dd class="gt-d"><span class="gt-def">One bit on a nametable cell or a sprite choosing which of two draw layers it belongs to. It is not a depth value, and two cells of the same plane can differ.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#priority">Genesis: The VDP &amp; Planes<span class="gt-sec">8 &middot; Priority: one bit, seven layers</span></a>
+</dd>
+</div>
+<div class="gt" id="privileged-instruction">
+<dt class="gt-n">privileged instruction</dt>
+<dd class="gt-d"><span class="gt-def">An instruction the 68000 will only execute in supervisor mode. Attempting one in user mode raises an exception instead. STOP, RESET, MOVE to SR and MOVE USP are all privileged.</span>
+<a class="gt-go" href="m68k/programming-model.html#s2">68000: The Programming Model<span class="gt-sec">2 &middot; The status register and condition codes</span></a>
+</dd>
+</div>
+<div class="gt" id="program-counter">
+<dt class="gt-n">program counter</dt>
+<dd class="gt-d"><span class="gt-def">The 16-bit register on the Z80 that holds the address of the next instruction to fetch; it advances past each instruction as that instruction runs, and jumps, calls and returns redirect it.</span>
+<a class="gt-go" href="m68k/programming-model.html#s3">68000: The Programming Model<span class="gt-sec">3 &middot; The program counter and labels</span></a>
+</dd>
+</div>
+<div class="gt" id="psg">
+<dt class="gt-n">PSG</dt>
+<dd class="gt-d"><span class="gt-def">The Programmable Sound Generator: a simple chip with three square-wave tone channels and one noise channel.</span>
+<a class="gt-go" href="genesis/the-machine.html#s1">Genesis: The Machine<span class="gt-sec">1 &middot; One machine, five parts</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-r" data-letter="R">
+<h2 class="gl-h">R</h2>
+<dl class="glist">
+<div class="gt" id="read-modify-write">
+<dt class="gt-n">read-modify-write</dt>
+<dd class="gt-d"><span class="gt-def">A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#rmw">Genesis: The VDP &amp; Planes<span class="gt-sec">3 &middot; The hazard: instructions that read before they write</span></a>
+</dd>
+</div>
+<div class="gt" id="register">
+<dt class="gt-n">register</dt>
+<dd class="gt-d"><span class="gt-def">A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.</span>
+<a class="gt-go" href="m68k/programming-model.html#s1">68000: The Programming Model<span class="gt-sec">1 &middot; The register file</span></a>
+</dd>
+</div>
+<div class="gt" id="register-z80">
+<dt class="gt-n">register (Z80)</dt>
+<dd class="gt-d"><span class="gt-def">A small storage slot inside a chip. CPU registers (on the Z80: A, B, C, D, E, H, L, F, and the 16-bit IX, IY, SP, PC) hold the values being worked on; VDP registers configure how the video chip behaves.</span>
+<a class="gt-go" href="z80/programming-model.html#s1">Z80: The Programming Model<span class="gt-sec">1 &middot; The Z80 at a glance</span></a>
+</dd>
+</div>
+<div class="gt" id="register-pair">
+<dt class="gt-n">register pair</dt>
+<dd class="gt-d"><span class="gt-def">Two 8-bit registers treated together as one 16-bit register, like B and C forming BC.</span>
+<a class="gt-go" href="z80/programming-model.html#s3">Z80: The Programming Model<span class="gt-sec">3 &middot; Fixed register pairs and pointers</span></a>
+</dd>
+</div>
+<div class="gt" id="registers-z80">
+<dt class="gt-n">registers (Z80)</dt>
+<dd class="gt-d"><span class="gt-def">A small storage slot inside a chip. CPU registers (on the Z80: A, B, C, D, E, H, L, F, and the 16-bit IX, IY, SP, PC) hold the values being worked on; VDP registers configure how the video chip behaves.</span>
+<a class="gt-go" href="z80/programming-model.html#s1">Z80: The Programming Model<span class="gt-sec">1 &middot; The Z80 at a glance</span></a>
+</dd>
+</div>
+<div class="gt" id="return-address">
+<dt class="gt-n">return address</dt>
+<dd class="gt-d"><span class="gt-def">The address of the instruction that should run next once a called routine has finished. A call writes it onto the stack and the return instruction reads it back.</span>
+<a class="gt-go" href="m68k/flow.html#s1">68000: Flow<span class="gt-sec">1 &middot; Returning, the dumb version</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-s" data-letter="S">
+<h2 class="gl-h">S</h2>
+<dl class="glist">
+<div class="gt" id="sat">
+<dt class="gt-n">SAT</dt>
+<dd class="gt-d"><span class="gt-def">The Sprite Attribute Table: the list in VRAM describing every sprite's position, size, tiles and drawing order.</span>
+<a class="gt-go" href="aeon/section-02-vdp-frame.html#s1">Aeon: The VDP &amp; the Frame<span class="gt-sec">1 &middot; What the VDP draws with</span></a>
+</dd>
+</div>
+<div class="gt" id="scanline">
+<dt class="gt-n">scanline</dt>
+<dd class="gt-d"><span class="gt-def">One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.</span>
+<a class="gt-go" href="genesis/the-machine.html#s7">Genesis: The Machine<span class="gt-sec">7 &middot; A tour of one frame</span></a>
+</dd>
+</div>
+<div class="gt" id="shadow-register-set">
+<dt class="gt-n">shadow register set</dt>
+<dd class="gt-d"><span class="gt-def">A duplicate set of the main registers (written with a prime, like BC') that the Z80 can swap in with a single instruction, mainly for fast interrupt handling.</span>
+<a class="gt-go" href="z80/programming-model.html#s7">Z80: The Programming Model<span class="gt-sec">7 &middot; Alternate registers</span></a>
+</dd>
+</div>
+<div class="gt" id="sigil">
+<dt class="gt-n">Sigil</dt>
+<dd class="gt-d"><span class="gt-def">The from-scratch assembler that turns .emp source into Genesis ROM bytes for both of the console's CPUs, and checks the contracts the language adds.</span>
+<a class="gt-go" href="emp/reading-emp.html#s1">Reading .emp<span class="gt-sec">1 &middot; What .emp is</span></a>
+</dd>
+</div>
+<div class="gt" id="sprite">
+<dt class="gt-n">sprite</dt>
+<dd class="gt-d"><span class="gt-def">A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.</span>
+<a class="gt-go" href="aeon/section-02-vdp-frame.html#s1">Aeon: The VDP &amp; the Frame<span class="gt-sec">1 &middot; What the VDP draws with</span></a>
+</dd>
+</div>
+<div class="gt" id="stack-frame">
+<dt class="gt-n">stack frame</dt>
+<dd class="gt-d"><span class="gt-def">A block of memory a routine carves out of the stack for its own temporary use, and releases when it returns. LINK opens one and UNLK closes it. Hand-written Genesis code usually keeps its values in registers and fixed RAM instead, so frames are rare.</span>
+<a class="gt-go" href="m68k/system.html#link">68000: System<span class="gt-sec">LINK and UNLK</span></a>
+</dd>
+</div>
+<div class="gt" id="stack-pointer">
+<dt class="gt-n">stack pointer</dt>
+<dd class="gt-d"><span class="gt-def">The 16-bit register on the Z80 that points at the top of the stack: PUSH decrements it then writes, POP reads then increments it.</span>
+<a class="gt-go" href="z80/programming-model.html#s6">Z80: The Programming Model<span class="gt-sec">6 &middot; Stack and control flow</span></a>
+</dd>
+</div>
+<div class="gt" id="status-register">
+<dt class="gt-n">status register</dt>
+<dd class="gt-d"><span class="gt-def">A 16-bit register holding the CPU's own state. Its low byte is the condition codes (X N Z V C) that ordinary instructions set; its high byte is the supervisor half, holding the trace bit, the supervisor bit, and the interrupt mask.</span>
+<a class="gt-go" href="m68k/programming-model.html#s2">68000: The Programming Model<span class="gt-sec">2 &middot; The status register and condition codes</span></a>
+</dd>
+</div>
+<div class="gt" id="subroutine">
+<dt class="gt-n">subroutine</dt>
+<dd class="gt-d"><span class="gt-def">A block of instructions that other code calls and that hands control back when it finishes, so the same work can be reused from many places.</span>
+<a class="gt-go" href="m68k/flow.html#s1">68000: Flow<span class="gt-sec">1 &middot; Returning, the dumb version</span></a>
+</dd>
+</div>
+<div class="gt" id="supervisor-mode">
+<dt class="gt-n">supervisor mode</dt>
+<dd class="gt-d"><span class="gt-def">The 68000's privileged state. In supervisor mode all instructions are allowed and the CPU uses its own stack pointer. A Genesis cartridge runs in supervisor mode the whole time, because there is no operating system to drop it into user mode.</span>
+<a class="gt-go" href="m68k/programming-model.html#s2">68000: The Programming Model<span class="gt-sec">2 &middot; The status register and condition codes</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-t" data-letter="T">
+<h2 class="gl-h">T</h2>
+<dl class="glist">
+<div class="gt" id="t-state">
+<dt class="gt-n">T-state</dt>
+<dd class="gt-d"><span class="gt-def">The Z80's basic clock tick, one cycle of its clock. Every instruction's timing is measured in T-states, so a 4 T-state instruction takes four ticks. On the Genesis the Z80 runs at about 3.58 MHz, so a tick is roughly a quarter of a microsecond.</span>
+<a class="gt-go" href="z80/loads-and-arithmetic.html#s1">Z80: Loads &amp; Arithmetic<span class="gt-sec">1 &middot; How to read a Z80 instruction</span></a>
+</dd>
+</div>
+<div class="gt" id="tail-call">
+<dt class="gt-n">tail call</dt>
+<dd class="gt-d"><span class="gt-def">Ending a routine by jumping to another routine instead of calling it, so that when the second one finishes it hands control straight back to whoever called the first.</span>
+<a class="gt-go" href="m68k/flow.html#s5">68000: Flow<span class="gt-sec">5 &middot; The tail call, and other deliberate abuse</span></a>
+</dd>
+</div>
+<div class="gt" id="tile">
+<dt class="gt-n">tile</dt>
+<dd class="gt-d"><span class="gt-def">An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.</span>
+<a class="gt-go" href="aeon/section-02-vdp-frame.html#s1">Aeon: The VDP &amp; the Frame<span class="gt-sec">1 &middot; What the VDP draws with</span></a>
+</dd>
+</div>
+<div class="gt" id="tmss">
+<dt class="gt-n">TMSS</dt>
+<dd class="gt-d"><span class="gt-def">The Trademark Security System on later consoles: boot must write the ASCII letters SEGA to a magic address, or the next video access locks the machine.</span>
+<a class="gt-go" href="aeon/section-0-boot.html#s2">Aeon: Boot &amp; Hardware Init<span class="gt-sec">2 &middot; Proving we're a licensed game</span></a>
+</dd>
+</div>
+<div class="gt" id="trap">
+<dt class="gt-n">trap</dt>
+<dd class="gt-d"><span class="gt-def">A deliberate exception raised by the program rather than by hardware, using the TRAP instruction. Intended as the way a program asks an operating system for something. Genesis games do not use it that way.</span>
+<a class="gt-go" href="m68k/system.html#trap">68000: System<span class="gt-sec">TRAP</span></a>
+</dd>
+</div>
+<div class="gt" id="twos-complement">
+<dt class="gt-n">two's complement</dt>
+<dd class="gt-d"><span class="gt-def">The standard way to store signed numbers in a fixed width: the top bit carries negative weight, so every bit pattern is a distinct number and there is a single zero.</span>
+<a class="gt-go" href="basics/numbers-and-notation.html#s7">Numbers &amp; Notation<span class="gt-sec">7 &middot; Signed numbers and two's complement</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-u" data-letter="U">
+<h2 class="gl-h">U</h2>
+<dl class="glist">
+<div class="gt" id="user-mode">
+<dt class="gt-n">user mode</dt>
+<dd class="gt-d"><span class="gt-def">The 68000's restricted state, meant for programs an operating system does not trust. Privileged instructions are refused. Genesis games effectively never run in it.</span>
+<a class="gt-go" href="m68k/programming-model.html#s2">68000: The Programming Model<span class="gt-sec">2 &middot; The status register and condition codes</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-v" data-letter="V">
+<h2 class="gl-h">V</h2>
+<dl class="glist">
+<div class="gt" id="vblank">
+<dt class="gt-n">VBlank</dt>
+<dd class="gt-d"><span class="gt-def">The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.</span>
+<a class="gt-go" href="genesis/the-machine.html#s7">Genesis: The Machine<span class="gt-sec">7 &middot; A tour of one frame</span></a>
+</dd>
+</div>
+<div class="gt" id="vdp">
+<dt class="gt-n">VDP</dt>
+<dd class="gt-d"><span class="gt-def">The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#s1">Genesis: The VDP &amp; Planes<span class="gt-sec">1 &middot; The chip that owns its own memory</span></a>
+</dd>
+</div>
+<div class="gt" id="vector-table">
+<dt class="gt-n">vector table</dt>
+<dd class="gt-d"><span class="gt-def">The table at the very start of memory holding the addresses the CPU jumps to when an exception happens, one four-byte slot each. The 68000 defines 256 of them, but a Genesis game uses only the first 64, which is why the cartridge header begins at $100.</span>
+<a class="gt-go" href="m68k/programming-model.html#vectors">68000: The Programming Model<span class="gt-sec">Which slot is which</span></a>
+</dd>
+</div>
+<div class="gt" id="vram">
+<dt class="gt-n">VRAM</dt>
+<dd class="gt-d"><span class="gt-def">The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.</span>
+<a class="gt-go" href="genesis/the-machine.html#s6">Genesis: The Machine<span class="gt-sec">6 &middot; The VDP and its three memories</span></a>
+</dd>
+</div>
+<div class="gt" id="vsram">
+<dt class="gt-n">VSRAM</dt>
+<dd class="gt-d"><span class="gt-def">Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#vscroll">Genesis: The VDP &amp; Planes<span class="gt-sec">7 &middot; Scrolling vertically: VSRAM</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-w" data-letter="W">
+<h2 class="gl-h">W</h2>
+<dl class="glist">
+<div class="gt" id="window-plane">
+<dt class="gt-n">Window plane</dt>
+<dd class="gt-d"><span class="gt-def">A third tile layer that never scrolls and takes over a rectangle of the screen from plane A.</span>
+<a class="gt-go" href="genesis/vdp-planes.html#window">Genesis: The VDP &amp; Planes<span class="gt-sec">9 &middot; The Window: the plane that replaces plane A</span></a>
+</dd>
+</div>
+<div class="gt" id="work-ram">
+<dt class="gt-n">work RAM</dt>
+<dd class="gt-d"><span class="gt-def">The 68000's 64KB of general-purpose memory at $FF0000-$FFFFFF. Most CPU-visible runtime state lives here; graphics and sound state live in the VDP's VRAM/CRAM/VSRAM and the Z80's RAM.</span>
+<a class="gt-go" href="genesis/the-machine.html#s3">Genesis: The Machine<span class="gt-sec">3 &middot; The 68000's map of the world</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-y" data-letter="Y">
+<h2 class="gl-h">Y</h2>
+<dl class="glist">
+<div class="gt" id="ym2612">
+<dt class="gt-n">YM2612</dt>
+<dd class="gt-d"><span class="gt-def">The six-channel FM synthesizer chip that gives the Genesis its signature sound. Channel six can play raw samples instead (the DAC).</span>
+<a class="gt-go" href="genesis/the-machine.html#s1">Genesis: The Machine<span class="gt-sec">1 &middot; One machine, five parts</span></a>
+</dd>
+</div>
+</dl>
+</section>
+<section class="gg" id="letter-z" data-letter="Z">
+<h2 class="gl-h">Z</h2>
+<dl class="glist">
+<div class="gt" id="z80">
+<dt class="gt-n">Z80</dt>
+<dd class="gt-d"><span class="gt-def">The second, smaller CPU: 8-bit, about 3.58 MHz, with its own memory and its own bus. On a Genesis it conventionally runs the sound driver.</span>
+<a class="gt-go" href="genesis/the-machine.html#s5">Genesis: The Machine<span class="gt-sec">5 &middot; Two processors, two worlds</span></a>
+</dd>
+</div>
+</dl>
+</section>
+
+<p class="g-top"><a href="#gq">Back to the filter</a></p>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot;
+<a href="index.html">Back to hub</a></footer>
+
+<script>
+(function(){
+  var q = document.getElementById('gq');
+  var count = document.getElementById('gcount');
+  var none = document.getElementById('gnone');
+  var groups = [].slice.call(document.querySelectorAll('.gg'));
+  var strip = [].slice.call(document.querySelectorAll('nav.az a'));
+  var total = 0;
+  var entries = [];
+  groups.forEach(function(g){
+    [].slice.call(g.querySelectorAll('.gt')).forEach(function(el){
+      /* the term and its definition only: matching the link label too would make a page
+         name pull in every term that happens to be taught on that page. */
+      var hay = el.querySelector('.gt-n').textContent + ' ' +
+                el.querySelector('.gt-def').textContent;
+      entries.push({el: el, group: g, text: hay.toLowerCase()});
+      total++;
+    });
+  });
+  function plural(n){ return n === 1 ? '1 term' : n + ' terms'; }
+  function run(){
+    var raw = q.value.trim().toLowerCase();
+    var words = raw ? raw.split(/\s+/) : [];
+    var shown = 0;
+    var live = {};
+    entries.forEach(function(e){
+      var hit = true;
+      for (var i = 0; i < words.length; i++){
+        if (e.text.indexOf(words[i]) < 0) { hit = false; break; }
+      }
+      e.el.classList.toggle('s-hide', !hit);
+      if (hit) { shown++; live[e.group.dataset.letter] = true; }
+    });
+    groups.forEach(function(g){ g.classList.toggle('s-hide', !live[g.dataset.letter]); });
+    strip.forEach(function(a){
+      var on = !!live[a.dataset.letter];
+      a.classList.toggle('az-off', !on);
+      a.setAttribute('aria-disabled', on ? 'false' : 'true');
+      if (on) { a.removeAttribute('tabindex'); } else { a.setAttribute('tabindex', '-1'); }
+    });
+    none.hidden = shown !== 0;
+    none.classList.toggle('s-hide', shown !== 0);
+    count.textContent = raw ? (plural(shown) + ' of ' + total + ' match') : plural(total);
+  }
+  q.addEventListener('input', run);
+  q.addEventListener('keydown', function(e){ if (e.key === 'Escape') { q.value = ''; run(); } });
+  run();
+})();
+</script>
+</div>
+
+</body>
+</html>
