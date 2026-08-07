@@ -432,7 +432,8 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   just four bytes popped off the stack into the program counter, and nothing anywhere remembers
   what those bytes were for. Get that one fact and the tail call, the jump table, and the classic
   crash all stop being tricks. Every example is real, pulled from the Sonic 2 disassembly and
-  re-verified line by line.</p>
+  re-verified line by line, unless it is labelled "Teaching example", which a handful are: those
+  are written to make one point clearly and carry that label where they sit.</p>
   <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
 </header>
 
@@ -457,7 +458,9 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
 instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
-on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+on the Programming Model page carries every instruction these pages document, each with a
+one-line gloss and a link straight to its entry, and says plainly which ones the track has not
+claimed yet.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; Returning, the dumb version</h2>
@@ -514,11 +517,16 @@ address into the program counter; everything else is discipline.</p>
     <p><b>The stack</b> is a region of work RAM with one register, <code>a7</code> (also spelled
     <code>sp</code>), pointing at its top. It grows DOWNWARD: a push subtracts from
     <code>sp</code> then writes, a pop reads then adds. Nothing about the region is special; it is
-    RAM, and <code>sp</code> is an ordinary address register the CPU happens to use for calls.
+    plain RAM, and the four bytes a call leaves there are plain bytes.
     <a href="programming-model.html#s5">The Programming Model page, section 5</a> owns this, and
     hosts a stack stepper that runs <code>bsr.w</code>, <code>rts</code> and <code>rte</code> over
     a live stack column byte by byte. If you want to watch the four bytes move, watch them there.
-    This page does not rebuild it.</p>
+    This page does not rebuild it. The REGISTER is where the CPU keeps a few special cases, three
+    of which apply to <code>a7</code> and to no other address register: a byte push or pop moves
+    it by 2 rather than 1, so it always stays even; an odd <code>a7</code> raises an address error
+    the moment anything uses it; and there are really two of them, a supervisor <code>a7</code>
+    and a user <code>a7</code>, with the S bit deciding which one the name reaches. The
+    <a href="system.html">System page</a> covers that pair.</p>
     <p><b>The program counter</b> holds the address of the instruction being fetched, and steps
     along by itself. Redirecting it is the whole job of the instructions on this page, which is
     the cleanest definition of what this page covers. A handful of others move it as a side
@@ -1143,8 +1151,9 @@ ones to use in that gap.</p>
 </div>
 
 <p>Here is the complete set. Fourteen conditions, each a fixed question about the four flags N,
-Z, V and C. The same fourteen serve <a href="#dbcc">DBcc</a> and <a href="#scc">Scc</a>, so
-reading this table once covers every conditional instruction on the CPU.</p>
+Z, V and C. The same fourteen serve <a href="#dbcc">DBcc</a> and <a href="#scc">Scc</a>, which
+also get two conditions Bcc cannot use, always-true and always-false, for sixteen in all. Read
+this table and the note under it and you have covered every conditional instruction on the CPU.</p>
 
 <div class="tbl"><table class="cond">
   <tr><th>Branch</th><th>Taken when</th><th>Flag test</th><th>Kind</th><th>Encoding</th></tr>
@@ -1589,10 +1598,13 @@ classic ways a modified object crashes several frames after the actual mistake.<
     reproduce the original ROM byte for byte when the switch is off, and produce tidier, faster
     code that calls directly when it is on.</p>
     <p>The practical consequence for a reader is a counting one. Every frequency number on this
-    page counts real <code>jsr</code> and <code>jmp</code> lines only, so the 539 and 520 quoted
-    in <a href="#s2">section 2</a> understate what the ROM actually does by up to another 1,369
-    sites, depending on how the build switch is set. If you ever grep a disassembly for how often
-    it calls something, remember to grep for the macros too.</p>
+    page counts lines that spell out a real instruction, so none of them counts a macro site, and
+    that understates all four of the transfer instructions rather than two. Set the switch on and
+    those 1,369 sites assemble as <code>jsr</code> and <code>jmp</code>, so the 539 and 520 quoted
+    in <a href="#s2">section 2</a> are the ones running low. Set it off and they assemble as
+    <code>bsr.w</code> and <code>bra</code> instead, so the 1,841 <code>bsr</code> in the
+    <a href="#jsr">JSR entry</a> is the one running low. If you ever grep a disassembly for how
+    often it calls something, remember to grep for the macros too.</p>
   </div>
 </details>
 
@@ -2239,10 +2251,10 @@ wrong.</p>
   <p>RTE ends an exception handler. On the 68000 an ordinary exception, such as an interrupt,
   pushes six bytes: the status register as a word and then the program counter as a longword.
   RTE pops both back. (Two exceptions push more. A bus error or an address error, the kind
-  <a href="#s4">section 4</a>'s gotcha describes, pushes a fourteen-byte frame carrying the
-  faulting access address and other diagnostic words UNDERNEATH the usual pair, which is why a
+  <a href="#s4">section 4</a>'s gotcha describes, pushes a fourteen-byte frame that puts the
+  faulting access address and other diagnostic words ON TOP of the usual pair, which is why a
   handler that reads the usual pair naively prints nonsense for exactly the two failures you most
-  want to debug. The Programming Model page's
+  want to debug: the first word it finds is not the status register at all. The Programming Model page's
   <a href="programming-model.html#vectors">exception section</a> states the same difference and
   carries the vector list.) That is
   the same shape as RTR and it is a different thing: RTR restores the five condition codes, RTE
@@ -2580,7 +2592,7 @@ function expandAll(btn){
     });
   }
 
-  function divergence(){
+  function disagreements(){
     var u = [!C, !!C, (!C&&!Z), (!!C||!!Z)];
     var s = [N===V, N!==V, (!Z&&N===V), (!!Z||N!==V)];
     var names = ['is it greater or equal','is it less','is it greater','is it less or equal'];
@@ -2592,7 +2604,7 @@ function expandAll(btn){
   function paint(lead){
     drawFlags();
     Object.keys(GROUPS).forEach(drawGroup);
-    var d = divergence();
+    var d = disagreements();
     var tail = d.length
       ? ' On these flags the unsigned and signed families DISAGREE about ' + d.join(', ') +
         '. Same bits, two correct answers: only you know which reading is meant.'

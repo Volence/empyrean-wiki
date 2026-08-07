@@ -354,7 +354,9 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
 instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
-on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+on the Programming Model page carries every instruction these pages document, each with a
+one-line gloss and a link straight to its entry, and says plainly which ones the track has not
+claimed yet.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; Shifts</h2>
@@ -937,8 +939,10 @@ you can see a bit park there and re-enter on the next run, which is how a rotate
   <div class="gotcha"><span class="g-tag">Gotcha</span>
   ROXL reads the CURRENT X, so whatever set X last (an add, a shift, an <code>lsr</code>, a previous ROXL)
   decides the bit that enters at the bottom. Set X deliberately before the chain: to start a multi-word
-  rotate cleanly, clear X first (for instance with <code>andi.b #$EF,ccr</code>, which writes the CCR directly,
-  or by arranging the feeding shift so a 0 lands in X). Note a plain <code>and</code> clears C and V but leaves
+  rotate cleanly, clear X first, most simply by arranging the feeding shift so a 0 lands in X. There is also
+  a direct way, <code>andi.b #$EF,ccr</code>, which masks the condition codes as a byte; that form is real
+  but this track does not carry it, so Motorola's manual is where to read it up.
+  Note a plain <code>and</code> clears C and V but leaves
   X untouched, so it cannot clear X. A stale X quietly corrupts the low bit.</div>
   <div class="kin"><span class="k-tag">Cheaper cousins</span>
   Do not need the bit to pass through X? Plain <a href="#rol">ROL</a> is a simpler 8-bit wrap that leaves X
@@ -1398,7 +1402,7 @@ function expandAll(btn){
   function curSyn(){ var n=rdCnt(); return NAME[op]+'.b #'+n+',d0'; }
   // the decimal reading the CURRENT shift is in force for (LEARNING.md BASE PAIRING, decision 2):
   // lsl/lsr are unsigned multiply/divide, asr is a signed divide, and asl is the one place both
-  // readings belong at once, because V=1 means precisely that they have diverged.
+  // readings belong at once, because V=1 means precisely that they have disagreed.
   function decOf(n){
     n&=0xFF; var sv=s8(n);
     if(op==='asr') return sv<0 ? '= '+sv+' signed' : '= '+n;

@@ -295,7 +295,7 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 
 <p>The Z80 is the Genesis's second processor, a small 8-bit CPU sitting beside the 16-bit 68000 that
 runs the game. Aeon gives it one main job, running the sound driver, so nearly everything on this page
-is state the sound code works in. The whole programming model is a short list of <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span>, tiny
+is state the sound code works in. The whole programming model is a short list of <span class="term" data-def="A small storage slot inside a chip. CPU registers (on the Z80: A, B, C, D, E, H, L, F, and the 16-bit IX, IY, SP, PC) hold the values being worked on; VDP registers configure how the video chip behaves.">registers</span>, tiny
 storage slots built into the chip: seven 8-bit working registers (one of them the accumulator), a flag
 register that records how the last result came out, three fixed 16-bit pairs built from six of those
 working registers, two index registers <code>IX</code> and <code>IY</code>, a stack pointer
@@ -378,7 +378,13 @@ Selecting any slot names its width and role.</figcaption>
 
 <p>There are seven registers you compute with, each holding exactly <a href="../basics/numbers-and-notation.html">8 bits</a>, a single
 byte: <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code>, <code>E</code>, <code>H</code>, and
-<code>L</code>. Six of them are interchangeable holding pens. The seventh, <code>A</code>, is the
+<code>L</code>. Six of them look interchangeable, and for most of what you write they are: any of them can be
+loaded, incremented, tested or shifted with the same instruction. But each has a second life the plain
+register field does not show. <code>B</code> is the loop counter <code>DJNZ</code> and the block
+instructions insist on; <code>C</code> is the port register the I/O instructions insist on; and
+<code>H</code> and <code>L</code> are the two halves of <code>HL</code>, the machine's general-purpose
+pointer, so spending them as scratch costs you the pointer. Section 3 draws those pairings out. The
+seventh, <code>A</code>, is the
 <span class="term" data-def="The special register (A on the Z80) that most 8-bit arithmetic and logic operations read from and write their result back to.">accumulator</span>, and it earns one rule worth stating exactly.</p>
 
 <p><code>A</code> is the register the Z80's 8-bit arithmetic-and-logic unit (the part of the chip that
@@ -390,8 +396,10 @@ straight back into <code>A</code>, while the flags in <code>F</code> report how 
 throws the result away, so it tells you how <code>A</code> relates to another value without changing
 <code>A</code> at all. Plenty of work skips <code>A</code> entirely, though: <code>INC</code> and
 <code>DEC</code> act on any 8-bit register, the shifts and bit operations (<code>BIT</code>,
-<code>SET</code>, <code>RES</code>, and the rotates) work on any register or on the byte in memory at
-<code>(HL)</code>, and the 16-bit additions of Section 3 add register <em>pairs</em> without touching
+<code>SET</code>, <code>RES</code>, and the <code>CB</code>-prefixed rotate-and-shift group) work on any
+register or on the byte in memory at <code>(HL)</code>, though the four cheap one-byte rotates
+<code>RLCA</code>, <code>RLA</code>, <code>RRCA</code> and <code>RRA</code> are back on <code>A</code> and
+turn nothing else. And the 16-bit additions of Section 3 add register <em>pairs</em> without touching
 <code>A</code> (the 16-bit <code>ADC HL,rr</code> and <code>SBC HL,rr</code> target <code>HL</code>). So
 the accurate framing is narrow: <code>A</code> is where 8-bit arithmetic and logic happen, while many
 single-register operations and all the 16-bit ones go around it.</p>
@@ -402,9 +410,11 @@ single-register operations and all the 16-bit ones go around it.</p>
     <p>Picture an old desktop calculator with one running total on its display. You do not compute "3
     plus 4" in the abstract; you key a number, press +, key another, and the total updates. Every
     operation reads that one display and writes its answer back to it, so results pile up (or
-    <em>accumulate</em>) in the same place. On the Z80, <code>A</code> is that display: the chip's one
-    8-bit adder-and-comparer always has <code>A</code> on one side, which is why so much code has the
-    rhythm "load a value into <code>A</code>, do something to it, read the result out of <code>A</code>."
+    <em>accumulate</em>) in the same place. On the Z80, <code>A</code> is that display: the 8-bit add,
+    subtract, compare and logic instructions always have <code>A</code> on one side, which is why so much
+    code has the rhythm "load a value into <code>A</code>, do something to it, read the result out of
+    <code>A</code>." (The operations the paragraph above listed as going around it, <code>INC</code>,
+    <code>DEC</code>, the bit work and the 16-bit adds, are exactly the ones that do not need the display.)
     The other registers, <code>B</code> through <code>L</code>, are scraps of paper where you park
     numbers to feed in later.</p>
   </div>
@@ -479,7 +489,7 @@ an address. A 16-bit value runs from <code>$0000</code> to <code>$FFFF</code>, w
 2<sup>16</sup> = <a href="../basics/numbers-and-notation.html#s5">65,536</a> distinct values, so a pair can name any of 65,536 memory
 locations: 64 KiB in all. That is the whole span of memory the Z80 can address at any one moment. On the
 Genesis the Z80 does not own 64 KiB of RAM outright; instead its 8 KiB of sound RAM, the hardware ports,
-and a movable window into the cartridge all map into that 64 KiB range, so the console reaches far more
+and a movable window onto the 68000's own bus all map into that 64 KiB range, so the console reaches far more
 than 64 KiB even though the CPU only ever sees 64 KiB at once. How that window works is a later page's
 job; here the point is just that a pair is wide enough to serve as a pointer.</p>
 
@@ -547,8 +557,10 @@ the result came out: was it zero, did it go negative, did it overflow. Those not
 register, <code>F</code>, and a later instruction reads them to decide what to do next.</p>
 
 <p><code>F</code> is the <span class="term" data-def="A register whose individual bits each record a fact about the last result, such as whether it was zero or negative, so a later instruction can branch on it.">flag register</span>, the Z80's status register. Unlike <code>A</code> through
-<code>L</code>, you do not load a value into <code>F</code> and compute with it; each of its bits is a
-separate flag, a single yes/no fact set automatically by the last operation.</p>
+<code>L</code>, no instruction names <code>F</code> as a destination and you never compute in it; each of
+its bits is a separate flag, a single yes/no fact set automatically by the last operation. (One route does
+write it wholesale, and it is deliberate: <code>pop af</code> drops eight stack bits straight into the
+flags, which is how a routine restores the flags it saved. Section 6 has it.)</p>
 
 <p><code>A</code> and <code>F</code> can be treated together as the pair <code>AF</code>, with
 <code>A</code> the high byte and <code>F</code> the low byte, but this is not a general 16-bit working
@@ -565,7 +577,7 @@ unit. Otherwise <code>AF</code> is a save-and-swap pair, not a working one.</p>
     of small mailbox flags, each up or down. After the Z80 subtracts two numbers it flips the "was the
     answer zero?" flag up if they were equal and down if they were not, every time, without being
     asked.</p>
-    <p>The reader is the next instruction. A conditional jump does not look at a register's value
+    <p>The reader is the next instruction. Almost no conditional jump looks at a register's value
     directly; it looks at the flags. <code>jp z,somewhere</code> means "jump to <code>somewhere</code>
     only if the zero flag is up"; <code>jr c,elsewhere</code> means "jump only if the carry flag is up."
     So Z80 logic runs in two beats: an operation that quietly sets flags, then a jump that reads one. The
@@ -597,8 +609,10 @@ workhorses: nearly every loop and comparison ends with a jump that reads one of 
 (sign) is a copy of the result's top bit, which is the sign bit
 <a href="../basics/numbers-and-notation.html#s7">when a byte is read as a signed number</a>; a set <code>S</code> means negative.
 <code>P/V</code> you can also branch on, but its meaning depends on what set it, which the next note
-untangles. Conditional branches read these flags, never a general register directly: the CPU does a
-calculation, the calculation sets flags, and the jump inspects a flag.</p>
+untangles. Conditional branches read these flags rather than the value in a general register: the CPU does
+a calculation, the calculation sets flags, and the jump inspects a flag. One instruction breaks the
+pattern, and it is the counted loop <code>DJNZ</code> on the instruction pages: it decrements
+<code>B</code> and branches on <code>B</code> itself, without setting a flag at all.</p>
 
 <p>The remaining two, <span class="term" data-def="A flag set when an add or subtract carries between bit 3 and bit 4 of a byte; the Z80 uses it to fix up binary-coded-decimal arithmetic.">half-carry</span> (<code>H</code>) and add/subtract (<code>N</code>), you never branch
 on; there is no conditional jump that reads them. Instructions set them as a side effect, and the
@@ -724,12 +738,14 @@ interrupted code never notices. Watch the order, it is the last-in-first-out rul
 pushed last so it is popped first, and every register lands back where it left from. Each push stepped
 <code>SP</code> down; each pop stepped it back up, so <code>SP</code> ends exactly where it began.</p>
 
-<p><code>PC</code> is the <span class="term" data-def="The 16-bit register on the Z80 that holds the address of the instruction currently being fetched; it advances as instructions run and is redirected by jumps, calls, and returns.">program counter</span>. It holds the address of the instruction being fetched right
-now and advances on its own as each instruction runs, so straight-line code flows from one instruction to
-the next. You never load <code>PC</code> directly the way you load <code>A</code> or <code>HL</code>; the
+<p><code>PC</code> is the <span class="term" data-def="The 16-bit register on the Z80 that holds the address of the next instruction to fetch; it advances past each instruction as that instruction runs, and jumps, calls and returns redirect it.">program counter</span>. It holds the address of the <b>next</b>
+instruction to fetch, stepping past each instruction while that instruction is still running, so
+straight-line code flows from one to the next on its own. That "already pointing at the next one" is worth
+holding on to, because it is what makes the rest of this paragraph work. You never load
+<code>PC</code> directly the way you load <code>A</code> or <code>HL</code>; the
 control-flow instructions rewrite it for you. A jump drops a new address into <code>PC</code>; a call does
-that after first pushing the return address, the address of the instruction right after the call, onto the
-stack; a return pops that saved address back into <code>PC</code>. Every branch from Section 4's two-beat
+that after first pushing what <code>PC</code> already held, the address of the instruction right after the
+call, onto the stack; a return pops that saved address back into <code>PC</code>. Every branch from Section 4's two-beat
 rhythm is, underneath, a conditional edit to <code>PC</code>.</p>
 
 <!-- ================================================================ -->
@@ -794,7 +810,12 @@ loop can tell.</p>
 <h2 id="s8">8 &middot; Deep reference</h2>
 
 <p>Three more pieces of state round out the model. A newcomer can skip all of it; it is here so the page
-can honestly claim to describe the complete Z80.</p>
+can honestly claim to describe the complete <em>documented</em> Z80. Two pieces of real silicon are left
+out on purpose, both undocumented: the halves of the index registers, sometimes written
+<code>IXH</code>/<code>IXL</code> and <code>IYH</code>/<code>IYL</code>, which the <code>DD</code> and
+<code>FD</code> prefixes expose as ordinary 8-bit registers, and an internal address latch usually called
+<code>WZ</code> or <code>MEMPTR</code>, which no instruction can name and which leaks out only through the
+undocumented flag bits above. No assembler here emits the first and nothing should depend on the second.</p>
 
 <details class="refbox">
   <summary>Deep reference &middot; the I and R registers, and interrupt control</summary>

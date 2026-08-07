@@ -318,7 +318,8 @@ select.ntc-sel{font-family:var(--mono); font-size:.72rem; background:var(--panel
   <h1>The VDP &amp; Planes</h1>
   <p class="sub">The Genesis draws its picture with a chip that owns its own memory and will
   not let the CPU near it. Everything the machine shows has to squeeze through two 16-bit
-  ports, land in the right table, and be described by a 16-bit word per 8x8 cell. This page
+  ports and land in the right table, and for the scrolling planes that table is one 16-bit
+  word per 8x8 cell. This page
   is that whole story: the ports and the command word, the read-modify-write hazard that
   turns ordinary 68000 instructions into hangs, the planes and their six legal sizes, the
   two scroll tables, the one priority bit that produces seven layers, and the Window layer
@@ -590,9 +591,11 @@ that the high half goes first, which is what makes the two-word address command 
 
 <p>One more rule, and it is the one most likely to bite somebody writing a VDP helper for the
 first time: according to plutiedev, setting a register clears whatever address you had pending,
-so after any register write you must issue the address command again before touching the data
-port. No other source we hold states it. It ships here attributed rather than flat, because a
-single source is honest when it is named and an impostor when it is not.</p>
+so the safe habit is to issue the address command again after any register write, before touching
+the data port. No other source we hold states it, and accurate emulator cores clear the pending
+operation code rather than the address, so read it as advice for writing a helper you can trust
+rather than as a measured rule about the silicon. It ships here attributed rather than flat,
+because a single source is honest when it is named and an impostor when it is not.</p>
 
 <p>Registers 0, 1 and 10 carry the display enable and the two interrupt enables plus the
 line counter that decides how often the horizontal interrupt fires; registers 2, 3, 4, 5 and 13
@@ -611,12 +614,13 @@ time this wiki prints the whole register table.</p>
   <div class="enc-body">
     <p style="font-size:.85rem;">Sega numbers these in decimal; the assembly spelling is the
     control word <code>$80xx + reg</code>. Bit layouts run most significant bit first. Rows
-    restate what the prose above and the sections below teach; nothing lives only here.</p>
+    restate what the prose above and the sections below teach; the handful of bit-level caveats
+    that appear only here are reference detail, and nothing the page teaches rests on them.</p>
     <div class="tbl">
     <table>
     <tr><th>Reg</th><th>Word</th><th>Name</th><th>Bits, D7 to D0</th><th>What it does</th></tr>
     <tr><td>0</td><td><code>$80</code></td><td>Mode set 1</td><td><code>0 0 LCB IE1 0 1 M3 0</code></td><td>LCB blanks the leftmost 8 pixels (section 10). IE1 enables the horizontal interrupt. M3 freezes the H/V counter.</td></tr>
-    <tr><td>1</td><td><code>$81</code></td><td>Mode set 2</td><td><code>VR DISP IE0 M1 M2 1 0 0</code></td><td>DISP turns the display on. IE0 enables the vertical interrupt. M1 enables DMA. M2 selects the taller PAL display. Bit 2 selects mode 5 rather than the Master System's mode 4. Sega prints bit 7 as 0 and sources disagree about what it selects.</td></tr>
+    <tr><td>1</td><td><code>$81</code></td><td>Mode set 2</td><td><code>VR DISP IE0 M1 M2 1 0 0</code></td><td>DISP turns the display on. IE0 enables the vertical interrupt. M1 enables DMA. M2 selects the taller 30-cell display, the one PAL consoles use. Bit 2 selects mode 5 rather than the Master System's mode 4. Sega prints bit 7 as 0 and sources disagree about what it selects.</td></tr>
     <tr><td>2</td><td><code>$82</code></td><td>Plane A map base</td><td><code>0 0 SA15 SA14 SA13 0 0 0</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
     <tr><td>3</td><td><code>$83</code></td><td>Window map base</td><td><code>0 0 WD15 WD14 WD13 WD12 WD11 0</code></td><td>address divided by <code>$800</code>; WD11 must be 0 in H40, so the table is <code>$1000</code>-aligned there (section 9)</td></tr>
     <tr><td>4</td><td><code>$84</code></td><td>Plane B map base</td><td><code>0 0 0 0 0 SB15 SB14 SB13</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
@@ -663,7 +667,7 @@ VDP it is neither.</p>
 VDP suspends the 68000, and it does that by never returning
 <span class="term" data-def="The signal a device raises to tell the 68000 that a bus cycle has completed. Until it arrives the CPU waits, so a device that never raises it stalls the processor.">DTACK</span>.
 The 68000 waits for that signal to know a bus cycle finished. It does not arrive, so the CPU
-waits forever. Nothing recovers it.</li>
+waits forever. Nothing short of a hard reset recovers it.</li>
 <li><b>A write while the port is set up for reading does nothing at all,</b> except advance the
 address. No data is stored. There is no error, no flag, no symptom other than the picture being
 wrong later.</li>
@@ -691,9 +695,9 @@ the first case normally locks the VDP until a hard reset.</p>
 </div>
 
 <p>Sega then lists the instructions this rules out, grouped its own way. Nothing else anywhere
-enumerates this list, so it is worth saying plainly that the roster below is Sega's alone, and
-that every other source describes the port behaviour and leaves the instruction-level
-consequence to the reader:</p>
+enumerates this list, so it is worth saying plainly that the roster below is Sega's alone. Other
+sources warn about individual instructions, plutiedev's <code>clr</code> advice at the end of this
+section among them; nobody else enumerates the family:</p>
 
 <div class="tbl">
 <table>
@@ -718,9 +722,14 @@ list was assembled, not as evidence for anything. The fact that a wrong-mode rea
 comes from the mechanism paragraph, not from CMPI's presence.</p>
 
 <p>The same page opens with a separate statement about <code>TAS</code>: it is not supported on
-the Genesis at all, and if you issue one the test happens but the write is ignored and never
-performed. That is a different failure from the two above, and TAS appears in both places, so it
-is the extreme member of the family rather than a lone special case. The
+the Genesis, and if you issue one the test happens but the write is ignored and never performed.
+Sega's wording is blanket, but the lost write is a bus-side failure, so what it costs you is the
+memory form; <code>TAS</code> aimed at a data register never leaves the CPU and does exactly what
+the manual describes. That is a different failure from the two above, and not a port hazard at
+all: it happens against any memory on the machine, the bus cycle completes normally, and the
+write is simply never performed. TAS is on Sega's roster for that separate reason as well as
+being subject to the direction rule like everything else on it, which makes it the extreme member
+of the family rather than a lone special case. The
 <a href="../m68k/system.html#tas">68000 System page</a> covers TAS as an instruction.</p>
 
 <p>An independent second source reaches the same warning by its own route. plutiedev, teaching
@@ -1133,8 +1142,9 @@ sitting where the legend says.</p>
     screen position, and then keeps only enough of the result to name a cell in the plane. Run
     off the right side and you arrive at the left side, in the same row, seamlessly.</p>
     <p>That is not a feature somebody implemented; it is what happens when you keep the low bits
-    of a number and throw the rest away. It is also why a level wider than 64 cells cannot just
-    be one enormous plane. Games instead keep the plane small and constantly rewrite the column
+    of a number and throw the rest away. It is also why a level cannot just be one enormous
+    plane: the widest a plane goes is 128 cells, which is 1024 pixels, and buying that width
+    costs you every row past 32. Games instead keep the plane small and constantly rewrite the column
     of cells that is about to scroll into view, so the map is a moving window onto a much larger
     level held in ordinary work RAM or ROM.</p>
   </div>
@@ -1198,10 +1208,23 @@ modes work out as:</p>
 </table>
 </div>
 
-<p>The table itself is 1KB of VRAM whatever mode you are in, of which 896 bytes are used on a
-224-line display and 960 on the taller PAL one. Cell mode does not save you any video memory: it
-reads one entry in eight and reserves the rest anyway. What it saves is the per-frame cost of
-getting the values there, and on this machine that is usually the scarcer resource.</p>
+<p>Register 13 only carries the top six address bits, so the table always starts on a 1KB
+boundary, and no mode ever reaches past the end of that 1KB page: the longest read is per-line
+scrolling on a 240-line display, at 960 bytes. That is where the habit of drawing the table as a
+flat 1KB block comes from, and Sega's own worked layout does exactly that.</p>
+
+<p>The chip reserves nothing, though. It reads what its mode tells it to read and never touches
+the rest, so what the table really costs you is however many 32-byte tile slots it lands in. In
+full-screen mode that is one: four bytes at the base, and the other 31 tiles of the page are
+yours for art. In per-line mode on a 224-line display it is 28 tile slots, filled solid.</p>
+
+<p>Cell mode is the interesting one, and it is the reason "1KB" survives as a rule of thumb. It
+reads one entry pair in eight, 112 bytes instead of 896, but it reads them 32 bytes apart, so it
+puts four bytes into the front of every one of those same 28 tile slots and leaves 28-byte holes
+between them. A tile is 32 bytes and has to start on a 32-byte boundary, so not one of those
+holes can hold anything. Cell mode costs exactly the same video memory as line mode. What it
+saves is the per-frame cost of getting the values there, and on this machine that is usually the
+scarcer resource.</p>
 
 <details class="explain">
   <summary>New here? &middot; How does one number per line make a background bend?</summary>
@@ -1222,7 +1245,7 @@ getting the values there, and on this machine that is usually the scarcer resour
 
 <p>Each value is 10 bits, 0 to 1023; the top six bits of the word are ignored by the VDP, and
 Sega explicitly says software may use them for its own purposes. The range is not arbitrary:
-plane widths in pixels are 256, 512 or 1024, and 1024 divides all three, so the scroll value
+plane widths in pixels are 256, 512 or 1024, and all three divide 1024, so the scroll value
 wraps in step with the plane no matter which size you chose. Adding to the value shifts the
 plane to the RIGHT; subtracting shifts it left and wraps, so 0 minus 5 is 1019.</p>
 
@@ -1312,9 +1335,9 @@ what the hardware does.</p>
 in VRAM at all; they are in
 <span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span>,
 the 80-byte memory from section 1, reached through the same two ports with the VSRAM operation
-code instead of the VRAM one. That is the whole reason VSRAM exists as a separate memory: the
-vertical scroll values are read so often that they got their own storage rather than competing
-for VRAM bandwidth.</p>
+code instead of the VRAM one. Why it is a memory of its own rather than another table in VRAM is
+not something any source here settles, and the obvious guess does not survive contact with the
+previous section: the horizontal values are read at least as often and they stayed in VRAM.</p>
 
 <p>One bit chooses the mode, VSCR in register 11. Clear it and the VDP reads the first pair of
 entries only, one for each plane, and the whole picture scrolls together. Set it and the VDP
@@ -1333,10 +1356,12 @@ sense to the horizontal table, where adding shifts right.</p>
     <p>The classic use is not an effect at all, though. It is depth: give the background columns
     slightly different vertical offsets as the camera pans and the far layer appears to have
     parallax in both axes rather than only sideways.</p>
-    <p>Note what you cannot do with it. There is no per-scanline vertical scrolling on this
-    chip, the way there is per-scanline horizontal scrolling. Vertical granularity stops at the
-    16-pixel column, and that asymmetry is why sideways effects are everywhere on the Genesis
-    and vertical ones are rare.</p>
+    <p>Note what you cannot do with it. The chip gives you no per-line vertical scroll table the
+    way it gives you a per-line horizontal one: VSRAM's granularity stops at the 16-pixel column.
+    The only way past that is to rewrite VSRAM part way down the frame from a horizontal
+    interrupt, a few lines' worth at a time, which is what the split screen in section 5 does.
+    That asymmetry is why sideways effects are everywhere on the Genesis and vertical ones are
+    rare.</p>
   </div>
 </details>
 

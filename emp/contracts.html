@@ -266,9 +266,11 @@ footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
   <p class="sub">Every routine in the engine makes promises to the code that calls it: these
   registers come back untouched, that one holds the answer, this one is scratch you can
   ignore. In hand-written assembly those promises live in a comment, and the machine never
-  reads the comment. In .emp they live in the procedure header, and the build fails the
-  moment the code stops keeping them. This page teaches how to read one of those headers,
-  clause by clause, and shows the checker refusing real mistakes from the shipping engine.</p>
+  reads the comment. In .emp they live in the procedure header, where the assembler reads
+  them, and the strongest of them stop the build the moment the code stops keeping them. This
+  page teaches how to read one of those headers, clause by clause, says exactly which clauses
+  are proved and which are inferred, and shows the checker refusing real mistakes from the
+  shipping engine.</p>
   <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
 </header>
 
@@ -341,15 +343,43 @@ It can only rot silently.</p>
 <details class="explain">
   <summary>New here? &middot; What is "the checker"?</summary>
   <div class="x-body">
-    <p>When these pages say <em>the checker</em>, they mean one part of the .emp assembler: a
-    pass that runs at build time, reads every procedure header, and compares each promise
-    against what the instructions in the body actually do. It is not a separate tool you run
-    and it is not a runtime test. It is the same program that turns your source into ROM
-    bytes, and it refuses to finish that job if a header lies. So "the checker caught it"
-    always means "the build stopped and printed a message," never "a test failed later" or
-    "someone noticed in review."</p>
+    <p>When these pages say <em>the checker</em>, they mean the part of Sigil that reads
+    procedure headers and compares each promise against what the instructions actually do. It
+    is not a separate tool and it is not a runtime test: it reads the same source the
+    assembler is turning into ROM bytes. But it works at two tiers, and they stop different
+    things, so "the checker caught it" means one of two rather different sentences.</p>
+    <p><b>The per-file tier</b> reads one module at a time and holds each procedure to its own
+    header, using only that procedure's body. It runs on every build, today, always. Its
+    error-tier findings, a <code>preserves</code> that is not restored, a flag result that
+    overlaps a preserved status register, a <code>with</code> bracket a path escapes, stop the
+    build with no ROM produced. Its warn-tier findings print and let the build finish. Every
+    diagnostic quoted on this page is from this tier.</p>
+    <p><b>The whole-program tier</b> is a walk over the entire corpus at once, following calls
+    across module boundaries. It answers the questions no single file can: whether a register
+    a caller was still holding survived a callee three levels down, whether a
+    <code>requires</code> is satisfied at each call site, whether a declared cycle budget holds
+    along the real path. That walk lives in Sigil's own test suite and in the strict gates a
+    merge has to pass. It stops <em>merges</em>. Aeon's <code>build.sh</code> does not run it,
+    so an engine build that closes an inferred hole is not what refuses; the merge is.</p>
+    <p>So the honest reading of "the build refuses" on this page is: the per-file tier
+    refuses. Never "a test failed later" and never "someone noticed in review", but not the
+    whole of the checking either.</p>
   </div>
 </details>
+
+<div class="decision">
+  <span class="d-tag">Ratified, parcel in queue &middot; the corpus walk moves into the build</span>
+  <p>The split above is a stage, not a destination. The direction is settled: the whole-program
+  walk goes into the <em>default</em> build, not behind an opt-in flag, so that a contract hole
+  that today survives to a merge gate will instead stop the build that created it.</p>
+  <p>The accepted semantics, so you know what to expect when it lands. The build will refuse any
+  <b>new</b> closure violation. The residue that exists today, several dozen findings across the
+  two inferred families, is pinned as a named legacy baseline and burned down over time rather
+  than fixed in one sweep. And the families that already fire <em>zero</em> times on the corpus,
+  <code>[context.unsatisfied]</code> and the survives family, gate as a hard assert-empty from
+  the first day, because for those there is nothing to grandfather.</p>
+  <p>None of that is live yet. This page describes the compiler as it currently behaves.</p>
+</div>
 
 <details class="explain">
   <summary>New here? &middot; What is a register contract even for?</summary>
@@ -415,9 +445,10 @@ register use around it having read one line.</p>
   <summary>New here? &middot; Why is leaving a register OUT of the list also a promise?</summary>
   <div class="x-body">
     <p>Because the checker treats every register a proc writes as needing a reason. There are
-    only three legal reasons: it is listed in <code>clobbers</code> (destroyed on purpose), it
-    is an argument or a declared <code>out</code> result, or it is saved and restored so it
-    ends the call unchanged. A register that is none of those and still gets written has no
+    only four legal reasons: it is listed in <code>clobbers</code> (destroyed on purpose), it
+    is a declared <code>out</code> result, it is an argument the routine is allowed to consume,
+    or it is saved and restored so it ends the call unchanged. A register that is none of those
+    and still gets written has no
     home, and the checker says so. So an omitted register is not "unspecified," the way an
     omitted comment would be. It is a positive claim: this one survives. The clause you did
     not write is doing as much work as the clause you did.</p>
@@ -436,6 +467,15 @@ undeclared clobber is flagged loudly rather than made unbuildable. It still name
 register and the exact routine. (<code>Sfx_Post</code> is the procedure in the interactive
 checker below.)</p>
 
+<p>Which raises the fair question of what the real engine's warn tier looks like, and the answer
+is pinned in Sigil's test suite so it cannot drift quietly. Exactly four warn-tier classes fire
+on the shipping corpus: <code>[proc.clobber-undeclared]</code>, <code>[proc.out-unwritten]</code>,
+<code>[proc.undeclared-fallthrough]</code>, and <code>[module.path-mismatch]</code>. The set is
+frozen per build shape, so retiring a class or admitting a new one is a deliberate one-line edit
+rather than something that happens by accident. <b>The shipping ROM builds green with those
+warnings present, by design.</b> They are known-open lint classes, each triaged, and listing one
+says &quot;known&quot;, not &quot;fine&quot;.</p>
+
 <div class="decision">
   <span class="d-tag">Design decision &middot; the honest default is "survives"</span>
   <p><b>What:</b> a register you never mention is presumed preserved; writing it without
@@ -446,18 +486,42 @@ checker below.)</p>
   every clause meaningless, because a caller could rely on nothing.</p>
   <p><b>The cost, honestly:</b> because full dataflow is future work, the undeclared-write
   check is a warning today, so a lying <code>clobbers</code> can technically still assemble.
-  The stricter, provable half of the trichotomy is <span class="clause">preserves</span>,
-  which is next, and it is a hard error.</p>
+  A default build makes that quieter still: it prints a tally of the warn tier by lint class
+  rather than the individual messages, and you set <code>SIGIL_WARNINGS=full</code> to read
+  them. The stricter, provable clause is <span class="clause">preserves</span>, which is next,
+  and it is a hard error.</p>
 </div>
 
 <!-- ================================================================ -->
 <h2 id="preserves">3 &middot; preserves: a promise with a proof</h2>
 
-<p>Every register a proc touches is exactly one of three things: <span class="clause">preserves</span>
-(comes back untouched), <span class="clause">clobbers</span> (destroyed scratch), or
-<span class="clause">out</span> (a result the caller reads). We have seen the middle one.
-<span class="clause">preserves(...)</span> is the interesting one, because unlike a bare
-clobber list it is a claim the checker <b>proves</b> rather than trusts. It holds only if, on
+<p>Every register a proc touches has to have a reason, and there are four of them:
+<span class="clause">preserves</span> (comes back untouched), <span class="clause">clobbers</span>
+(destroyed scratch), <span class="clause">out</span> (a result the caller reads), and the fourth,
+which section 2's explainer named in passing and which deserves saying outright: <b>an input</b>,
+declared by the typed parameter list and by nothing else.</p>
+
+<p>The parameter case has a rule of its own, and missing it is the commonest way to misread a
+header. A parameter register may be freely <em>read</em>: the parameter list alone licenses that,
+and no other clause is needed. But if the routine <em>writes</em> a parameter register, the write
+has to be declared like any other. Which clause depends on what the new value means. If it is a
+result the caller should read, say <span class="clause">out</span>. If it is garbage left behind,
+say <span class="clause">clobbers</span>. If it genuinely round-trips, say
+<span class="clause">preserves</span> and let the checker prove it. So a register appearing in both
+the parameter list and <code>clobbers</code> is not a contradiction, it is the normal spelling for
+&quot;comes in carrying an argument, goes out carrying nothing&quot;, and around forty procedures in
+the engine are written exactly that way, <code>QueueDMA_Deferrable (d1: u32, d2: u16, d3: u16)
+clobbers(d0-d4/a1-a2)</code> among them.</p>
+
+<p>The in-out pointer pattern is the same rule with a different answer. <code>ZX0_Decompress
+(a0: *u8, a1: *u8) ... out(a0, a1)</code> takes its source and destination pointers in and hands
+them back advanced past the data it consumed and produced, so the write is a result and the clause
+is <code>out</code>. <code>DrawRings (d5: u16, a4: *u8) ... out(d5, a4)</code> does the same with
+its buffer cursor. Reading such a header, <code>out</code> on a parameter register is the signal
+that the value you passed in came back changed on purpose.</p>
+
+<p>Of the four, <span class="clause">preserves(...)</span> is the interesting one, because unlike a
+bare clobber list it is a claim the checker <b>proves</b> rather than trusts. It holds only if, on
 every path out of the routine, each listed register carries the same value it had on entry.</p>
 
 <p>Almost always the proof is the save-and-restore bracket you already write by hand: push the
@@ -508,11 +572,18 @@ It packs two unrelated things into one word. Its low half holds the
 (the X N Z V C flags an ordinary instruction sets), and its high half holds the
 <span class="term" data-def="Three bits in the status register holding a single number from 0 to 7. The CPU ignores any interrupt at or below that level, so a mask of 0 permits everything and a mask of 7 blocks every ordinary interrupt; level 7 is non-maskable and can still get through.">interrupt mask</span>
 among the supervisor bits. A routine very often wants to promise one half and not the other,
-so .emp lets you name them separately: <code>preserves(sr.mask)</code> is a promise about the
-interrupt half alone, <code>preserves(sr.ccr)</code> about the flags alone, and
+so .emp lets you name them separately: <code>preserves(sr.ccr)</code> is a promise about the
+flags alone, <code>preserves(sr.mask)</code> about the high byte alone, and
 <code>preserves(sr)</code> covers both.</p>
 
-<p>This routine keeps the interrupt mask exactly where it found it while treating the
+<p>Read <code>sr.mask</code> as naming the whole <b>system byte</b>, not just the three interrupt
+bits its name is borrowed from. That byte holds the interrupt mask, and it also holds the trace
+bit and the supervisor bit, and the promise covers all of them, because they share a byte and no
+instruction can write one without going through the others. The name is short for the bit-field
+everyone actually cares about; the guarantee is byte-wide. Sigil's own definition says exactly
+this, and so does the tooltip on &quot;status register&quot; above.</p>
+
+<p>This routine keeps the system byte exactly where it found it while treating the
 condition-code flags as scratch it is allowed to change, and the precision earns its keep in
 section 7's third war story, where a routine claimed to preserve the whole status register
 while quietly returning an answer in the carry flag, which lives inside the half it swore not
@@ -563,7 +634,10 @@ back off and it goes green. Nothing is shown until you run it, the same as the r
   <figcaption>The contract checker. A proc with a real header; toggle a mistake and run to see
   the checker's own verdict, with the message text it prints. With no edits, the header holds
   and the build is green. The <code>with ints_off</code> bracket in the third edit is a context,
-  which section 5 explains; here it is enough that a return inside it skips the release.</figcaption>
+  which section 5 explains; here it is enough that a return inside it skips the release. One
+  difference from a real run: errors print in full as shown, but the warn tier prints only a
+  tally by lint class unless you set <code>SIGIL_WARNINGS=full</code>, which is what shows you
+  the individual warning text.</figcaption>
 </figure>
 
 <!-- ================================================================ -->
@@ -616,7 +690,7 @@ buffer was full.</p>
         ori.b   #1, ccr                 <span class="c">// set carry</span>
         rts
 }</pre>
-<span class="src">aeon/engine/objects/rings.emp:57</span>
+<span class="src">aeon/engine/objects/rings.emp:58</span>
 
 <p>The header promises a flag answer, and the two <code>rts</code> paths deliver it: the
 success path clears carry, the full path sets it. Now the consumer, in the routine that offers
@@ -649,50 +723,85 @@ kind of drift the checker exists to catch.</p>
   build can defend.</p>
 </div>
 
-<p>The checker's write-detection does not yet model <code>(a4)+</code> auto-increment, so a few
-<code>out</code> clauses are marked pending in the engine's own headers.</p>
+<p>One detail worth knowing, because it is the shape most <code>out</code> pointers actually use.
+The checker counts <code>(a4)+</code> and <code>-(a4)</code> as writing <code>a4</code>, in any
+operand position and under any mnemonic. So <code>move.w (a4)+, d0</code> writes both
+<code>d0</code> and <code>a4</code>, and <code>tst.w (a0)+</code> writes <code>a0</code> even
+though <code>tst</code> reads. That is what lets a pointer advanced only by auto-increment carry
+an honest <code>out(a4)</code>, and it equally means a routine that scribbles a pointer this way
+cannot slip past the undeclared-write lint. The one exception is <code>a7</code> moved by
+<code>(sp)+</code> or <code>-(sp)</code>, which is stack discipline rather than a register
+effect, and is exempted deliberately.</p>
 
 <!-- ================================================================ -->
 <h2 id="requires">5 &middot; requires: promises about the world</h2>
 
 <p>The clauses so far are promises about registers. Some routines also need a promise about the
 <em>state of the machine</em>: a thing that must already be true when they run, that no register
-can express. .emp calls those <b>contexts</b>, and a routine demands one with
-<span class="clause">requires(...)</span>.</p>
-
-<p>The engine's one live example is timing. A handful of routines are only safe to run during
-<span class="term" data-def="The vertical blanking interval: the short window between frames while nothing is being drawn. The only safe time for bulk video updates, and where a game does almost all of its time-critical video work.">VBlank</span>,
-the short gap between frames when the display is not being drawn. Reading the controllers is
-one of them:</p>
-
-<pre>pub proc Read_Controllers () clobbers(d0-d4/a0) <span class="k">requires</span>(vblank) {</pre>
-<span class="src">aeon/engine/system/controllers.emp:29</span>
-
-<p>The word <code>vblank</code> names a context declared elsewhere. The interrupt handler that
-runs at the top of VBlank is marked as <em>granting</em> it, and the checker then enforces the
-consuming side across the whole engine: a call to <code>Read_Controllers</code> from a place
-that is not inside a granted vblank window is a hard error, <code>[context.unsatisfied]</code>,
-reported at the call site. The promise is checked between routines, not just within one.</p>
+can express. .emp calls those <b>contexts</b>, and there are two flavours, with quite different
+amounts of proof behind them. Learn the strongly-checked one first.</p>
 
 <details class="explain">
   <summary>New here? &middot; What is a context, and who grants it?</summary>
   <div class="x-body">
     <p>A context is a named fact about the machine that a routine can require and another can
-    provide. Two flavours exist. A <em>granted</em> context, like <code>vblank</code>, is one
-    only the hardware can bring about; the code cannot fake it, so the interrupt entry that
-    genuinely runs during the blanking window is trusted to grant it, and everything downstream
-    either has it or gets refused. An <em>acquired</em> context is one the code creates itself
-    with a bracket, which is the next paragraph. Either way the value of a context is the same:
-    it lets a routine state a precondition the type of a register could never carry.</p>
+    provide. An <em>acquired</em> context is one the code creates itself with a bracket: it
+    writes the setup instructions, does its work, and writes the teardown, and the compiler both
+    supplies those instructions and proves the bracket is closed. A <em>granted</em> context is
+    one only the hardware can bring about; the code cannot fake it, so the routine the hardware
+    genuinely enters at the right moment is trusted to declare it, and everything downstream
+    either has it or gets refused. Either way the value of a context is the same: it lets a
+    routine state a precondition the type of a register could never carry.</p>
   </div>
 </details>
 
 <h3>Acquired contexts: the bracket the checker watches</h3>
 
-<p>The other flavour of context is one the code sets up and tears down itself, with a
-<code>with</code> block. The classic case is masking interrupts around a delicate operation.
-The engine declares a context called <code>ints_off</code> whose two halves are the
-instructions that raise the interrupt mask and the instruction that restores it:</p>
+<p>Start with a real hardware requirement, because it is the clearest case of a rule no register
+can express. On a Genesis, reading the controller ports is not safe while the Z80 is running:
+Z80 traffic on the 68000 bus corrupts reads from the <code>$A100xx</code> I/O range. Sega's own
+Technical Bulletin gives the sequence, and it is not optional. Request the Z80 bus by writing
+<code>$0100</code> to the bus-request register, spin until the Z80 actually hands it over, do
+your I/O, then write <code>$0000</code> to give it back.</p>
+
+<p>In .emp that whole sequence is a context named <code>z80_stopped</code>, and the routine that
+needs it simply says so:</p>
+
+<pre>pub proc Read_Controllers () clobbers(d0-d4/a0) requires(vblank) {
+        <span class="k">with</span> z80_stopped {                  <span class="c">// unconditional - see header trace</span>
+            lea     HW_PORT_1_DATA, a0
+            <span class="c">// ... the whole two-port six-button burst ...</span>
+        }
+        rts
+}</pre>
+<span class="src">aeon/engine/system/controllers.emp:29-59 (abridged)</span>
+
+<pre><span class="k">pub context</span> z80_stopped {
+    <span class="c">// Request the bus and spin until the Z80 grants it.</span>
+    acquire = asm {
+        move.w  #$0100, Z80_BUS_REQUEST
+    .wait_z80:
+        btst    #0, Z80_BUS_REQUEST
+        bne     .wait_z80
+    }
+    <span class="c">// Release it.</span>
+    release = asm {
+        move.w  #$0000, Z80_BUS_REQUEST
+    }
+}</pre>
+<span class="src">aeon/engine/z80_bus.emp:24-36</span>
+
+<p>Three things about that are worth stating separately. The bracket is
+<b>unconditional</b>: it is not gated on whether the sound driver happens to be built in, because
+both build shapes reach that code with the Z80 running. The reason is written in the source as a
+comment naming the hardware bug, so a later reader cannot mistake it for caution. And the
+properties of the bracket, unlike much on this page, are <b>genuine error-tier checks</b>: every
+path through the body must reach the release, no branch may jump into the middle of the region,
+and the hold may not be taken twice.</p>
+
+<p>Contexts are declared once and used everywhere. Here is the other one the engine leans on,
+<code>ints_off</code>, whose two halves are the instructions that raise the interrupt mask and
+the instruction that restores it:</p>
 
 <pre><span class="k">pub context</span> ints_off {
     acquire = asm {
@@ -737,6 +846,32 @@ the shape genuinely defeats the automatic proof. The checker does not pretend to
 it handles the common bracket exactly and leaves the rare one to the programmer, clearly
 marked.</p>
 
+<h3>Granted contexts: requires, and a scheduling rule</h3>
+
+<p>Now the other flavour, and go back to that same <code>Read_Controllers</code> header, because
+it carries one of each and they are not the same kind of claim:</p>
+
+<pre>pub proc Read_Controllers () clobbers(d0-d4/a0) <span class="k">requires</span>(vblank) {</pre>
+<span class="src">aeon/engine/system/controllers.emp:29</span>
+
+<div class="reads">
+  <span class="r-tag">Two claims, both true, of different kinds</span>
+  <p style="max-width:42rem;">The <code>with z80_stopped</code> bracket is a <b>hardware
+  requirement</b>: the pads cannot be read correctly with the Z80 on the bus, on any Genesis, in
+  any program. The <code>requires(vblank)</code> is a <b>scheduling rule</b>: Aeon has decided
+  that the pads are sampled once per frame, during VBlank, so that every system that reads them
+  sees the same snapshot. Nothing in the silicon says pads must be read in VBlank. Both claims
+  belong in the header, and reading a header well means knowing which sort you are looking at.</p>
+</div>
+
+<p>The word <code>vblank</code> names a context declared elsewhere. The interrupt handler that
+runs at the top of VBlank, <code>VBlank_Handler</code>, is marked as <em>granting</em> it, and
+the checker then enforces the consuming side across the corpus: a call to
+<code>Read_Controllers</code> from a place that does not have the granted vblank window is
+reported at the call site as <code>[context.unsatisfied]</code>. That check lives in the
+whole-program walk described at the top of this page, so it is one of the findings that today
+stops a merge rather than a build. On the current engine it fires zero times.</p>
+
 <div class="gotcha">
   <span class="g-tag">Watch out &middot; a granted context is a trust root, not a proof</span>
   <p style="max-width:42rem;">The checker enforces that a <code>requires(vblank)</code> routine
@@ -745,6 +880,23 @@ marked.</p>
   no assembler can check, so <code>grants</code> is an explicit trust root: one place where the
   code says "take this as given." The language does not hide that it is trusted rather than
   proven. Everything downstream of the grant is checked; the grant itself is the human's word.</p>
+</div>
+
+<div class="gotcha">
+  <span class="g-tag">Watch out &middot; the vblank chain has an unchecked link today</span>
+  <p style="max-width:42rem;">Be concrete about what "everything downstream is checked" currently
+  covers, because in this very chain it does not reach all the way.
+  <code>VBlank_Handler</code> grants vblank, but it does not call the frame's work directly. It
+  loads a routine pointer and dispatches through it, <code>jsr (a0) as VBlankHandler</code>, and
+  the contract type it names carries no <code>requires</code>. The walk follows calls by name, and
+  a computed dispatch has no name to follow, so that edge is not walked: the requirement is not
+  propagated across it, in either direction.</p>
+  <p style="max-width:42rem;">The engine does have a way to tell a computed jump what it may land
+  on, a <code>targets(...)</code> clause listing the physical destinations, and one jump in the
+  engine carries one. The whole-program walk does not consume it yet. A parcel to close this,
+  so that a dispatch with declared targets propagates contracts along each of them, is queued.
+  Until it lands, treat a requirement that has to cross an indirect dispatch as documented rather
+  than proved.</p>
 </div>
 
 <!-- ================================================================ -->
@@ -794,7 +946,7 @@ means a content bug upstream:</p>
         }
         ori.b   #1, ccr                 <span class="c">// set carry</span>
         rts</pre>
-<span class="src">aeon/engine/objects/rings.emp:85</span>
+<span class="src">aeon/engine/objects/rings.emp:86</span>
 
 <figure class="diagram">
   <div class="clocks">
@@ -934,50 +1086,69 @@ the instant it did, the tool could tell that what it meant was impossible.</p>
 <h2 id="s8">8 &middot; Escape hatches, and what refuses them</h2>
 
 <p>A checker this strict needs pressure valves, or it stops being adopted. .emp has two, and the
-more interesting fact about them is where they <em>stop</em>.</p>
+interesting fact about them is not that they exist but <b>which findings they can reach</b>.</p>
 
 <p><span class="clause">@allow("group", "reason")</span> silences one named lint group, at a
-module or a proc, and one of its groups, the opt-out for a computed-dispatch site the checker
-cannot analyse, requires a written reason the parser insists on. It
-turns off a specific heuristic warning you have judged to be a false alarm, and nothing more.
-<span class="clause">@as_compat</span> is the faithful-port valve: on a module still being
-carried over verbatim from the old assembler, it silences the modernization lints, the
-heuristic ones, so a literal transcription can build before it is cleaned up.</p>
+module or a proc, and for the group that opts out of analysing a computed-dispatch site the
+parser insists on a written reason. <span class="clause">@as_compat</span> is the faithful-port
+valve: on a module still being carried over verbatim from the old assembler, it softens the
+inferred lints, so a literal transcription can build before it is cleaned up.</p>
 
 <div class="decision">
-  <span class="d-tag">Design decision &middot; some claims cannot be silenced, on purpose</span>
-  <p><b>What:</b> the escape hatches cover the heuristic lints only. The proven contracts, and
-  the machine-checked budgets, have no suppression flag at all, and refuse anything they cannot
-  analyse rather than passing it quietly. A false <code>preserves</code>, a broken
-  <code>out</code>, a <code>falls_into</code> that does not line up, an escaped <code>with</code>
-  bracket, a proc marked never-returning that returns: these are error-tier, and no attribute
-  turns them off.</p>
-  <p><b>Why:</b> a silenced lie is worse than no claim. The value of a checked contract is that
-  a reader can trust it without re-deriving it; a single escape hatch that let a false
-  <code>preserves</code> through would poison that trust for every contract, because now none of
-  them is guaranteed. The heuristic warnings can be waived because they are advisory by
-  construction. The proofs cannot, because their whole worth is that they hold.</p>
+  <span class="d-tag">Design decision &middot; declared claims cannot be silenced; inferred ones can</span>
+  <p><b>What:</b> the line runs between a claim <em>you wrote</em> and a finding the compiler
+  <em>derived</em>. Violating a declared contract, a <code>preserves</code>, an <code>out</code>,
+  a <code>requires</code>, a <code>budget</code>, has <b>no suppression flag at all</b>. So do
+  the structural contracts around them: a <code>falls_into</code> that does not line up, an
+  escaped <code>with</code> bracket, a proc marked never-returning that returns. No attribute
+  turns any of those off. Inferred-only findings, on the other hand, the stack analyses, the
+  live-clobbered check, the blind-call warnings, do get <code>@as_compat</code> softening and
+  per-site <code>@allow</code>, and that is by design rather than by omission.</p>
+  <p><b>Why:</b> the two cases are not symmetric. A declared contract is the author's own claim
+  about their own code, so violating it is never a false alarm; it is either the header being
+  wrong or the body being wrong, and both want fixing. An inferred finding is the compiler's
+  guess about code it does not fully model, and on this hardware a deliberate low-level technique
+  can look exactly like a mistake, so refusing it outright would make the tool wrong about correct
+  code with no way out. Hence: proofs are absolute, guesses are appealable.</p>
   <p><b>The cost, honestly:</b> occasionally the checker refuses code that is actually correct in
-  a way it cannot yet prove, and there is no override. The answer is to write the code in a shape
-  the checker can follow, or to widen the contract to the honest weaker claim, never to silence
-  the proof. That is friction on purpose.</p>
+  a way it cannot yet prove, and for a declared contract there is no override. The answer is to
+  write the code in a shape the checker can follow, or to widen the contract to the honest weaker
+  claim, never to silence the proof. That is friction on purpose.</p>
+  <p><b>What it costs in practice:</b> nothing so far. Across the whole engine and both games,
+  at the revision this page describes, there are <b>zero</b> uses of either hatch. The only
+  <code>@allow</code> in the corpus silences a data-layout lint, not a contract finding, and there
+  is no <code>@as_compat</code> anywhere.</p>
 </div>
 
-<p>That is the whole vocabulary. A .emp procedure header is a sentence in it:
+<p>That is the vocabulary this page has taught, and a .emp procedure header is a sentence in it:
 <span class="clause">clobbers</span> for what dies, <span class="clause">preserves</span> for
 what survives with a proof behind it, typed parameters and <span class="clause">out</span> for
 what goes in and comes back, <span class="clause">requires</span> for what must be true of the
 machine first, and <span class="clause">ensure</span> and <span class="clause">assert</span> for
-the two clocks. None of it is a comment. Every clause is a claim the build will hold you to.</p>
+the two clocks. A header can carry more than these. <span class="clause">falls_into</span> names
+the routine control runs off the end into, and section 7's first war story is about why the
+checker has to know it. <span class="clause">grants</span> is the trust root that hands out a
+context. <span class="clause">@noreturn</span> marks a routine with no way back, and around twenty
+procedures across the two CPUs carry it. <span class="clause">@budget(cycles: n)</span> declares a
+machine-checked cycle ceiling: exactly one procedure in the engine has earned one so far, the
+critical DMA drain, at 670 cycles. None of it is a comment. Every clause is a claim, and for the
+declared ones the build will hold you to it.</p>
 
 <p>So go read one. Every .emp excerpt on the engine pages is now legible as a set of promises:
 open the <a href="reading-emp.html">Reading .emp</a> page again, or any header quoted here, and
-this time read the top line as a contract. Someone wrote it, the checker proved it, and it is
-still true, which is the entire argument for writing it down where the tool can see it.</p>
+this time read the top line as a contract. Someone wrote it, a tool read it against the code, and
+for the proved clauses it is still true because it could not have shipped otherwise. That is the
+entire argument for writing it down where the tool can see it.</p>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot;
 Previous: <a href="reading-emp.html">Reading .emp</a> &middot; Next: Comptime and build shapes (coming) &middot;
-<a href="../index.html">Back to hub</a></footer>
+<a href="../index.html">Back to hub</a><br>
+<span class="fnote">Describes Sigil at <code>6ce78ffb</code> and Aeon at <code>02bb60d</code>, golden
+chain 53, as of 2026-08-07. Every quoted header, diagnostic message, line citation and tier claim on
+this page was verified against those two revisions, including the measured counts: one
+<code>@budget</code>, no <code>@cycles_exact</code>, no <code>@as_compat</code>, and one
+<code>@allow</code>, on a data-layout lint. Enforcement behaviour is the part of this page most
+likely to age, because it is actively being tightened.</span></footer>
 
 <script>
 function expandAll(btn){

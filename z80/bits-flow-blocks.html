@@ -341,7 +341,9 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   memory in one stroke. The one true prerequisite is the
   <a href="programming-model.html">Z80 Programming Model</a> (registers, the pairs, <code>(HL)</code>,
   the flags, dest-first order); no 68000 knowledge is assumed. Every example is real, pulled from the
-  Sonic 2 sound driver and Aeon's own driver and re-verified line by line.</p>
+  Sonic 2 sound driver and Aeon's own driver and re-verified line by line, unless it is labelled
+  "Teaching example" where it stands. A handful are, and always for the same reason: no local driver uses
+  that instruction, and the box says which and why.</p>
   <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
 </header>
 
@@ -400,8 +402,11 @@ register or the byte in memory at <code>(HL)</code>.</p>
 naming a memory operand</b>: each form of each instruction has one whole-instruction
 <span class="term" data-def="The Z80's basic clock tick, one cycle of its clock. Every instruction's timing is measured in T-states, so a 4 T-state instruction takes four ticks. On the Genesis the Z80 runs at about 3.58 MHz, so a tick is roughly a quarter of a microsecond.">T-state</span> figure, and
 that is the number. A <code>rlc (hl)</code> is not "the base cost plus an <code>(hl)</code> surcharge"; it
-is 15 T-states, full stop. (The <a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> page states
-this once for the whole track.) The cost chips below show the cheapest form and say so; the collapsed
+is 15 T-states, full stop. The indexed forms cost more, of course, because the <code>DD</code>/<code>FD</code>
+prefix and the displacement byte are extra bytes the CPU has to fetch, which is why <code>rlc (ix+d)</code>
+is 23. That is still one flat number per form, not a mode price you add on yourself. (The
+<a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> page states this once for the whole track,
+along with the caveat that T-states are the chip's cost and not the console's wall clock.) The cost chips below show the cheapest form and say so; the collapsed
 reference box carries the rest.</p>
 
 <details class="explain">
@@ -806,7 +811,7 @@ off. All three take a bit number 0 to 7 and a target that can be any register or
 <h2 id="s3">3 &middot; Jumps: JP and JR</h2>
 
 <p>A jump changes which instruction runs next by writing a new address into the
-<span class="term" data-def="The 16-bit register on the Z80 that holds the address of the instruction currently being fetched; it advances as instructions run and is redirected by jumps, calls, and returns.">program counter</span>. The Z80 has two,
+<span class="term" data-def="The 16-bit register on the Z80 that holds the address of the next instruction to fetch; it advances past each instruction as that instruction runs, and jumps, calls and returns redirect it.">program counter</span>. The Z80 has two,
 and choosing between them is a real decision every loop makes. <b>JP</b> jumps to an absolute address you
 name; <b>JR</b> jumps a short signed distance relative to itself. Both come in an unconditional form and a
 form that only jumps when a flag condition holds.</p>
@@ -865,23 +870,27 @@ form that only jumps when a flag condition holds.</p>
   <span class="term" data-def="Choosing which routine to run by looking its address up at run time instead of naming it in the instruction.">dispatch</span> primitive, the way to jump to an address you
   computed at run time.</p>
 
-  <p>The driver's modulation routine ends by jumping to an address it just built:</p>
+  <p>The driver's modulation routine ends by jumping to an address it has been carrying since it started:</p>
 
   <pre>        add     hl,bc                           <span class="c">; Add modulation value</span>
         ex      de,hl
         jp      (hl)                            <span class="c">; WILL return to zUpdateTrack</span></pre>
   <span class="src">s2disasm/s2.sounddriver.asm:1047-1049 (jumping to a computed continuation)</span>
 
-  <p><code>add hl,bc</code> finishes computing a target address in <code>HL</code> (by way of a swap in from
-  <code>DE</code>), and <code>jp (hl)</code> transfers control straight to it, with no memory read in between.
+  <p>The routine popped its own return address into <code>DE</code> on entry, and <code>add hl,bc</code>
+  finishes a frequency in <code>HL</code>, so it is the <code>ex de,hl</code> that puts the address where a
+  computed jump can reach it (and hands the frequency out in <code>DE</code> on the same instruction). Then
+  <code>jp (hl)</code> transfers control straight there, with no memory read in between.
   The comment names where it lands. A normal <code>jp zUpdateTrack</code> would carry a fixed address baked
   in at build time; <code>jp (hl)</code> goes wherever the register points right now, which is what makes
   jump-table dispatch possible.</p>
 
   <div class="gotcha"><span class="g-tag">Gotcha</span>
-  <code>jp (hl)</code> is the one place on the Z80 where parentheses do NOT mean "read memory". Read it as
-  "jump to the address in HL", not "jump to the byte HL points at". The same holds for <code>jp (ix)</code>
-  and <code>jp (iy)</code>.</div>
+  <code>jp (hl)</code> is the one that will catch you: here the parentheses do NOT mean "read memory". Read
+  it as "jump to the address in HL", not "jump to the byte HL points at". The same holds for
+  <code>jp (ix)</code> and <code>jp (iy)</code>. The chip's only other liberty with the notation is the
+  <code>IN</code>/<code>OUT</code> family in section 8, where the parentheses name an I/O port instead of a
+  memory address; everywhere else they mean exactly what you expect.</div>
 </div>
 
 <div class="instr" id="jr">
@@ -1114,7 +1123,7 @@ have conditional forms. Two more returns, <b>RETI</b> and <b>RETN</b>, exist for
     <code>SP</code>. Pocket version: the stack is a
     region of RAM, <code>SP</code> points at its top, PUSH steps down and writes, POP reads and steps up. A
     <span class="term" data-def="The address of the instruction that should run next once a called routine has finished. A call writes it onto the stack and the return instruction reads it back.">return address</span>
-    is just four (here, two) bytes on that stack; nothing marks them as special. CALL writes them, RET reads
+    is just two bytes on that stack; nothing marks them as special. CALL writes them, RET reads
     them back, and the pairing is a convention the code keeps with itself. This section does not re-teach
     push and pop; it uses them.</p>
   </div>
@@ -1426,10 +1435,15 @@ has to know them.</p>
   suspends the CPU until an interrupt arrives, then resumes at the instruction after it. It is the polite way
   to idle: instead of a busy-wait loop, the CPU stops and waits for the next interrupt to wake it.</p>
 
-  <p>But HALT carries the section's second footgun, and it must be on the spine: <b>HALT with interrupts
-  disabled hangs forever.</b> HALT waits for an interrupt to wake it, and <code>DI</code> is exactly what
-  stops interrupts from arriving, so <code>di</code> followed by <code>halt</code> waits for a wake-up that
-  can never come. Only a hard reset gets the machine back. Never <code>halt</code> with interrupts masked.</p>
+  <p>But HALT carries the section's second footgun, and it must be on the spine: <b>on the Genesis,
+  <code>di</code> then <code>halt</code> is a lockup.</b> The Z80 leaves HALT for one of three things: an
+  interrupt it is allowed to accept, a non-maskable interrupt on the /NMI pin, or a reset. <code>DI</code>
+  shuts the first one out. And the second one is not available here, because the Mega Drive never asserts
+  the Z80's /NMI line and no register on the machine lets a program pull it. So the only way out is the
+  third: the 68000 writing the Z80 reset register at <code>$A11200</code>, which restarts the sound CPU
+  from address zero with its flags, interrupt mode and stack all gone, and takes the YM2612's reset line
+  with it, because the two are wired together. That is a crash recovery, not a wake-up. Never
+  <code>halt</code> with interrupts masked.</p>
 
   <div class="teach">
     <span class="t-tag">Teaching example &middot; not engine code</span>
@@ -1592,7 +1606,7 @@ copies bytes, the block compare group searches them.</p>
   <div class="flags"><span class="fl-label">Flags</span>
     <span class="fchip f-res" tabindex="0" role="note" title="Sign: a copy of the result's top bit; here from the compare A minus (HL)" aria-label="S: from result"><span class="fl-name">S</span><span class="fl-state">result</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Zero: set when the result is zero; here it means A equalled (HL), a match" aria-label="Z: match"><span class="fl-name">Z</span><span class="fl-state">result</span></span>
-    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA; here the borrow out of the compare" aria-label="H: from result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
+    <span class="fchip f-res" tabindex="0" role="note" title="Half-carry: carry across bit 3, used by DAA; here the half-borrow out of bit 4 of the compare, not the full borrow, which CPI leaves alone" aria-label="H: from result"><span class="fl-name">H</span><span class="fl-state">result</span></span>
     <span class="fchip f-res" tabindex="0" role="note" title="Parity after logic, overflow after arithmetic; the block instructions use it as the BC counter instead, set while BC is not zero after the step" aria-label="P/V: the BC counter"><span class="fl-name">P/V</span><span class="fl-state">count</span></span>
     <span class="fchip f-set" tabindex="0" role="note" title="Add/subtract flag, read by DAA; set to 1 here" aria-label="N: set"><span class="fl-name">N</span><span class="fl-state">set</span></span>
     <span class="fchip f-none" tabindex="0" role="note" title="Carry out of an add, borrow from a subtract" aria-label="C: unaffected"><span class="fl-name">C</span><span class="fl-state">unaff.</span></span>
@@ -1638,7 +1652,7 @@ copies bytes, the block compare group searches them.</p>
 <div class="instr" id="io-absent">
 <p>The Z80 has a whole family of instructions this page has not mentioned: <code>IN</code> and
 <code>OUT</code>, plus their block forms, which read and write the Z80's separate 256-port <em>I/O address
-space</em> over a dedicated bus line. They are real Z80 instructions. On the Sega Genesis they go
+space</em> over a dedicated line of its own, <code>/IORQ</code>. They are real Z80 instructions. On the Sega Genesis they go
 essentially unused, and the reason is a board-design choice, not a property of the Z80.</p>
 
 <p>On this console the Z80's sound hardware is <b>memory-mapped</b>: the
@@ -1646,7 +1660,7 @@ essentially unused, and the reason is a board-design choice, not a property of t
 <span class="term" data-def="The Programmable Sound Generator: a simple chip with three square-wave tone channels and one noise channel.">PSG</span> sit at ordinary addresses in the Z80's 64 KB
 memory space (the YM2612 around <code>$4000</code>, the PSG at <code>$7F11</code>), so the driver reaches
 them with the same <code>LD</code> instructions it uses for anything else, never with <code>IN</code> or
-<code>OUT</code>. The I/O bus line simply is not wired to anything the sound program needs. Across the three
+<code>OUT</code>. The <code>/IORQ</code> line simply is not wired to anything the sound program needs. Across the three
 local sound drivers (the Sonic 2 driver, the S3K driver, and Aeon's driver), <b>no I/O instruction
 appears in any of them</b>; the whole family is one collapsed reference below, present for completeness but
 not part of the working vocabulary here. Attribution matters: memory-mapping the sound chips is Sega's board
@@ -1659,16 +1673,18 @@ design, not something the Z80 does on its own.</p>
     <div class="tbl"><table>
       <thead><tr><th>Instruction</th><th>What it does</th></tr></thead>
       <tbody>
-        <tr><td><code>IN A,(n)</code></td><td>Read the byte from I/O port <code>n</code> into <code>A</code>. Sets no flags.</td></tr>
-        <tr><td><code>IN r,(C)</code></td><td>Read from the port addressed by <code>C</code> into register <code>r</code>. Sets S/Z/H/P-V/N like a load-test.</td></tr>
+        <tr><td><code>IN A,(n)</code></td><td>Read the byte from I/O port <code>n</code> into <code>A</code>. (<code>n</code> drives A0 to A7; <code>A</code> itself rides the top half of the address bus.) Sets no flags.</td></tr>
+        <tr><td><code>IN r,(C)</code></td><td>Read into register <code>r</code> from the port the <b>BC pair</b> addresses: <code>C</code> drives A0 to A7 and <code>B</code> drives A8 to A15. Most peripherals decode only the low half, so in practice <code>C</code> picks the port and <code>B</code> rides along. Sets S/Z/H/P-V/N like a load-test.</td></tr>
         <tr><td><code>OUT (n),A</code></td><td>Write <code>A</code> to I/O port <code>n</code>. Sets no flags.</td></tr>
-        <tr><td><code>OUT (C),r</code></td><td>Write register <code>r</code> to the port addressed by <code>C</code>.</td></tr>
-        <tr><td><code>INI / INIR / IND / INDR</code></td><td>Block input: read a run of ports into memory, walking HL and counting B, with repeating forms.</td></tr>
+        <tr><td><code>OUT (C),r</code></td><td>Write register <code>r</code> to the port the <b>BC pair</b> addresses, <code>C</code> on A0 to A7 and <code>B</code> on A8 to A15, the same as <code>IN r,(C)</code>. Sets no flags.</td></tr>
+        <tr><td><code>INI / INIR / IND / INDR</code></td><td>Block input: read <b>one port</b> repeatedly into a run of memory, walking HL and counting down B, with repeating forms.</td></tr>
         <tr><td><code>OUTI / OTIR / OUTD / OTDR</code></td><td>Block output: write a run of memory to a port, the mirror of the input block ops.</td></tr>
       </tbody>
     </table></div>
-    <p class="enc-note">These drive the Z80's separate I/O space through its dedicated bus request line. On
-    the Genesis that line is not used for sound, so timing and encoding for the group are out of scope here.
+    <p class="enc-note">These drive the Z80's separate I/O space through its dedicated I/O-request line,
+    <code>/IORQ</code>. Do not confuse it with <code>/BUSRQ</code>, which is the line the 68000 pulls at
+    <code>$A11100</code> to take the Z80's bus away. On the Genesis <code>/IORQ</code> is not used for
+    sound, so timing and encoding for the group are out of scope here.
     From UM0080; the absence in local drivers is from the examples census.</p>
   </div>
 </details>

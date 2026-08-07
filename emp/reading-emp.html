@@ -267,8 +267,10 @@ details.explain summary::-webkit-details-marker{display:none;}
 
 <p><span class="term" data-def="The source language of the Aeon engine: classic 68000 and Z80 instructions wrapped in a checked structure of modules, procedures and contracts, assembled by Sigil.">.emp</span> is the source
 language the Aeon engine is written in, for both of the Genesis's processors: the 68000 that runs
-the game and the Z80 that runs the sound. Every module of the engine and every game built on it is
-<code>.emp</code>, and it is turned into ROM bytes by <span class="term" data-def="The from-scratch assembler that turns .emp source into Genesis ROM bytes for both of the console's CPUs, and checks the contracts the language adds.">Sigil</span>, the project's
+the game and the Z80 that runs the sound. Nearly every module of the engine, and of the games built
+on it, is <code>.emp</code>; the exceptions are countable, and at the revision this page describes
+they are three files, the vendored MD Debugger island and one root file per game. Source becomes ROM
+bytes by way of <span class="term" data-def="The from-scratch assembler that turns .emp source into Genesis ROM bytes for both of the console's CPUs, and checks the contracts the language adds.">Sigil</span>, the project's
 own assembler. There is no separate C layer and no runtime underneath: what you read is what runs.</p>
 
 <p>Sigil began by earning trust the hard way: before it added a single new idea, it reproduced the
@@ -284,6 +286,17 @@ which registers a routine may change and which it must hand back untouched, are 
 are checked, and the strongest of them have real teeth: break a promise to preserve a register and
 the build fails outright, with no ROM. The sections ahead show the checker doing exactly that.</p>
 
+<p>One thing to fix in your head now, because both this page and the next depend on it. The checking
+happens at <em>two</em> tiers, and they stop different things. The first tier reads one file at a
+time and compares each procedure header against that procedure's own body; it runs on every build,
+and its error-tier findings stop the build with no ROM. The second tier is a whole-program walk that
+follows calls across module boundaries and answers questions no single file can, such as whether a
+register a caller was still holding survived a callee three levels down. That walk runs in Sigil's
+own test suite and in the strict gates that guard a merge, so today it stops merges rather than
+builds. Whenever a page here says the build refuses something, it is the first tier being described.
+The direction is settled: the whole-program walk is ratified to move into the default build, with a
+parcel queued to do it. It has not landed, so this page describes it as it currently runs.</p>
+
 <details class="explain">
   <summary>New here? · What is an assembler, anyway?</summary>
   <div class="x-body">
@@ -294,8 +307,9 @@ the build fails outright, with no ROM. The sections ahead show the checker doing
     <em>assembly language</em>. One line of assembly is usually one instruction for the CPU.</p>
     <p>Sigil is an assembler, so most of what it does is that same faithful translation, one line to
     one instruction. What is new is that it also <em>reads</em> the extra structure <code>.emp</code>
-    lets you write, checks that the code keeps the promises it makes, and refuses to produce a ROM if
-    it does not. If you have never met assembly at all, the <a href="../m68k/programming-model.html">68000
+    lets you write and checks that the code keeps the promises it makes. When a per-file check finds a
+    procedure whose header and body disagree at error tier, it refuses to produce a ROM at all.
+    If you have never met assembly at all, the <a href="../m68k/programming-model.html">68000
     programming model</a> and the <a href="../z80/programming-model.html">Z80 programming model</a> pages
     start from zero.</p>
   </div>
@@ -309,13 +323,22 @@ the build fails outright, with no ROM. The sections ahead show the checker doing
     note to a human saying &quot;this routine messes up d4 and a0&quot;. In most assembly, that is
     exactly all such a note could ever be, because the assembler has no idea what the routine really
     does; a comment can lie forever and nothing notices.</p>
-    <p>In <code>.emp</code> that same line is a <span class="term" data-def="A machine-checked promise a procedure makes about the registers it changes, preserves and returns, and the conditions it needs. The assembler refuses to build code that breaks one.">contract</span>, and the assembler
-    verifies it. It reads the routine's instructions, works out which registers actually get changed,
-    and compares that to what the line claims. Change a register you never declared and the checker
-    flags the discrepancy, naming the routine; break the firmer promise to hand a register back
-    untouched and the build stops outright with no ROM. The annotation cannot quietly lie, because the
-    checker has read the code. That is the whole difference, and it is
-    why this page keeps saying &quot;checked&quot;: these lines have teeth.</p>
+    <p>In <code>.emp</code> that same line is a <span class="term" data-def="A machine-checked promise a procedure makes about the registers it changes, preserves and returns, and the conditions it needs. The assembler reads the body and holds the header to it, at warning tier or, for the provable clauses, at error tier.">contract</span>, and the assembler
+    reads it. It works through the routine's instructions, derives which registers actually get
+    changed, and compares that to what the line claims. Two different things happen next, and it is
+    worth knowing which is which from the start.</p>
+    <p>Break the firm promise to hand a register back untouched, the <code>preserves</code> clause, and
+    the build stops outright with no ROM. That claim is <em>proved</em>: the checker traces every path
+    out of the routine and either sees the value round-trip or refuses to certify it.</p>
+    <p>Write <code>clobbers(d4, a0)</code> and then also scribble on <code>d3</code>, and you get a
+    <em>warning</em> instead. Undeclared writes are found by pattern recognition over the instruction
+    forms rather than by a full dataflow proof, so the checker names the register and the routine but
+    lets the build finish. A default build even prints only a tally of how many warnings fired and in
+    which classes; you need <code>SIGIL_WARNINGS=full</code> to read the individual messages. So a
+    <code>clobbers</code> list can still technically be wrong and still assemble.</p>
+    <p>That is the honest shape of it, and it is why this page reserves words like &quot;proved&quot;
+    for the clauses that really are proved. What every contract does guarantee, even the warned kind,
+    is that it is <em>read</em>: a comment can rot in silence forever, and one of these cannot.</p>
   </div>
 </details>
 
@@ -345,7 +368,10 @@ the build fails outright, with no ROM. The sections ahead show the checker doing
 
 <p>The fastest way to learn to read <code>.emp</code> is to read a real file, so here is one: the
 engine's ring buffer, which tracks the rings scattered through a level. We will walk it from the
-top, one kind of line at a time. Every excerpt below is the engine's actual source, unedited.</p>
+top, one kind of line at a time. Every excerpt below is the engine's actual source, quoted verbatim
+except where the caption under it says otherwise; the two that are trimmed say so, one abridged and
+one with its comments dropped. Nothing is paraphrased or invented, and anything that is not engine
+source at all carries the dashed &quot;teaching example&quot; border instead of a source line.</p>
 
 <p>A <code>.emp</code> file is a <span class="term" data-def="One .emp file, and the unit the language scopes names in: everything it declares is private to it unless marked public, and it names which section of the ROM its code belongs to.">module</span>, and it opens by saying so. The
 first two lines name the module and pull in the names it borrows from elsewhere:</p>
@@ -385,7 +411,7 @@ that the assembler substitutes wherever it is used. Nothing in the ROM is labell
 refers to it.</p>
 
 <pre><span class="k">const</span> RING_WIDTH             = <span class="n">16</span></pre>
-<span class="src">engine/objects/rings.emp:32</span>
+<span class="src">engine/objects/rings.emp:33</span>
 
 <p>Then the routines. Here is the one that appends a ring to the buffer. Read the first line
 carefully, because it is the header that makes <code>.emp</code> different from plain assembly, and
@@ -408,17 +434,17 @@ then read the body, because the body is plain assembly:</p>
         ori.b   #<span class="n">1</span>, ccr                 <span class="c">// set carry</span>
         rts
 }</pre>
-<span class="src">engine/objects/rings.emp:57-97 (abridged; full walk below)</span>
+<span class="src">engine/objects/rings.emp:58-98 (abridged; full walk below)</span>
 
 <p>The header reads left to right as a set of promises. <code>pub proc RingBuffer_Add</code> declares
 a public routine. <code>(d0: u16, d1: u16, d2: u8, d3: u8)</code> is its input contract: it expects a
 16-bit value in d0 and d1, and a byte in d2 and d3. <code>clobbers(d4, a0)</code> promises those are
 the only registers it destroys as scratch. <code>out(carry: full)</code> says it returns a result in
 the carry flag, and gives that result a caller-facing name, <code>full</code>. Every one of those
-clauses is checked against the body. The details of what each clause means and how the checker proves
-it are the next page's whole subject; here you only need to recognize the shape:
+clauses is checked against the body. The details of what each clause means, and how far the checker
+can prove each one, are the next page's whole subject; here you only need to recognize the shape:
 <a href="contracts.html#clobbers">clobbers</a>, <a href="contracts.html#out">out</a>, and the typed
-parameter list are the routine's contract, and they are verified, not decorative.</p>
+parameter list are the routine's contract, and they are checked, not decorative.</p>
 
 <details class="explain">
   <summary>New here? · Why would a build refuse to produce a ROM?</summary>
@@ -501,21 +527,43 @@ instructions of its own, and a plain instruction line hides no secret code gener
 <a href="../m68k/moving-data.html">68000: Moving Data</a> page; what <code>ld a, (hl)</code> does you
 look up on the Z80 track. This page never re-teaches an instruction, and neither does the language.</p>
 
-<p>There are exactly three honest exceptions, where a line that looks like it might be a plain
-instruction is actually something the assembler expands, and the language names all three openly:</p>
+<p>The rule to carry, and it is a rule about spelling rather than a count: <b>a line whose leading
+word is a CPU mnemonic assembles to that one instruction, and the only thing left open is its
+encoding width, if you left the size suffix off. A line whose leading word is a named
+<code>.emp</code> construct may emit several instructions, or choose among them, or emit
+nothing.</b> You tell the two apart by the word at the front, and the constructs are a closed set
+you can learn once. Here are the ones you will actually meet in engine source:</p>
 
 <ul>
-  <li><code>assert</code> (as in the ring buffer's <code>assert.b d4, eq, #0</code>) expands into
-  real checking instructions <em>only in a debug build</em>; in the plain build it produces nothing at
-  all. It is a run-time safety check you can see the source of, gated to the shape that wants it.</li>
-  <li><code>invoke</code>, the way the engine calls out to a game, expands to an ordinary
-  <code>jsr</code> when the game supplies a routine and to nothing when it does not. The seam it
-  crosses is a later page's subject; here, just know the word is not a CPU instruction.</li>
-  <li><code>jbra</code> and <code>jbsr</code> are single mnemonics that let the assembler pick the
-  branch encoding for you, which is the whole of the next section.</li>
+  <li><code>assert.b</code> / <code>assert.w</code> / <code>assert.l</code> (as in the ring buffer's
+  <code>assert.b d4, eq, #0</code>) expands into real checking instructions <em>only in a debug
+  build</em>; in the plain build it produces nothing at all.</li>
+  <li><code>invoke</code>, the way the engine calls out to a game, expands to an absolute
+  <code>jsr</code> when the game supplies a routine and to nothing when it does not.</li>
+  <li><code>jbra</code> and <code>jbsr</code> pick a reaching encoding for you, which is the whole of
+  the next section. Plain <code>bra</code>, <code>bsr</code> and the conditional branches written
+  without a size suffix are chosen for you too, over a smaller two-step ladder; on the Z80 the same
+  goes for an unsized <code>jr</code>, which the assembler may widen to a <code>jp</code>.</li>
+  <li><code>with <em>ctx</em> { }</code> wraps its body in a context's acquire and release
+  instructions, so a block that looks like plain code carries a splice at each end. The next page is
+  where this one earns its keep.</li>
+  <li><code>mul_const</code> and <code>mul_bounded</code> emit a multiply as a shift-and-add chain or
+  as a real <code>mulu</code>, whichever the cost model prefers for that constant.</li>
+  <li><code>raise_error</code> and <code>raise_exception</code> expand into the fatal-error blob;
+  <code>todo!</code> and <code>unreachable!</code> each assemble to the 68000 <code>ILLEGAL</code>
+  word, so an unfinished routine builds and stops at the hole rather than running past it.</li>
+  <li><code>dc</code> lays down data rather than code, and <code>pad_to_cycles</code> emits however
+  many <code>nop</code>s a timing target needs.</li>
+  <li><code>assume_some</code> emits nothing at all: it is a typing assertion the checker reads,
+  costing zero bytes and zero cycles.</li>
+  <li><code>asm { }</code> splices a block of code built at build time into the instruction stream.</li>
 </ul>
 
-<p>Everything else in a body is literal. The clearest proof is a routine that is nothing but
+<p>What none of them do is hide. Every one is a word you can search for, and none of them is spelled
+like a CPU instruction, so the property that actually matters holds: reading a body, you can tell
+which lines are the machine and which are the language, by eye, without a lookup.</p>
+
+<p>Away from those words, a body is literal. The clearest case is a routine that is nothing but
 instructions and one contract header. This is the engine's sine and cosine lookup: its header promises
 it clobbers nothing and returns results in d0 and d1, and its body is seven plain 68000 instructions.</p>
 
@@ -543,22 +591,24 @@ the header and you have assembly that would run on any 68000.</p>
     <p>On a 1990s console, cycles and bytes are scarce and every one is accounted for. A language that
     quietly turned one line of yours into three instructions, or slipped in a helper call you did not
     write, would make it impossible to reason about timing, and timing is the whole game on this
-    hardware: the engine has a few thousand cycles per frame and must not miss the window. So the
-    promise that a body contains only the instructions you wrote is not a stylistic nicety, it is what
-    lets a programmer keep predicting the machine exactly. Nothing generates a byte behind your
-    back.</p>
+    hardware. An NTSC frame is about 128,000 68000 cycles, but the VBlank window, the only stretch in
+    which bulk video work is safe, is roughly 18,000 of them, and the engine must fit its video work
+    inside that. So the promise that an instruction line is exactly the instruction you wrote is not a
+    stylistic nicety, it is what lets a programmer keep predicting the machine exactly. Code is still
+    generated for you, by the named constructs listed above, but only where you wrote one of their
+    names: no plain instruction line grows a byte behind your back.</p>
   </div>
 </details>
 
 <!-- ================================================================ -->
 <h2 id="s4">4 · Write the intent, not the bytes: jbra and jbsr</h2>
 
-<p>The 68000 has two ways to reach a nearby routine and two ways to reach a far one. A short branch is
-two bytes but only reaches a limited distance; a long branch reaches further but costs more. In plain
-assembly you choose, by writing <code>bra.s</code> or <code>bra.w</code>, and if you guess &quot;short&quot;
-for a target that turns out too far away, the assembler rejects it and you go back and change the
-letter. That round trip is pure bookkeeping, and it is exactly the sort of thing a tool should do for
-you.</p>
+<p>The 68000 gives you several ways to reach a routine, and they differ in size and in how far they
+carry. A short branch is two bytes but reaches only a little way; the next size up is four bytes and
+reaches much further, though still not across an arbitrary ROM. In plain assembly you choose, by
+writing <code>bra.s</code> or <code>bra.w</code>, and if you guess &quot;short&quot; for a target that
+turns out too far away, the assembler rejects it and you go back and change the letter. That round
+trip is pure bookkeeping, and it is exactly the sort of thing a tool should do for you.</p>
 
 <p>So <code>.emp</code> gives you <code>jbra</code> (an auto-reaching jump) and <code>jbsr</code> (an
 auto-reaching call). You write your intent, &quot;go to this routine&quot;, and the assembler emits the
@@ -573,13 +623,48 @@ control home.</p>
 }</pre>
 <span class="src">engine/sound/sound_api.emp:160-163</span>
 
+<p>What the assembler is choosing among is a ladder of four rungs, in this order, and it takes the
+first one that reaches. The order is by size, with one deliberate tie broken toward the
+position-independent form:</p>
+
+<div class="tbl">
+<table>
+  <thead><tr><th>Rung</th><th>Encoding</th><th>Bytes</th><th>Reaches</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td><code>BRA.s</code> / <code>BSR.s</code></td><td>2</td>
+        <td>a displacement of -128 to +127 from the PC. A displacement of 0 is excluded: that
+        encoding means something else.</td></tr>
+    <tr><td>1</td><td><code>BRA.w</code> / <code>BSR.w</code></td><td>4</td>
+        <td>a displacement of -32768 to +32767 from the PC. This is why a word branch cannot reach an
+        arbitrary point in a multi-megabyte ROM: the reach is 32 KB either side of where you are, not
+        of where the ROM starts.</td></tr>
+    <tr><td>2</td><td><code>JMP</code> / <code>JSR</code> with a word address</td><td>4</td>
+        <td>targets in <code>$000000</code> to <code>$007FFF</code> or <code>$FF8000</code> to
+        <code>$FFFFFF</code>, the two ranges a sign-extended 16-bit address can name. Same size as
+        rung 1 but ranked after it, because a PC-relative branch survives the code moving.</td></tr>
+    <tr><td>3</td><td><code>JMP</code> / <code>JSR</code> with a long address</td><td>6</td>
+        <td>anywhere. This rung always reaches.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Two consequences worth keeping. Because rung 3 always reaches, <code>jbra</code> and
+<code>jbsr</code> can never fail to reach a target: there is no case where you are sent back to widen
+something by hand. And there is no <code>BRA.l</code> in the list because the 68000 does not have
+one; this is a plain 68000, not one of its later relatives, and the long-distance rungs are jumps
+rather than branches for exactly that reason.</p>
+
 <details class="explain">
   <summary>New here? · Why let the assembler choose the branch size?</summary>
   <div class="x-body">
     <p>The target is the same routine either way; the only question is how many bytes the jump itself
     needs, so the choice is about encoding, not about what the program does. The assembler already
-    knows where everything lands, so it can pick the smallest form that reaches and re-pick
-    automatically when code shifts.</p>
+    knows where everything lands, so it can pick the smallest form that reaches.</p>
+    <p>It has to re-pick, too, and that is the subtle part. Widening one branch from two bytes to four
+    pushes everything after it along, which can put some other branch out of reach. So the assembler
+    settles the whole file by repetition: it starts with everything at its smallest, widens whatever
+    no longer reaches, and goes round again until nothing changes. Encodings only ever grow in that
+    process, never shrink back, which is what guarantees it stops.</p>
   </div>
 </details>
 
@@ -598,7 +683,7 @@ state routine is:</p>
 <pre>        movea.l Game_State, a0
         jsr     (a0) <span class="k">as</span> GameState       <span class="c">// computed dispatch (bare jsr by the jbra/jbsr rule)</span>
         jbra    GameLoop</pre>
-<span class="src">engine/system/game_loop.emp:41-43</span>
+<span class="src">engine/system/game_loop.emp:42-44</span>
 
 <p>The <code>jbra GameLoop</code> right after the dispatch is the loop closing on itself with an
 auto-reaching jump. How that typing is enforced, and the enumerated form that lets the checker cost every branch of a
@@ -624,6 +709,12 @@ for reading, name it and move on.</p>
   on.</strong> If you are hunting for where a routine
   is called from, searching for <code>jbsr</code> and <code>jbra</code> finds the static calls; the
   bare forms are the computed ones.
+  <p style="margin:.5rem 0 0;"><strong>This is a rule about the source, not about the ROM.</strong>
+  Rungs 2 and 3 of the ladder above are literally <code>JMP</code> and <code>JSR</code> instructions,
+  so a disassembly of the finished cartridge is full of jumps to fixed addresses that were
+  <code>jbra</code> and <code>jbsr</code> in <code>.emp</code>. Reading engine source, a bare
+  <code>jmp</code> means a computed target. Reading a disassembly, it means nothing of the kind, and
+  you have to look at the operand.</p>
 </div>
 
 <!-- ================================================================ -->
@@ -692,8 +783,17 @@ full story of build-time values and code selection is the planned Comptime page;
     moment someone edits one and forgets the other.</p>
     <p><code>.emp</code>'s answer is one set of source files that can be built in different shapes. The
     debug-only code lives right next to the code it checks, wrapped so the build can include or drop it,
-    and the release ROM comes out with none of it. You never maintain two copies, and you can never
-    accidentally ship the debug scaffolding, because the plain build simply does not assemble it.</p>
+    and the release shape comes out with none of it. You never maintain two copies.</p>
+    <p>Be precise about what that buys, because it is narrower than it sounds. What is guaranteed is
+    that code inside a comptime <code>if DEBUG == 1 { }</code> is not assembled in the plain shape, so
+    the bytes genuinely are not there. What is <em>not</em> guaranteed is that all the debug-ish code
+    is inside such a gate: nothing checks that, and the <code>@scaffolding("reason")</code> marker some
+    routines carry is a note for humans that enforces nothing. Nor does the release ROM contain no
+    diagnostics at all. Aeon's release build deliberately ships the MD Debugger island and its symbol
+    appendix, so that a player's crash is reportable; what it drops is the equipment, meaning the
+    assertions, the sound-debug hotkeys and mirror, the boot autoplay, the self-tests. And the build
+    shape is a property of the build, not of the file on the shelf: nothing stops someone handing out
+    the debug ROM by mistake.</p>
   </div>
 </details>
 
@@ -711,7 +811,7 @@ never the file's.</p>
 
 <p>The one thing this page deliberately left shallow is the contracts themselves: what
 <code>clobbers</code>, <code>preserves</code>, <code>out</code> and <code>requires</code> each promise
-in full, exactly how the checker proves them, and the real defects it has caught in shipping engine
+in full, how far the checker proves each one, and the real defects it has caught in shipping engine
 code. That is the next page, and it is the heart of the language.</p>
 
 <div class="doors">
@@ -733,7 +833,11 @@ the engine's real code at length, and every line of it is now legible to you: tr
 instructions the console runs, or <a href="../aeon/section-02-vdp-frame.html">Aeon: The VDP &amp; the
 Frame</a>, which follows a single frame of drawing. Go read one and name the lines as you pass them.</p>
 
-<footer class="page">Part of the Empyrean wiki · last updated 2026-08-06 · <a href="../index.html">Back to hub</a> · Next: <a href="contracts.html">Contracts: what a procedure promises</a></footer>
+<footer class="page">Part of the Empyrean wiki · last updated 2026-08-07 · <a href="../index.html">Back to hub</a> · Next: <a href="contracts.html">Contracts: what a procedure promises</a><br>
+<span class="fnote">Describes Sigil at <code>6ce78ffb</code> and Aeon at <code>02bb60d</code>, golden chain 53,
+as of 2026-08-07. Every quoted excerpt, line citation and checker behaviour on this page was verified
+against those two revisions. The 68000 does not change; the engine and its assembler change weekly, so
+a claim here that disagrees with the tree you are reading means the tree has moved on.</span></footer>
 
 <script>
 function expandAll(btn){
@@ -757,42 +861,42 @@ function expandAll(btn){
     {ln:'11', k:'import',   t:'use engine.objects.sst.{Sst}',
       who:R_ASM, d:'Pulls the name Sst in from another module so this file can use it. Nothing is emitted into the ROM.'},
     {elide:'three more imports and the module\'s configuration notes'},
-    {ln:'32', k:'const',    t:'const RING_WIDTH             = 16',
+    {ln:'33', k:'const',    t:'const RING_WIDTH             = 16',
       who:R_ASM, d:'A build-time value. Wherever the code uses RING_WIDTH, the number 16 is baked in; no byte in the ROM is labelled RING_WIDTH.'},
     {elide:'a build-time drift check and the routine\'s contract notes'},
-    {ln:'57', k:'contract', t:'pub proc RingBuffer_Add (d0: u16, d1: u16, d2: u8, d3: u8) clobbers(d4, a0) out(carry: full) {',
+    {ln:'58', k:'contract', t:'pub proc RingBuffer_Add (d0: u16, d1: u16, d2: u8, d3: u8) clobbers(d4, a0) out(carry: full) {',
       who:R_CHK, d:'The routine header. The typed parameters, clobbers and out are checked promises about registers; the checker verifies each against the body. The CPU sees only the entry label.'},
-    {ln:'58', k:'instr',    t:'        moveq   #0, d4',
+    {ln:'59', k:'instr',    t:'        moveq   #0, d4',
       who:R_CPU, d:'Classic 68000: put zero in d4. Unchanged from the assembly you already know.'},
-    {ln:'59', k:'instr',    t:'        move.b  Ring_Count, d4',
+    {ln:'60', k:'instr',    t:'        move.b  Ring_Count, d4',
       who:R_CPU, d:'Load the current ring count into d4. A plain instruction.'},
-    {ln:'60', k:'instr',    t:'        cmpi.b  #MAX_RING_BUFFER, d4',
+    {ln:'61', k:'instr',    t:'        cmpi.b  #MAX_RING_BUFFER, d4',
       who:R_CPU, d:'Compare the count against the buffer size. MAX_RING_BUFFER is a build-time value the assembler substitutes before this runs.'},
-    {ln:'61', k:'instr',    t:'        bhs     .full',
+    {ln:'62', k:'instr',    t:'        bhs     .full',
       who:R_CPU, d:'Branch to the local label .full if the buffer is already full. An ordinary conditional branch.'},
-    {ln:'63', k:'comment',  t:'        // a0 = &Ring_Buffer[count * 6]',
+    {ln:'64', k:'comment',  t:'        // a0 = &Ring_Buffer[count * 6]',
       who:'People reading the code', d:'A comment. The assembler and the CPU both ignore it entirely; it exists only to explain the next lines to a human.'},
-    {ln:'64', k:'instr',    t:'        move.w  d4, -(sp)',
+    {ln:'65', k:'instr',    t:'        move.w  d4, -(sp)',
       who:R_CPU, d:'Begin computing the slot address by saving the count on the stack. Plain 68000.'},
     {elide:'the rest of the append, then a carry-clear success return'},
-    {ln:'85', k:'label',    t:'    .full:',
+    {ln:'86', k:'label',    t:'    .full:',
       who:R_ASM, d:'A local label, private to this routine (the leading dot marks it local). The assembler turns it into an address and the CPU jumps here; it costs no bytes of its own.'},
-    {ln:'86', k:'instr',    t:'        addq.b  #1, Ring_Add_Dropped',
+    {ln:'87', k:'instr',    t:'        addq.b  #1, Ring_Add_Dropped',
       who:R_CPU, d:'Count one dropped ring. A plain instruction on the full-buffer path.'},
-    {ln:'87', k:'gate',     t:'        if DEBUG == 1 {',
+    {ln:'88', k:'gate',     t:'        if DEBUG == 1 {',
       who:R_ASM, d:'A build-shape gate. In the debug build the block below is assembled; in the plain build it vanishes and costs zero bytes.'},
     {elide:'a comment on why the check is shaped this way'},
-    {ln:'92', k:'instr',    t:'        move.b  Ring_Add_Dropped, d4    // d4 = declared clobber',
+    {ln:'93', k:'instr',    t:'        move.b  Ring_Add_Dropped, d4    // d4 = declared clobber',
       who:R_CPU, d:'Load the dropped count into d4, but only in a debug build. In the plain shape this line does not exist.'},
-    {ln:'93', k:'instr',    t:'        assert.b d4, eq, #0             // drop = content bug, fatal in DEBUG',
-      who:R_ASM, d:'An assert. In a debug build it expands into real instructions that halt if the count is not zero; the plain build never carries it. One of the language\'s three named expansions.'},
-    {ln:'94', k:'gate',     t:'        }',
+    {ln:'94', k:'instr',    t:'        assert.b d4, eq, #0             // drop = content bug, fatal in DEBUG',
+      who:R_ASM, d:'An assert. In a debug build it expands into real instructions that halt if the count is not zero; the plain build never carries it. One of the language\'s named constructs, not a CPU instruction.'},
+    {ln:'95', k:'gate',     t:'        }',
       who:R_ASM, d:'Closes the debug-only block.'},
-    {ln:'95', k:'instr',    t:'        ori.b   #1, ccr                 // set carry',
+    {ln:'96', k:'instr',    t:'        ori.b   #1, ccr                 // set carry',
       who:R_CPU, d:'Set the carry flag: this is the out(carry: full) result the header promised, telling the caller the buffer was full.'},
-    {ln:'96', k:'instr',    t:'        rts',
+    {ln:'97', k:'instr',    t:'        rts',
       who:R_CPU, d:'Return to the caller with the carry flag set. A plain 68000 return.'},
-    {ln:'97', k:'contract', t:'}',
+    {ln:'98', k:'contract', t:'}',
       who:R_ASM, d:'Closes the procedure whose contract the checker just verified against everything between the braces.'}
   ];
 

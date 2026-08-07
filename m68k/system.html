@@ -364,7 +364,7 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   <h1>Instructions: System</h1>
   <p class="sub">These are the instructions that talk to the machine rather than to your data: halting
   the CPU, resetting the hardware, switching between privilege levels, and deliberately causing an
-  exception. One of them is in every Genesis game ever written. Most of the rest appear <b>zero</b>
+  exception. One of them is in all seven of the codebases counted below. Most of the rest appear <b>zero</b>
   times in any of the disassemblies, and that is not a gap in the games, it is a fact about what a
   cartridge console is. This page is the last of the 68000 instruction reference, and it is mostly an
   argument: you learn what a games console actually is by seeing which instructions it makes
@@ -413,7 +413,7 @@ it. The high half you have not met, and it is where this page lives.</p>
 <details class="explain">
   <summary>New here? &middot; What does privileged mean, and does it matter on a cartridge?</summary>
   <div class="x-body">
-    <p>The 68000 runs in one of two states. In <span class="term" data-def="The 68000's privileged state. In supervisor mode all instructions are allowed and the CPU uses its own stack pointer. A Genesis cartridge runs in supervisor mode the whole time, because there is no operating system to drop it into user mode.">supervisor mode</span> every instruction is allowed. In <span class="term" data-def="The 68000's restricted state, meant for programs an operating system does not trust. Privileged instructions are refused. Genesis games effectively never run in it.">user mode</span> a handful of instructions are refused, and attempting one raises an <span class="term" data-def="A forced detour: the CPU stops what it is doing, looks up an address in the vector table, and jumps there. Caused by hardware (an interrupt) or by the program itself (a trap, a bad instruction, a bad address).">exception</span> instead of executing.</p><p>The idea is that an operating system runs in the privileged state and the programs it hosts run in the restricted one, so a misbehaving program cannot turn off interrupts or halt the machine. A Genesis cartridge has no operating system and boots straight into supervisor mode, so it never leaves it. Every privileged instruction on this page is therefore simply available, all the time.</p><p>That does not make the distinction invisible. Assemblers still know which instructions are privileged and will say so: point one at AS and it prints <code>warning: privileged instruction</code>. It is a warning and not an error, the ROM still builds, and on this machine the warning is telling you about a restriction that does not apply.</p>
+    <p>The 68000 runs in one of two states. In <span class="term" data-def="The 68000's privileged state. In supervisor mode all instructions are allowed and the CPU uses its own stack pointer. A Genesis cartridge runs in supervisor mode the whole time, because there is no operating system to drop it into user mode.">supervisor mode</span> every instruction is allowed. In <span class="term" data-def="The 68000's restricted state, meant for programs an operating system does not trust. Privileged instructions are refused. Genesis games effectively never run in it.">user mode</span> a handful of instructions are refused, and attempting one raises an <span class="term" data-def="A forced detour: the CPU stops what it is doing, looks up an address in the vector table, and jumps there. Caused by hardware (an interrupt) or by the program itself (a trap, a bad instruction, a bad address).">exception</span> instead of executing.</p><p>The idea is that an operating system runs in the privileged state and the programs it hosts run in the restricted one, so a misbehaving program cannot turn off interrupts or halt the machine. A Genesis cartridge has no operating system and boots straight into supervisor mode, and nothing in any codebase counted on this page ever takes it back out. Every privileged instruction on this page is therefore simply available, all the time.</p><p>That does not make the distinction invisible. Assemblers still know which instructions are privileged and will say so: point one at AS and it prints <code>warning: privileged instruction</code>. It is a warning and not an error, the ROM still builds, and on this machine the warning is telling you about a restriction that does not apply.</p>
   </div>
 </details>
 
@@ -520,7 +520,9 @@ operand adds its addressing mode's price from
   supervisor mode from power-on until the console is switched off, every instruction is permitted to it
   at all times, and the second gear is never engaged. You can watch this in the
   <a href="#s1">explorer above</a>: clear the S bit and the CPU is in user mode, which on this hardware
-  is a state nothing ever deliberately enters.</p>
+  is a state nothing ever deliberately enters. That is why the explorer's fourth preset,
+  <code>move #$0000,sr</code>, is the one button there that no codebase actually contains. It is
+  offered so you can look at the gear the console never selects.</p>
   <p>This is worth holding on to, because it explains most of the rest of the page in advance. An
   instruction whose job is to report a problem upwards has nowhere to report to. An instruction that
   asks permission has nobody to ask. The privilege system is not broken here and it is not unused
@@ -664,15 +666,17 @@ operand adds its addressing mode's price from
   the supervisor stack pointer while the S bit is set, the user stack pointer while it is clear. Since
   a Genesis game never leaves supervisor mode, it never uses the user stack pointer for anything, and
   the only way to touch it at all is this instruction.</p>
-  <p>Which makes what the disassemblies contain almost funny. There are four uses of
-  <code>MOVE USP</code> across every codebase measured, and they are all the same line:</p>
+  <p>Which makes what the disassemblies contain almost funny. Eleven uses of <code>MOVE USP</code>
+  across the seven codebases, and six of them are the same line:</p>
 <pre>	move.l	a6,usp	<span class="c">; set usp to $0</span></pre>
   <span class="src">s2disasm/s2.asm:218</span>
   <p>The identical instruction, with the identical comment, appears in Sonic 1, in Sonic 2, in both
-  Sonic 3 and Knuckles trees, and in the Sonic Hack engine. It is boot-time hygiene inherited by
-  copying: <code>a6</code> holds zero at that moment, so the line parks the unused stack pointer at
-  address 0 and nothing ever reads it again. Every single use is a write; nobody has ever needed to
-  read it back.</p>
+  Sonic 3 and Knuckles trees, in the Sonic Clean Engine and in the Sonic Hack engine. It is boot-time
+  hygiene inherited by copying: <code>a6</code> holds zero at that moment, so the line parks the unused
+  stack pointer at address 0 and nothing ever reads it again. Every one of those six is a write; nobody
+  in the game code has ever needed to read it back. The other five are all in the homebrew operating
+  system, which is the one codebase here with any reason to keep a second stack pointer pointing
+  somewhere real.</p>
   <details class="refbox">
     <summary>Encoding</summary>
     <div class="enc-body">
@@ -764,7 +768,7 @@ around almost every function it compiles.</p>
 <details class="explain">
   <summary>New here? &middot; What is the machine doing while STOP is stopped?</summary>
   <div class="x-body">
-    <p>Nothing, and that is the point. The CPU stops fetching instructions entirely and waits, drawing less power, until an <span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupt</span> arrives at a level its mask allows through. Then it resumes at the instruction after the STOP.</p><p>What makes it useful rather than a hang is that the mask and the halt are set by the same instruction. Written as two, there would be a window between them where an interrupt could arrive before the CPU was ready to wait for it, and the machine would sleep through the very thing that was meant to wake it.</p><p>A game has no reason to want this: there is always more to do before the next frame, and a console with nothing to do just draws the same picture again.</p>
+    <p>Nothing, and that is the point. The CPU stops fetching instructions entirely and waits, drawing less power, until an <span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupt</span> arrives at a level its mask allows through. Then it resumes at the instruction after the STOP.</p><p>What makes it useful rather than a hang is that the mask and the halt are set by the same instruction. Written as two, there would be a window between them where an interrupt could arrive before the CPU was ready to wait for it, and the machine would sleep through the very thing that was meant to wake it.</p><p>A game has no reason to want this: there is always more to do before the next frame, and a console with nothing to do just draws the same picture again.</p><p>Hold that loosely. It is the reasoning the Sonic engines follow, and it is not the only reasoning available: the STOP entry later in this section catches a 1992 shooter halting the CPU seven times over and letting the video chip wake it up.</p>
   </div>
 </details>
 
@@ -957,9 +961,10 @@ has to ask.</p></div>
 <h2 id="s4">4 &middot; No operating system to complain to</h2>
 
 <p>Section 3's silence turned out to be about a habit, and a game written differently broke it. This
-section's silence is a different kind, and it holds. These four instructions are zero in every codebase
-measured, including Thunder Force IV, which just refuted the other claim, and including a homebrew
-operating system that had every reason to want them.</p>
+section's silence is a different kind, and it very nearly holds. CHK, TRAPV and RESET are zero in every
+codebase measured, including Thunder Force IV, which just refuted the other claim, and including a
+homebrew operating system that had every reason to want them. ILLEGAL is the single exception on the
+whole list: one use, in that operating system, and nowhere else at all.</p>
 <details class="explain">
   <summary>New here? &middot; What is an operating system actually doing that a game does not?</summary>
   <div class="x-body">
@@ -979,7 +984,7 @@ cartridge there is no somebody else.</p>
 
 
 <div class="instr" id="chk">
-  <h3><span class="mn">CHK</span> <span class="mnx">Check Register Against Bounds</span> <span class="syn">CHK &lt;ea&gt;,Dn</span></h3>
+  <h3><span class="mn">CHK</span> <span class="mnx">Check Register Against Bounds</span> <span class="syn">CHK.W &lt;ea&gt;,Dn</span></h3>
   <div class="flags" role="group" aria-label="Condition codes affected by CHK">
     <span class="fl-label">Flags</span>
     <span class="fchip f-none"><span class="fl-name">X</span><span class="fl-state">unaff.</span></span>
@@ -987,7 +992,7 @@ cartridge there is no somebody else.</p>
     <span class="fchip f-none"><span class="fl-name">Z</span><span class="fl-state">undef.</span></span>
     <span class="fchip f-none"><span class="fl-name">V</span><span class="fl-state">undef.</span></span>
     <span class="fchip f-none"><span class="fl-name">C</span><span class="fl-state">undef.</span></span>
-    <span class="fl-caption">N is defined only in the two cases that trap: set if the register is negative, cleared if it exceeds the bound. After a CHK that passes, and that is the only case where your next instruction runs, all five are undefined</span>
+    <span class="fl-caption">X is the one CHK never touches, on either path. N is defined only in the two cases that trap: set if the register is negative, cleared if it exceeds the bound. After a CHK that passes, and that is the only case where your next instruction runs, N, Z, V and C are all undefined, so nothing here is worth branching on</span>
   </div>
   <div class="cost" role="group" aria-label="Size of CHK">
     <span class="fl-label">Cost</span>
@@ -1003,6 +1008,12 @@ cartridge there is no somebody else.</p>
   instead of continuing. It is an array bounds check in one instruction, and it exists because the 68000
   was designed with high-level languages in mind: a compiler for a language that checks its subscripts
   can emit CHK and let the CPU do the comparing.</p>
+  <p>Two things the syntax hides. The comparison is <b>signed</b>, and it is a <b>word</b>: CHK looks at
+  the low 16 bits of <code>Dn</code> only, reads them as a two's-complement number, and ignores the top
+  half entirely. A register holding <code>$00010005</code>, checked against a bound of 100, passes,
+  because what CHK compared was <code>5</code>. And a word is all the original 68000 has.
+  <code>chk.l</code> exists, but it arrived with the 68020, so a listing containing one is not 68000
+  code.</p>
   <p>Nobody on this platform uses it, and the reason is not that Genesis programmers were careless about
   array bounds. It is that CHK's response to a bad index is to raise an exception, and an exception is
   only useful if something is waiting to catch it and do something sensible. On a cartridge, the thing
@@ -1144,13 +1155,14 @@ cartridge there is no somebody else.</p>
 <h2 id="s5">5 &middot; The two that arrived late</h2>
 
 <p>The last two are different from everything above. They are not absent from the Genesis; they are
-absent from the <em>1990s</em>. Neither appears in any Sega-era disassembly, and both turn up in engines
+absent from the <em>1990s</em>. Neither appears in the three Sega-era Sonic disassemblies counted here,
+and both turn up in engines
 written by hobbyists two decades later, each solving one specific problem. And in both cases the
 instruction is being used for something other than the thing it is named after.</p>
 <details class="explain">
   <summary>New here? &middot; Why does reading and writing in one instruction need to be special?</summary>
   <div class="x-body">
-    <p>Suppose two processors share one byte of memory as a "someone is using this" flag. Each wants to read the flag, and if it is clear, set it and proceed.</p><p>Written as two instructions, a read and then a write, there is a gap in the middle. If the other processor reads the same byte during that gap, both see it clear, both set it, and both proceed, which is exactly what the flag existed to prevent. The gap does not have to be likely to be fatal; it only has to happen once.</p><p>A <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.">read-modify-write</span> closes the gap by doing all of it as one indivisible act, holding the bus throughout so nothing can look in between. That is the whole purpose of TAS, and it is why it is the only instruction of its kind the 68000 has.</p>
+    <p>Suppose two processors share one byte of memory as a "someone is using this" flag. Each wants to read the flag, and if it is clear, set it and proceed.</p><p>Written as two instructions, a read and then a write, there is a gap in the middle. If the other processor reads the same byte during that gap, both see it clear, both set it, and both proceed, which is exactly what the flag existed to prevent. The gap does not have to be likely to be fatal; it only has to happen once.</p><p>A <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.">read-modify-write</span> closes the gap by doing all of it as one indivisible act, holding the bus throughout so nothing can look in between. That is the whole purpose of TAS, and it is why it is the only instruction the 68000 has that never lets go of the bus between the read and the write.</p>
   </div>
 </details>
 
@@ -1182,8 +1194,13 @@ instruction is being used for something other than the thing it is named after.<
   <p><b>Why it exists is a story about a machine this is not.</b> If two processors share memory, they
   need a way to agree on who owns something, and the danger is both checking at the same moment, both
   finding it free, and both taking it. TAS closes that gap by doing the checking and the claiming
-  without letting go in between. A Genesis cartridge has one 68000 and nothing to negotiate with, so
-  this purpose never comes up here at all.</p>
+  without letting go in between. The Genesis is not quite the machine with nothing to negotiate: there
+  is a Z80 on the other side of a shared bus, and the 68000 has to ask for that bus and wait to be
+  granted it. But that negotiation is settled by hardware arbitration and a written convention about who
+  owns what, not by contending for a byte. Nothing on this console does symmetric shared-memory
+  multiprocessing, and nothing runs an operating system that hands out locks, so the specific problem
+  TAS was invented for never arises here, and the instruction arrives on the platform with its purpose
+  already answered by other means.</p>
 
   <p><b>And here is where it actually appears.</b> Both the Sonic Hack engine and Aeon contain exactly
   one TAS, in the code that builds a VDP command word. In Aeon that is a compile-time function
@@ -1232,7 +1249,7 @@ instruction is being used for something other than the thing it is named after.<
   <details class="refbox">
     <summary>Why the write is discarded, and which consoles differ</summary>
     <div class="enc-body">
-    <p>TAS is the 68000's only
+    <p>TAS is the 68000's only <em>indivisible</em>
     <span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.">read-modify-write</span>
     instruction, and it holds the bus for the read and the write together so nothing can slip between
     them. That indivisibility is the point, and it is also what the Genesis hardware does not handle.</p>
@@ -1382,8 +1399,11 @@ be the most pointless instruction on a page about pointless instructions, and in
 	move.b	(a1),d0	<span class="c">; Get controller port data (start/A)</span></pre>
   <span class="src">s2disasm/s2.asm:1369-1372</span>
   <p>Two NOPs of deliberate patience, and then the read. Delete them and the code
-  is faster and wrong. This is the one place on this page where an instruction that does nothing is
-  doing something no other instruction could.</p>
+  is faster and wrong. Any instruction would have burned those cycles, a spare <code>tst.b</code>, a
+  branch to the next line, but every one of them costs something else: a flag, a register, a bus access
+  you did not want against a port you were in the middle of talking to. NOP is the only way to buy
+  exactly eight cycles and change nothing whatsoever. That is not "does nothing"; that is a delay with
+  no side effects, and it is the only instruction that offers one.</p>
 
   <p><b>Job two: filling the hole where code used to be.</b> This one is a fossil, and the disassembly
   keeps it on display:</p>
@@ -1439,7 +1459,9 @@ onward: what the CPU actually pushes when an exception fires, and how to read it
 a crash happened, which needs a page of its own; and the extended-precision and decimal instructions.
 Of those, ADDX and SUBX are the only two rows left unlinked in the
 <a href="programming-model.html">instruction index</a>; the BCD family has no rows there at all, and
-neither do NEGX and CMPM.</p></div>
+neither do NEGX and CMPM, nor the six immediate forms that write the condition codes or the status
+register directly, which <a href="math-logic.html">Math &amp; Logic</a> and
+<a href="shifts-bits.html">Shifts &amp; Bits</a> both already point at.</p></div>
 
 
 </main>

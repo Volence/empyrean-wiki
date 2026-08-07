@@ -293,16 +293,17 @@ details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
   <p class="crumb"><a href="../index.html">EMPYREAN</a> / THE GENESIS / THE MACHINE</p>
   <p class="eyebrow">The Genesis</p>
   <h1>The Machine</h1>
-  <p class="sub">Five chips, three buses, one crystal, and a sixteen-megabyte map that says
+  <p class="sub">Five parts, three buses, one crystal, and a sixteen-megabyte map that says
   which chip answers at which address. This is the front door of the hardware track: what a
   Sega Genesis is made of, how the parts are wired to one another, what happens when a program
   reaches for an address nothing is listening at, and how the whole thing moves through one
-  frame. Everything here is true of the silicon, for every game ever made on the machine.</p>
+  frame. Everything here is true of the silicon rather than of any one game's conventions, and
+  it describes a bare console with nothing plugged into the expansion port.</p>
   <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
 </header>
 
 <nav class="toc" aria-label="Sections">
-  <a href="#s1"><span class="n">1</span>One machine, five chips</a>
+  <a href="#s1"><span class="n">1</span>One machine, five parts</a>
   <a href="#s2"><span class="n">2</span>One crystal, every clock</a>
   <a href="#s3"><span class="n">3</span>The 68000's map of the world</a>
   <a href="#s4"><span class="n">4</span>The cartridge</a>
@@ -320,21 +321,26 @@ numbers in another base, the
 converter.</p>
 
 <!-- ================================================================ -->
-<h2 id="s1">1 &middot; One machine, five chips</h2>
+<h2 id="s1">1 &middot; One machine, five parts</h2>
 
 <p>Open a Sega Genesis and the interesting part is small. Two processors, one video chip, two
-sound chips, and a handful of glue parts to wire them together. Everything else in the case is
-power, a cartridge slot, two controller sockets and an expansion port. Learn what those five
-chips are and which wires they hang off, and the rest of this track is detail.</p>
+sound generators, and a handful of glue parts to wire them together. Everything else in the case
+is power, a cartridge slot, two controller sockets and an expansion port. Five parts are worth
+learning by name, though only four of them are separate chips: one of the sound generators lives
+inside the video chip, and how many packages the rest occupy depends on which revision of the
+board you opened. Learn what the five parts do and which wires they hang off, and the rest of
+this track is detail.</p>
 
 <p>The <span class="term" data-def="The main CPU of the Genesis: a 16/32-bit Motorola processor at about 7.67 MHz. Game logic runs here.">68000</span>
 is the main processor, and it runs the game: physics, collision, objects, menus, the lot. Its
-registers are 32 bits wide, it moves 16 bits at a time to and from the outside world, and it has
-24 address lines, which is the number that fixes its world at sixteen megabytes.</p>
+registers are 32 bits wide, it moves 16 bits at a time to and from the outside world, and it
+addresses a 24-bit space, which is what fixes its world at sixteen megabytes.</p>
 
 <p>The <span class="term" data-def="The second, smaller CPU: 8-bit, about 3.58 MHz, with its own memory and its own bus. On a Genesis it conventionally runs the sound driver.">Z80</span>
-is the second processor: eight bits wide, with a 64 KB address space entirely its own and eight
-kilobytes of RAM to live in. On a Genesis it conventionally runs the sound driver, and once the
+is the second processor: eight bits wide, with a 64 KB address map of its own and eight
+kilobytes of RAM to live in. Half that map is genuinely private; the top half is a moving window
+onto the 68000's world, which is how the Z80 reaches cartridge ROM. On a Genesis it
+conventionally runs the sound driver, and once the
 68000 has loaded that driver into its RAM, the Z80 steps through it on its own wires.</p>
 
 <p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span>,
@@ -400,7 +406,7 @@ which is why no address in the 68000's map is a byte of video memory.</li>
     <div class="bxbus">
       <p class="bxlab">16-bit system bus</p>
       <div class="bxrow">
-        <div class="bx cpu"><b>68000</b><i>main CPU, 24 address lines</i></div>
+        <div class="bx cpu"><b>68000</b><i>main CPU, 24-bit address space</i></div>
         <div class="bx vdp"><b>VDP</b><i>draws the picture</i>
           <div class="bxin"><b>PSG</b><i>3 tone + 1 noise, on this die</i></div>
           <div class="bxin vm"><b>CRAM</b><i>64 colours, on this die</i></div>
@@ -427,7 +433,7 @@ which is why no address in the 68000's map is a byte of video memory.</li>
       </div>
     </div>
   </div>
-  <figcaption>The five chips placed on the three buses they actually hang off. The PSG, the
+  <figcaption>The five parts placed on the three buses they actually hang off. The PSG, the
   colour memory and the scroll memory are drawn inside the VDP because that is where they are;
   only VRAM sits out on the video bus. The YM2612 is on the far side of the arbiter from the PSG.
   The one picture to remember from this page: the two sound chips are not neighbours.
@@ -458,9 +464,10 @@ about who is allowed to talk, and on this machine that rule is enforced by a par
 it is.</p>
 <p>That is why "which bus is this chip on" is a real question with real consequences, and not
 just a diagram detail. Two chips on the same bus take turns and can hold each other up. Two chips
-on different buses genuinely run at the same time and never wait for one another. The Genesis
-gets both: the Z80 and its FM chip work away undisturbed on their own wires, while the 68000 and
-the video chip share theirs.</p>
+on different buses genuinely run at the same time, and neither has to wait unless one of them
+reaches into the other's bus. The Genesis gets both: the Z80 and its FM chip work away
+undisturbed on their own wires, and the moment either processor reaches across, somebody
+stalls.</p>
 </div>
 </details>
 
@@ -531,9 +538,11 @@ it moves one step further through whatever it was doing.</p>
 some whole number of ticks, so knowing the tick rate is what turns "this routine takes 300
 cycles" into "this routine takes 39 microseconds". That conversion is why cycle counts are worth
 counting at all.</p>
-<p>A crystal is where the ticking comes from: a sliver of quartz that vibrates at a very precise
-frequency when you put a voltage across it. Precise is the operative word. It is why the number
-above has eight digits rather than being "about 54 megahertz".</p>
+<p>A crystal is where the ticking comes from: a sliver of quartz that vibrates at a very stable
+frequency when you put a voltage across it. Stable is the operative word, and it is not the same
+as exact. The eight digits above are the frequency the part is cut for; any individual console
+sits a hair off it and moves a little as the case warms up. What does not move is the
+relationship between the chips, because that is division, and division does not drift.</p>
 </div>
 </details>
 
@@ -541,10 +550,11 @@ above has eight digits rather than being "about 54 megahertz".</p>
 out at 3,579,545 Hz with no remainder at all. That figure is the NTSC colourburst frequency, the
 reference every NTSC television signal is built around, and the multiplication runs the other way
 just as cleanly: 3,579,545 x 15 = 53,693,175. True colourburst is 315/88 MHz, which is
-3,579,545.4545 and so on forever, so the crystal is cut to the rounded figure and the Z80 ends up
-a fraction of a hertz under. What the arithmetic does not say is why. No Sega document found
-states a reason for the choice, so the relationship is stated here as a fact about the numbers
-and nothing further is claimed from it.</p>
+3,579,545.4545 and so on forever, so the figure in the tree is that number rounded down, and the
+Z80 ends up about half a hertz under true colourburst. What the arithmetic does not say is why.
+No Sega document found states a reason for the ratio, or says the crystal was chosen for it, so
+the relationship is stated here as a fact about the numbers and nothing further is claimed from
+it.</p>
 
 <details class="explain"><summary>New here? &middot; Why divide one crystal instead of giving each chip its own?</summary>
 <div class="x-body">
@@ -629,7 +639,9 @@ wrong.</p>
 <!-- ================================================================ -->
 <h2 id="s3">3 &middot; The 68000's map of the world</h2>
 
-<p>The 68000 has 24 address lines, so it can name 2^24 distinct byte addresses: <code>$000000</code>
+<p>The 68000 puts 23 address lines on its pins, A1 to A23, and carries the lowest bit of the
+address in two separate strobe signals that say which half of a 16-bit word it wants. That comes
+to a 24-bit address space, so it can name 2^24 distinct byte addresses: <code>$000000</code>
 through <code>$FFFFFF</code>, sixteen megabytes. Almost none of that is memory. On this machine an
 address is a question put to the whole system bus at once, and the
 <span class="term" data-def="The list of what answers at each address. One address bus reaches ROM, RAM, the video chip and the controller ports, and the map says which is which.">memory map</span>
@@ -752,7 +764,8 @@ to.</p>
 <p>Which regions do which, and both of the hangs below rest on one chain of evidence apiece, so
 they are worth stating with their provenance attached. Charles MacDonald's hardware-tested notes
 record that <code>$800000-$9FFFFF</code>, the second of Sega's reserved boxes, locks the machine
-on any access, read or write; that is the range the 32X later mapped itself into, and although
+on any access, read or write, on a standard console; that is the range the 32X later mapped
+itself into, and although
 other sources list the region, MacDonald's is the one that reports the hazard.
 <code>$B00000-$BFFFFF</code> has nothing to assert DTACK on a standard console either, so accesses
 there hang as well, and that one is reported by two people in a single SpritesMind hardware
@@ -872,7 +885,7 @@ write your first <code>clr.w</code> at a video address.</p>
   <tr><th>Address</th><th>What answers</th></tr>
   <tr><td><code>$000000-$3FFFFF</code></td><td>Cartridge ROM, up to 4 MB</td></tr>
   <tr><td><code>$400000-$7FFFFF</code></td><td>Sega reserved: the expansion window. Open-bus junk on a bare console</td></tr>
-  <tr><td><code>$800000-$9FFFFF</code></td><td>Sega reserved. Any access locks the machine; the range the 32X later used</td></tr>
+  <tr><td><code>$800000-$9FFFFF</code></td><td>Sega reserved. On a standard console any access locks the machine; the range the 32X later used</td></tr>
   <tr><td><code>$A00000-$A0FFFF</code></td><td>The Z80's address space seen from the 68000. <code>$A08000-$A0FFFF</code> mirrors <code>$A00000-$A07FFF</code>, because address line 15 is ignored</td></tr>
   <tr><td><code>$A10001</code></td><td>Version register, byte, at an odd address: overseas bit, PAL bit, disk bit, and a four-bit hardware revision</td></tr>
   <tr><td><code>$A10003</code> / <code>$A10005</code> / <code>$A10007</code></td><td>Data registers for controller port 1, controller port 2, EXT</td></tr>
@@ -912,8 +925,9 @@ draws four (<code>$000000-$3FFFFF</code>), and an appendix advising emulator aut
 enable 512 KB. The figure is the one to trust. The bullet is a snapshot of what cartridges
 happened to be in 1990, preserved in a document that outlived it.</p>
 
-<p>Because ROM is at the bottom of the map, the very first thing the 68000 ever reads is the
-cartridge. It begins by reading two longwords from address zero. The first is the value to load
+<p>Because ROM is at the bottom of the map, the first thing the 68000 reads out of reset is the
+cartridge, on a console without the security system in the way. It begins by reading two
+longwords from address zero. The first is the value to load
 into the stack pointer; the second is the address of the first instruction to run. Neither is
 code. Both are data the cartridge supplies, and a Genesis ROM therefore does not begin with a
 program at all, it begins with a table:</p>
@@ -939,9 +953,11 @@ the video chip raises, and when, belongs with the frame.</p>
 
 <details class="explain"><summary>New here? &middot; How does a console know where a game starts?</summary>
 <div class="x-body">
-<p>It does not know, and it never looks. There is no operating system on a Genesis, no loader, no
-file system, no header to parse. What there is instead is an agreement, fixed in the silicon of
-the processor itself.</p>
+<p>It does not know, and it never looks. There is no operating system on a Genesis, no loader and
+no file system, and the 68000 itself parses no header before it starts: what there is instead is
+an agreement, fixed in the silicon of the processor. Later consoles do read one field of the
+cartridge before handing over, which is the security system further down this section, but that
+is a boot ROM's doing and it changes nothing about the processor's own start-up.</p>
 <p>When a 68000 is reset it does exactly two things before running anything: it reads four bytes
 from address 0 into its stack pointer, and four bytes from address 4 into its program counter.
 Then it starts fetching instructions from wherever that second number pointed. That is the entire
@@ -1082,8 +1098,9 @@ picture freezes the sound should stop too, the way a stalled program stops produ
 output at once. That model is right for most computers you have used and wrong for this one.</p>
 <p>The Z80 is not a subroutine the 68000 calls. It is a processor with its own copy of a program,
 sitting in memory the 68000 cannot see without asking permission, stepping through that program on
-its own clock. Nothing about the 68000 being stuck reaches it. It does not check on the 68000; it
-has no way to and no reason to. It just carries on with the driver it was given, which is a loop
+its own clock. Nothing about the 68000 being stuck reaches it, unless the 68000 happened to stop
+while it was holding the Z80's bus, in which case the music stops with it. It does not check on
+the 68000; it has no way to and no reason to. It just carries on with the driver it was given, which is a loop
 that reads the next note out of a table and writes it to a sound chip.</p>
 <p>The same reasoning explains the other half of what you see. The picture freezes rather than
 going black because the VDP is a third independent thing: it redraws the screen from its own
@@ -1107,8 +1124,10 @@ means a Genesis game's video memory layout is a budget somebody chose.</p>
 
 <p><span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>
 is the colour memory: 64 slots arranged as four palettes of sixteen, each slot holding a nine-bit
-colour, and the whole thing is 128 bytes. Every colour on screen at any instant is one of those 64
-entries. That is the constraint that gives Genesis pictures their particular look.</p>
+colour, and the whole thing is 128 bytes. Every colour on screen at any instant comes out of
+those 64 entries, and the one thing that stretches the count is the chip's shadow and highlight
+mode, which can show an entry darkened or brightened as well as plain. That is the constraint
+that gives Genesis pictures their particular look.</p>
 
 <p><span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span>
 is the smallest: 80 bytes of vertical scroll values, one 16-bit entry each, so forty of them. Two
@@ -1162,16 +1181,17 @@ beat.</p>
 <!-- ================================================================ -->
 <h2 id="s7">7 &middot; A tour of one frame</h2>
 
-<p>Put the five chips together and run them for one frame, which is a sixtieth of a second on an
-NTSC console and a fiftieth on a PAL one. Nothing in this section is new; it is the whole page
-moving at once.</p>
+<p>Put the five parts together and run them for one frame, which is just under a sixtieth of a
+second on an NTSC console and just under a fiftieth on a PAL one. Nothing in this section is new;
+it is the whole page moving at once.</p>
 
 <p><b>The VDP is drawing.</b> It walks down the picture one
 <span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span>
 at a time, a picture 320 pixels wide, or 256 in the narrower mode the chip also offers. For each
 line it reads nametable entries out of VRAM over its own private video bus,
 fetches the tiles those entries name, looks each pixel's colour up in CRAM, and mixes in whichever
-sprites overlap that line. The 68000 is not involved and cannot watch it happen. How a scrolling
+sprites overlap that line. The 68000 is not involved, and nothing requires it to watch: all it
+can see of the beam is the H/V counter at <code>$C00008</code>, if it goes looking. How a scrolling
 plane is built out of nametable words, what happens when two things want the same pixel, and how
 the window layer takes over a rectangle of the screen are the video chip's own subject:
 <a href="vdp-planes.html">the VDP and planes</a> covers the planes, the
@@ -1184,9 +1204,10 @@ up to eighty entries in the wider mode, each naming a position, a size, some til
 the next one, with per-scanline limits that decide which of them get drawn when there are too
 many.</p>
 
-<p><b>Meanwhile the 68000 is running the game</b>, out of work RAM at the top of its map, executing
-code straight out of the cartridge at the bottom of it. This is where the physics, the object
-logic and the collision happen. What it mostly cannot do right now is push data at the video chip,
+<p><b>Meanwhile the 68000 is running the game</b>, fetching its instructions straight out of the
+cartridge at the bottom of the map and keeping every value it changes in work RAM at the top. ROM
+is what the program <em>is</em>; work RAM is everything the program <em>knows</em>. This is where
+the physics, the object logic and the collision happen. What it mostly cannot do right now is push data at the video chip,
 because the VDP is busy reading VRAM for the picture and has almost no spare moments to service
 requests. So the frame's video work piles up in RAM waiting for a window.</p>
 
@@ -1212,8 +1233,9 @@ transfer, and the queue that decides what gets sent first are a topic in their o
 with the two interrupts and the scanline counting behind them.</p>
 
 <p><b>Then the beam returns to the top and it all starts again</b>, sixty times a second on an
-NTSC machine and fifty on a PAL one, for as long as the console is on. The Z80 never noticed any of
-it; it has been keeping its own time from the same crystal the whole way through.</p>
+NTSC machine and fifty on a PAL one, for as long as the console is on. The Z80 noticed almost
+none of it: apart from the moments the two processors borrowed each other's buses, it has been
+keeping its own time from the same crystal the whole way through.</p>
 
 <p>That is the machine. Everything after this page takes one piece of it and opens it up: the video
 chip and its planes first, then tiles and VRAM, colour and CRAM, sprites, DMA, the frame and its

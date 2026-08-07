@@ -361,7 +361,9 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 
 <p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">Looking for a specific
 instruction and you don't know which page it lives on? The <a href="programming-model.html#s7">full instruction index</a>
-on the Programming Model page lists every 68000 mnemonic with a one-line gloss and a direct link.</p>
+on the Programming Model page carries every instruction these pages document, each with a
+one-line gloss and a link straight to its entry, and says plainly which ones the track has not
+claimed yet.</p>
 
 <!-- ================================================================ -->
 <h2 id="s1">1 &middot; How instructions set the flags</h2>
@@ -1926,8 +1928,10 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
       <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">The immediate form of AND: mask a constant against a register or memory. It is what
-    the assembler uses when you write <code>and #n,&lt;ea&gt;</code>. (The privileged <code>andi #n,SR</code>
-    and the user-mode <code>andi #n,CCR</code> forms exist too, but both belong to the Flow &amp; System page.)</p>
+    the assembler uses when you write <code>and #n,&lt;ea&gt;</code>. (Two more forms exist: the privileged
+    <code>andi #n,SR</code>, which masks the whole status register, and the user-mode
+    <code>andi #n,CCR</code>, which masks the condition codes as a byte. This track does not carry
+    either one, so Motorola's manual is where to read them up.)</p>
   </div>
   <p>ANDI applies a constant mask, the everyday way to clear specific bits of a flag byte or hardware
   register in place. From the sprite code, clearing both flip bits of an object's render flags before
@@ -2019,8 +2023,10 @@ NOT); NOT inverts every bit with no mask at all.</figcaption>
       <span class="og">Dn</span><span class="og no">An</span><span class="og">(An)</span><span class="og">(An)+</span><span class="og">-(An)</span><span class="og">d(An)</span><span class="og">d(An,Xn)</span><span class="og">(xx)</span><span class="og no">#n</span><span class="og no">d(PC)</span>
     </div>
     <p class="og-note">The immediate form of OR: set named bits on. Very common on status bytes and
-    art-tile flag words. (The privileged <code>ori #n,SR</code> and the user-mode <code>ori #n,CCR</code>
-    forms are Flow &amp; System.)</p>
+    art-tile flag words. (Two more forms exist: the privileged <code>ori #n,SR</code>, which sets bits in
+    the whole status register, and the user-mode <code>ori #n,CCR</code>, which sets bits in the
+    condition codes as a byte. This track does not carry either one, so Motorola's manual is where to
+    read them up.)</p>
   </div>
   <p>ORI sets specific bits with a constant mask. Two everyday uses: marking a state flag on a player,
   and setting the flip bits of an art-tile word before it goes to the sprite table.</p>
@@ -2263,7 +2269,7 @@ function expandAll(btn){
   function isBin(){ return !!BIN[op]; }
   // the decimal reading each operand is in force for (LEARNING.md BASE PAIRING, decision 2).
   // AND/OR/EOR/NOT make a BIT PATTERN rather than a quantity, so they get no decimal at all;
-  // otherwise show both readings wherever they diverge, which for CMP is the whole lesson: the
+  // otherwise show both readings wherever they disagree, which for CMP is the whole lesson: the
   // branch that follows reads C for the unsigned answer and N/V for the signed one.
   function decW(n){
     var u=n&0xFFFF, sv=s16(u);

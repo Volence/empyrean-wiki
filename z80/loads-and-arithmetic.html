@@ -410,7 +410,7 @@ that page; these are the pocket versions.</p>
     <code>B</code> into <code>A</code>; <code>add a, 3</code> puts <code>A + 3</code> back into <code>A</code>.
     Read every line "into the left, from the right." (Coming from the 68000 track, this is the one habit to
     flip: that assembler writes the source first.)</p>
-    <p><b>Parentheses mean memory.</b> A bare name is a <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span>;
+    <p><b>Parentheses mean memory.</b> A bare name is a <span class="term" data-def="A small storage slot inside a chip. CPU registers (on the Z80: A, B, C, D, E, H, L, F, and the 16-bit IX, IY, SP, PC) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span>;
     the same name in parentheses is the byte in memory at the address that register holds. <code>ld a, hl</code>
     does not exist, but <code>ld a, (hl)</code> reads the byte <code>HL</code> points at. <code>(nn)</code>
     means the byte at a literal address written into the instruction.</p>
@@ -446,11 +446,29 @@ all gets an honest caption saying so. Hover or focus any chip for that flag's me
 <p><b>The COST line</b> is measured in <span class="term" data-def="The Z80's basic clock tick, one cycle of its clock. Every instruction's timing is measured in T-states, so a 4 T-state instruction takes four ticks. On the Genesis the Z80 runs at about 3.58 MHz, so a tick is roughly a quarter of a microsecond.">T-states</span>,
 the Z80's own clock ticks. The chip shows the cheapest form and says so, and the line beside it names the
 other forms; where an instruction has more of them than that line can carry, the full per-form table lives in
-a collapsed refbox at the end of the entry. Two things to know coming in. First, there is <b>no additive
+a collapsed refbox at the end of the entry. Three things to know coming in. First, there is <b>no additive
 addressing-mode rule</b> on the Z80: a 68000 reader learns to add a per-mode price on top of a base cost,
 but the Z80's manual just lists a flat T-state count for each whole form, and that is the number the chip
-shows. Second, T-states are the Z80's ticks, not 68000 cycles; the Z80 runs its own clock (about 3.58 MHz
-on an NTSC Genesis), so the two counts are not comparable and this page never mixes them.</p>
+shows. The nearest thing to a surcharge is the <code>DD</code>/<code>FD</code> prefix byte that turns an
+<code>HL</code> form into an <code>IX</code>/<code>IY</code> one, and it is a flat +4 T-states and +1 byte
+for the prefix itself: <code>ld hl,nn</code> is 10, <code>ld ix,nn</code> is 14. Where the indexed form
+also carries a displacement byte, that byte has to be fetched too and the gap widens, which is why
+<code>ld r,(hl)</code> is 7 while <code>ld r,(ix+d)</code> is 19. Even then, the number in the table is
+the number; there is nothing you add on yourself.
+Second, T-states are the Z80's ticks, not 68000 cycles; the Z80 runs its own clock (about 3.58 MHz
+on an NTSC Genesis), so the two counts are not directly comparable and this page never mixes them. They
+can be <em>related</em>, because every clock in the console is the same crystal divided and the 68000 gets
+exactly 15 of its cycles for every 7 the Z80 gets
+(<a href="../genesis/the-machine.html#s2">the ratio is on The Machine</a>); convert through that ratio if
+you need to, but never add the two counts together.</p>
+
+<p>Third, and the one that bites: these are <b>the chip's own costs, not the console's wall clock</b>. A
+T-state count tells you what the Z80 would take with the bus to itself. On a Genesis it rarely has the bus
+to itself: the 68000 can take it away entirely (<code>$A11100</code>), and a fetch through the
+<code>$8000</code> cartridge window waits on the main bus, which is why real driver code carries
+hand-written notes like <code>; 7+3</code> where the 3 is a wait, not an instruction. Use the T-state
+numbers to compare two ways of writing the same thing, which is what they are good for. Do not use them to
+predict how many microseconds a routine takes on real hardware.</p>
 
 <p><b>The OPERANDS grid</b> shows, for each slot the instruction really has, one chip per addressing form:
 lit if that form is legal there, crossed out if it is not. A few forms are legal only in combination with
@@ -564,9 +582,13 @@ each row links straight to the entry, on this page or on the sibling
 <h2 id="s2">2 &middot; LD: the one instruction that moves everything</h2>
 
 <p>Most processors have a small zoo of move instructions. The Z80 has one, and its name is <code>LD</code>,
-for Load. Every copy of a byte or a word between registers and memory is an <code>LD</code>: register to
-register, a constant into a register, a byte read from memory, a byte written to memory. There is no
-separate "store" or "move"; the direction is decided entirely by which side you write first. Learn where
+for Load. Every ordinary copy of a byte or a word between registers and memory is an <code>LD</code>:
+register to register, a constant into a register, a byte read from memory, a byte written to memory. There
+is no separate "store" or "move"; the direction is decided entirely by which side you write first. Three
+things do move data without being an <code>LD</code>, and each is a special case you meet later:
+<code>PUSH</code> and <code>POP</code>, which are its close cousins over the stack (section 3),
+<code>EX (SP),HL</code>, which trades a pair with the word on top of it (section 4), and the block copy on
+the sibling page, which is the machine's only memory-to-memory move. Learn where
 <code>LD</code> is allowed to reach and you have learned the Z80's whole moving company, which is why the
 operand grid below carries most of the lesson.</p>
 
@@ -970,12 +992,15 @@ covers both, and one honest contrast with the 68000 that a reader from that trac
 </div>
 
 <div class="decision"><span class="d-tag">A Zilog choice, not ours &middot; no stack-relative addressing</span>
-<p>You cannot reach into the middle of the stack. No instruction reads a value sitting a few bytes below
-the top by naming its offset; the only way down to it is to pop what is above it. (If you know the 68000,
-that machine does have the reach, as <code>d16(sp)</code>, and the Z80 has no <code>ld a,(sp+2)</code> to
-match it.) Zilog built the stack as a pure save-and-restore
-device: <code>PUSH</code> and <code>POP</code> at the top, and that is all. The consequence shapes Z80
-code. Where a 68000 routine might carve out a stack frame and keep locals on it at fixed offsets, Z80 code
+<p>The Z80 has no stack-relative addressing mode. Nothing lets you write <code>ld a,(sp+2)</code> and name
+a byte a fixed distance below the top. If you know the 68000, that machine has exactly that reach as
+<code>d16(sp)</code>, and the Z80 simply does not. You can still get there, but you have to build the road
+yourself: <code>ld ix,0</code> then <code>add ix,sp</code> copies the stack pointer into an index register,
+and from there <code>(IX+d)</code> reaches any slot you like (<code>ex (sp),hl</code> also swaps the top
+word in place, without popping). That is a frame pointer, hand-rolled, and it costs you an index register
+and a dozen T-states. Zilog gave you <code>PUSH</code> and <code>POP</code> and left the rest as an
+exercise. The consequence shapes Z80
+code. Where a 68000 routine carves out a stack frame and keeps locals on it at fixed offsets, Z80 code
 keeps its working values in registers and in fixed RAM, and touches the stack only to stow a pair it will
 pop back soon. It is not a workspace; it is a coat-check. This is why the driver above pushes a register
 only to pop it a few instructions later, and never reaches "into" the stack.</p></div>
@@ -984,7 +1009,8 @@ only to pop it a few instructions later, and never reaches "into" the stack.</p>
 <h2 id="s4">4 &middot; Exchanges</h2>
 
 <p>An exchange swaps two things at once, with no third register to hold one while the other moves. The Z80
-has exactly five exchange forms, no more, and they split into two jobs: swapping two working locations
+has exactly five exchange shapes, no more (six instructions, counting the top-of-stack swap once each for
+<code>HL</code>, <code>IX</code>, and <code>IY</code>), and they split into two jobs: swapping two working locations
 (<code>EX DE,HL</code>, <code>EX (SP),HL</code>) and swapping in the second, hidden bank of registers
 (<code>EXX</code>, <code>EX AF,AF'</code>). The Programming Model page owns the shadow-set model in full;
 this section teaches the instructions and links back for the concept.</p>
@@ -1009,7 +1035,7 @@ this section teaches the instructions and links back for the concept.</p>
     (it reads and rewrites two bytes of memory), and <code>ex (sp),ix</code>/<code>ex (sp),iy</code> are 23.</span>
   </div>
 
-  <p>These five forms are the entire family. Reading them as a table is clearer than a grid, because each
+  <p>These five shapes are the entire family. Reading them as a table is clearer than a grid, because each
   is a fixed pairing rather than a slot with choices:</p>
 
   <div class="tbl"><table>
@@ -1029,20 +1055,23 @@ this section teaches the instructions and links back for the concept.</p>
 
   <h4 class="member">EX DE,HL &middot; the workhorse</h4>
   <p><code>ex de,hl</code> trades the two most useful pointer pairs in a single 4-T-state instruction, with
-  nothing lost. Reach for it when you have built an address in one pair but the instruction you want next
-  needs it in the other. In the driver's modulation routine, the finished address is sitting in
-  <code>HL</code> exactly where a computed jump wants it, right after a 16-bit add builds it:</p>
+  nothing lost. Reach for it when the value you have built sits in one pair but the instruction you want
+  next needs the other. The driver's modulation routine ends on exactly that bind. It popped its own return
+  address into <code>DE</code> on the way in, and it has spent the routine building a frequency in
+  <code>HL</code>; now it wants to hand that frequency back and jump home, and each of those wants the
+  pair the other is holding:</p>
 
 <pre>        add     hl,bc                           <span class="c">; Add modulation value</span>
         ex      de,hl
         jp      (hl)                            <span class="c">; WILL return to zUpdateTrack</span></pre>
 <span class="src">s2disasm/s2.sounddriver.asm:1047-1049 (SMPS Z80 driver)</span>
 
-  <p>The target address arrives in <code>DE</code>; <code>ex de,hl</code> moves it into <code>HL</code> so
-  the very next line, <code>jp (hl)</code>, can jump to it (that computed jump lives on the
-  <a href="bits-flow-blocks.html#jp">sibling page</a>). The exchange is the bridge between "the address is in
-  the wrong pair" and "now it is in the right one," and because it is a swap, whatever was in <code>HL</code>
-  is safely tucked into <code>DE</code> rather than thrown away.</p>
+  <p>The add finishes the frequency in <code>HL</code>. One <code>ex de,hl</code> then does both halves of
+  the job at once: the return address lands in <code>HL</code>, where the very next line,
+  <code>jp (hl)</code>, can jump to it (that computed jump lives on the
+  <a href="bits-flow-blocks.html#jp">sibling page</a>), and the finished frequency lands in <code>DE</code>,
+  which is where the caller collects it. That is what a swap buys you over a move: neither value is thrown
+  away, so a single 4-T-state instruction delivers the result and sets up the return at the same time.</p>
 
   <h4 class="member">EXX and EX AF,AF' &middot; the shadow set</h4>
   <p>The Z80 keeps a second copy of <code>AF</code>, <code>BC</code>, <code>DE</code>, and <code>HL</code>,
@@ -1481,9 +1510,13 @@ and skip the carry flag, get their own.</p>
   <code>P/V</code>, but they leave the <em>carry</em> flag exactly as it was. That is deliberate, and it is
   useful: it lets you set up a carry with one instruction, run a counter with <code>DEC</code> in the middle,
   and still have that carry intact for a multi-byte add or rotate afterward. The counter and the carry do not
-  interfere. It is also a trap in the other direction: you cannot use <code>INC</code>/<code>DEC</code> to
-  test whether a value crossed 255 or 0, because the carry that would tell you never moves. Use <code>ADD</code>
-  or <code>SUB</code> when you need the carry.</p></div>
+  interfere. It is also a trap in the other direction: a wrap past 255 or below 0 never shows up in the
+  <em>carry</em>, because the carry does not move at all. The other flags still report what happened, in
+  their own way, so the wrap is not invisible: an <code>inc</code> that rolls <code>$FF</code> over to
+  <code>$00</code> sets <code>Z</code>, and <code>P/V</code> catches the signed overflow at <code>$7F</code>
+  going to <code>$80</code>. But if what you actually need is a carry, to feed a multi-byte add or a
+  <code>jr c</code>, <code>INC</code> and <code>DEC</code> will never hand you one. Use <code>ADD</code>
+  or <code>SUB</code> for that.</p></div>
 </div>
 
 <!-- ================================================================ -->
@@ -2120,11 +2153,13 @@ turns up exactly once in the whole Sonic 2 driver, and that one use is worth the
 </div>
 
 <p style="margin-top:2.6rem;"><strong>Read the routine you started with.</strong> The
-<code>Snd_DacLookup</code> excerpt in the <a href="#scf">SCF</a> entry is a whole procedure, and every
-instruction in it is on this page: <code>or a</code> tests the id for zero, <code>scf</code> raises the
+<code>Snd_DacLookup</code> excerpt in the <a href="#scf">SCF</a> entry is a whole procedure, and you can now
+read every instruction in it: <code>or a</code> tests the id for zero, <code>scf</code> raises the
 carry without touching the zero flag that test just set, <code>ret z</code> leaves on the id-zero case,
 <code>cp</code> puts the range check into the carry, and <code>jr c</code> takes the good ids away to the
-success path. On the way in those were five unrelated mnemonics. Now they are one contract, "carry set
+success path. Everything that sets a flag there is this page's; the two that jump on what those set,
+<code>ret z</code> and <code>jr c</code>, are the sibling page's, which is rather the point of splitting
+them. On the way in those were five unrelated mnemonics. Now they are one contract, "carry set
 means bad id", enforced in seven instructions and no registers, which the caller in the next excerpt
 reads with a single <code>ret c</code>.</p>
 
