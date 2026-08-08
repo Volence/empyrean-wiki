@@ -382,17 +382,26 @@ bus at a time, so anything else that wants it waits. That second half is the who
 wiring is worth learning before the parts are: two chips on the same bus take turns and can hold
 each other up, while two chips on different buses genuinely run at the same time.</p>
 
-<p>A Genesis has three buses, and every part in it hangs off one of them:</p>
+<p>A Genesis has three buses. Most parts sit on exactly one of them. One part sits on two, and
+that turns out to be the most useful fact in this section:</p>
 
 <ul>
 <li>A <b>16-bit system bus</b>. The 68000 and the VDP are on it; so are the work RAM and the
 cartridge. This is the bus the memory map in section 3 describes.</li>
 <li>An <b>8-bit private bus</b>, the Z80's. The Z80, the YM2612 and the eight kilobytes of sound
 RAM live here, and nothing else does.</li>
-<li>The <b>video bus</b>, which belongs to the VDP alone and connects it to its video memory,
-with the colour and scroll memories sitting on the die itself. No other chip touches any of it,
-which is why no address in the 68000's map is a byte of video memory.</li>
+<li>The <b>video bus</b>, which runs from the VDP to its video memory. Only the VDP is on this
+one, and the colour and scroll memories are not even out here: they sit on the VDP's own die.</li>
 </ul>
+
+<p><b>So the VDP is on two buses, and it is the only part that is.</b> It sits on the system bus
+so the 68000 can talk to it, and it owns the video bus so it can reach the memory it draws from.
+That is not a quirk of the diagram, it is the VDP's job: it is the bridge between the processor's
+world and the picture's. Everything awkward about talking to the video chip follows from it. The
+68000 cannot reach across into video memory, because it is not on that bus and has no wires that
+go there, which is why no address anywhere in its sixteen-megabyte map is a byte of video memory.
+Anything the 68000 wants drawn has to be handed to the VDP over the system bus and carried the
+rest of the way by the VDP itself, through the very small opening section 6 is about.</p>
 
 <details class="explain"><summary>New here? &middot; Why does it matter who owns a bus?</summary>
 <div class="x-body">
@@ -576,8 +585,9 @@ come out of one crystal and the divisors are the interesting part.</p>
 the VDP draws the picture, the YM2612 is the FM synthesiser, and the PSG makes the simple tones
 from inside the VDP's own die.</li>
 <li>Three buses: the 68000's 16-bit system bus, the Z80's private 8-bit bus, and the VDP's video
-bus, which no other chip reaches. Only one device can use a bus at a time, so anything else that
-wants it waits.</li>
+bus, which no other chip reaches. The VDP is on two of the three, which is what makes it the
+bridge to the picture. Only one device can use a bus at a time, so anything else that wants it
+waits.</li>
 <li>Two glue parts: an I/O chip carrying the version register and the three ports, and a bus
 arbiter between the two processors, so either one reaching into the other's world stalls
 somebody.</li>
