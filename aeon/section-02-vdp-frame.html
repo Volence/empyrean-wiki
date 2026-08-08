@@ -1359,7 +1359,7 @@ pipeline's DMA-touching steps exactly, no wider and no narrower.</p>
 <!-- ================================================================ -->
 <h2 id="s9">9 · The HBlank seam</h2>
 
-<p>Where VBlank is the once-per-frame window for bulk updates, <span class="term" data-def="The tiny gap at the end of each scanline. An interrupt can run here for per-line tricks like bending the background mid-screen.">HBlank</span> is the tiny gap at the end
+<p>Where VBlank is the once-per-frame window for bulk updates, <span class="term" data-def="The interval at the end of each scanline while nothing is being drawn. It is a span of time, not an interrupt: the VDP raises a separate horizontal interrupt near it, and that handler is not confined to the interval's length.">HBlank</span> is the tiny gap at the end
 of every single scanline, up to 224 times a frame, and it's the hook raster effects use to change
 VDP state mid-picture: a different scroll value on line 100 than line 99 is what makes parallax
 bend a background instead of just sliding it.</p>

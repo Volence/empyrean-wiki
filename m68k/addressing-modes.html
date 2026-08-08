@@ -388,6 +388,14 @@ number either way. The examples below use the real names, with the raw address w
 
 <h3>The additive rule (the one thing to carry away)</h3>
 
+<p class="sub" style="max-width:42rem;"><b>Before the numbers, what this section assumes you know.</b>
+The CPU runs on a steady clock, and the cost of an instruction is counted in ticks of that clock,
+called <em>cycles</em>. The CPU holds only a handful of values inside itself, in its registers; the
+program and everything else live in memory, and each time the CPU has to reach out for one of them it
+runs a <em>bus cycle</em>, a trip out to memory and back that takes several of those ticks. That is
+the whole of the background this section needs. If those two ideas are new, read the numbers below as
+relative prices rather than absolutes, and the rest of the page still works.</p>
+
 <p>Here is the single fact every instruction page leans on. The time an instruction takes is not one
 number; it is a sum:</p>
 
@@ -1266,7 +1274,7 @@ pointing at mutable data, which the simple "distance from PC" scheme cannot prom
 go to an absolute address or through an address register, and PC-relative stays a read-only,
 fetch-from-my-neighborhood tool.</div>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-18 &middot; <a href="../index.html">Back to hub</a><br>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a><br>
 Previous: <a href="programming-model.html">The Programming Model</a> &middot; Next: <a href="moving-data.html">Moving Data</a></footer>
 
 </div>

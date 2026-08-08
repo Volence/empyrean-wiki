@@ -355,7 +355,7 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   <a href="#s5"><span class="n">5</span>Calls, returns, and RST</a>
   <a href="#s6"><span class="n">6</span>Waiting and interrupts</a>
   <a href="#s7"><span class="n">7</span>Block instructions</a>
-  <a href="#s8"><span class="n">8</span>What the Genesis never uses</a>
+  <a href="#s8"><span class="n">8</span>What the surveyed drivers do not use</a>
 </nav>
 
 <nav class="mini" aria-label="Mini-index of this page's instructions">
@@ -1438,12 +1438,18 @@ has to know them.</p>
   <p>But HALT carries the section's second footgun, and it must be on the spine: <b>on the Genesis,
   <code>di</code> then <code>halt</code> is a lockup.</b> The Z80 leaves HALT for one of three things: an
   interrupt it is allowed to accept, a non-maskable interrupt on the /NMI pin, or a reset. <code>DI</code>
-  shuts the first one out. And the second one is not available here, because the Mega Drive never asserts
-  the Z80's /NMI line and no register on the machine lets a program pull it. So the only way out is the
-  third: the 68000 writing the Z80 reset register at <code>$A11200</code>, which restarts the sound CPU
-  from address zero with its flags, interrupt mode and stack all gone, and takes the YM2612's reset line
-  with it, because the two are wired together. That is a crash recovery, not a wake-up. Never
-  <code>halt</code> with interrupts masked.</p>
+  shuts the first one out. The second is not a route available here: no documented Mega Drive register
+  drives the Z80's /NMI line, and no driver surveyed for these pages waits on one. So the way
+  out in practice is the third: the 68000 writing the Z80 reset register at <code>$A11200</code>, which
+  restarts the sound CPU from address zero with its flags, interrupt mode and stack all gone. That is a
+  crash recovery, not a wake-up. Never <code>halt</code> with interrupts masked.</p>
+
+  <p>Worth knowing alongside it, because it decides what a driver must do after any such reset: the
+  community hardware notes that document <code>$A11200</code> state that the Z80's reset line is shared
+  with the <span class="term" data-def="The six-channel FM synthesizer chip that gives the Genesis its signature sound. Channel six can play raw samples instead (the DAC).">YM2612</span>, and that while the Z80 is held in reset the FM chip cannot be used.
+  That is not from Sega's own manuals, so treat it as well-corroborated hardware lore rather than a
+  documented guarantee, and re-initialise the FM chip after a reset rather than trusting the state you
+  left in it.</p>
 
   <div class="teach">
     <span class="t-tag">Teaching example &middot; not engine code</span>
@@ -1647,7 +1653,7 @@ copies bytes, the block compare group searches them.</p>
 </div>
 
 <!-- ================================================================ -->
-<h2 id="s8">8 &middot; What the Genesis never uses</h2>
+<h2 id="s8">8 &middot; What the surveyed drivers do not use</h2>
 
 <div class="instr" id="io-absent">
 <p>The Z80 has a whole family of instructions this page has not mentioned: <code>IN</code> and
@@ -1669,7 +1675,7 @@ design, not something the Z80 does on its own.</p>
 <details class="refbox">
   <summary>The I/O family, for completeness</summary>
   <div class="enc-body">
-    <p>The dedicated I/O group, none of which the Genesis sound path uses:</p>
+    <p>The dedicated I/O group, none of which the surveyed drivers use:</p>
     <div class="tbl"><table>
       <thead><tr><th>Instruction</th><th>What it does</th></tr></thead>
       <tbody>
@@ -1683,8 +1689,8 @@ design, not something the Z80 does on its own.</p>
     </table></div>
     <p class="enc-note">These drive the Z80's separate I/O space through its dedicated I/O-request line,
     <code>/IORQ</code>. Do not confuse it with <code>/BUSRQ</code>, which is the line the 68000 pulls at
-    <code>$A11100</code> to take the Z80's bus away. On the Genesis <code>/IORQ</code> is not used for
-    sound, so timing and encoding for the group are out of scope here.
+    <code>$A11100</code> to take the Z80's bus away. No surveyed driver reaches the sound hardware through
+    <code>/IORQ</code>, so timing and encoding for the group are out of scope here.
     From UM0080; the absence in local drivers is from the examples census.</p>
   </div>
 </details>
@@ -1720,7 +1726,7 @@ is the shape most of a driver is written in.</p>
 both pages, and <a href="programming-model.html">The Programming Model</a> is where the registers, the
 pairs, <code>(HL)</code> and the flags all of these instructions move are taught in full.</p>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot;
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot;
 Previous: <a href="loads-and-arithmetic.html">Loads &amp; Arithmetic</a> &middot;
 <a href="../index.html">Back to hub</a></footer>
 

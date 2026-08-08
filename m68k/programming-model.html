@@ -768,7 +768,7 @@ the CPU which interpretation your program intends.</p>
 
 <p>This page explains what the codes <em>mean</em>. Watching them actually flip as instructions run,
 picking an operation and seeing X N Z V C change before and after, is the job of the live flags demo on
-the Math &amp; Logic page (coming), which is where that toy lives so it can sit next to the
+the <a href="math-logic.html">Math &amp; Logic page</a>, which is where that toy lives so it can sit next to the
 instructions that set the flags in interesting ways.</p>
 
 <div class="gotcha"><span class="g-tag">Gotcha</span>
@@ -890,7 +890,7 @@ jumps, calls, returns), which is simply how the 68000 is designed. A
     <p>A subroutine call adds one idea: before redirecting the finger, it writes down where the finger
     was (the return address) so a later <code>rts</code> can restore it. Where it writes that down is the
     stack, which is why <a href="#s5">section 5</a> and the PC are so tightly linked. All of this is the
-    Flow &amp; System page's territory (coming); here the point is narrower: the PC is just a register,
+    <a href="flow.html">Flow</a> and <a href="system.html">System</a> pages' territory; here the point is narrower: the PC is just a register,
     and control flow is just instructions assigning to it.</p>
   </div>
 </details>
@@ -978,10 +978,14 @@ chip is wired to something much smaller, and the gap between the two is the sour
 trick and a lurking trap.</p>
 
 <div class="decision"><span class="d-tag">Hardware choice &middot; 32 bits stored, 24 bits decoded</span>
-The 68000 keeps addresses as full 32-bit values inside its registers, but its package only has 24
-address pins, so when it reaches out to memory it uses the low 24 bits and <em>ignores the top 8</em>.
-That fixes the real, physical address space at 2^24 = 16 MB, <code>$000000</code> to
-<code>$FFFFFF</code>. 24 pins make for a cheaper package, while the full-width registers left room for
+The 68000 keeps addresses as full 32-bit values inside its registers, but only the low 24 bits ever
+leave the chip: when it reaches out to memory it <em>ignores the top 8</em>. That fixes the real,
+physical byte-address space at 2^24 = 16 MB, <code>$000000</code> to <code>$FFFFFF</code>. The pins tell
+the same story with one wrinkle worth knowing. The package carries address signals <code>A23</code>
+through <code>A1</code> and no <code>A0</code> at all, because the data bus is 16 bits wide and the chip
+puts a word address on those lines. Two byte strobes, upper and lower, then say which half of that word
+a byte access means, doing the job <code>A0</code> would otherwise have done. A narrower package is
+cheaper, while the full-width registers left room for
 later chips (the 68020 and up) to wire all 32. On the Genesis, always a plain 68000, only those 24 bits
 ever matter; the full consequences of that gap are the "two spellings, one location" note at the end of
 this section.</div>
@@ -1118,8 +1122,8 @@ live pointers: it does not. Its work-RAM symbols are written full-width, like <c
 top <code>$FF</code> and all, and dereferenced that way at run time.</p>
 
 <div class="decision"><span class="d-tag">Logical vs physical &middot; two spellings, one location</span>
-Address registers and the PC are 32 bits wide, but the MC68000 exposes only a 24-bit physical address
-bus, so Genesis hardware decodes just the low 24 bits of any address. That gap has a visible consequence
+Address registers and the PC are 32 bits wide, but the MC68000 exposes only a 24-bit physical
+byte-address space, so Genesis hardware decodes just the low 24 bits of any address. That gap has a visible consequence
 in the source: assemblers commonly <em>write</em> high work-RAM addresses in sign-extended form, like
 <code>$FFFFF600</code>, even though the physical address is <code>$FFF600</code>. Both
 <code>$00FFF600</code> and <code>$FFFFF600</code> name the same location, because the top byte is
@@ -1298,8 +1302,8 @@ FindFloor:</pre>
   <li><b>A yes-or-no answer often comes back in a flag</b>, usually carry. It costs no register at all,
   and the caller reads it with a single <code>bcc</code> or <code>bcs</code> on the very next line. Aeon
   makes the same choice and states it in the routine's signature, where
-  <code>out(carry: dropped)</code> on its DMA queue call means the carry bit IS the answer, and the
-  assembler checks that the routine really sets it.</li>
+  <code>out(carry: dropped)</code> on its DMA queue call means the carry bit IS the answer, written
+  where a tool can read it instead of in a comment nothing reads.</li>
   <li><b>Preservation is per routine, not global.</b> There is no register the 68000 or the platform
   declares sacred. A routine that must not disturb its caller saves what it touches on entry with
   <code>movem</code> and restores it before <code>rts</code>; a routine documented as clobbering
@@ -1312,11 +1316,14 @@ engine's source language was built for. The same information, on an Aeon routine
 signature:</p>
 <pre>pub proc QueueDMA_Critical (d1: u32, d2: u16, d3: u16) clobbers(d0-d4/a1-a2) out(carry: dropped) preserves(sr.mask) {</pre>
 <span class="src">aeon/engine/system/dma_queue.emp:94</span>
-<p>Every clause there is checked while the ROM is built. The arguments are named and typed, the
-clobber list is verified against what the code actually writes, <code>out(carry: dropped)</code> says
-the carry bit IS the answer this routine hands back, and <code>preserves(sr.mask)</code> promises it
-leaves the interrupt mask as it found it. Break any of them and the build stops. The convention has
-stopped being a comment and become a fact the assembler enforces.</p>
+<p>Every clause there is read by the tool while the ROM is built, and how hard each one bites depends on
+the clause. The arguments are named and typed. The clobber list is checked against what the code
+actually writes, but that check is a heuristic lint today: break it and you get a warning and a ROM.
+<code>out(carry: dropped)</code> says the carry bit IS the answer this routine hands back.
+<code>preserves(sr.mask)</code> promises it leaves the interrupt mask as it found it, and that promise
+is a hard error: write the mask without restoring it and the build stops with no ROM produced. The
+convention has stopped being a comment nothing reads. Which clauses are proved and which are only
+linted is the subject of <a href="../emp/contracts.html">the Contracts page</a>.</p>
 
 <p class="sub">Combining these into whole idioms, the register-preserving wrapper, dispatch through a
 jump table, the tail call, is the subject of a page of its own rather than this one.</p>
@@ -1328,9 +1335,12 @@ jump table, the tail call, is the subject of a page of its own rather than this 
 of the ways a 68000 program dies. It is worth knowing exactly how it dies, because the failure has two
 distinct shapes and neither one looks like the tidy crash you might expect.</p>
 
-<p>A crash, though, is just an exception the game did not want, and every exception (wanted or not) follows
-the same six steps. This is the sequence that ties together the supervisor stack, the vector table, and
-<code>rte</code> that the rest of this page has met one piece at a time:</p>
+<p>A crash, though, is just an exception the game did not want, and every non-reset exception (wanted or
+not) follows the same six steps. Reset is the one that does not, and it is worth naming the exception to
+the rule before the rule: reset saves nothing, because there is nothing yet to come back to. It loads the
+supervisor stack pointer from vector 0 and the PC from vector 1 and starts. Every other exception follows
+the sequence below, which ties together the supervisor stack, the vector table, and <code>rte</code> that
+the rest of this page has met one piece at a time:</p>
 <ol style="max-width:42rem; line-height:1.5;">
   <li>The exception fires: a bus or address error, an illegal instruction, a <code>trap</code>, an interrupt, and so on.</li>
   <li>The CPU switches into supervisor mode.</li>
@@ -1339,8 +1349,8 @@ the same six steps. This is the sequence that ties together the supervisor stack
   <li>It reads the handler's address from this exception's slot in the vector table and loads it into the PC.</li>
   <li>The handler runs; if execution is meant to continue, it ends with <code>rte</code>, which pops the saved SR and PC back and carries on where it left off.</li>
 </ol>
-<p>This is the common <em>conceptual</em> sequence; it excludes reset, which builds no saved frame at
-all. The exact stack frame varies by exception, and this is worth knowing in one specific way: bus
+<p>That is the common <em>conceptual</em> sequence. The exact stack frame varies by exception, and this
+is worth knowing in one specific way: bus
 and address errors push <strong>eight extra bytes below</strong> the SR and PC pair, describing the
 access that failed. A handler that reads the saved PC at a fixed offset from the stack pointer
 therefore reports nonsense for exactly the two exceptions you most want to debug, unless it first
@@ -1369,7 +1379,7 @@ four bytes: offset = number &times; 4.</p>
   <tr><td>11</td><td><code>$02C</code></td><td>Line 1111: the opcode's top four bits are <code>1111</code></td></tr>
   <tr><td>12-23</td><td><code>$030-$05C</code></td><td>Reserved by Motorola; nothing here should ever fire</td></tr>
   <tr><td>24</td><td><code>$060</code></td><td>Spurious interrupt: a device asked, then failed to identify itself</td></tr>
-  <tr><td>25-31</td><td><code>$064-$07C</code></td><td>Interrupt levels 1 to 7. On the Genesis level 4 is HBlank and level 6 is VBlank</td></tr>
+  <tr><td>25-31</td><td><code>$064-$07C</code></td><td>Interrupt levels 1 to 7. On the Genesis level 4 is the horizontal interrupt (HInt) and level 6 is the vertical interrupt (VInt). Those are interrupts the VDP raises, not the blanking intervals they are named after</td></tr>
   <tr><td>32-47</td><td><code>$080-$0BC</code></td><td><a href="system.html#trap">TRAP</a> #0 through #15, one slot each</td></tr>
   <tr><td>48-63</td><td><code>$0C0-$0FC</code></td><td>Reserved</td></tr>
 </table></div>
@@ -1603,7 +1613,7 @@ forms that target the condition codes or the status register directly.
 The <code>Bcc</code>, <code>DBcc</code>, and
 <code>Scc</code> rows each stand for a whole family of condition suffixes (EQ, NE, CS, and the rest).</p>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot; <a href="../index.html">Back to hub</a><br>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a><br>
 Next: <a href="addressing-modes.html">Addressing Modes</a> &middot; then <a href="moving-data.html">Moving Data</a></footer>
 
 </div>

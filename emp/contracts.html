@@ -328,7 +328,9 @@ It can only rot silently.</p>
   <span class="d-tag">Design decision &middot; contracts are checked, or they are comments</span>
   <p><b>What:</b> .emp takes the sentence a good assembly programmer already writes in a
   header comment and moves it into the procedure header, where the assembler parses it and
-  proves it against the body.</p>
+  checks it against the body. The strongest clauses it proves outright and refuses to build
+  without; the rest it lints, so a broken promise prints rather than passing in silence.
+  Section 3 onward says which is which, clause by clause.</p>
   <p><b>Why:</b> a promise the tool cannot read is a promise nothing keeps. The engine had
   hundreds of these register agreements; a comment is the right place to explain intent and
   the wrong place to store a fact the build depends on. The taste behind the whole language
@@ -1131,8 +1133,9 @@ checker has to know it. <span class="clause">grants</span> is the trust root tha
 context. <span class="clause">@noreturn</span> marks a routine with no way back, and around twenty
 procedures across the two CPUs carry it. <span class="clause">@budget(cycles: n)</span> declares a
 machine-checked cycle ceiling: exactly one procedure in the engine has earned one so far, the
-critical DMA drain, at 670 cycles. None of it is a comment. Every clause is a claim, and for the
-declared ones the build will hold you to it.</p>
+critical DMA drain, at 670 cycles. None of it is a comment. Every clause is a claim the tool reads,
+and the tier decides what happens when you break one: the proved clauses stop the build, and the
+linted ones print a warning you can still ship past.</p>
 
 <p>So go read one. Every .emp excerpt on the engine pages is now legible as a set of promises:
 open the <a href="reading-emp.html">Reading .emp</a> page again, or any header quoted here, and
@@ -1140,7 +1143,7 @@ this time read the top line as a contract. Someone wrote it, a tool read it agai
 for the proved clauses it is still true because it could not have shipped otherwise. That is the
 entire argument for writing it down where the tool can see it.</p>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot;
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot;
 Previous: <a href="reading-emp.html">Reading .emp</a> &middot; Next: Comptime and build shapes (coming) &middot;
 <a href="../index.html">Back to hub</a><br>
 <span class="fnote">Describes Sigil at <code>6ce78ffb</code> and Aeon at <code>02bb60d</code>, golden

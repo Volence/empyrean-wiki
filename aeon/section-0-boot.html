@@ -1193,7 +1193,7 @@ level. Actual button polling happens every VBlank, not at boot.</p>
 <!-- ================================================================ -->
 <h2 id="s7">7 · The interrupt switchboard</h2>
 
-<p>Two <span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupts</span> drive everything periodic in the engine. IRQ4 fires at <span class="term" data-def="The tiny gap at the end of each scanline. An interrupt can run here for per-line tricks like bending the background mid-screen.">horizontal blanking</span>,
+<p>Two <span class="term" data-def="A hardware signal that pauses the CPU, jumps it to a handler routine, and returns when the handler finishes. The Genesis uses interrupts to stay in step with the display.">interrupts</span> drive everything periodic in the engine. IRQ4 fires at <span class="term" data-def="The interval at the end of each scanline while nothing is being drawn. It is a span of time, not an interrupt: the VDP raises a separate horizontal interrupt near it, and that handler is not confined to the interval's length.">horizontal blanking</span>,
 between scanlines, and is the hook for raster effects. IRQ6 fires at vertical blanking, between
 frames, and is where all VDP-touching work happens. Aeon wires them asymmetrically, and the
 asymmetry is the design.</p>

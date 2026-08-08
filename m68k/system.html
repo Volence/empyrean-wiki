@@ -368,7 +368,7 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
   ILLEGAL. One pair, LINK and UNLK, opens and closes a block of scratch memory on the stack. And two,
   TAS and NOP, belong to no family at all. What actually holds them together is not what they do, it is
   how seldom you meet them. One of them is in all seven of the codebases counted below. Most of the rest appear <b>zero</b>
-  times in any of the disassemblies, and that is not a gap in the games, it is a fact about what a
+  times in any of the surveyed codebases, and that is not a gap in the games, it is a fact about what a
   cartridge console is. This page is the last of the 68000 instruction reference, and it is mostly an
   argument: you learn what a games console actually is by seeing which instructions it makes
   pointless.</p>
@@ -401,8 +401,8 @@ figure.diagram figcaption{text-transform:none; letter-spacing:.02em;}
 
 <h2 id="s1">1 &middot; The one you will actually meet</h2>
 
-<p>Almost every instruction on this page is one you will never see in a Genesis game. This first one
-is the opposite: it is in all of them. Counted across seven codebases, <code>move</code> to or from
+<p>Almost every instruction on this page is one you are unlikely ever to meet in a Genesis game. This
+first one is the opposite: it is in every codebase surveyed here. Counted across seven codebases, <code>move</code> to or from
 the status register appears 4 times in Sonic 1, 47 in Sonic 2, 111 in Sonic 3 and Knuckles, 10 in the
 Sonic Clean Engine, 31 in the Sonic Hack engine, 23 in Aeon, and 49 in MarkeyJester's homebrew Mega
 Drive operating system. It is ordinary, everyday code, and it is worth understanding before anything
@@ -507,7 +507,7 @@ operand adds its addressing mode's price from
 <a href="addressing-modes.html#price">the mode table</a>.</p></div>
 
 <details class="refbox">
-  <summary>Why a CPU has two privilege levels at all, and why this console never uses the feature</summary>
+  <summary>Why a CPU has two privilege levels at all, and why this console has no use for the feature</summary>
   <div class="enc-body">
   <p>The 68000 has two modes because it was built for machines where the CPU is shared. On a workstation
   or an Amiga, an operating system is in charge and the programs it runs are not trusted: one of them
@@ -523,9 +523,9 @@ operand adds its addressing mode's price from
   supervisor mode from power-on until the console is switched off, every instruction is permitted to it
   at all times, and the second gear is never engaged. You can watch this in the
   <a href="#s1">explorer above</a>: clear the S bit and the CPU is in user mode, which on this hardware
-  is a state nothing ever deliberately enters. That is why the explorer's fourth preset,
+  is a state no surveyed codebase deliberately enters. That is why the explorer's fourth preset,
   <code>move #$0000,sr</code>, is the one button there that no codebase actually contains. It is
-  offered so you can look at the gear the console never selects.</p>
+  offered so you can look at the gear this code never selects.</p>
   <p>This is worth holding on to, because it explains most of the rest of the page in advance. An
   instruction whose job is to report a problem upwards has nowhere to report to. An instruction that
   asks permission has nobody to ask. The privilege system is not broken here and it is not unused
@@ -667,8 +667,8 @@ operand adds its addressing mode's price from
   </div>
   <p>The 68000 has two stack pointers, and <code>a7</code> means whichever one is currently in force:
   the supervisor stack pointer while the S bit is set, the user stack pointer while it is clear. Since
-  a Genesis game never leaves supervisor mode, it never uses the user stack pointer for anything, and
-  the only way to touch it at all is this instruction.</p>
+  nothing in the surveyed codebases ever leaves supervisor mode, none of them use the user stack
+  pointer for anything, and the only way to touch it at all is this instruction.</p>
   <p>Which makes what the disassemblies contain almost funny. Eleven uses of <code>MOVE USP</code>
   across the seven codebases, and six of them are the same line:</p>
 <pre>	move.l	a6,usp	<span class="c">; set usp to $0</span></pre>
@@ -694,8 +694,8 @@ operand adds its addressing mode's price from
 
 <h2 id="s2">2 &middot; What the rest of this page is about</h2>
 
-<p>Everything from here on is an instruction that the 68000 offers and that Genesis games, almost
-without exception, refuse. Rather than assert that, here it is counted. Seven codebases: the three
+<p>Everything from here on is an instruction that the 68000 offers and that the surveyed codebases,
+almost without exception, refuse. Rather than assert that, here it is counted. Seven codebases: the three
 original Sonic disassemblies, the Sonic Clean Engine and the Sonic Hack engine that descend from them,
 Aeon, and MarkeyJester's homebrew Mega Drive operating system, which is on the list precisely because
 an operating system is the one thing on this platform that would have reason to use these.</p>
@@ -1094,7 +1094,7 @@ cartridge there is no somebody else.</p>
   <p>RESET asserts the CPU's reset line, which is wired to the other chips. It resets
   <em>them</em> and deliberately not itself: the 68000 keeps running, its registers intact, on the
   instruction after. It is the one instruction here whose effect is entirely outside the processor.</p>
-  <p>The clearest statement of why you will never see it comes from a 68000 textbook written in 1988,
+  <p>The clearest statement of why it is absent from every codebase counted here comes from a 68000 textbook written in 1988,
   four years before Sonic 2, with no knowledge of this console at all:</p>
   <div class="teach"><span class="t-tag">Teach</span>
   <p>"The RESET instruction can only be used in supervisor mode. When it is executed it asserts the
@@ -1469,7 +1469,7 @@ register directly, which <a href="math-logic.html">Math &amp; Logic</a> and
 
 </main>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot; <a href="../index.html">Back to hub</a><br>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a><br>
 Previous: <a href="flow.html">Flow</a> &middot; the last page of the instruction reference &middot;
 <a href="programming-model.html">the full instruction index</a><br>
 <span class="fnote">Instruction semantics verified against the Motorola M68000 Programmer's Reference Manual,

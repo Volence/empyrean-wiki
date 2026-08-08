@@ -358,15 +358,25 @@ be used.</p>
     <p>Think of a form with sixteen boxes printed on it where only nine are actually read by
     anybody. You can write in the other seven. Nothing will come of it. The form is not lying to
     you and nothing is broken; the boxes are printed because the paper comes that size.</p>
-    <p>Two practical consequences follow, and both turn up later on this page. A colour is
-    written as a whole word rather than as a byte, because the word is the unit. And the seven
-    unimplemented positions are not spare storage: if you need somewhere to keep a flag per
+    <p>One practical consequence follows, and it turns up later on this page: the seven
+    unimplemented positions are not spare storage. If you need somewhere to keep a flag per
     colour, it goes in your own RAM, not in the top of a CRAM entry.</p>
+    <p>One thing does NOT follow, and the paragraph after this box says why. Colours are written
+    a whole word at a time, but not because only nine bits are stored. That is a rule about the
+    port you write through, and it would hold just the same if every one of the sixteen
+    positions existed.</p>
   </div>
 </details>
 
-<p>That is also why CRAM is written a whole word at a time. A colour is one word, the word is
-the unit the VDP stores, and the two halves of it are not independently meaningful.</p>
+<p>CRAM is also written a whole word at a time, and it is worth being careful about why, because
+the tempting explanation is the wrong one. The cause is not that a colour happens to be nine
+bits. It is the port interface: the VDP's data port moves 16 bits at a time, and Sega's own
+corrections declare byte access to VRAM, CRAM and VSRAM null and void, which
+<a href="tiles-vram.html#bytes">Tiles &amp; VRAM section 7 owns</a>, along with what the silicon
+does to a byte write instead of refusing it. So there are two separate facts here and neither
+one produces the other: nine of a colour word's sixteen positions are implemented, and the
+access that reaches them is word-sized because that is the size the interface deals in. Nine
+bits is what CRAM stores; sixteen bits is what an access moves.</p>
 
 <details class="explain">
   <summary>New here? &middot; Why do the colours need a memory of their own?</summary>
@@ -759,9 +769,9 @@ comes out of the console, and the two are not the same shape.</p>
 
 <p>What the word encodes is regular: eight levels per channel, evenly numbered 0 to 7. What the
 video output does with those numbers is not evenly spaced. <b>The ramp is not linear. The steps
-are widest at the two ends and compressed through the middle.</b> That is the fact, it holds on
-every Mega Drive anyone has put an instrument on, and the two independent measurements of it
-agree about that shape even where they disagree about the digits.</p>
+are widest at the two ends and compressed through the middle.</b> That is the fact, and the two
+independent sets of measurements this page cites, TmEE's and Eke's, agree about that shape even
+where their digits disagree. Both are named below with what they were taken from.</p>
 
 <p>The numbers themselves are one measurement chain and this page treats them as one. The set
 below was measured by TmEE with an oscilloscope on the console's own video output, and it is the
@@ -791,11 +801,14 @@ staircase available. Artists who lit their dark areas up a little were not being
 climbing out of the widest part of the ladder.</p>
 
 <p><b>And every step is huge.</b> The smallest gap here is 28 out of 255, about 11% of full
-scale, and the largest is 20%. On a large flat area a human eye picks out brightness differences
-well under 1%. So a large gradient built from eight levels cannot be smooth on its own: the seams
-are more than ten times wider than the threshold at which they stop being invisible. That is the
-entire explanation of Genesis banding, and it is why dithering, checkerboarding two levels
-together to fake a third, is everywhere on this machine.</p>
+scale, and the largest is 20%. Nothing on this page measures how fine a brightness difference a
+person can see, and the number varies with the picture, the display and the room in any case;
+what the arithmetic above does settle is the direction. A single level of change is a fifth of
+the whole range at its worst and a ninth at its best, so a large gradient built from eight
+levels cannot be smooth on its own, and its seams are nowhere near the edge of visibility. They
+are lines you can point at. That is the entire explanation of Genesis banding, and it is why
+dithering, checkerboarding two levels together to fake a third, is everywhere on this
+machine.</p>
 
 <details class="explain">
   <summary>New here? &middot; Why does a Genesis sky come out in stripes?</summary>
@@ -804,9 +817,9 @@ together to fake a third, is everywhere on this machine.</p>
     eight cans of blue and no way to blend them. To paint a sky that gets lighter towards the
     horizon you use can 1 at the top, then can 2, then can 3, and each change of can is a visible
     line across your sky. Nothing is broken. There are only eight cans.</p>
-    <p>Modern hardware has 256 cans per channel and the steps between them are below what your
-    eye can pick out, so a gradient looks continuous. The Genesis has eight, and the gaps between
-    them are enormous by comparison, so you see every one.</p>
+    <p>Modern hardware has 256 cans per channel, and the steps between them are small enough
+    that a gradient reads as continuous. The Genesis has eight, and the gaps between them are
+    enormous by comparison, so you see every one.</p>
     <p>The trick artists used is dithering: instead of a solid band of can 2 next to a solid band
     of can 3, checkerboard the two together in the region between. Up close it is a chequerboard.
     On a television of the period, which smeared neighbouring pixels together anyway, it read as
@@ -1168,9 +1181,26 @@ out in different colours above and below the split. Games spent that fact heavil
 most players of these games have seen without knowing what they were looking at is the water
 line.</p>
 
-<p>Sonic 2 does it from an <span class="term" data-def="The tiny gap at the end of each scanline. An interrupt can run here for per-line tricks like bending the background mid-screen.">HBlank</span>
-interrupt armed for the scanline where the water surface currently is. When the interrupt fires,
-the handler replaces the entire palette:</p>
+<p>Sonic 2 does it from a <b>horizontal interrupt</b> armed for the scanline where the water
+surface currently is. Two names get used interchangeably around this effect, and they are not
+the same kind of thing at all, so this page separates them here and holds the separation for the
+whole hardware track until the page that owns interrupts is written:</p>
+
+<ul>
+  <li><b><span class="term" data-def="The interval at the end of each scanline while nothing is being drawn. It is a span of time, not an interrupt: the VDP raises a separate horizontal interrupt near it, and that handler is not confined to the interval's length.">HBlank</span>,
+  the horizontal blanking interval, is a stretch of TIME</b>: the span between the end of one
+  scanline's active display and the start of the next.</li>
+  <li><b>HInt, the horizontal interrupt, is a signal the VDP RAISES</b>, driven by its own
+  horizontal counter in register 10, which the program enables and then services like any other
+  interrupt.</li>
+</ul>
+
+<p>The interrupt happens near the interval. It is not the interval, and nothing confines the
+handler it runs to the interval's length. Both disassemblies name this machinery after the
+interval anyway, and those names are historical rather than descriptive: Sonic 2's
+<code>Hint_flag</code> in the excerpt below, and Sonic 3 and Knuckles' <code>HInt3</code> further
+down, both name the INTERRUPT and its handler, not the blanking interval. When the interrupt
+fires, the handler replaces the entire palette:</p>
 
 <pre>PalToCRAM:
 	move	#$2700,sr
@@ -1184,9 +1214,16 @@ the handler replaces the entire palette:</p>
     endm</pre>
 <span class="src">s2disasm/s2.asm:1243-1252 (PalToCRAM, the water surface in Chemical Plant Act 2, Aquatic Ruin and Hidden Palace)</span>
 
-<p>All 64 entries, written as 32 unrolled longword writes with no loop, because a handler running
-inside the gap at the end of a scanline has very few cycles to spend and a loop's counter is a
-cost it will not pay. The other half of this chain, arming the interrupt for the right scanline
+<p>All 64 entries, written as 32 unrolled longword writes with no loop. Now put that against the
+paragraph above, because this is where the two names stop being pedantry. <b>Thirty-two longword
+writes to the data port do not fit inside a horizontal blanking interval</b>, and the handler
+does not try to make them fit. It is a horizontal interrupt scheduled near the water line whose
+palette write deliberately runs on into the active display: the loop is unrolled because every
+cycle it spends is a cycle spent while the beam is drawing, and the write is still going when
+the picture resumes. That overrun is not a bug in the handler and it is not something Sonic 2
+got away with. It is the cause of the artefact the next heading is about.</p>
+
+<p>The other half of this chain, arming the interrupt for the right scanline
 and recomputing that scanline as the camera moves, belongs to the frame and interrupt material
 rather than here; what belongs here is what those 32 writes cost on screen.</p>
 

@@ -575,10 +575,13 @@ address into the program counter; everything else is discipline.</p>
     and a user <code>a7</code>, with the S bit deciding which one the name reaches. The
     <a href="system.html">System page</a> covers that pair.</p>
     <p><b>The program counter</b> holds the address of the instruction being fetched, and steps
-    along by itself. Redirecting it is the only thing any instruction on this page does, which is
-    the cleanest definition of what this page covers. A handful of others move it as a side
-    effect of raising an exception, TRAP and CHK among them, and those belong to the System
-    page.</p>
+    along by itself. Redirecting it is what nearly every instruction on this page does, and that
+    is the cleanest definition of what this page covers. The exception is
+    <a href="#scc">Scc</a>, which lets the program counter step on as usual and writes the answer
+    to a condition into a destination instead; it earns its place here because it is built from
+    the same condition tests as the branches. A handful of other instructions move the
+    program counter as a side effect of raising an exception, TRAP and CHK among them, and those
+    belong to the System page.</p>
     <p><b>A label</b> is a name the assembler swaps for an address at build time. When you write
     <code>bsr.w ReadJoypads</code>, the assembled bytes contain a distance, not a name; the name
     is gone before the ROM exists. <a href="addressing-modes.html#s1">Addressing Modes, section 1</a>
@@ -2599,7 +2602,7 @@ table to the tail call to the six-byte frame built by hand for an <code>rtr</cod
 taking that fact seriously.</p>
 
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot;
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot;
 Previous: <a href="shifts-bits.html">Shifts &amp; Bits</a> &middot; Next: <a href="system.html">System</a> &middot;
 <a href="../index.html">Back to hub</a></footer>
 

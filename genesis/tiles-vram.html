@@ -346,9 +346,12 @@ budgeted, because it is the one everything shares.</p>
 <span class="term" data-def="An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.">tile</span>
 is 32 bytes, and 65,536 divided by 32 is <b>2048</b>. That is also exactly how far an 11-bit
 tile index reaches: 0 to 2047. The field and the memory were sized to each other, so nothing
-that fits is unnameable and nothing nameable fails to fit. Two thousand and forty-eight is
-therefore the ceiling on everything a stock 64KB console can draw at one instant, and the
-tables above come out of the same 2048 before a single tile of art is loaded.</p>
+that fits is unnameable and nothing nameable fails to fit. Say it precisely, because the loose
+version of this sentence is everywhere: <b>video memory can address 2048 aligned 32-byte pattern
+slots</b>, and the tables above take their share of those 2048 before a single tile of art is
+loaded. It is not a ceiling on what the console can draw. A slot holds one tile and the maps
+name a tile as often as they like, so a hundred cells can all point at the same slot, and the
+backdrop colour sitting behind the whole picture is not a tile at all.</p>
 
 <details class="explain">
   <summary>New here? &middot; Why is video memory so small?</summary>
@@ -454,10 +457,18 @@ colours are, how many a screen can show at once, and why the choice is only two 
 <p>One index is special, and it is a format fact rather than a palette fact:
 <b>index 0 is transparent, always, whatever the palette holds in that slot.</b> A tile is
 therefore fifteen colours and a hole, not sixteen colours, and a tile of all zero bytes is not
-a black square; it is invisible. The one place a palette's entry 0 becomes a visible colour is
-the backdrop, which is set by a register rather than drawn by a tile, and the consequences of
-this for the colour budget belong with
-<a href="color-cram.html#palettes">palettes</a>.</p>
+a black square; it is invisible. Index 0 means "draw nothing here", and it means that with no
+exceptions anywhere in tile or sprite pixel data. What the viewer sees in its place is whatever
+layer, or the backdrop, lies behind.</p>
+
+<p>The backdrop is a separate mechanism and it is worth keeping separate. One VDP register
+independently selects any entry of colour memory to show wherever no plane pixel and no sprite
+pixel is drawn: it is chosen by a register, it is not a property of any tile, and it is not
+locked to slot 0. So index 0 on the bottom layer can genuinely look like a colour, which is the
+natural wrong guess and the reason to say the mechanism out loud: nothing was drawn there, and
+what shows through the hole is the backdrop the register picked. Which entry that register may
+name, and what the transparent index costs the colour budget, are
+<a href="color-cram.html#palettes">the colour page's</a>.</p>
 
 <details class="explain">
   <summary>New here? &middot; Why is one of the sixteen a hole rather than a colour?</summary>
@@ -471,9 +482,13 @@ this for the colour budget belong with
     values on "nothing". No extra bit per pixel, no mask, no second pass.</p>
     <p>The cost is real and it is the tile's, not the palette's: every tile on the machine has
     fifteen usable colours out of a palette of sixteen. Artists spend that fifteenth slot
-    knowingly. A background tile that is guaranteed to be behind everything can use index 0 as
-    if it were a colour only in the one case where the backdrop register happens to name that
-    same slot, which is a trick with a page of its own.</p>
+    knowingly, and no tile buys its way out of it: a background tile that will always be behind
+    everything still cannot use index 0 as a colour, because a hole is all index 0 ever is.</p>
+    <p>What confuses people is that the hole is not blank. On the bottom layer there is a colour
+    in it, and it looks for all the world as though the tile chose that colour. It did not. The
+    chip is showing the backdrop, which one register picked out of colour memory entirely on its
+    own account, and it would show the same colour in the same place if that tile had never been
+    drawn.</p>
   </div>
 </details>
 
@@ -609,17 +624,36 @@ is what makes a bit budget feel like money rather than like bookkeeping.</p>
 
 <p>Art is the bulk of video memory but it is not alone in there. Five tables share the same
 65,536 bytes, each with a base register of its own and each with its own idea of how finely
-that base can be positioned. The sizes are what matter for the budget in the next section.</p>
+that base can be positioned.</p>
+
+<p>Before the sizes, a distinction the next section's budget stands on. <b>Three different
+quantities all get called a table's size, and they are not the same number.</b> Blurring them is
+how a VRAM budget ends up either too gloomy or too cheerful by a couple of hundred tiles:</p>
 
 <div class="tbl">
 <table>
-<tr><th>Resident</th><th>Base register</th><th>Placed in units of</th><th>Size</th><th>Whose subject</th></tr>
-<tr><td>Plane A nametable</td><td>2</td><td><code>$2000</code></td><td>up to 8192 bytes</td><td><a href="vdp-planes.html#sizes">plane sizes</a></td></tr>
-<tr><td>Plane B nametable</td><td>4</td><td><code>$2000</code></td><td>up to 8192 bytes</td><td><a href="vdp-planes.html#sizes">plane sizes</a></td></tr>
-<tr><td>Window nametable</td><td>3</td><td><code>$800</code>, and <code>$1000</code> in H40</td><td>a fixed-shape region, 2048 bytes in H32 and 4096 in H40, of which only the rows the Window covers are read</td><td><a href="vdp-planes.html#window">the Window</a></td></tr>
-<tr><td>Horizontal scroll table</td><td>13</td><td><code>$400</code></td><td>1024 bytes, of which 896 are read in a 28-row display and 960 in a 30-row one</td><td><a href="vdp-planes.html#hscroll">scrolling sideways</a></td></tr>
-<tr><td>Sprite table (<span class="term" data-def="The Sprite Attribute Table: the list in VRAM describing every sprite's position, size, tiles and drawing order.">SAT</span>)</td><td>5</td><td><code>$200</code>, and <code>$400</code> in H40</td><td>512 bytes in H32; in H40 it is 640 bytes used inside a 1024-byte aligned region</td><td>the sprite material</td></tr>
-<tr><td>Tile art, and sprite art</td><td>counted from <code>$0000</code></td><td>a 32-byte tile slot</td><td>everything the tables do not claim</td><td>this page</td></tr>
+<tr><th>The quantity</th><th>What it is</th><th>Why it is the one that bites</th></tr>
+<tr><td><b>The aligned address window</b></td><td>The region the table's base granularity and fixed shape reserve, whether or not the table fills it.</td><td>The base register can only sit on those boundaries, so this is what the table costs as PLACEMENT, filled or not.</td></tr>
+<tr><td><b>The span the VDP fetches</b></td><td>What the chip actually reads out of that window while drawing a frame.</td><td>This is what the display costs, and it can be a small fraction of the window.</td></tr>
+<tr><td><b>The useful bytes</b></td><td>The bytes carrying data the game meant to put there.</td><td>The remainder is reclaimable for art, but only if the game deliberately shares it.</td></tr>
+</table>
+</div>
+
+<p>They come apart in both directions. A plane's whole map is useful and only the cells on
+screen are fetched this frame, because scrolling brings the rest on. The Window's map is the
+other way round: it reserves a large aligned region and fetches a few rows out of it. So here
+are the residents with the first two quantities kept in separate columns, and the third stated
+in the paragraphs below, since for everything except the planes it equals the fetched span:</p>
+
+<div class="tbl">
+<table>
+<tr><th>Resident</th><th>Base register</th><th>Placed in units of</th><th>Aligned address window</th><th>What the VDP fetches from it</th><th>Whose subject</th></tr>
+<tr><td>Plane A nametable</td><td>2</td><td><code>$2000</code></td><td>the plane's own size, up to 8192 bytes</td><td>the cells on screen this frame; scrolling reaches the rest, so the whole map is useful</td><td><a href="vdp-planes.html#sizes">plane sizes</a></td></tr>
+<tr><td>Plane B nametable</td><td>4</td><td><code>$2000</code></td><td>the plane's own size, up to 8192 bytes</td><td>the same</td><td><a href="vdp-planes.html#sizes">plane sizes</a></td></tr>
+<tr><td>Window nametable</td><td>3</td><td><code>$800</code>, and <code>$1000</code> in H40</td><td>a fixed-shape region: 2048 bytes in H32, 4096 in H40</td><td>only the rows the Window covers</td><td><a href="vdp-planes.html#window">the Window</a></td></tr>
+<tr><td>Horizontal scroll table</td><td>13</td><td><code>$400</code></td><td>1024 bytes</td><td>per line, 896 bytes in a 28-row display and 960 in a 30-row one; in full-screen mode, 4 bytes</td><td><a href="vdp-planes.html#hscroll">scrolling sideways</a></td></tr>
+<tr><td>Sprite table (<span class="term" data-def="The Sprite Attribute Table: the list in VRAM describing every sprite's position, size, tiles and drawing order.">SAT</span>)</td><td>5</td><td><code>$200</code>, and <code>$400</code> in H40</td><td>512 bytes in H32; a 1024-byte aligned region in H40</td><td>512 bytes in H32, 640 in H40</td><td>the sprite material</td></tr>
+<tr><td>Tile art, and sprite art</td><td>counted from <code>$0000</code></td><td>a 32-byte tile slot</td><td>everything the tables do not claim</td><td>whatever the maps and the sprite list name</td><td>this page</td></tr>
 </table>
 </div>
 
@@ -643,7 +677,8 @@ cheap one, and only because the chip reads just the first entry pair out of the 
 <p>The sprite table's eight-byte entries, and what each field in one means, are the sprite
 material's business. Here it is simply a resident with a size and an alignment, and the
 alignment is the part that costs: in a 40-cell display it has to start on a 1024-byte boundary
-even though it uses 640 bytes.</p>
+even though it uses 640 bytes, so 384 bytes of that window carry nothing at all unless the game
+deliberately puts art in them.</p>
 
 <p>The teaching point of this section is what the table does not say. <b>None of the five
 tables' positions is chosen by the hardware.</b> What the hardware fixes is how finely each one may be
@@ -676,37 +711,55 @@ the Window rather than duplicated.</p>
 <h2 id="budget">5 &middot; The budget</h2>
 
 <p>The unit an art pipeline thinks in is not bytes, it is tiles, so this is where to think in
-tiles too. The ceiling is 2048. Every table above takes its bite out of that ceiling first, at
-32 bytes to the tile, and what is left is the art budget. Here are two setups worked out end to
-end, a modest one and a heavy one, both worked for a 40-cell display, using nothing but the
-sizes from the table above divided by 32:</p>
+tiles too. There are 2048 slots. Every table above takes its share of them first, at 32 bytes to
+the tile, and what is left is the art budget. Here are two setups worked out end to end, a
+modest one and a heavy one, both worked for a 40-cell display, using nothing but the sizes from
+section 4 divided by 32. Each table row carries BOTH of the first two quantities, because the
+gap between them is the whole argument of this section:</p>
 
 <div class="tbl">
 <table>
 <tr><th></th><th>A modest setup</th><th>A heavy setup</th></tr>
-<tr><td>Planes</td><td>64 x 32 cells: 4096 bytes each<br><b>128 + 128 tiles</b></td><td>64 x 64 cells: 8192 bytes each<br><b>256 + 256 tiles</b></td></tr>
-<tr><td>Window</td><td>none<br><b>0 tiles</b></td><td>three rows of a 64-cell-wide map: 384 bytes<br><b>12 tiles</b></td></tr>
-<tr><td>Sprite table</td><td>640 bytes<br><b>20 tiles</b></td><td>640 bytes<br><b>20 tiles</b></td></tr>
-<tr><td>Horizontal scroll</td><td>full-screen: the VDP reads 4 bytes<br><b>1 tile</b></td><td>per line: 896 bytes<br><b>28 tiles</b></td></tr>
-<tr class="hi"><td><b>Tables cost</b></td><td><b>277 tiles</b></td><td><b>572 tiles</b></td></tr>
-<tr class="hi"><td><b>Art budget left of 2048</b></td><td><b>1771 tiles</b></td><td><b>1476 tiles</b></td></tr>
+<tr><td>Planes</td><td>64 x 32 cells, 4096 bytes each<br><b>128 + 128 tiles</b> of map, every byte of it useful</td><td>64 x 64 cells, 8192 bytes each<br><b>256 + 256 tiles</b> of map, every byte of it useful</td></tr>
+<tr><td>Window</td><td>none<br><b>0 tiles</b></td><td>window: a 4096-byte region, <b>128 tiles</b><br>fetched: three rows of a 64-cell-wide map, 384 bytes, <b>12 tiles</b></td></tr>
+<tr><td>Sprite table</td><td>window: 1024 bytes, <b>32 tiles</b><br>fetched: 640 bytes, <b>20 tiles</b></td><td>window: 1024 bytes, <b>32 tiles</b><br>fetched: 640 bytes, <b>20 tiles</b></td></tr>
+<tr><td>Horizontal scroll</td><td>window: 1024 bytes, <b>32 tiles</b><br>fetched, full-screen mode: 4 bytes, <b>1 tile</b></td><td>window: 1024 bytes, <b>32 tiles</b><br>fetched, per line: 896 bytes, <b>28 tiles</b></td></tr>
+<tr class="hi"><td><b>Tables cost, counting every aligned window in full</b></td><td><b>320 tiles</b></td><td><b>704 tiles</b></td></tr>
+<tr><td><b>Art budget left of 2048</b> on that counting</td><td><b>1728 tiles</b></td><td><b>1344 tiles</b></td></tr>
+<tr class="hi"><td><b>Tables cost, counting only what the VDP fetches</b><br>DEPENDS on the game deliberately packing art into the unfetched remainder of each window</td><td><b>277 tiles</b></td><td><b>572 tiles</b></td></tr>
+<tr><td><b>Art budget left of 2048</b> on that counting</td><td><b>1771 tiles</b></td><td><b>1476 tiles</b></td></tr>
 </table>
 </div>
 
-<p>Two notes on reading that table. The full-screen scroll row is 1 tile rather than 32 because
-in that mode the chip reads only the first entry pair, four bytes, and the rest of the aligned
-kilobyte is space a game may fill with art; count 32 tiles instead if you would rather not
-share. And the heavy setup's window row is 12 tiles rather than 8 because in a 40-cell display
-the Window's map rows are 64 cells wide whatever the Window's visible width is, so three rows
-of it cost 3 x 64 x 2 bytes. The framing of a VRAM budget in tiles, and both of these worked
-setups, come from rasterscroll's VDP overview. The totals here are not that source's: they are
-re-derived from the sizes in section 4, and the heavy setup comes out six tiles below the
-figure printed there. Every step of it is on the page to be checked.</p>
+<p>Read the two totals as a range and the dependency as the thing that moves you along it. The
+top pair is what the tables cost if every aligned window is treated as spent, which is the
+figure to plan with unless somebody has actually written the sharing code. The bottom pair is
+what they cost once the unfetched remainders are filled with art, which is a decision, not a
+property of the hardware: in the modest setup the scroll table's kilobyte is fetched four bytes
+deep and the other 1020 are only free if a game puts something there. The overlap allowances
+quoted in sections 3 and 4, Sega's and MacDonald's, are what make the sharing legal at all;
+MD-OS at the end of this section is a program taking the offer up.</p>
+
+<p>Three notes on the individual rows. The heavy setup's window row is 12 tiles fetched rather
+than 8 because in a 40-cell display the Window's map rows are 64 cells wide whatever the
+Window's visible width is, so three rows of it cost 3 x 64 x 2 bytes. The plane rows carry one
+number rather than two because a plane's map is fetched a screenful at a time and useful all the
+way across: none of it is a remainder anybody can reclaim. But the plane rows do hide an
+alignment of their own, and it is charged to neither total: both plane bases move in units of
+<code>$2000</code>, so in the modest setup each 4096-byte map sits in an 8192-byte slot, and the
+spare half cannot hold the other plane. It can hold art, or a table with a finer granularity,
+which is exactly what games put there, and that is why it is not counted as a cost here. The
+framing of a VRAM budget
+in tiles, and both of these worked setups, come from rasterscroll's VDP overview. The totals
+here are not that source's: they are re-derived from the sizes in section 4, and on the fetched
+counting the heavy setup comes out six tiles below the figure printed there. Every step of it is
+on the page to be checked.</p>
 
 <p>Now the number that makes the budget bite. A 40-cell display is 40 cells across and 28
 down, so <b>filling the visible screen once with tiles that repeat nowhere costs 1120 of
-them</b>. Against the ceiling of 2048 that is more than half of everything the index can name;
-against the 1476 the heavy setup actually has, it is more than three quarters. plutiedev puts
+them</b>. Against 2048 slots that is more than half of everything the index can name; against
+the 1476 the heavy setup has even with every remainder shared, it is more than three quarters.
+plutiedev puts
 the practitioner's version of the same warning as a rule of thumb: there is room for up to 2048
 unique tiles, but assume more or less 75% of that once the tables have taken theirs.</p>
 
@@ -722,7 +775,8 @@ copy the same way, which is
   <div class="x-body">
     <p>Because a designer who does not repeat runs out of memory before the level is one screen
     long, and the numbers are not close.</p>
-    <p>Take the heavy setup above: 1476 tiles for everything. One screenful of never-repeating
+    <p>Take the heavy setup above, at its most generous: 1476 tiles for everything, and that
+    already assumes the game reclaims every unfetched corner of the tables. One screenful of never-repeating
     scenery is 1120 of them, which leaves 356 for Sonic, every badnik, every ring, the HUD, the
     monitor boxes and the next screen you are about to scroll into. A level is dozens of
     screens long. The arithmetic simply does not work unless most of the picture is the same

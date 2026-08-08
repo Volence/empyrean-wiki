@@ -384,8 +384,9 @@ LINK/UNLK sit on <a href="system.html">the System page</a>.</p>
 separates them is <em>where</em> that somewhere is allowed to be, and what the CPU does to its
 status flags along the way. A <span class="term" data-def="A small storage slot inside a chip. CPU registers (d0-d7, a0-a7) hold the values being worked on; VDP registers configure how the video chip behaves.">register</span> is the 68000's fastest working storage:
 eight general-purpose data registers (D0-D7) for values, and eight address registers (A0-A7,
-with A7 doubling as the stack pointer) for pointers. Reading or writing a register costs nothing
-extra in bus time, unlike memory, which is why so much 68000 code is a dance of getting values
+with A7 doubling as the stack pointer) for pointers. A register operand costs no external bus cycle
+at all, unlike a memory operand: the instruction still takes cycles, but it does not have to go out
+to memory and wait. That is why so much 68000 code is a dance of getting values
 into registers, working on them there, and writing results back out.</p>
 
 <p>Two reading conventions before the examples start. The 68000 writes operands <strong>source, then
@@ -1798,7 +1799,7 @@ loc_1ECD4:
   </details>
 </div>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-06 &middot; <a href="../index.html">Back to hub</a><br>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a><br>
 Previous: <a href="addressing-modes.html">Addressing Modes</a> &middot; Next: <a href="math-logic.html">Math &amp; Logic</a></footer>
 
 </div>

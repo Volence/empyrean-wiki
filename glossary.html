@@ -375,7 +375,7 @@ the definition rather than the name.</p>
 </div>
 <div class="gt" id="bus">
 <dt class="gt-n">bus</dt>
-<dd class="gt-d"><span class="gt-def">The shared set of wires carrying addresses and data between chips. Only one device can use a bus at a time, so anything else that wants it waits.</span>
+<dd class="gt-d"><span class="gt-def">The shared set of wires carrying addresses and data between chips. Several devices are connected to it, but at any instant one of them is driving the transaction and one is answering it.</span>
 <a class="gt-go" href="genesis/the-machine.html#s1">Genesis: The Machine<span class="gt-sec">1 &middot; One machine, five parts</span></a>
 </dd>
 </div>
@@ -496,8 +496,14 @@ the definition rather than the name.</p>
 </div>
 <div class="gt" id="hblank">
 <dt class="gt-n">HBlank</dt>
-<dd class="gt-d"><span class="gt-def">The tiny gap at the end of each scanline. An interrupt can run here for per-line tricks like bending the background mid-screen.</span>
+<dd class="gt-d"><span class="gt-def">The interval at the end of each scanline while nothing is being drawn. It is a span of time, not an interrupt: the VDP raises a separate horizontal interrupt near it, and that handler is not confined to the interval's length.</span>
 <a class="gt-go" href="aeon/section-02-vdp-frame.html#s9">Aeon: The VDP &amp; the Frame<span class="gt-sec">9 &middot; The HBlank seam</span></a>
+</dd>
+</div>
+<div class="gt" id="hint">
+<dt class="gt-n">HInt</dt>
+<dd class="gt-d"><span class="gt-def">The horizontal interrupt: an interrupt the VDP raises from its own line counter, which a program enables and services. It fires near the horizontal blanking interval but is not the same thing as it, and its handler can run on into the active display.</span>
+<a class="gt-go" href="genesis/color-cram.html#midframe">Genesis: Color &amp; CRAM<span class="gt-sec">6 &middot; Changing colours partway down the frame</span></a>
 </dd>
 </div>
 <div class="gt" id="hexadecimal">
@@ -611,7 +617,7 @@ the definition rather than the name.</p>
 </div>
 <div class="gt" id="open-bus">
 <dt class="gt-n">open bus</dt>
-<dd class="gt-d"><span class="gt-def">What you read from an address nothing is wired to. On a Genesis it is the top byte of the instruction the 68000 was about to fetch, with a zero byte under it. Not an error, which is exactly the problem.</span>
+<dd class="gt-d"><span class="gt-def">What you read from an address nothing is wired to. On the Genesis boards this has been tested on it is the top byte of the instruction the 68000 was about to fetch, with a zero byte under it. Not an error, which is exactly the problem.</span>
 <a class="gt-go" href="genesis/the-machine.html#s3">Genesis: The Machine<span class="gt-sec">3 &middot; The 68000's map of the world</span></a>
 </dd>
 </div>

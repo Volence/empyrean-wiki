@@ -741,8 +741,13 @@ And most operations never have to make it: adding, subtracting, and copying prod
 whether you picture the operands as signed or unsigned, so a plain add serves both and never needs to
 know. The signed-or-unsigned decision only surfaces where it genuinely changes the answer, a signed versus
 unsigned multiply or divide, stretching a small value into a wider one, or which way a comparison branches.
-Those come as separate signed and unsigned instructions on the 68000, and the Moving Data page covers them;
-the point here is only that the bits carry no sign of their own, and the program's intent supplies it.</p>
+Those come as separate signed and unsigned instructions on the 68000, and they live on three different
+pages. The multiplies, divides and comparisons are on
+<a href="../m68k/math-logic.html#muls">Math &amp; Logic</a>. Sign extension, the <code>ext</code>
+instruction that widens a value while keeping its sign, is on
+<a href="../m68k/moving-data.html#ext">Moving Data</a>. The signed and unsigned branches that read a
+comparison are on <a href="../m68k/flow.html#bcc">Flow</a>.
+The point here is only that the bits carry no sign of their own, and the program's intent supplies it.</p>
 
 <p>The scheme almost every computer uses to make this work, the 68000 included, is called
 <span class="term" data-def="The standard way to store signed numbers in a fixed width: the top bit carries negative weight, so every bit pattern is a distinct number and there is a single zero.">two's
@@ -932,7 +937,7 @@ reference. If a piece of notation on another page ever throws you, this is the t
   <tr><td><code>.l</code></td><td>Long-word-sized operation, 32 bits (on the 68000)</td></tr>
 </table></div>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-07-22 &middot; <a href="../index.html">Back to hub</a></footer>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a></footer>
 
 </div>
 
