@@ -1345,15 +1345,16 @@ values the chip reads as it works its way down the picture, which is what lets o
 past another.</p>
 
 <p>Where each of those sits inside the 64 KB is not fixed by the hardware. The program tells the
-VDP where it put them, which means a Genesis game's video memory layout is a budget somebody
-chose.</p>
+VDP where it put them, which means a Genesis game's video memory layout is
+<a href="tiles-vram.html#budget">a budget somebody chose</a>.</p>
 
 <p><span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>
 is the colour memory: 64 slots arranged as four palettes of sixteen, each slot holding a nine-bit
 colour, and all 64 of them together are 128 bytes. Every colour on screen at any instant comes out of
-those 64 entries, and the one thing that stretches the count is the chip's shadow and highlight
-mode, which can show an entry darkened or brightened as well as plain. That is the constraint
-that gives Genesis pictures their particular look.</p>
+those 64 entries, and the one thing that stretches the count is the chip's
+<a href="color-cram.html#shadow">shadow and highlight mode</a>, which can show an entry darkened
+or brightened as well as plain. That is the constraint that gives Genesis pictures their
+particular look.</p>
 
 <p><span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span>
 is the smallest: 80 bytes of vertical scroll values, one 16-bit entry each, so forty of them. Two
@@ -1435,7 +1436,8 @@ plane is built out of nametable words, what happens when two things want the sam
 the <a href="vdp-planes.html#window">window</a> takes over a rectangle of the screen are the video
 chip's own subject: <a href="vdp-planes.html">the VDP and planes</a> covers all of it, including
 the <a href="vdp-planes.html#priority">priority bit</a> that decides which of two layers a cell
-belongs to. Tiles and the VRAM budget, colour and CRAM, and the sprite table with its per-line
+belongs to. <a href="tiles-vram.html">Tiles and the VRAM budget</a>,
+<a href="color-cram.html">colour and CRAM</a>, and the sprite table with its per-line
 limits are the pages after that.</p>
 
 <p><b>Meanwhile the 68000 is running the game</b>, fetching its instructions straight out of the
@@ -1487,7 +1489,7 @@ measurement of what fits in that window.</li>
 </ul>
 </div>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot; <a href="../index.html">Back to hub</a> &middot; Next: <a href="vdp-planes.html">The VDP &amp; Planes</a></footer>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a> &middot; Next: <a href="vdp-planes.html">The VDP &amp; Planes</a></footer>
 
 <script>
 function expandAll(btn){

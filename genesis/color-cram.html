@@ -1,0 +1,1440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis: Color &amp; CRAM</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🎨%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+/* ============================================================
+   Page-specific styles: Color & CRAM (The Genesis)
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE;
+    rgba components from 0/34/68/102/136/170/204/238)
+   ============================================================ */
+
+/* collapsed deep reference (lifted from genesis/vdp-planes.html) */
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary::-webkit-details-marker{display:none;}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* a 16-bit word drawn as labelled bit fields (lifted from genesis/vdp-planes.html) */
+.bitword{display:flex; font-family:var(--mono); font-size:.68rem; margin:.6rem 0;
+  border:1px solid var(--line); border-radius:4px; overflow:hidden; max-width:42rem;}
+.bitword .bf{padding:.35rem .5rem; border-right:1px solid var(--line); text-align:center;}
+.bitword .bf:last-child{border-right:0;}
+.bitword .bf.b-blue{background:rgba(68,102,238,.22); color:#88AAEE; flex:1;}
+.bitword .bf.b-green{background:rgba(68,204,136,.22); color:#44CC88; flex:1;}
+.bitword .bf.b-red{background:rgba(204,102,170,.22); color:#CC66AA; flex:1;}
+.bitword .bf.b-pal{background:rgba(238,170,0,.18); color:#EEAA00;}
+.bitword .bf.b-idx{background:rgba(68,102,238,.22); color:#88AAEE; flex:1;}
+.bitword .bf.b-zero{background:rgba(0,0,0,.25); color:var(--dim);}
+
+/* key for the bit-field figures. A colour-coded diagram with no key is a puzzle, and the
+   key is the only place several of these field names are expanded. */
+.bitkey{list-style:none; padding:0; margin:.45rem 0 0; max-width:42rem;
+  font-family:var(--mono); font-size:.68rem; line-height:1.6;}
+.bitkey li{display:flex; gap:.5rem; align-items:baseline; margin:.12rem 0; max-width:none;}
+.bitkey i{flex:0 0 auto; width:.75rem; height:.75rem; border:1px solid var(--line);
+  border-radius:2px; display:inline-block; transform:translateY(.08rem);}
+.bitkey b{flex:0 0 6.6rem; color:var(--ink); font-weight:normal;}
+.bitkey .kd{color:var(--dim); flex:1 1 12rem;}
+.bitkey i.b-blue{background:rgba(68,102,238,.55);}
+.bitkey i.b-green{background:rgba(68,204,136,.55);}
+.bitkey i.b-red{background:rgba(204,102,170,.55);}
+.bitkey i.b-pal{background:rgba(238,170,0,.55);}
+.bitkey i.b-idx{background:rgba(68,102,238,.55);}
+.bitkey i.b-zero{background:rgba(0,0,0,.55);}
+
+/* generic toy scaffolding (lifted from genesis/vdp-planes.html) */
+.toy{max-width:44rem;}
+.toy-row{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin:.45rem 0;}
+.toy-row .lbl{font-family:var(--mono); font-size:.7rem; letter-spacing:.06em;
+  color:var(--dim); min-width:4.4rem;}
+.tbtn{font-family:var(--mono); font-size:.7rem; padding:.3rem .65rem; cursor:pointer;
+  border-radius:3px; background:transparent; color:var(--dim); border:1px solid var(--line);}
+.tbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.tbtn.reset{color:var(--learn); border-color:var(--learn);}
+.toycap{font-family:var(--mono); font-size:.72rem; color:var(--dim); line-height:1.5;
+  margin:.7rem 0 0; max-width:42rem;}
+
+/* the 9-bit colour lab. The eight swatches of a row ARE that channel's eight stops, so the
+   input and the demonstration are the same control: there is nothing between the reader's
+   click and the fact that eight is all there is. */
+.clab{display:flex; flex-wrap:wrap; gap:1.4rem; align-items:flex-start;}
+.clab-steps{display:flex; gap:3px;}
+.clab-steps button{width:2rem; height:1.8rem; padding:0; border:1px solid var(--line);
+  cursor:pointer; font-family:var(--mono); font-size:.6rem; color:#EEEEEE;
+  text-shadow:0 0 2px #000000;}
+.clab-steps button[aria-pressed="true"]{outline:2px solid var(--gold); outline-offset:1px;}
+.clab-steps button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.clab-out{display:flex; flex-direction:column; gap:.5rem;}
+.clab-swatch{width:7rem; height:7rem; border:1px solid var(--line); border-radius:3px;}
+.cword{font-family:var(--mono); font-size:1.4rem; letter-spacing:.08em;}
+.cword .cw-b{color:#88AAEE;} .cword .cw-g{color:#44CC88;} .cword .cw-r{color:#CC66AA;}
+.cword .cw-s{color:var(--dim);}
+.cbits{display:flex; gap:2px; flex-wrap:wrap; font-family:var(--mono); font-size:.62rem;}
+.cbits span{width:1.1rem; text-align:center; padding:.1rem 0; border:1px solid var(--line);
+  border-radius:2px; color:var(--dim);}
+.cbits span.on{color:var(--ink);}
+.cbits span.f-blue{background:rgba(68,102,238,.22);}
+.cbits span.f-green{background:rgba(68,204,136,.22);}
+.cbits span.f-red{background:rgba(204,102,170,.22);}
+.cbits span.f-dead{background:rgba(0,0,0,.3);}
+.cbits-lbl{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim); margin:.4rem 0 .2rem;}
+
+/* the fifteen-rung ladder. Deliberately NOT rendered as colour swatches: the rungs are the
+   measured analog levels, which are not CRAM-legal values and are not what the wiki's
+   doubled-digit palette expands to. Drawing them as colour would assert an equivalence the
+   page spends a section denying, so they are drawn as positions and printed as numbers. */
+.ladder{font-family:var(--mono); font-size:.68rem; border:1px solid var(--line);
+  border-radius:4px; overflow:hidden; max-width:34rem;}
+.ladder .lr{display:flex; align-items:stretch; border-bottom:1px solid var(--line);}
+.ladder .lr:last-child{border-bottom:0;}
+.ladder .lr.hd{background:rgba(0,0,0,.35); color:var(--dim); letter-spacing:.1em;
+  text-transform:uppercase; font-size:.6rem;}
+.ladder .lv{flex:0 0 4.6rem; padding:.22rem .5rem; color:var(--dim);
+  border-right:1px solid var(--line); text-align:right;}
+.ladder .lc{flex:1 1 0; padding:.22rem .5rem; text-align:center; color:#666688;
+  border-right:1px solid var(--line);}
+.ladder .lc:last-child{border-right:0;}
+.ladder .lc.on{color:var(--ink);}
+.ladder .lc.n-on{background:rgba(238,170,0,.16);}
+.ladder .lc.s-on{background:rgba(68,102,238,.20);}
+.ladder .lc.h-on{background:rgba(68,204,136,.16);}
+
+/* the three-mechanism grid */
+.mech{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem;}
+.mech .mrow{display:flex; gap:.8rem; padding:.55rem .8rem; border-bottom:1px solid var(--line);
+  flex-wrap:wrap;}
+.mech .mrow:last-child{border-bottom:0;}
+.mech .mn{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; color:var(--gold);
+  flex:0 0 5.6rem;}
+.mech .md{flex:1 1 18rem; font-size:.9rem;}
+.mech .md p{margin:0; max-width:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / THE GENESIS / COLOR &amp; CRAM</p>
+  <p class="eyebrow">The Genesis</p>
+  <h1>Color &amp; CRAM</h1>
+  <p class="sub">A Genesis pixel is a number from 0 to 15, and a number is not a colour. What
+  turns it into light is a small memory inside the video chip holding sixty-four colour slots,
+  nine bits each, written blue first. This page is that memory: the nine-bit word and its bit
+  layout, the four palettes and who chooses between them, why eight steps per channel is the
+  whole reason Genesis skies come out in stripes, the shadow and highlight mode in full, and
+  what happens when a game rewrites its colours halfway down the screen.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>Sixty-four slots</a>
+  <a href="#word"><span class="n">2</span>The nine-bit word, and it is BGR</a>
+  <a href="#palettes"><span class="n">3</span>Four palettes of sixteen, and who picks</a>
+  <a href="#ramp"><span class="n">4</span>The ramp, and why the Genesis bands</a>
+  <a href="#shadow"><span class="n">5</span>Shadow and highlight</a>
+  <a href="#midframe"><span class="n">6</span>Mid-frame writes and the CRAM dots</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">This page picks up where
+<a href="tiles-vram.html">Tiles &amp; VRAM</a> leaves off: a pixel is
+<a href="tiles-vram.html#tile">four bits of palette index</a>, and
+<a href="vdp-planes.html#s1">nothing on screen has a colour until CRAM does</a>. Two things it
+does not re-teach, because <a href="vdp-planes.html">The VDP &amp; Planes</a> owns them: how a
+value reaches the chip at all (<a href="vdp-planes.html#ports">two ports and one command
+word</a>), and what the priority bit does (<a href="vdp-planes.html#priority">one bit, seven
+layers</a>). Section 5 needs both, and links rather than repeats.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; Sixty-four slots</h2>
+
+<p><span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span>
+is the smallest and least flexible of the three memories inside the
+<span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span>,
+and it does exactly one job. It is 128 bytes, addressed as 64 words of 16 bits, and it holds
+64 colours. That is the whole of it. There is no spare corner of CRAM to put something else in,
+and no way to trade colour slots for extra room.</p>
+
+<p>The interesting part is the gap between how CRAM is addressed and what it stores. Sega's own
+description is "64 9 bit words inside the VDP chip": each slot is reached as a 16-bit word, and
+only nine of those sixteen bits exist. Seven bits of every word are simply not implemented.
+Those positions do not store anything, so they are not seven spare flags per colour waiting to
+be used.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What does "nine bits in a sixteen-bit word" mean?</summary>
+  <div class="x-body">
+    <p>A memory is usually described by two numbers that people expect to match: how many
+    boxes there are, and how big a box is. CRAM has 64 boxes, and each box is reached as though
+    it were 16 bits wide, because that is the size the chip's data port moves. But only nine of
+    those sixteen positions have anything behind them. The other seven are wiring that was never
+    put in.</p>
+    <p>Think of a form with sixteen boxes printed on it where only nine are actually read by
+    anybody. You can write in the other seven. Nothing will come of it. The form is not lying to
+    you and nothing is broken; the boxes are printed because the paper comes that size.</p>
+    <p>Two practical consequences follow, and both turn up later on this page. A colour is
+    written as a whole word rather than as a byte, because the word is the unit. And the seven
+    unimplemented positions are not spare storage: if you need somewhere to keep a flag per
+    colour, it goes in your own RAM, not in the top of a CRAM entry.</p>
+  </div>
+</details>
+
+<p>That is also why CRAM is written a whole word at a time. A colour is one word, the word is
+the unit the VDP stores, and the two halves of it are not independently meaningful.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why do the colours need a memory of their own?</summary>
+  <div class="x-body">
+    <p>Because the picture does not carry its colours around with it. A
+    tile is an 8 by 8 square of pixels, and each pixel is four bits: a number from 0 to 15. Not a
+    colour. Just a number, meaning "the ninth colour", or "the second colour", with no statement
+    anywhere in the tile about what the ninth colour actually looks like.</p>
+    <p>So something has to hold the answer, and that something is CRAM. Sixty-four slots, and
+    every pixel on screen is a small number pointing at one of them. Rewrite a slot and every
+    pixel pointing at it changes colour on the next line the chip draws, without a single pixel
+    of art being touched. That one indirection is the source of nearly every colour trick on
+    the machine, including the whole of sections 4, 5 and 6 below.</p>
+    <p>The cost of the trick is the ceiling. Sixty-four slots is sixty-four, and it is not
+    negotiable the way video memory is. When a game is short of art space it can compress, share
+    tiles, or reload mid-level. When it is short of colours it has to want fewer colours.</p>
+  </div>
+</details>
+
+<p>CRAM is fixed in size and fixed in purpose, and this is the point where it stops resembling
+the memory next door. <a href="tiles-vram.html#s1">VRAM</a> is 65,536 bytes of general store
+whose contents and layout are entirely the programmer's problem: art, plane maps, the sprite
+list, all of it wherever the game decides to put it. CRAM has no layout decisions in it at all.
+Slot 0 is slot 0.</p>
+
+<p>The order is palette-major, which is the one arrangement fact worth memorising: entry
+<code>n</code> is colour <code>n</code> mod 16 of palette <code>n</code> div 16. Entries 0 to 15
+are palette 0, entries 16 to 31 are palette 1, and so on. A palette line is therefore 16 words,
+which is 32 bytes, so palette <code>p</code> begins at CRAM byte address <code>p</code> times 32.
+Sonic 2 keeps the size as a named constant rather than a magic number:</p>
+
+<pre>palette_line_size =		$10*2	<span class="c">; 16 word entries</span></pre>
+<span class="src">s2disasm/s2.constants.asm:1042</span>
+
+<p>Getting a colour into a slot uses the same keyhole as everything else the VDP owns: set an
+address through the control port, then write words to the data port, with the
+<span class="term" data-def="A VDP register holding a step that is added to the video memory address after every access, so a run of writes lands in consecutive places.">auto-increment</span>
+walking the address forward for you. That machinery belongs to
+<a href="vdp-planes.html#ports">The VDP &amp; Planes, section 2</a>, and this page assumes it.
+What it looks like in practice is four lines, and Sonic 2's checksum failure screen is the
+smallest complete example in either disassembly:</p>
+
+<pre>	move.l	#vdpComm($0000,CRAM,WRITE),(VDP_control_port).l <span class="c">; set VDP to CRAM write</span>
+	moveq	#16*4-1,d7 <span class="c">; all colours of all palette lines</span>
+<span class="c">; loc_3E2:</span>
+Checksum_Red:
+	move.w	#$00E,(VDP_data_port).l	<span class="c">; fill palette with red</span>
+	dbf	d7,Checksum_Red		<span class="c">; repeat $3F more times</span></pre>
+<span class="src">s2disasm/s2.asm:450-455 (ChecksumError, the boot-time checksum failure screen)</span>
+
+<p>Point the VDP at CRAM address zero, then write the same word sixty-four times. The loop
+counter is spelled <code>16*4-1</code>, which is four palettes of sixteen written out as
+arithmetic, and <code>$00E</code> is a colour you will be able to read by the end of section 2.
+This runs only when the cartridge fails its own checksum at boot, so nobody has seen it in
+normal play; it is quoted because it is CRAM at its most naked, with no palette buffer, no fade
+and no queue in the way.</p>
+
+<!-- ================================================================ -->
+<h2 id="word">2 &middot; The nine-bit word, and it is BGR</h2>
+
+<p>Nine bits, three per channel, three channels. Each channel gets a value from 0 to 7, so the
+machine can express 8 x 8 x 8 = 512 colours, and CRAM has 64 slots to hold a selection of them
+in.</p>
+
+<p><b>The order is blue, green, red.</b> Blue occupies the most significant of the three fields,
+not the least. Almost everybody guesses the other way round on first contact, because
+"RGB" is the phrase in everyone's head, and the guess costs an afternoon of wondering why the
+sky is orange. Written as three hex digits the word reads <code>$BGR</code>: <code>$00E</code>
+is full red and <code>$E00</code> is full blue.</p>
+
+<figure class="diagram">
+  <div class="bitword">
+    <div class="bf b-zero">15 14 13 12<br>0 0 0 0</div>
+    <div class="bf b-blue">11 10 9<br>B B B</div>
+    <div class="bf b-zero">8<br>0</div>
+    <div class="bf b-green">7 6 5<br>G G G</div>
+    <div class="bf b-zero">4<br>0</div>
+    <div class="bf b-red">3 2 1<br>R R R</div>
+    <div class="bf b-zero">0<br>0</div>
+  </div>
+  <ul class="bitkey">
+    <li><i class="b-blue"></i><b>Blue</b><span class="kd">bits 11 to 9, the top hex digit of the three</span></li>
+    <li><i class="b-green"></i><b>Green</b><span class="kd">bits 7 to 5, the middle digit</span></li>
+    <li><i class="b-red"></i><b>Red</b><span class="kd">bits 3 to 1, the bottom digit</span></li>
+    <li><i class="b-zero"></i><b>Not stored</b><span class="kd">bits 15 to 12, and the bottom bit of each channel's nibble: the seven positions CRAM does not implement</span></li>
+  </ul>
+  <figcaption>The CRAM word. Nine bits of colour scattered through a sixteen-bit word, with each
+  channel sitting in bits 3 to 1 of its own nibble rather than at the bottom of it.</figcaption>
+</figure>
+
+<p>Look at where a channel sits inside its nibble and the second surprise falls out. The three
+bits are not at the bottom of the nibble; they are one place up. So the nibble's value is always
+twice the channel level, which means a channel's hex digit is always one of
+<code>0 2 4 6 8 A C E</code>. There are no odd digits in a legal colour. An odd digit in a
+palette entry is a bug, not a shade the reader has not met yet, and it is one of the easiest
+mistakes to spot by eye.</p>
+
+<details class="explain">
+  <summary>New here? &middot; How do three small numbers make a colour?</summary>
+  <div class="x-body">
+    <p>The same way a stage light does. Point a red lamp, a green lamp and a blue lamp at one
+    spot and turn each up or down, and between them they can make most colours a person can see.
+    All three off is black. All three full is white. Red full with the others off is red. Red
+    and green full together, no blue, is yellow, which surprises people the first time.</p>
+    <p>A Genesis has the same three lamps and a dimmer switch with only eight positions on it:
+    off, then seven brightnesses. Three numbers from 0 to 7 is the entire description of a
+    colour on this machine, and the colour word is just those three numbers parked in one
+    16-bit value.</p>
+    <p>Eight positions per lamp is the thing to hold on to, because section 4 is about what
+    happens when eight is not enough.</p>
+  </div>
+</details>
+
+<p>The clearest statement of the format in either disassembly is not a table. It is a fade
+routine, and it states the layout as arithmetic. Sonic 2 fades a screen in by walking each
+colour one step towards its target, and to do that it has to know how far one step is in each
+channel:</p>
+
+<pre><span class="c">;.updateblue:</span>
+	move.w	d3,d1
+	addi.w	#$200,d1	<span class="c">; increase blue value</span>
+	cmp.w	d2,d1		<span class="c">; has blue reached threshold level?</span>
+	bhi.s	.updategreen	<span class="c">; if yes, branch</span>
+	move.w	d1,(a0)+	<span class="c">; update palette</span>
+	rts
+
+<span class="c">; loc_2454: Pal_AddGreen:</span>
+.updategreen:
+	move.w	d3,d1
+	addi.w	#$20,d1		<span class="c">; increase green value</span>
+	cmp.w	d2,d1
+	bhi.s	.updatered
+	move.w	d1,(a0)+	<span class="c">; update palette</span>
+	rts
+
+<span class="c">; loc_2462: Pal_AddRed:</span>
+.updatered:
+	addq.w	#2,(a0)+	<span class="c">; increase red value</span>
+	rts</pre>
+<span class="src">s2disasm/s2.asm:3331-3351 (the per-colour step of Pal_FadeFromBlack, the fade-in at every screen transition)</span>
+
+<p>Three constants, and they are the format. One step of blue is <code>$200</code>, because blue
+starts at bit 9. One step of green is <code>$20</code>, because green starts at bit 5. One step
+of red is <code>2</code>, because red starts at bit 1 and not bit 0. A reader who did not believe
+the diagram above can derive it from these three numbers, and this code has been in a shipped
+cartridge since 1992.</p>
+
+<p>The routine brightens whichever channel it can and returns, which is why a Genesis fade-in
+crawls up through blue first, then green, then red: it is walking the word's own fields in
+order, not mixing a colour.</p>
+
+<figure class="diagram">
+  <div class="clab toy">
+    <div>
+      <div class="toy-row">
+        <span class="lbl">Blue</span>
+        <span class="clab-steps" id="labB"></span>
+      </div>
+      <div class="toy-row">
+        <span class="lbl">Green</span>
+        <span class="clab-steps" id="labG"></span>
+      </div>
+      <div class="toy-row">
+        <span class="lbl">Red</span>
+        <span class="clab-steps" id="labR"></span>
+      </div>
+      <p class="cbits-lbl">The 16-bit word</p>
+      <div class="cbits" id="labBits"></div>
+      <div class="toy-row" style="margin-top:.8rem;">
+        <button type="button" class="tbtn reset" id="labReset">Reset to $000</button>
+      </div>
+    </div>
+    <div class="clab-out">
+      <div class="clab-swatch" id="labSw"></div>
+      <div class="cword" id="labWord"></div>
+    </div>
+  </div>
+  <p class="toycap" id="labCap" aria-live="polite">Every channel is at level 0, so the word is
+  $000 and the slot is black. Click any swatch to set that channel's level.</p>
+  <figcaption>The 9-bit colour lab: three 3-bit fields make one colour, and eight stops per
+  channel is why Genesis colours band. Each row IS that channel's eight legal levels, so the
+  control and the lesson are the same thing (static fallback: with all three channels at 0 the
+  word is $000 and the swatch is black; raising red alone steps the bottom hex digit through 2,
+  4, 6, 8, A, C, E, which is every red the machine has, and the word stays written blue first).
+  Disclosure, because it matters on this page: the swatches render each level as its CRAM hex
+  digit doubled, so level 7 draws as #EE. That is this wiki's own palette convention and it is
+  also the expansion Genesis Plus GX ships. A real console's video output is a bent ladder that
+  varies from unit to unit, so a swatch here is a faithful rendering of the STORED value and not
+  a measurement of the light.</figcaption>
+</figure>
+
+<details class="refbox">
+  <summary>Reference &middot; The colour word, field by field</summary>
+  <div class="enc-body">
+    <div class="tbl">
+    <table>
+    <tr><th>Bits</th><th>Field</th><th>Values</th><th>Notes</th></tr>
+    <tr><td>15 to 12</td><td>not implemented</td><td>-</td><td>four of the seven bits CRAM does not store</td></tr>
+    <tr><td>11 to 9</td><td>blue level</td><td>0 to 7</td><td>step of <code>$200</code>; top hex digit of the three</td></tr>
+    <tr><td>8</td><td>not implemented</td><td>-</td><td></td></tr>
+    <tr><td>7 to 5</td><td>green level</td><td>0 to 7</td><td>step of <code>$20</code></td></tr>
+    <tr><td>4</td><td>not implemented</td><td>-</td><td></td></tr>
+    <tr><td>3 to 1</td><td>red level</td><td>0 to 7</td><td>step of <code>2</code></td></tr>
+    <tr><td>0</td><td>not implemented</td><td>-</td><td>this is why every channel digit is even</td></tr>
+    </table>
+    </div>
+    <p class="enc-note">Written out as a bit pattern the word is
+    <code>0000 BBB0 GGG0 RRR0</code>. Worth writing the hex both ways once:
+    <code>$0EE</code> is blue 0, green 7, red 7, which is yellow, and
+    <code>$E00</code> is blue 7 with nothing else, which is blue. Every colour word on this
+    page reads in that order, and so does every word the VDP reads out of CRAM.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="palettes">3 &middot; Four palettes of sixteen, and who picks</h2>
+
+<p>The 64 slots are not one flat list as far as the drawing hardware is concerned. They are four
+<span class="term" data-def="A set of 16 colors in CRAM. Every tile and sprite picks one of the four palettes.">palettes</span>
+of sixteen, and a pixel's four bits index one of those sixteen. Four bits cannot reach past
+sixteen, so the pixel value alone can never say which palette it means.</p>
+
+<p>Which produces the load-bearing inversion of this whole page. <b>A tile carries no palette
+information at all.</b> The 32 bytes of a
+<span class="term" data-def="An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.">tile</span>
+are indices and nothing else. The palette is
+chosen by whatever is REFERENCING the tile, and the two referencing structures choose it
+differently:</p>
+
+<ul>
+  <li><b>For a plane cell</b>, bits 14 and 13 of the
+  <a href="vdp-planes.html#nametable">nametable word</a>. The palette is a property of the cell,
+  so the same tile drawn in two cells of the same plane can wear two different palettes.</li>
+  <li><b>For a sprite</b>, two bits of the sprite's attribute word, applying to the whole sprite
+  at once rather than per tile. A sprite is one palette from end to end, however many tiles it
+  is built from.</li>
+</ul>
+
+<p>The consequence is worth spelling out because it is the reason palettes are a technique and
+not just a storage format: the same tile art draws in four colour schemes for nothing, and
+recolouring a whole scene costs the 32 bytes of one palette line where redrawing it would cost
+the art. Every "same enemy, different zone" sprite you have ever noticed on this machine is that
+arithmetic.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why can two games share tiles and look different?</summary>
+  <div class="x-body">
+    <p>Picture a colouring book printed with numbers in the shapes rather than colours. The
+    printed page says 1 here, 4 there, 9 over there. It does not say what 4 is. Hand the same
+    printed page to two people with different sets of pencils and you get two different
+    pictures out of one drawing.</p>
+    <p>A tile is that printed page and a palette is the set of pencils. The pixels say 1, 4 and
+    9; CRAM says what 1, 4 and 9 look like. So a game that wants an autumn version of a forest
+    does not redraw a single leaf. It writes sixteen new words into CRAM and the forest changes
+    while the art in video memory sits untouched.</p>
+    <p>It also explains a thing that trips people reading a disassembly for the first time: the
+    palette files and the art files are separate, and a palette is tiny. Thirty-two bytes buys
+    the recolour of an entire screen, which is why games change palettes constantly and change
+    art as rarely as they can get away with.</p>
+  </div>
+</details>
+
+<h3>The colour index that is not a colour</h3>
+
+<p>Index 0 of a palette is special, and its speciality is a drawing rule rather than a property
+of the slot. <b>In a plane cell or in a sprite, a pixel whose index is 0 is not drawn.</b>
+Whatever colour sits in that palette's slot 0 has no effect on it: the pixel is transparent, and
+what shows through is whatever is behind. So a tile shows at most 15 of its palette's 16
+entries, however carefully its slot 0 was filled in.</p>
+
+<details class="explain">
+  <summary>New here? &middot; If index 0 is invisible, why does a palette have one?</summary>
+  <div class="x-body">
+    <p>Because the transparency is a rule about DRAWING, not a property of the slot, and the two
+    are easy to run together. The slot is an ordinary CRAM entry holding an ordinary colour word.
+    What is special is that when the chip is drawing a plane cell or a sprite and meets a pixel
+    whose index is 0, it does not draw a pixel at all. It leaves whatever was already there.</p>
+    <p>So the slot has to exist, because a palette is sixteen entries and the pixel values run
+    0 to 15; index 0 has to be somewhere in that run, and starting at 0 is what four bits do.
+    It is simply the one index every tile agrees to spend on "nothing here".</p>
+    <p>And the colour in it is not entirely wasted. One register, the backdrop below, can point
+    at any slot in CRAM including a slot 0, and whatever it points at is what you see where
+    nothing else is drawn. That is why the arithmetic in the next paragraph loses four slots and
+    gets exactly one of them back.</p>
+  </div>
+</details>
+
+<p>Now count what is actually visible. Four palettes, four slot-0 entries, each of which no plane
+or sprite pixel can ever show: that is four of the 64 slots spent. One of them comes back, and
+exactly one, through the
+<span class="term" data-def="The color the VDP shows wherever no plane or sprite pixel is drawn. One register picks it from any of the 64 color slots.">backdrop</span>
+register below, which can point at any slot including a slot 0. So:</p>
+
+<p style="font-family:var(--mono); font-size:.95rem; color:var(--gold); margin-left:1.6rem;">
+64 slots - 4 unshowable slot-0 entries + 1 of them restored as the backdrop = <b>61</b></p>
+
+<p>Sixty-one is therefore the most distinct CRAM ENTRIES a picture built from planes and sprites
+can show at one instant, and it is a ceiling rather than a typical figure: a game that points its
+backdrop at an ordinary colour it is already using gets 60. The 64 that specification sheets
+quote is the count of SLOTS, which is a different question with a true answer of its own. Be
+careful what the 61 is counting, because the two sections after this one both move colours around
+without touching it: section 5 puts those same 61 entries on screen in three brightness states at
+once, and section 6 changes which 61 they are partway down the frame. Neither adds a slot to
+CRAM.</p>
+
+<h3>The backdrop register</h3>
+
+<p>Wherever no plane pixel and no sprite pixel is drawn, the VDP shows the backdrop, and
+one register says which slot the backdrop reads. It is VDP register 7, written through the
+control port as <code>$87xx</code>, and its low byte carries two fields:</p>
+
+<figure class="diagram">
+  <div class="bitword">
+    <div class="bf b-zero">7 6<br>0 0</div>
+    <div class="bf b-pal">5 4<br>P P</div>
+    <div class="bf b-idx">3 2 1 0<br>C C C C</div>
+  </div>
+  <ul class="bitkey">
+    <li><i class="b-pal"></i><b>Palette</b><span class="kd">bits 5 and 4: which of the four palette lines</span></li>
+    <li><i class="b-idx"></i><b>Colour</b><span class="kd">bits 3 to 0: which of the sixteen entries in it</span></li>
+    <li><i class="b-zero"></i><b>Unused</b><span class="kd">bits 7 and 6</span></li>
+  </ul>
+  <figcaption>The low byte of VDP register 7. Two bits of palette and four of colour index reach
+  all 64 slots, which is the point: the backdrop is not tied to slot 0.</figcaption>
+</figure>
+
+<p><b>The backdrop can be any of the 64 entries, not just entry 0.</b> The widely taught version,
+"the backdrop is palette 0 colour 0", describes the common default and not the register. Both
+Sonic games contradict it in shipped code. Sonic 2 sets palette 2 on entering a Zone:</p>
+
+<pre>	move.w	#$8720,(a6)		<span class="c">; Background palette/color: 2/0</span>
+	move.w	#$8C81,(a6)		<span class="c">; H res 40 cells, no interlace</span></pre>
+<span class="src">s2disasm/s2.asm:4833-4834 (Level_InitWater and the shared level VDP setup)</span>
+
+<p>and Sonic 3 and Knuckles sets palette 3 for its Competition menu, with
+<code>$8730</code> at <code>skdisasm/sonic3k.asm:13454</code>. Worth being exact about what those
+two prove, since they are the only shipped evidence to hand: both games exercise the PALETTE
+half of the field and leave the colour half at 0. Across the whole of both disassemblies the
+only backdrop values written are <code>$8700</code>, <code>$8720</code> and <code>$8730</code>.
+The colour bits are real, documented, and apparently something neither game needed.</p>
+
+<h3>What a palette actually looks like</h3>
+
+<p>It looks like sixteen words, and that is genuinely all. There is no header, no count, no
+terminator. Palette data in the Sonic disassemblies ships as binary files rather than as
+assembly, so there is no shipped source listing to quote here; the example below is invented for
+the page, and it is invented rather than dumped so that every entry can be one you can read:</p>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not from a shipped game</span>
+<pre><span class="c">; one palette line: 16 words, 32 bytes, written blue-green-red</span>
+Pal_Example:
+	dc.w	$000	<span class="c">; 0  never drawn in a tile or a sprite</span>
+	dc.w	$000	<span class="c">; 1  black, for outlines</span>
+	dc.w	$222	<span class="c">; 2  near-black</span>
+	dc.w	$444	<span class="c">; 3  dark grey</span>
+	dc.w	$668	<span class="c">; 4  grey, slightly warm</span>
+	dc.w	$88A	<span class="c">; 5</span>
+	dc.w	$AAC	<span class="c">; 6</span>
+	dc.w	$CCE	<span class="c">; 7</span>
+	dc.w	$EEE	<span class="c">; 8  white</span>
+	dc.w	$008	<span class="c">; 9  dark red   (blue 0, green 0, red 4)</span>
+	dc.w	$00E	<span class="c">; 10 red        (red at full)</span>
+	dc.w	$06E	<span class="c">; 11 orange     (red full, some green)</span>
+	dc.w	$0EE	<span class="c">; 12 yellow     (red and green full)</span>
+	dc.w	$080	<span class="c">; 13 dark green</span>
+	dc.w	$E00	<span class="c">; 14 blue       (blue at full)</span>
+	dc.w	$E88	<span class="c">; 15 pale blue</span></pre>
+  <p style="font-size:.88rem; margin-top:.5rem;">Every digit is even, which is the section 2 rule
+  showing up in real data. Entry 0 is written as black out of habit and it makes no difference
+  what it holds, because no tile pixel and no sprite pixel will ever show it. The one thing that
+  can is the backdrop register, if it is pointed here.</p>
+</div>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>Two palettes of sixteen is not the same as one palette of thirty-two.</b> A pixel's four bits
+  choose within a line and cannot cross out of it, and the palette is chosen per cell or per
+  sprite, never per pixel. So a single tile cannot show eighteen colours, no matter how many
+  free slots CRAM has. Eighteen colours inside one 8x8 square of screen means more than one thing
+  drawn there: two tiles in two cells, or a sprite laid over a plane cell, each still within its
+  own sixteen.
+</div>
+
+<!-- ================================================================ -->
+<h2 id="ramp">4 &middot; The ramp, and why the Genesis bands</h2>
+
+<p>Everything so far has been about what the colour word ENCODES. This section is about what
+comes out of the console, and the two are not the same shape.</p>
+
+<p>What the word encodes is regular: eight levels per channel, evenly numbered 0 to 7. What the
+video output does with those numbers is not evenly spaced. <b>The ramp is not linear. The steps
+are widest at the two ends and compressed through the middle.</b> That is the fact, it holds on
+every Mega Drive anyone has put an instrument on, and the two independent measurements of it
+agree about that shape even where they disagree about the digits.</p>
+
+<p>The numbers themselves are one measurement chain and this page treats them as one. The set
+below was measured by TmEE with an oscilloscope on the console's own video output, and it is the
+set reproduced almost everywhere the ramp is quoted. Scaled so that the top of the ramp is 255,
+one channel's eight normal-mode levels come out as:</p>
+
+<p style="font-family:var(--mono); color:var(--gold); margin-left:1.6rem;">0 &nbsp; 52 &nbsp; 87
+&nbsp; 116 &nbsp; 144 &nbsp; 172 &nbsp; 206 &nbsp; 255</p>
+
+<p>A second, genuinely independent measurement, taken from voltages by Eke and worked up by Mask
+of Destiny, the author of BlastEm, reads <b>0 49 87 119 146 174 206 255</b>: two or three units
+away at four of those stops and identical at the other four. Neither is the answer, and averaging
+them would manufacture a third number nobody measured. Mask of Destiny puts the spread down to
+small differences between individual DACs, which means the last unit or two is a property of the
+console in front of you rather than a figure still waiting to be pinned down. The shape is the
+fact; the digits are one chain's reading of it.</p>
+
+<p>Take the differences between those eight stops and the shape becomes arithmetic. The gaps are
+<b>52, 35, 29, 28, 28, 34, 49</b>, which is a wide step at the bottom, four narrow ones through
+the middle, and a wide one at the top. Two teaching points fall straight out, and the first of
+them is the opposite of what most people assume.</p>
+
+<p><b>Banding is worst in the deep shadows and near white, and mildest in the midtones.</b> The
+step from level 0 to level 1 is 52 out of 255, nearly twice the size of the steps through the
+middle of the range. So a dark gradient, which is exactly what a night sky or a cave wall is, has the coarsest
+staircase available. Artists who lit their dark areas up a little were not being timid; they were
+climbing out of the widest part of the ladder.</p>
+
+<p><b>And every step is huge.</b> The smallest gap here is 28 out of 255, about 11% of full
+scale, and the largest is 20%. On a large flat area a human eye picks out brightness differences
+well under 1%. So a large gradient built from eight levels cannot be smooth on its own: the seams
+are more than ten times wider than the threshold at which they stop being invisible. That is the
+entire explanation of Genesis banding, and it is why dithering, checkerboarding two levels
+together to fake a third, is everywhere on this machine.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why does a Genesis sky come out in stripes?</summary>
+  <div class="x-body">
+    <p>Because a sky wants to fade and the machine can only step. Think of a paint mixer with
+    eight cans of blue and no way to blend them. To paint a sky that gets lighter towards the
+    horizon you use can 1 at the top, then can 2, then can 3, and each change of can is a visible
+    line across your sky. Nothing is broken. There are only eight cans.</p>
+    <p>Modern hardware has 256 cans per channel and the steps between them are below what your
+    eye can pick out, so a gradient looks continuous. The Genesis has eight, and the gaps between
+    them are enormous by comparison, so you see every one.</p>
+    <p>The trick artists used is dithering: instead of a solid band of can 2 next to a solid band
+    of can 3, checkerboard the two together in the region between. Up close it is a chequerboard.
+    On a television of the period, which smeared neighbouring pixels together anyway, it read as
+    a shade in between. That is why so much Genesis art looks speckled when you finally see it on
+    a sharp modern screen; the speckles were doing a job the palette could not.</p>
+  </div>
+</details>
+
+<p>Why the ramp is bent at all is a question about the silicon, and only one source ventures an
+answer. plutiedev reports that the VDP die shows each channel's converter built as a resistor
+chain with evenly spaced taps, and suggests, hedging with a "seems", that the designers did not
+account for analog effects that distort the values on the way out. If that is right the curve is
+an accident rather than a deliberate gamma choice. It is one source and it hedges, so it is
+offered here the same way.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>Do not read a doubled hex digit as a measurement.</b> This wiki writes a Genesis colour on
+  screen by repeating its CRAM digit, so <code>$EEE</code> is drawn as <code>#EEEEEE</code>. That
+  is a notation for the stored value, chosen because it stays inside the console's own eight
+  levels, and it is what Genesis Plus GX ships as well. It is not a claim about the light: the
+  measured top of the ramp is 255 and the ladder below it is bent. The console's <code>$EEE</code>
+  is the only white it has, and how bright that white is belongs to the console, the cable and
+  the display, not to a hex string.
+</div>
+
+<p>One more thing before section 5, because it is the door into it. Everything above describes
+the ramp the chip uses NORMALLY. There is a mode in which each channel can land on fifteen
+distinct levels instead of eight, and those fifteen are not a finer ramp. They are the same
+ladder, read in three overlapping slices of eight.</p>
+
+<details class="refbox">
+  <summary>Reference &middot; The measured ramp, and the three slices</summary>
+  <div class="enc-body">
+    <p style="font-size:.85rem;">One measurement chain, TmEE's oscilloscope readings of the
+    console's video output, scaled so that the top of the ramp is 255. A second independent
+    measurement differs by two or three units at four stops, and Mask of Destiny attributes that
+    spread to small differences between individual DACs, so the last unit is not a figure that
+    exists to be found. The step arithmetic below is derived from this set. The three columns are the
+    normal, shadowed and highlighted readings of section 5, and they are three slices of one
+    fifteen-level ramp rather than three ramps.</p>
+    <div class="tbl">
+    <table>
+    <tr><th>Hex digit</th><th>Level</th><th>Normal</th><th>Shadow</th><th>Highlight</th></tr>
+    <tr><td><code>0</code></td><td>0</td><td>0</td><td>0</td><td>130</td></tr>
+    <tr><td><code>2</code></td><td>1</td><td>52</td><td>29</td><td>144</td></tr>
+    <tr><td><code>4</code></td><td>2</td><td>87</td><td>52</td><td>158</td></tr>
+    <tr><td><code>6</code></td><td>3</td><td>116</td><td>70</td><td>172</td></tr>
+    <tr><td><code>8</code></td><td>4</td><td>144</td><td>87</td><td>187</td></tr>
+    <tr><td><code>A</code></td><td>5</td><td>172</td><td>101</td><td>206</td></tr>
+    <tr><td><code>C</code></td><td>6</td><td>206</td><td>116</td><td>228</td></tr>
+    <tr><td><code>E</code></td><td>7</td><td>255</td><td>130</td><td>255</td></tr>
+    </table>
+    </div>
+    <p class="enc-note">The fifteen rungs of the full ramp, in order, are
+    0, 29, 52, 70, 87, 101, 116, 130, 144, 158, 172, 187, 206, 228, 255. Normal mode takes every
+    other rung starting at the bottom; shadow takes the bottom eight; highlight takes the top
+    eight. Two entries in that table are the reason section 5 says shadowing black and
+    highlighting white do nothing: level 0 reads 0 both normal and shadowed, and level 7 reads
+    255 both normal and highlighted.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="shadow">5 &middot; Shadow and highlight</h2>
+
+<p>The VDP has one mode that changes what a colour word means, and it is described wrongly more
+often than anything else on the chip. Accounts in the wild get the enable wrong, collapse three
+separate routes into one, drop the precondition that makes it work, or invent a bit in CRAM that
+does not exist. This section is long because each of those is worth dismantling by name.</p>
+
+<h3>The enable</h3>
+
+<p>One bit turns the whole thing on: <b>bit 3 of VDP register 12</b>, which Sega's register table
+names <code>S/TE</code>, documenting it exactly as "1: Enable SHADOW and HIGHLIGHT. 0: Disable
+SHADOW and HIGHLIGHT". It is a global switch, not a per-cell or per-colour property. With it
+clear, everything below this heading stops existing.</p>
+
+<p>Sonic 2 writes both values in the same block of level setup, which makes the bit position
+readable without a manual: <code>$8C81</code> for off, <code>$8C89</code> for on, a difference of
+exactly <code>$08</code>, which is bit 3.</p>
+
+<p>Naming where the bit lives also disposes of the fourth misconception in one line, so it can be
+dropped here rather than argued with later. <b>There is no bit in CRAM that marks a colour as
+shadowed or highlighted.</b> A CRAM entry is nine bits of colour in a 16-bit word and section 2
+accounts for every one of them. The switch is in a VDP register and the operators are ordinary
+sprites, so what a colour word MEANS is decided entirely outside the memory that holds it.</p>
+
+<h3>What it does to a colour</h3>
+
+<p>With the mode on, every pixel on screen ends up in exactly one of three states: normal,
+shadowed, or highlighted. Not a range, not a blend, not a per-pixel amount. Three states.</p>
+
+<p>The three states read the same fifteen-rung ladder from section 4 in three overlapping
+slices, and TmEE, who measured it directly, is blunt about the count: "there's only 15 levels",
+adding that shadow and highlight introduce no new ones, "not even subtly different ones". This
+matters because it decides two behaviours people find counter-intuitive:</p>
+
+<ul>
+  <li><b>Highlighting white does nothing.</b> A channel already at level 7 reads 255 normal and
+  255 highlighted. There is no rung above it. Emulators used to get this wrong by assuming a
+  sixteenth level and producing a whiter white than any console makes.</li>
+  <li><b>Shadowing black does nothing.</b> Level 0 reads 0 in both. There is no rung below it
+  either.</li>
+</ul>
+
+<figure class="diagram">
+  <div class="ladder">
+    <div class="lr hd"><span class="lv">Rung</span><span class="lc">Normal</span><span class="lc">Shadow</span><span class="lc">Highlight</span></div>
+    <div class="lr"><span class="lv">255</span><span class="lc on n-on">7</span><span class="lc">&middot;</span><span class="lc on h-on">7</span></div>
+    <div class="lr"><span class="lv">228</span><span class="lc">&middot;</span><span class="lc">&middot;</span><span class="lc on h-on">6</span></div>
+    <div class="lr"><span class="lv">206</span><span class="lc on n-on">6</span><span class="lc">&middot;</span><span class="lc on h-on">5</span></div>
+    <div class="lr"><span class="lv">187</span><span class="lc">&middot;</span><span class="lc">&middot;</span><span class="lc on h-on">4</span></div>
+    <div class="lr"><span class="lv">172</span><span class="lc on n-on">5</span><span class="lc">&middot;</span><span class="lc on h-on">3</span></div>
+    <div class="lr"><span class="lv">158</span><span class="lc">&middot;</span><span class="lc">&middot;</span><span class="lc on h-on">2</span></div>
+    <div class="lr"><span class="lv">144</span><span class="lc on n-on">4</span><span class="lc">&middot;</span><span class="lc on h-on">1</span></div>
+    <div class="lr"><span class="lv">130</span><span class="lc">&middot;</span><span class="lc on s-on">7</span><span class="lc on h-on">0</span></div>
+    <div class="lr"><span class="lv">116</span><span class="lc on n-on">3</span><span class="lc on s-on">6</span><span class="lc">&middot;</span></div>
+    <div class="lr"><span class="lv">101</span><span class="lc">&middot;</span><span class="lc on s-on">5</span><span class="lc">&middot;</span></div>
+    <div class="lr"><span class="lv">87</span><span class="lc on n-on">2</span><span class="lc on s-on">4</span><span class="lc">&middot;</span></div>
+    <div class="lr"><span class="lv">70</span><span class="lc">&middot;</span><span class="lc on s-on">3</span><span class="lc">&middot;</span></div>
+    <div class="lr"><span class="lv">52</span><span class="lc on n-on">1</span><span class="lc on s-on">2</span><span class="lc">&middot;</span></div>
+    <div class="lr"><span class="lv">29</span><span class="lc">&middot;</span><span class="lc on s-on">1</span><span class="lc">&middot;</span></div>
+    <div class="lr"><span class="lv">0</span><span class="lc on n-on">0</span><span class="lc on s-on">0</span><span class="lc">&middot;</span></div>
+  </div>
+  <figcaption>One ladder, three slices. The left column is the measured rung (TmEE's oscilloscope
+  set, scaled to 255, with the per-console caveat of section 4); the three right columns say which
+  colour level 0 to 7 lands on that rung in each state. Read the top row and the bottom row for
+  the two counter-intuitive results: level 7 sits on 255 whether or not it is highlighted, and
+  level 0 sits on 0 whether or not it is shadowed. Deliberately drawn as positions rather than
+  colour swatches, because these rungs are analog measurements and not values CRAM can hold.</figcaption>
+</figure>
+
+<p>How many colours the mode can express is a question worth answering carefully, because the
+usual answer is wrong in an interesting way. A pixel is normal, shadowed or highlighted as a
+whole, so the expressible set is three 512-colour cubes laid over each other, and they overlap
+because the slices overlap. Multiplying gives 512 x 3 = 1536, which double counts every colour
+that two slices share. Working the overlaps out properly, the honest figure is <b>about
+1400</b>. The exact count is in the refbox below, labelled as our own arithmetic rather than a
+published number, because it is.</p>
+
+<details class="refbox">
+  <summary>Reference &middot; Where "about 1400" comes from</summary>
+  <div class="enc-body">
+    <p style="font-size:.85rem;">Derived here from the level table in section 4, not quoted from
+    a source. Per channel, the normal and shadow slices share four rungs (0, 52, 87, 116); normal
+    and highlight share four (144, 172, 206, 255); shadow and highlight share one (130); no rung
+    is in all three. Cubing those and applying inclusion-exclusion over the three 512-colour
+    cubes:</p>
+    <p style="font-family:var(--mono); font-size:.82rem; margin-left:1rem;">3 x 512 - (4 x 4 x 4)
+    - (4 x 4 x 4) - (1 x 1 x 1) = 1536 - 129 = 1407</p>
+    <p class="enc-note">Which is why the prose says "about 1400" and not a crisp figure: the input
+    is one measurement chain, the arithmetic is ours, and nobody publishes the number. The
+    load-bearing part is the correction to 1536, which is the number you will see quoted and which
+    counts the shared colours twice.</p>
+  </div>
+</details>
+
+<h3>Three mechanisms, not one</h3>
+
+<p>Here is the part descriptions get wrong most often. With <code>S/TE</code> set, there are
+THREE separate routes into those states, and the first has nothing to do with the other two.
+One is about plane priority. Two are about particular colour indices used by
+<span class="term" data-def="A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.">sprites</span>.</p>
+
+<div class="mech">
+  <div class="mrow">
+    <span class="mn">Priority</span>
+    <span class="md"><p>If both plane A and plane B are low priority at a pixel, that pixel is
+    shadowed. This is Sega's own statement of the rule and three modern sources restate it. A
+    low-priority sprite drawn over such a region is shadowed along with it; a high-priority
+    sprite is not.</p></span>
+  </div>
+  <div class="mrow">
+    <span class="mn">Colour 15</span>
+    <span class="md"><p>A sprite pixel using palette 3, colour 15 is a SHADOW OPERATOR. Sega's
+    wording is that these dots "work as an operator" and so are not displayed: the sprite's own
+    pixel is not drawn at all, and what lies underneath it becomes shadowed.</p></span>
+  </div>
+  <div class="mrow">
+    <span class="mn">Colour 14</span>
+    <span class="md"><p>A sprite pixel using palette 3, colour 14 is a HIGHLIGHT OPERATOR. Same
+    mechanism, opposite direction: the pixel is not drawn and what is under it brightens.</p></span>
+  </div>
+</div>
+
+<p>Kabuto's hardware notes name the two operators the precise way, by CRAM index rather than by
+palette and colour: entry <b>63</b> shadows and entry <b>62</b> highlights, which is the same
+thing said without leaving room for "colour 15 of which palette". His summary of the second one
+is worth having in his own words, because it contains the cancellation rule as well: sprite
+colour 62 is "not drawn and the A/B/G color becomes highlighted if it was normal and normal if
+it was shadowed".</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is an operator sprite?</summary>
+  <div class="x-body">
+    <p>An ordinary sprite is a picture: you give it tiles and it draws them over the background.
+    An operator sprite is not a picture at all. It is a stencil that says "darken what is behind
+    me" or "brighten what is behind me", and it draws nothing of its own.</p>
+    <p>The way the hardware expresses that is a little startling the first time: there is no
+    "operator" flag anywhere. You just build a sprite out of one particular colour index, and the
+    chip treats those pixels as instructions instead of as colour. Palette 3 colour 15 darkens.
+    Palette 3 colour 14 brightens. Everything else in the same sprite draws normally, so a sprite
+    can be a picture in most of its pixels and a stencil in the rest.</p>
+    <p>The cost is that those two slots of palette 3 stop being usable as colours in sprites, and
+    a game either accepts that or leaves the mode off. Which, as the end of this section notes,
+    most games did.</p>
+  </div>
+</details>
+
+<h3>The rules that get stated wrong</h3>
+
+<p><b>The operator sprite has to actually be on top.</b> This precondition is left out of most
+short explanations, and without it the effect silently does not happen. Two independent sources
+state it: rasterscroll puts it as the sprite needing to be at the top of the display with no
+higher-priority plane above it, and Kabuto phrases the same thing as the operator working only
+where the sprite "would normally be on top". A low-priority operator under a high-priority plane
+A cell does nothing at all.</p>
+
+<p><b>Shadow does not stack.</b> A shadow operator over an already shadowed region leaves it
+shadowed and no darker. There is one shadow state, not a depth of shadow.</p>
+
+<p><b>Highlight cancels shadow cleanly.</b> Bright over dark gives you back a normal pixel rather
+than some muddle in between, which is the behaviour that makes the two operators composable at
+all.</p>
+
+<p><b>The operators do not affect other sprites.</b> They reach the planes and the backdrop under
+them. It is why a spotlight built from operator sprites, as Mega Turrican's is, passes across the
+player without changing him.
+Keep this distinct from the priority mechanism at the top of the list, which does shadow a
+low-priority sprite: what is exempt from the OPERATORS is not exempt from the all-low-priority
+rule.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>Colour index 14 refuses to be shadowed in palettes 0, 1 and 2 as well, not only where the
+  operators live.</b> A sprite
+  pixel whose colour index is 14, whether from palette 0, 1 or 2, draws at normal brightness even
+  when everything around it is shadowed. Kabuto states the underlying rule as a bit test rather
+  than as a special case, and it is the most precise version anywhere: if the low four bits of the
+  sprite's colour index are 14, shadow is disabled for that pixel. That is CRAM entries 14, 30 and
+  46, plus 62, which is already spoken for as the highlight operator. plutiedev's advice is to
+  stop fighting it and use it: make colour 14 the light that stays lit when everything else goes
+  dark.
+</div>
+
+<h3>The priority interaction, which is where the misconceptions come from</h3>
+
+<p>The mode leans on the <span class="term" data-def="One bit on a nametable cell or a sprite choosing which of two draw layers it belongs to. It is not a depth value, and two cells of the same plane can differ.">priority</span>
+bit that <a href="vdp-planes.html#priority">The VDP &amp; Planes</a> owns, and it leans on it
+in a way that catches people out. A high-priority plane cell forces its whole 8x8 area to normal
+brightness, and it does so <b>whether or not it contains any opaque pixels at all</b>. A
+transparent pixel in a plane still takes part in the priority evaluation that decides shadowing.
+A transparent pixel in a SPRITE does not. That asymmetry is not decoration; it is a technique.</p>
+
+<p>Ranger-X is the clearest worked example, and rasterscroll demonstrated it from footage by
+toggling priority in an emulator. The game runs a whole level with its background shadowed. When
+the player opens a hole in the ceiling, the tiles in the hole are transparent and are flipped to
+high priority, which cancels the shadow in that area and lets the normal-brightness picture show
+through. The result looks exactly like a shaft of light, and no highlight operator was involved.
+Two other titles rasterscroll analyses in the same way: Battle Mania 2 builds a window reflection
+by giving the reflection sprites low priority so they shadow while the player's identical tiles
+stay high priority, and Mega Turrican reaches for the mode twice in one game by two different
+routes: its water surface toggles the enable bit itself partway down the frame with a raster
+effect, and its spotlight is built from palette-3 colour-14 sprites. plutiedev, with no second
+source, additionally
+names Castlevania Bloodlines, Bari-Arm and Vectorman for light-ray and glass effects of the same
+family.</p>
+
+<h3>What the Sonic games actually do, which is not the folklore</h3>
+
+<p>Two corrections, both readable in the disassemblies, and both the opposite of what gets
+repeated.</p>
+
+<p><b>No Sonic 2 or Sonic 3 and Knuckles Zone uses shadow and highlight.</b> Every shipped Zone
+leaves bit 3 clear: <code>$8C81</code> normally, <code>$8C87</code> for the two-player split
+screen. But Sonic 2 does turn the mode on in one place every player reaches, the half-pipe
+Special Stage:</p>
+
+<pre>	move.w	#$8C08,(a6)		<span class="c">; H res 32 cells, no interlace, S/H enabled</span></pre>
+<span class="src">s2disasm/s2.asm:6560 (SpecialStage)</span>
+
+<p>The only other enable in the game is behind a cheat:</p>
+
+<pre>	move.w	#$8C81,(a6)		<span class="c">; H res 40 cells, no interlace</span>
+	tst.b	(Debug_options_flag).w
+	beq.s	++
+	btst	#button_C,(Ctrl_1_Held).w
+	beq.s	+
+	move.w	#$8C89,(a6)	<span class="c">; H res 40 cells, no interlace, S/H enabled</span>
++</pre>
+<span class="src">s2disasm/s2.asm:4834-4840 (the shared level VDP setup)</span>
+
+<p>Normal play takes the first line and stops. Holding C with the debug options flag set takes
+the second, which is a switch left in the ROM rather than a feature of the game.</p>
+
+<p><b>Sonic 3 and Knuckles ships the mode on in five more scenes.</b> None of them is a Zone, and
+none of the five writes carries a comment, which is precisely why the technique is usually
+recorded as unused. A text search of that file for the word "shadow" turns up the boot table's
+note that the mode is OFF, Special Stage shadow art and the routine that draws it, and a Z80
+comment, and not one of the five places the mode is switched on. The fullest of the five is the
+Competition mode level select:</p>
+
+<pre>		move.w	#$8004,(a6)
+		move.w	#$8230,(a6)
+		move.w	#$8407,(a6)
+		move.w	#$8700,(a6)
+		move.w	#$8B00,(a6)
+		move.w	#$8C89,(a6)
+		move.w	#$9011,(a6)</pre>
+<span class="src">skdisasm/sonic3k.asm:13713-13719 (Competition_LevelSelect)</span>
+
+<p class="prov-label">Shadow and highlight, shipped and enabled</p>
+<div class="prov">
+  <span class="yes">Sonic 2's half-pipe Special Stage</span>
+  <span class="yes">Sonic 3 and Knuckles' Blue Spheres and Special Stage</span>
+  <span class="yes">Competition level select</span>
+  <span class="yes">Competition character select</span>
+  <span class="yes">Competition results</span>
+  <span class="yes">Time Attack records</span>
+  <span>the first in s2disasm/s2.asm:6560; the other five in skdisasm/sonic3k.asm, at lines
+  10726, 13718, 14328, 14696 and 15093</span>
+</div>
+
+<p>How that list was found is worth as much as the list. Searching a disassembly for the English
+word "shadow" finds the comments somebody happened to write, which is why the mode reads as
+unused: not one of the six enables above carries the word. Searching for the register VALUE
+<code>$8C89</code> is much better and finds all five of the Sonic 3 and Knuckles writes at once.
+But <code>$8C89</code> is exactly what misses Sonic 2's Special Stage, because that scene runs in
+32-cell mode and writes <code>$8C08</code>: the same bit 3, set alongside different neighbours in
+the same register. <b>The sweep that finds every enable in both games is over the FIELD, not over
+a literal: any write to register 12 whose low byte has bit 3 set.</b> Grepping the value beats
+grepping the prose, and grepping the field beats grepping any one value.</p>
+
+<p>Worth noticing that Sonic 3 and Knuckles' Special Stage does both: it turns the hardware mode
+on AND carries hand-drawn shadow sprite art, <code>ArtNem_SStageShadow</code> and
+<code>Draw_SSShadows</code>, in the same scene. The two are not alternatives. Sonic 2's Special
+Stage, two paragraphs up, is a different game's scene and a separate enable.</p>
+
+<p>The second correction is the one that sends readers to section 6. <b>The water effects in the
+Sonic games are not shadow and highlight.</b> They are mid-frame rewrites of CRAM, which is a
+completely different mechanism with completely different costs, and it is what the next section
+is about.</p>
+
+<p>Finally, the honest note both of the modern sources volunteer, and it is a fair summary of
+everything above: not many games used this mode, and the likely reason is the tangle with display
+priority. Three mechanisms, a precondition about what is on top, two colour indices you have to
+give up, and a quirk about index 14 is a lot of rules to hold for an effect that a good artist can
+paint instead.</p>
+
+<!-- ================================================================ -->
+<h2 id="midframe">6 &middot; Mid-frame writes and the CRAM dots</h2>
+
+<p>The four-palette limit is not a limit per frame. It is a limit on what the chip is holding at
+the moment a given
+<span class="term" data-def="One horizontal line of the picture. NTSC draws 262 per frame (224 visible); PAL draws 313.">scanline</span>
+is drawn. Rewrite CRAM partway down the frame and the same tiles, drawn from the same art, come
+out in different colours above and below the split. Games spent that fact heavily, and the instance
+most players of these games have seen without knowing what they were looking at is the water
+line.</p>
+
+<p>Sonic 2 does it from an <span class="term" data-def="The tiny gap at the end of each scanline. An interrupt can run here for per-line tricks like bending the background mid-screen.">HBlank</span>
+interrupt armed for the scanline where the water surface currently is. When the interrupt fires,
+the handler replaces the entire palette:</p>
+
+<pre>PalToCRAM:
+	move	#$2700,sr
+	move.w	#0,(Hint_flag).w
+	movem.l	a0-a1,-(sp)
+	lea	(VDP_data_port).l,a1
+	lea	(Underwater_palette).w,a0 <span class="c">; load palette from RAM</span>
+	move.l	#vdpComm($0000,CRAM,WRITE),VDP_control_port-VDP_data_port(a1)	<span class="c">; set VDP to write to CRAM address $00</span>
+    rept 32
+	move.l	(a0)+,(a1)	<span class="c">; move palette to CRAM (all 64 colors at once)</span>
+    endm</pre>
+<span class="src">s2disasm/s2.asm:1243-1252 (PalToCRAM, the water surface in Chemical Plant Act 2, Aquatic Ruin and Hidden Palace)</span>
+
+<p>All 64 entries, written as 32 unrolled longword writes with no loop, because a handler running
+inside the gap at the end of a scanline has very few cycles to spend and a loop's counter is a
+cost it will not pay. The other half of this chain, arming the interrupt for the right scanline
+and recomputing that scanline as the camera moves, belongs to the frame and interrupt material
+rather than here; what belongs here is what those 32 writes cost on screen.</p>
+
+<h3>The dots</h3>
+
+<p>They cost dots. <b>A write to CRAM while the display is actively drawing puts a pixel of the
+written colour on the screen at the point the beam had reached.</b> It is a property of the
+hardware rather than a mistake anyone made, and three independent sources describe it. The rule
+of thumb is a dosage rule: the more colours you write
+at once, the more dots appear.</p>
+
+<p>The complementary half of the rule, and the reason the technique is usable at all: writes made
+while the display is BLANKED produce no dots. Kabuto's hardware notes give the mechanism, that
+all blanking happens after the palette lookup, so there is nothing on screen for a stray value to
+land in. This is the whole of the practical advice. Bulk palette work goes in the blanking
+interval, either through the ports or by
+<span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span>;
+a write during active display is a deliberate effect that has to budget for what it will leave
+behind.</p>
+
+<details class="explain">
+  <summary>New here? &middot; How does a game show more than four palettes at once?</summary>
+  <div class="x-body">
+    <p>It does not, quite. It shows four palettes at a time, twice, in one frame.</p>
+    <p>The screen is drawn one horizontal line at a time from the top down, and the chip reads
+    CRAM as it goes. So the colours in CRAM when line 40 is drawn are the colours line 40 gets,
+    and if the program changes them before line 120 is drawn, line 120 gets different ones.
+    Nothing about the picture below the change is redrawn or re-uploaded. The same tiles simply
+    read a different set of colours.</p>
+    <p>That is how the water in a Sonic level works. Above the surface the palette is the ordinary
+    one; the moment the beam crosses the water line the game swaps in a bluer palette, and
+    everything drawn below that line, including Sonic himself, comes out underwater-coloured. It
+    is one of the cheapest big effects on the machine, and it explains something you may have
+    noticed about it: a water line made this way is horizontal by construction. The swap happens
+    between one scanline and the next, so the seam it produces cannot be anything but a straight
+    line across the picture.</p>
+  </div>
+</details>
+
+<h3>Two shipped answers to the same hazard</h3>
+
+<p>Sonic 2's answer above is to accept the dots: blast all 64 entries and let them fall where
+they fall. Sonic 3 and Knuckles takes the other road, and its disassembly says so out loud, which
+is an unusual thing to find in either file: a comment naming the hardware artefact and the reason
+for the code's shape. The comment is the disassembly team's, written while working the routine
+out, not text Sega shipped, and it is quoted here as their reading rather than as the authors'.</p>
+
+<pre><span class="c">; These are used by HInt3 to load the water palette only a small bit at a time,</span>
+<span class="c">; this is to space out the CRAM writes to push the VDP dots offscreen.</span>
+<span class="c">;</span>
+<span class="c">; Each value is an offset into Water_palette.</span>
+<span class="c">; From there, 6 bytes, meaning 3 palette entries, are transferred to CRAM.</span></pre>
+<span class="src">skdisasm/sonic3k.asm:9308-9312 (the water palette transition tables)</span>
+
+<p>And the handler does exactly that. Three colours, then a deliberately wasted stretch of
+cycles, then three more:</p>
+
+<pre>$$transferColors:
+		move.w	(a2)+,d0
+		lea	(Water_palette).w,a0
+		adda.w	d0,a0
+		addi.w	#$C000,d0
+		swap	d0
+		move.l	d0,VDP_control_port-VDP_data_port(a1)	<span class="c">; write to CRAM at appropriate address</span>
+		move.l	(a0)+,(a1)	<span class="c">; transfer two colors</span>
+		move.w	(a0)+,(a1)	<span class="c">; transfer the third color</span>
+		nop
+		nop
+		moveq	#$24,d0
+		dbf	d0,*	<span class="c">; waste some cycles</span>
+		dbf	d1,$$transferColors	<span class="c">; repeat for number of colors</span></pre>
+<span class="src">skdisasm/sonic3k.asm:1027-1040 (HInt3, the uneven water surface handler)</span>
+
+<p>The <code>dbf d0,*</code> is a loop that branches to itself and does nothing else, thirty-seven
+times, purely to burn time: <code>$24</code> is 36, and <code>dbf</code> runs once more past zero
+before it falls through. Spacing the bursts out moves each one to a different point in the
+beam's travel, and the aim, in the comment's own words, is to push the resulting dots off the
+visible screen. Two shipped games, one hardware artefact, and two entirely different engineering
+answers to it sitting a disassembly apart.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>A clean emulator screenshot is not evidence that a game produced no dots.</b> Most emulators
+  do not reproduce CRAM dots at all, and Genesis Plus GX has an open request to add them.
+  Kabuto's notes add the other half: a dot landing near the edge of the picture is mostly
+  invisible on a CRT of the period and plainly visible on modern capture equipment. So how bad
+  this artefact looks has always depended on the display chain, and the tooling most people
+  examine these games with under-reports it.
+</div>
+
+<p class="prov-label">Games that spent CRAM writes mid-frame</p>
+<div class="prov">
+  <span class="yes">Burning Force: palettes swapped several times per frame, dots left plainly visible</span>
+  <span class="yes">Gaiares: a rising water line, with flashing wave sprites over the seam</span>
+  <span class="yes">Sonic the Hedgehog: the same water line and the same concealment, six months later</span>
+  <span>identified by rasterscroll from footage with the layers separated</span>
+</div>
+
+<p>The wave sprites in the last two are the third answer to the hazard, after accepting the dots
+and spacing them offscreen: draw something over the seam. All three answers are still visible in
+shipped games, which is a fair picture of how the Genesis was actually programmed. The hardware
+had an artefact nobody could switch off, and each studio settled for itself whether to hide it,
+dodge it, or let it show.</p>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a> &middot; Previous: <a href="tiles-vram.html">Tiles &amp; VRAM</a></footer>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- The 9-bit colour lab ----
+   State is three levels 0-7. Every displayed thing is a pure function of that state, so
+   there is no "before" row that could ship pre-changed: at rest the levels are 0/0/0, the
+   word is $000 and the swatch is black, which is what those levels mean.
+
+   The swatches expand a level to an 8-bit channel by DOUBLING its CRAM hex digit
+   (level 7 -> $E -> #EE). That is the wiki's palette convention and the expansion Genesis
+   Plus GX ships; it is a rendering of the stored value, not of the console's analog output,
+   and the figcaption says so. A measured expansion would put non-CRAM-legal colours on the
+   page, which the wiki does not do. */
+(function(){
+  const CH = ['00','22','44','66','88','AA','CC','EE'];
+  const HEXD = ['0','2','4','6','8','A','C','E'];
+  const CHAN = [
+    { key: 'B', name: 'Blue',  id: 'labB', cls: 'f-blue',  shift: 9 },
+    { key: 'G', name: 'Green', id: 'labG', cls: 'f-green', shift: 5 },
+    { key: 'R', name: 'Red',   id: 'labR', cls: 'f-red',   shift: 1 }
+  ];
+  const lv = [0, 0, 0];          // blue, green, red
+  let lastBlue = 0;
+
+  const swEl = document.getElementById('labSw');
+  const wordEl = document.getElementById('labWord');
+  const bitsEl = document.getElementById('labBits');
+  const capEl = document.getElementById('labCap');
+  const resetEl = document.getElementById('labReset');
+  const btns = [[], [], []];
+
+  function rgbFor(b, g, r){ return '#' + CH[r] + CH[g] + CH[b]; }
+
+  function build(){
+    CHAN.forEach((c, i) => {
+      const host = document.getElementById(c.id);
+      for (let n = 0; n < 8; n++){
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = HEXD[n];
+        b.setAttribute('aria-label', c.name + ' level ' + n + ', hex digit ' + HEXD[n]);
+        b.addEventListener('click', () => { lv[i] = n; render(true); });
+        host.appendChild(b);
+        btns[i].push(b);
+      }
+    });
+    for (let i = 0; i < 16; i++){
+      const s = document.createElement('span');
+      bitsEl.appendChild(s);
+    }
+  }
+
+  function bitClass(i){
+    // i counts from bit 15 down to bit 0
+    const bit = 15 - i;
+    if (bit >= 9 && bit <= 11) return 'f-blue';
+    if (bit >= 5 && bit <= 7) return 'f-green';
+    if (bit >= 1 && bit <= 3) return 'f-red';
+    return 'f-dead';
+  }
+
+  function render(spoken){
+    const word = (lv[0] << 9) | (lv[1] << 5) | (lv[2] << 1);
+    swEl.style.background = rgbFor(lv[0], lv[1], lv[2]);
+    wordEl.innerHTML = '<span class="cw-s">$</span>' +
+      '<span class="cw-b">' + HEXD[lv[0]] + '</span>' +
+      '<span class="cw-g">' + HEXD[lv[1]] + '</span>' +
+      '<span class="cw-r">' + HEXD[lv[2]] + '</span>';
+    CHAN.forEach((c, i) => {
+      btns[i].forEach((b, n) => {
+        const shown = [lv[0], lv[1], lv[2]];
+        shown[i] = n;
+        b.style.background = rgbFor(shown[0], shown[1], shown[2]);
+        b.setAttribute('aria-pressed', n === lv[i] ? 'true' : 'false');
+      });
+    });
+    const cells = bitsEl.children;
+    for (let i = 0; i < 16; i++){
+      const bit = 15 - i;
+      const v = (word >> bit) & 1;
+      const cell = cells[i];
+      cell.textContent = String(v);
+      cell.className = bitClass(i) + (v ? ' on' : '');
+    }
+    if (spoken){
+      let note = 'Blue ' + lv[0] + ', green ' + lv[1] + ', red ' + lv[2] +
+        '. The word is $' + HEXD[lv[0]] + HEXD[lv[1]] + HEXD[lv[2]] + '.';
+      if (lv[0] !== lastBlue){
+        note += ' Blue changed the TOP digit: the word is written blue, green, red, not red first.';
+      }
+      if (lv[0] === 0 && lv[1] === 0 && lv[2] === 0){
+        note = 'Every channel is at level 0, so the word is $000 and the slot is black.';
+      }
+      capEl.textContent = note;
+    }
+    lastBlue = lv[0];
+  }
+
+  resetEl.addEventListener('click', () => {
+    lv[0] = 0; lv[1] = 0; lv[2] = 0;
+    render(false);
+    capEl.textContent = 'Reset. Every channel is at level 0, so the word is $000 and the ' +
+      'slot is black. Click any swatch to set that channel\'s level.';
+  });
+
+  build();
+  render(false);
+})();
+
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+</div>
+
+</body>
+</html>

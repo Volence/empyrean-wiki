@@ -450,7 +450,8 @@ Genesis game ran out of room for art, this is the memory it ran out of.</p>
 <p><b><span class="term" data-def="Color RAM inside the VDP: 64 color slots of 9 bits each, arranged as four palettes of 16. What sits in CRAM defines every color on screen.">CRAM</span></b>
 holds colours, and nothing else can go in it. A tile's pixels are not colours;
 they are small numbers meaning "the fourth colour of a palette", and CRAM is where those
-palettes actually live. Nothing on screen has a colour until CRAM does.</p>
+palettes actually live. <a href="color-cram.html#s1">Nothing on screen has a colour until CRAM
+does.</a></p>
 
 <p><b><span class="term" data-def="Vertical Scroll RAM inside the VDP: the per-plane (and per-two-cell-column) vertical scroll values.">VSRAM</span></b>
 holds vertical scroll positions, and nothing else can go in it either. It is by
@@ -786,8 +787,8 @@ own below. All the register does is say where it lives.</p>
 planes (section 5), 17 and 18 place the Window (section 9), 7 picks the
 <span class="term" data-def="The color the VDP shows wherever no plane or sprite pixel is drawn. One register picks it from any of the 64 color slots.">backdrop</span>
 colour that shows wherever nothing else is drawn, and 15 is the auto-increment above. Register 12
-carries two more of these alongside the display width, the interlace and shadow/highlight modes,
-neither of which this page needs.</p>
+carries two more of these alongside the display width, the interlace and
+<a href="color-cram.html#shadow">shadow/highlight</a> modes, neither of which this page needs.</p>
 
 <p><b>Five configure DMA,</b> 19 to 23, which is another page's material. And <b>four have no job
 at all:</b> 6, 8, 9 and 14 have no documented function. Every register named here is spelled out
@@ -804,7 +805,7 @@ with its full bit layout in the file below.</p>
     <table>
     <tr><th>Reg</th><th>Word</th><th>Name</th><th>Bits, D7 to D0</th><th>What it does</th></tr>
     <tr><td>0</td><td><code>$80</code></td><td>Mode set 1</td><td><code>0 0 LCB IE1 0 1 M3 0</code></td><td>LCB blanks the leftmost 8 pixels (section 10). IE1 enables the horizontal interrupt. M3 freezes the H/V counter.</td></tr>
-    <tr><td>1</td><td><code>$81</code></td><td>Mode set 2</td><td><code>VR DISP IE0 M1 M2 1 0 0</code></td><td>DISP turns the display on. IE0 enables the vertical interrupt. M1 enables DMA. M2 selects the taller 30-cell display, the one PAL consoles use <span class="vary mode" title="A display MODE, selected by this register bit rather than by the console. Only PAL consoles can select it.">V30 mode</span>. Bit 2 selects mode 5 rather than the Master System's mode 4. Sega prints bit 7 as 0 and sources disagree about what it selects.</td></tr>
+    <tr><td>1</td><td><code>$81</code></td><td>Mode set 2</td><td><code>VR DISP IE0 M1 M2 1 0 0</code></td><td>DISP turns the display on. IE0 enables the vertical interrupt. M1 enables DMA. M2 selects the taller 30-cell display, the one PAL consoles use <span class="vary mode" title="A display MODE, selected by this register bit rather than by the console. Only PAL consoles can select it.">V30 mode</span>. Bit 2 selects mode 5 rather than the Master System's mode 4. Sega prints bit 7 as 0 and sources disagree about what it selects (taught on <a href="tiles-vram.html#mode128">Tiles &amp; VRAM</a>).</td></tr>
     <tr><td>2</td><td><code>$82</code></td><td>Plane A map base</td><td><code>0 0 SA15 SA14 SA13 0 0 0</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
     <tr><td>3</td><td><code>$83</code></td><td>Window map base</td><td><code>0 0 WD15 WD14 WD13 WD12 WD11 0</code></td><td>address divided by <code>$800</code>; WD11 must be 0 in H40, so the table is <code>$1000</code>-aligned there (section 9)</td></tr>
     <tr><td>4</td><td><code>$84</code></td><td>Plane B map base</td><td><code>0 0 0 0 0 SB15 SB14 SB13</code></td><td>address divided by <code>$2000</code> (section 5)</td></tr>
@@ -815,9 +816,9 @@ with its full bit layout in the file below.</p>
     <tr><td>9</td><td><code>$89</code></td><td>(none)</td><td><code>0 0 0 0 0 0 0 0</code></td><td>Sega documents no function</td></tr>
     <tr><td>10</td><td><code>$8A</code></td><td>HInt counter</td><td><code>HIT7 to HIT0</code></td><td>scanlines between horizontal interrupts; the interrupt itself belongs to the frame material</td></tr>
     <tr><td>11</td><td><code>$8B</code></td><td>Mode set 3</td><td><code>0 0 0 0 IE2 VSCR HSCR LSCR</code></td><td>IE2 enables the external interrupt. VSCR picks the vertical scroll mode (section 7); HSCR and LSCR pick the horizontal one (section 6). Both apply to both planes.</td></tr>
-    <tr><td>12</td><td><code>$8C</code></td><td>Mode set 4</td><td><code>RS0 0 0 0 S/TE LSM1 LSM0 RS1</code></td><td>RS0 and RS1 must match: both 0 is H32, both 1 is H40. S/TE enables shadow and highlight, which belongs to the colour material. LSM selects interlace, and the combination <code>10</code> is prohibited.</td></tr>
+    <tr><td>12</td><td><code>$8C</code></td><td>Mode set 4</td><td><code>RS0 0 0 0 S/TE LSM1 LSM0 RS1</code></td><td>RS0 and RS1 must match: both 0 is H32, both 1 is H40. S/TE enables shadow and highlight, which belongs to <a href="color-cram.html#shadow">the colour material</a>. LSM selects interlace, and the combination <code>10</code> is prohibited.</td></tr>
     <tr><td>13</td><td><code>$8D</code></td><td>HScroll table base</td><td><code>0 0 HS15 HS14 HS13 HS12 HS11 HS10</code></td><td>address divided by <code>$400</code> (section 6)</td></tr>
-    <tr><td>14</td><td><code>$8E</code></td><td>Pattern generator base</td><td>Sega prints all zeros</td><td>no documented function. Single-sourced reports tie its bits to the 128KB VRAM configuration, which no retail console has.</td></tr>
+    <tr><td>14</td><td><code>$8E</code></td><td>Pattern generator base</td><td>Sega prints all zeros</td><td>no documented function. Single-sourced reports tie its bits to the <a href="tiles-vram.html#mode128">128KB VRAM configuration</a>, which no retail console has.</td></tr>
     <tr><td>15</td><td><code>$8F</code></td><td>Auto-increment</td><td><code>INC7 to INC0</code></td><td>0 to 255, added after every access (above)</td></tr>
     <tr><td>16</td><td><code>$90</code></td><td>Plane size</td><td><code>0 0 VSZ1 VSZ0 0 0 HSZ1 HSZ0</code></td><td>sets BOTH planes; <code>00</code> is 32 cells, <code>01</code> is 64, <code>11</code> is 128, <code>10</code> is prohibited (section 5)</td></tr>
     <tr><td>17</td><td><code>$91</code></td><td>Window H position</td><td><code>RIGT 0 0 WHP5 WHP4 WHP3 WHP2 WHP1</code></td><td>split position in units of 2 cells; RIGT picks which side of it the window occupies (section 9)</td></tr>
@@ -985,7 +986,8 @@ the memory are sized to each other.</p>
   tiles come out mirrored along the wrong axis, this is why.
 </div>
 
-<p>The tile itself, in one line, because the tile format belongs to its own material: 8x8
+<p>The tile itself, in one line, because the tile format belongs to
+<a href="tiles-vram.html#tile">its own material</a>: 8x8
 pixels, 4 bits per pixel, 32 bytes, and the index in the word is a tile NUMBER rather than an
 address. The byte address is the index times 32, which works only because every tile is the
 same size. Sonic 2 spells that conversion out as its own helper,
@@ -1237,7 +1239,8 @@ arithmetic rather than trust it.</p>
 
   <p>Auto-increment 2 steps exactly one colour slot per word write, so those three land in slots
   0, 1 and 2 of palette 0 without another command. A colour word packs three 3-bit channels,
-  blue then green then red, and the colour material owns that format in full; all this needs is
+  blue then green then red, and <a href="color-cram.html#word">the colour material</a> owns that
+  format in full; all this needs is
   that <code>$000E</code> is as red as the chip goes and <code>$0EEE</code> is white.</p>
 
   <p class="wstep">Step 4 &middot; the tile's 32 bytes</p>
@@ -1472,7 +1475,8 @@ Both numbers are right, about different questions.</p>
 <p>That is the shape of a Genesis VRAM budget: the ceiling is 2048 tiles, and the tables take
 their bite out of it before a single tile of art is loaded. A single screenful of unique 8x8
 tiles at H40 is 1120 of them, which is why Genesis art repeats, flips and re-palettes so
-relentlessly.</p>
+relentlessly. <a href="tiles-vram.html#budget">Tiles &amp; VRAM</a> works the whole budget
+through, table by table.</p>
 
 <p>Sega notes in the same place that these areas may overlap deliberately, so one table can be
 shared between the scroll planes and the Window, and that the tile art's base is fixed at
@@ -1927,7 +1931,7 @@ that pass it as a bare 0 or 1 with no explanation attached. So here is an invent
 <p>One priority behaviour belongs elsewhere but is worth flagging here so it is not a surprise:
 when the shadow and highlight mode is enabled, a high-priority background cell also forces
 everything in its 8x8 area to normal brightness, whether or not the cell contains any opaque
-pixels. That interaction is the colour material's business.</p>
+pixels. That interaction is <a href="color-cram.html#shadow">the colour material's business</a>.</p>
 
 <!-- ================================================================ -->
 <h2 id="window">9 &middot; The Window: the plane that replaces plane A</h2>
@@ -2112,7 +2116,7 @@ in section 9, and no register bit substitutes for it.</p>
 When somebody says "the left column bug", the first question is always which one, and the second
 is whether they mean a defect or the fix for one.</p>
 
-<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-07 &middot; <a href="../index.html">Back to hub</a> &middot; Previous: <a href="the-machine.html">The Machine</a></footer>
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a> &middot; Previous: <a href="the-machine.html">The Machine</a> &middot; Next: <a href="tiles-vram.html">Tiles &amp; VRAM</a></footer>
 
 <script>
 function expandAll(btn){

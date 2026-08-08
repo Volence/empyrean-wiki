@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genesis: Tiles &amp; VRAM</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🧩%3C/text%3E%3C/svg%3E">
+<style>
+/* Empyrean wiki design system. Copy this whole file into each page's <style>.
+   All colors are legal Genesis 9-bit CRAM colors (channels 00/22/44/66/88/AA/CC/EE). */
+:root{
+  --ground:#000022; --panel:#222244; --panel2:#000044; --line:#444466;
+  --ink:#EEEEEE; --dim:#AAAACC; --accent:#4466EE; --gold:#EEAA00;
+  --learn:#44CC88; --code-bg:#000000;
+  --mono:ui-monospace,"Cascadia Mono","DejaVu Sans Mono",monospace;
+}
+html{background:var(--ground);}
+body{font-family:system-ui,-apple-system,"Segoe UI","DejaVu Sans",sans-serif;
+  color:var(--ink); background:var(--ground); line-height:1.6; margin:0;
+  padding:0 1.25rem 5rem;}
+.wrap{max-width:52rem; margin:0 auto;}
+.wrap-wide{max-width:64rem; margin:0 auto;}
+
+/* page header */
+header.page{padding:2.2rem 0 1.4rem; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.35) 3px 4px);}
+.eyebrow{font-family:var(--mono); font-size:.72rem; letter-spacing:.22em;
+  color:var(--gold); text-transform:uppercase; margin:0 0 .5rem;}
+h1{font-family:var(--mono); font-size:1.7rem; margin:0 0 .4rem;
+  letter-spacing:.02em; text-wrap:balance;}
+.sub{color:var(--dim); max-width:44rem; margin:0;}
+.crumb{font-family:var(--mono); font-size:.72rem; color:var(--dim);
+  letter-spacing:.08em; margin:0 0 .9rem;}
+.crumb a{color:var(--accent); text-decoration:none;}
+.crumb a:hover,.crumb a:focus-visible{text-decoration:underline;}
+
+/* prose */
+h2{font-family:var(--mono); font-size:1.15rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--gold); margin:2.6rem 0 .5rem;}
+h3{font-family:var(--mono); font-size:1rem; margin:1.8rem 0 .4rem;}
+p,li{max-width:42rem;}
+a{color:var(--accent);}
+hr{border:0; border-top:1px solid var(--line); margin:2.5rem 0;}
+
+/* code */
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:4px;
+  padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.5;
+  font-family:var(--mono);}
+pre .c{color:#668866;} pre .k{color:#4466EE;} pre .n{color:#EEAA00;}
+code{font-family:var(--mono); font-size:.85em; color:var(--gold);}
+.src{display:block; font-family:var(--mono); font-size:.65rem; color:var(--dim);
+  letter-spacing:.08em; margin:.2rem 0 0; text-transform:none;}
+
+/* explainer (collapsible, learner layer) */
+/* Collapsed asides sit OFF the spine. Prose runs flush to the left edge and is the
+   thread; anything collapsed is optional depth, so it is inset and its right edge stays
+   aligned with prose (1.6 + 40.4 = 42rem). The point is peripheral: a reader skimming the
+   left edge can let asides pass without deciding about each one. Nothing load-bearing may
+   live in here (AUTHORING.md, the completeness rule). */
+details.explain{border:1px solid var(--learn); border-radius:4px;
+  margin:1rem 0 1rem 1.6rem; max-width:40.4rem;
+  background:rgba(68,204,136,.05);}
+details.explain summary{cursor:pointer; padding:.5rem .8rem; color:var(--learn);
+  font-family:var(--mono); font-size:.78rem; letter-spacing:.06em; list-style:none;}
+details.explain summary::before{content:"▸ ";}
+details.explain[open] summary::before{content:"▾ ";}
+details.explain summary:focus-visible{outline:2px solid var(--learn); outline-offset:-2px;}
+details.explain .x-body{padding:0 .9rem .8rem; font-size:.93rem;}
+
+/* gotcha: a real trap the reader will hit. ON the spine, deliberately not inset, because
+   skipping it is how you get bitten. Lives here rather than per-page: it was duplicated
+   byte-identically in six pages before 2026-07-25 while AUTHORING.md already listed it as a
+   theme component. */
+.gotcha{border-left:3px solid #CC66AA; background:rgba(204,102,170,.06);
+  padding:.55rem .85rem; margin:.7rem 0; max-width:42rem; font-size:.9rem;}
+.gotcha .g-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:#CC66AA; display:block; margin-bottom:.2rem;}
+
+/* invented teaching example - visually distinct from real excerpts */
+.teach{border:1px dashed var(--learn); border-radius:4px; padding:.6rem .9rem;
+  margin:.8rem 0; max-width:42rem;}
+.teach .t-tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.25rem;}
+
+/* decision block */
+.decision{border-left:3px solid var(--gold); background:rgba(238,170,0,.06);
+  padding:.6rem .9rem; margin:1.1rem 0; max-width:42rem;}
+.decision .d-tag{font-family:var(--mono); font-size:.65rem; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold); display:block; margin-bottom:.2rem;}
+
+
+/* provenance chips */
+.prov{display:flex; flex-wrap:wrap; gap:.35rem; margin:.5rem 0 0;}
+.prov span{font-family:var(--mono); font-size:.68rem; letter-spacing:.04em;
+  border:1px solid var(--line); border-radius:3px; padding:.12rem .5rem; color:var(--dim);}
+.prov span.yes{border-color:var(--accent); color:var(--ink);}
+.prov span.no{opacity:.55;}
+.prov-label{font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim); margin:.8rem 0 0;}
+
+/* expand-all switch */
+.xall{font-family:var(--mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.4rem .9rem; cursor:pointer; border-radius:4px;
+  background:transparent; color:var(--learn); border:1px solid var(--learn);}
+.xall:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+
+/* data tables (register maps etc.) */
+.tbl{overflow-x:auto; margin:1rem 0;}
+table{border-collapse:collapse; font-size:.82rem;}
+th,td{border:1px solid var(--line); padding:.35rem .6rem; text-align:left;
+  vertical-align:top;}
+th{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--dim); background:var(--panel2);}
+td code{font-variant-numeric:tabular-nums;}
+tr.hi td{background:rgba(68,102,238,.12);}
+
+/* figures / diagrams */
+figure.diagram{border:1px solid var(--line); border-radius:5px;
+  background:var(--panel2); padding:1rem; margin:1.2rem 0; overflow-x:auto;}
+figure.diagram figcaption{font-family:var(--mono); font-size:.68rem;
+  color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-top:.6rem;}
+
+/* hub cards */
+.hub-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));
+  gap:.7rem; margin:.8rem 0 0;}
+a.card,div.card{border:1px solid var(--line); border-radius:5px; padding:.8rem .9rem;
+  background:var(--panel2); display:flex; flex-direction:column; gap:.25rem;
+  color:var(--ink); text-decoration:none;}
+a.card:hover,a.card:focus-visible{border-color:var(--accent); outline:none;}
+a.card:focus-visible{box-shadow:0 0 0 2px var(--accent);}
+.card.tool{border-color:var(--accent);}
+.card.soon{opacity:.45;}
+.card .no{font-family:var(--mono); font-size:.65rem; color:var(--gold);
+  letter-spacing:.15em;}
+.card .nm{font-family:var(--mono); font-size:.95rem;}
+.card .ds{font-size:.78rem; color:var(--dim); line-height:1.4;}
+.card .soon-tag{font-family:var(--mono); font-size:.6rem; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--dim);}
+.hub-h{font-family:var(--mono); font-size:.7rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--dim); margin:1.6rem 0 .2rem;}
+
+/* on-page table of contents */
+nav.toc{display:flex; flex-wrap:wrap; gap:.35rem .5rem; margin:1.1rem 0 0;
+  max-width:44rem;}
+nav.toc a{font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--dim); text-decoration:none; border:1px solid var(--line);
+  border-radius:3px; padding:.18rem .55rem;}
+nav.toc a .n{color:var(--gold); margin-right:.35rem;}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);
+  border-color:var(--accent); outline:none;}
+
+/* inline term definitions (hover/focus/tap; popover JS in AUTHORING.md) */
+.term{border-bottom:1px dotted var(--learn); cursor:help;}
+.term:focus-visible{outline:2px solid var(--learn); outline-offset:2px;}
+#termpop{position:absolute; z-index:10; max-width:22rem; background:var(--panel);
+  border:1px solid var(--learn); border-radius:4px; padding:.55rem .8rem;
+  font-size:.85rem; line-height:1.5; color:var(--ink); display:none;}
+#termpop .tp-name{font-family:var(--mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--learn); display:block; margin-bottom:.15rem;}
+
+/* hub doors */
+.doors{display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+  gap:.7rem; margin:1.4rem 0 0;}
+a.door,div.door{border:1px solid var(--learn); border-radius:5px;
+  padding:.9rem 1rem; background:var(--panel2); color:var(--ink);
+  text-decoration:none; display:flex; flex-direction:column; gap:.3rem;}
+a.door:hover,a.door:focus-visible{border-color:var(--ink); outline:none;}
+.door .dr-t{font-family:var(--mono); font-size:.95rem; letter-spacing:.04em;}
+.door .dr-d{font-size:.8rem; color:var(--dim); line-height:1.45;}
+.door.soon{opacity:.45; border-color:var(--line);}
+
+footer.page{margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.68rem; color:var(--dim); letter-spacing:.06em;}
+
+@media (prefers-reduced-motion: no-preference){
+  details.explain .x-body{animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+
+/* Narrow screens: drop the aside inset. The spine metaphor needs a wide-enough column to
+   read as a margin at all, and 1.6rem is ~26px of a ~375px viewport, so on a phone it just
+   costs reading width. Asides stay visually distinct by their border and tint. */
+@media (max-width: 34rem){
+  details.explain{margin-left:0; max-width:42rem;}
+}
+/* ============================================================
+   Page-specific styles: Tiles & VRAM (The Genesis)
+   (all colors CRAM-legal: channels 00/22/44/66/88/AA/CC/EE;
+    rgba components from 0/34/68/102/136/170/204/238)
+   ============================================================ */
+
+/* collapsed deep reference (lifted from genesis/vdp-planes.html) */
+details.refbox{border:1px solid var(--line); border-radius:4px; margin:1rem 0; max-width:42rem; background:var(--panel2);}
+details.refbox summary{cursor:pointer; padding:.45rem .8rem; font-family:var(--mono); font-size:.7rem;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--dim); list-style:none;}
+details.refbox summary::before{content:"\25B8 ";}
+details.refbox[open] summary::before{content:"\25BE ";}
+details.refbox summary::-webkit-details-marker{display:none;}
+details.refbox summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px;}
+details.refbox .enc-body{padding:0 .9rem .7rem; font-size:.9rem;}
+.enc-body .enc-note{font-size:.8rem; color:var(--dim); margin-top:.5rem;}
+
+/* generic toy scaffolding (lifted from genesis/vdp-planes.html) */
+.toy{max-width:44rem;}
+.toy-row{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin:.45rem 0;}
+.toy-row .lbl{font-family:var(--mono); font-size:.7rem; letter-spacing:.06em;
+  color:var(--dim); min-width:6.4rem;}
+.tbtn{font-family:var(--mono); font-size:.7rem; padding:.3rem .65rem; cursor:pointer;
+  border-radius:3px; background:transparent; color:var(--dim); border:1px solid var(--line);}
+.tbtn[aria-pressed="true"]{border-color:var(--accent); color:var(--ink); background:rgba(68,102,238,.18);}
+.tbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.tbtn.reset{color:var(--learn); border-color:var(--learn);}
+.toycap{font-family:var(--mono); font-size:.72rem; color:var(--dim); line-height:1.5;
+  margin:.7rem 0 0; max-width:42rem;}
+
+/* the static tile-layout figure: eight rows of four bytes, with the row offsets down the
+   left edge exactly as Sega's own diagram prints them. Ordinary markup rather than an
+   image, because every label in it is a fact the prose states. */
+.tlay{font-family:var(--mono); font-size:.66rem; display:grid;
+  grid-template-columns:3.1rem repeat(4,1fr); gap:2px; min-width:22rem; max-width:34rem;}
+.tlay .th{color:var(--dim); letter-spacing:.1em; text-transform:uppercase; font-size:.58rem;
+  padding:.1rem .2rem; align-self:end;}
+.tlay .off{color:var(--gold); padding:.32rem .3rem; border:1px solid var(--line);
+  border-radius:2px; background:rgba(238,170,0,.08); text-align:right;}
+.tlay .by{padding:.32rem .3rem; border:1px solid var(--line); border-radius:2px;
+  background:rgba(68,102,238,.12); color:#88AAEE; text-align:center;}
+.tlay .by b{color:var(--ink); font-weight:normal;}
+
+/* the tile painter */
+.painter{display:flex; flex-wrap:wrap; gap:1.4rem; align-items:flex-start;}
+.pcol{display:flex; flex-direction:column; gap:.4rem;}
+.pcaplabel{font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--dim);}
+#pGrid{display:grid; grid-template-columns:repeat(8,2rem); grid-template-rows:repeat(8,2rem);
+  gap:1px; background:var(--line); border:1px solid var(--line); width:max-content;}
+.pcell{padding:0; border:0; cursor:pointer; background:#000000; position:relative;}
+.pcell:focus-visible{outline:2px solid var(--accent); outline-offset:-2px; z-index:2;}
+.pcell.cursel{outline:2px solid var(--gold); outline-offset:-2px; z-index:1;}
+/* index 0 is drawn as a checker, never as a colour, because a transparent pixel is a hole
+   in the tile rather than a dark one. */
+.pcell.tr{background-image:linear-gradient(45deg,#222244 25%,transparent 25%,transparent 75%,#222244 75%),
+  linear-gradient(45deg,#222244 25%,#000044 25%,#000044 75%,#222244 75%);
+  background-size:.8rem .8rem; background-position:0 0,.4rem .4rem;}
+.pswatches{display:grid; grid-template-columns:repeat(8,1.7rem); gap:2px; width:max-content;}
+.pswatch{width:1.7rem; height:1.7rem; padding:0; cursor:pointer; border:1px solid var(--line);
+  position:relative; font-family:var(--mono); font-size:.55rem; color:var(--ink);
+  display:flex; align-items:flex-end; justify-content:flex-end;}
+.pswatch span{background:rgba(0,0,0,.55); padding:0 .1rem; line-height:1.1;}
+.pswatch[aria-pressed="true"]{outline:2px solid var(--ink); outline-offset:1px;}
+.pswatch:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.pswatch.tr{background-image:linear-gradient(45deg,#222244 25%,transparent 25%,transparent 75%,#222244 75%),
+  linear-gradient(45deg,#222244 25%,#000044 25%,#000044 75%,#222244 75%);
+  background-size:.7rem .7rem; background-position:0 0,.35rem .35rem;}
+.pbytes{font-family:var(--mono); font-size:.75rem; display:grid;
+  grid-template-columns:2.6rem repeat(4,2.1rem); gap:2px; width:max-content;}
+.pbytes .boff{color:var(--gold); text-align:right; padding:.15rem .25rem;}
+.pbytes .byt{text-align:center; padding:.15rem .1rem; border:1px solid var(--line);
+  border-radius:2px; background:#000000; color:var(--dim);}
+.pbytes .byt.here{border-color:var(--accent); background:rgba(68,102,238,.18); color:var(--ink);}
+.pbytes .byt i{font-style:normal;}
+.pbytes .byt i.nib{color:var(--gold); background:rgba(238,170,0,.2); border-radius:2px;}
+.pnote{font-family:var(--mono); font-size:.62rem; color:var(--dim); max-width:14rem; line-height:1.5;}
+
+/* the VRAM bar (lifted from genesis/vdp-planes.html, one band recoloured for the
+   framebuffer exhibit) */
+.vbar{display:flex; height:2.2rem; border:1px solid var(--line); border-radius:3px;
+  overflow:hidden; margin:.6rem 0 .3rem; min-width:26rem;}
+.vbar span{display:flex; align-items:center; justify-content:center; font-family:var(--mono);
+  font-size:.6rem; color:var(--ink); overflow:hidden; white-space:nowrap;
+  border-right:1px solid var(--line);}
+.vbar span:last-child{border-right:0;}
+.vb-fb{background:rgba(204,102,170,.45);}
+.vb-art{background:rgba(68,102,238,.3);}
+.vb-tab{background:rgba(238,170,0,.35);}
+.vb-free{background:rgba(0,0,0,.5); color:#666688;}
+.vb-misc{background:rgba(102,204,170,.35);}
+.vkey{display:flex; flex-wrap:wrap; gap:.25rem 1.1rem; margin:.45rem 0 0; max-width:42rem;
+  font-family:var(--mono); font-size:.64rem; color:var(--dim);}
+.vkey span{display:flex; align-items:center; gap:.35rem;}
+.vkey i{width:.75rem; height:.75rem; border:1px solid var(--line); display:inline-block;
+  flex:0 0 auto;}
+
+/* a source-confidence marker for the one cluster on this page where the sources genuinely
+   disagree. Used sparingly and only inside the 128KB refbox, where each row must carry its
+   own standing; the prose says the same thing in words, so nothing rests on the chip. */
+.conf{display:inline-block; font-family:var(--mono); font-size:.58rem; letter-spacing:.12em;
+  text-transform:uppercase; border:1px solid var(--line); color:var(--dim); border-radius:3px;
+  padding:.02rem .4rem; white-space:nowrap;}
+.conf.meas{border-color:var(--learn); color:var(--learn);}
+.conf.one{border-color:#CC66AA; color:#CC66AA;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+  <p class="crumb"><a href="../index.html">EMPYREAN</a> / THE GENESIS / TILES &amp; VRAM</p>
+  <p class="eyebrow">The Genesis</p>
+  <h1>Tiles &amp; VRAM</h1>
+  <p class="sub">A plane names tiles; this page opens the thing being named. An 8x8 tile is
+  32 bytes, one hex digit is one pixel, and 65,536 bytes of video memory divided by 32 is
+  2048, which is exactly as far as the 11-bit tile index reaches. Everything else here is
+  what those 2048 slots cost: the tables that take their bite first, the auto-increment used
+  as a layout tool, the two hazards that make an odd address or a byte-sized access a trap,
+  and the 128KB video memory configuration a stock console does not have.</p>
+  <p style="margin-top:1rem;"><button class="xall" onclick="expandAll(this)">Expand all explainers</button></p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#s1"><span class="n">1</span>One memory, and everything in it</a>
+  <a href="#tile"><span class="n">2</span>The tile: 32 bytes</a>
+  <a href="#index"><span class="n">3</span>A tile number, not an address</a>
+  <a href="#residents"><span class="n">4</span>What else lives in VRAM</a>
+  <a href="#budget"><span class="n">5</span>The budget</a>
+  <a href="#increment"><span class="n">6</span>The auto-increment as a layout tool</a>
+  <a href="#bytes"><span class="n">7</span>Byte access, and the byte-order quirk</a>
+  <a href="#mode128"><span class="n">8</span>The 128KB mode</a>
+</nav>
+
+<p style="margin-top:1.4rem; color:var(--dim); font-size:.85rem;">This page builds on
+<a href="vdp-planes.html">The VDP &amp; Planes</a>, which teaches that
+<a href="vdp-planes.html#ports">the CPU reaches video memory only through two ports and a
+command word</a> and that <a href="vdp-planes.html#nametable">a plane is a grid of 16-bit
+words whose 11-bit field names a tile</a>. Everything that machinery is pointing AT is here.</p>
+
+<!-- ================================================================ -->
+<h2 id="s1">1 &middot; One memory, and everything in it</h2>
+
+<p><span class="term" data-def="The VDP's private 64KB of video memory holding tile art, nametables and the sprite table. The CPU cannot address it directly; everything goes through the VDP ports or DMA.">VRAM</span>
+is 65,536 bytes, addressed byte by byte, and it is the only general-purpose store the
+<span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span>
+has. The 68000 cannot address a single byte of it: everything goes in and out through the two
+ports, one command word at a time, which is
+<a href="vdp-planes.html#ports">the previous page's whole section 2</a>.</p>
+
+<p>Everything you met on that page lives in here. The tile art. The
+<span class="term" data-def="A grid map in VRAM saying which tile to draw in each 8x8 cell of a plane, plus that cell's palette, flip and priority bits.">nametable</span>
+for plane A, the one for plane B, and the Window's. The list of
+<span class="term" data-def="A movable image drawn independently of the background planes, built from tiles. The hardware handles up to 80 at once.">sprite</span>s.
+The horizontal scroll table. The colour memory and the vertical scroll memory pointedly do NOT:
+they are separate, fixed-size stores inside the chip, and they are
+<a href="color-cram.html#s1">the colour page's subject</a>. VRAM is the one that has to be
+budgeted, because it is the one everything shares.</p>
+
+<p>Here is the number the rest of the page turns on. A
+<span class="term" data-def="An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.">tile</span>
+is 32 bytes, and 65,536 divided by 32 is <b>2048</b>. That is also exactly how far an 11-bit
+tile index reaches: 0 to 2047. The field and the memory were sized to each other, so nothing
+that fits is unnameable and nothing nameable fails to fit. Two thousand and forty-eight is
+therefore the ceiling on everything a stock 64KB console can draw at one instant, and the
+tables above come out of the same 2048 before a single tile of art is loaded.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why is video memory so small?</summary>
+  <div class="x-body">
+    <p>Sixty-four kilobytes sounds like an odd amount to build a games machine around, so it
+    is worth seeing what it buys and what it does not.</p>
+    <p>Start with the picture. A full Genesis screen is 320 pixels across and 224 down, which
+    is 71,680 pixels. This machine spends 4 bits on each one, so storing that picture as plain
+    pixels costs 35,840 bytes. Video memory is 65,536 bytes. One still frame would eat more
+    than half of everything, and there would be nowhere to build the next one.</p>
+    <p>So the machine does not store the picture. It stores a small library of 8x8 squares and
+    a map saying which square goes where, and it draws the picture fresh out of that library
+    sixty times a second. The map for a whole screen is 1120 entries of 2 bytes, which is
+    2240 bytes, and the squares are shared: a brick wall of 300 cells can be four squares used
+    seventy-five times each. That is the trade the whole console is built on, and it is why the
+    interesting unit of Genesis memory is not the byte but the tile.</p>
+    <p>What matters for reading the rest of this page is not why the number is 64KB, but that
+    the number is FIXED, and that every table the chip needs is carved out of the same block as
+    the art.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="tile">2 &middot; The tile: 32 bytes</h2>
+
+<p>A <span class="term" data-def="An 8x8 pixel image, 4 bits per pixel (16 colors), 32 bytes. Everything the VDP draws is built from tiles.">tile</span> is 8 pixels by 8 pixels, 4 bits per pixel, and therefore <b>32 bytes</b>. Sega calls
+it a pattern, the assembly world calls it a tile, and it is the atom of everything the VDP
+draws: planes are made of them, sprites are made of them, the text on a title card is made of
+them.</p>
+
+<p>The 32 bytes are laid out as <b>four bytes per row, eight rows</b>, in reading order. Row 0
+sits at offset <code>$00</code>, row 1 at <code>$04</code>, and so on to row 7 at
+<code>$1C</code>. Four bytes is eight nibbles is eight pixels, so a row of the picture is
+exactly one longword of memory.</p>
+
+<figure class="diagram">
+  <div class="tlay" role="img" aria-label="A 32-byte tile: eight rows at offsets $00, $04, $08, $0C, $10, $14, $18 and $1C, each row four bytes wide, each byte holding two pixels. The first byte of a row holds pixels 0 and 1, the second holds 2 and 3, the third holds 4 and 5, the fourth holds 6 and 7.">
+    <span class="th">Offset</span>
+    <span class="th">byte 0</span><span class="th">byte 1</span><span class="th">byte 2</span><span class="th">byte 3</span>
+    <span class="off">$00</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+    <span class="off">$04</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+    <span class="off">$08</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+    <span class="off">$0C</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+    <span class="off">$10</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+    <span class="off">$14</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+    <span class="off">$18</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+    <span class="off">$1C</span><span class="by">px <b>0</b>|<b>1</b></span><span class="by">px <b>2</b>|<b>3</b></span><span class="by">px <b>4</b>|<b>5</b></span><span class="by">px <b>6</b>|<b>7</b></span>
+  </div>
+  <figcaption>The shape Sega's own pattern diagram prints: eight rows, four bytes each, the
+  row offsets running $00 to $1C in steps of 4. Each byte is one pair of side-by-side pixels,
+  the left one in the high nibble.</figcaption>
+</figure>
+
+<p>Now the detail that makes 4bpp data readable by eye, and the one worth learning as a
+sentence: <b>the left pixel of a pair is the HIGH nibble.</b> Sega's table spells it out bit by
+bit, with a byte's D7 to D4 carrying the four colour bits of the first pixel and D3 to D0
+carrying the second. So <b>one hex digit is one pixel, reading left to right</b>, and a hex
+dump of tile art is not an encoding to be decoded: it is the picture, printed one character per
+pixel. That single fact is why anyone can debug Genesis art in a memory viewer at all.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What does "4 bits per pixel" actually mean?</summary>
+  <div class="x-body">
+    <p>A byte is 8 bits, and 8 bits split neatly into two halves of 4. Each half is called a
+    nibble, and a nibble holds a number from 0 to 15, which is exactly one hex digit. That is
+    not a coincidence: hex exists because it lines up with binary four bits at a time, and
+    <a href="../basics/numbers-and-notation.html#s3">the numbers page</a> tells that story
+    properly.</p>
+    <p>So "4 bits per pixel" means each pixel is one hex digit, and each byte holds two of
+    them. Sixteen possible values per pixel is where "16 colours" comes from, and packing two
+    pixels per byte is where "32 bytes" comes from: 64 pixels, half a byte each.</p>
+    <p>Other machines chose differently and it changes everything downstream. One bit per pixel
+    gives two colours and a tiny memory footprint. Eight bits per pixel gives 256 colours and
+    costs four times what this machine spends. Four is the middle bargain, and the Genesis
+    leans on it hard: a whole screen of art fits where a quarter of a screen would fit at
+    8 bits.</p>
+  </div>
+</details>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not engine code</span>
+  <p style="font-size:.9rem; margin:.2rem 0 .5rem;">A ring, invented for this page. Read each
+  hex digit as one pixel: <code>0</code> is transparent, <code>7</code> is a light outline
+  colour, <code>B</code> is gold. The digits ARE the drawing, which is the entire point.</p>
+<pre>	dc.l	$00777700	<span class="c">; row 0, at offset $00</span>
+	dc.l	$07BBBB70	<span class="c">; row 1, at offset $04</span>
+	dc.l	$7BBBBBB7	<span class="c">; row 2, at offset $08</span>
+	dc.l	$7BB77BB7	<span class="c">; row 3, at offset $0C</span>
+	dc.l	$7BB77BB7	<span class="c">; row 4, at offset $10</span>
+	dc.l	$7BBBBBB7	<span class="c">; row 5, at offset $14</span>
+	dc.l	$07BBBB70	<span class="c">; row 6, at offset $18</span>
+	dc.l	$00777700	<span class="c">; row 7, at offset $1C</span></pre>
+</div>
+
+<p>Nothing in a tile is a colour. Each pixel's four bits are an INDEX from 0 to 15, and which
+set of sixteen colours it indexes is not the tile's business at all: the referencing word
+decides that, with the two palette bits
+<a href="vdp-planes.html#nametable">the nametable word carries</a>. The same 32 bytes drawn
+under a different <span class="term" data-def="A set of 16 colors in CRAM. Every tile and sprite picks one of the four palettes.">palette</span> are a different picture for no extra memory. What those sixteen
+colours are, how many a screen can show at once, and why the choice is only two bits wide are
+<a href="color-cram.html#palettes">the colour page's material</a>.</p>
+
+<p>One index is special, and it is a format fact rather than a palette fact:
+<b>index 0 is transparent, always, whatever the palette holds in that slot.</b> A tile is
+therefore fifteen colours and a hole, not sixteen colours, and a tile of all zero bytes is not
+a black square; it is invisible. The one place a palette's entry 0 becomes a visible colour is
+the backdrop, which is set by a register rather than drawn by a tile, and the consequences of
+this for the colour budget belong with
+<a href="color-cram.html#palettes">palettes</a>.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why is one of the sixteen a hole rather than a colour?</summary>
+  <div class="x-body">
+    <p>Because something has to be behind everything else, and the chip has no other way to
+    ask the question.</p>
+    <p>Picture Sonic standing in front of a wall. Sonic is drawn from tiles, and those tiles
+    are square, but Sonic is not. The corners of every one of his tiles have to show the wall
+    instead of him. The VDP is drawing pixel by pixel and needs a per-pixel answer to "is there
+    anything here?", and the cheapest possible answer is to spend one of the sixteen index
+    values on "nothing". No extra bit per pixel, no mask, no second pass.</p>
+    <p>The cost is real and it is the tile's, not the palette's: every tile on the machine has
+    fifteen usable colours out of a palette of sixteen. Artists spend that fifteenth slot
+    knowingly. A background tile that is guaranteed to be behind everything can use index 0 as
+    if it were a colour only in the one case where the backdrop register happens to name that
+    same slot, which is a trick with a page of its own.</p>
+  </div>
+</details>
+
+<p>Play with the format rather than taking it on trust. Paint the grid below and watch the 32
+bytes underneath change; the byte holding the pixel you touched lights up, and so does the
+single hex digit inside it, so "left pixel, high nibble" is something you can see happen rather
+than a rule to remember.</p>
+
+<figure class="diagram">
+  <div class="toy painter">
+    <div class="pcol">
+      <span class="pcaplabel">The tile, 8 x 8 pixels</span>
+      <div id="pGrid" role="group" aria-label="Tile painter: an 8 by 8 pixel grid. Arrow keys move, Enter or Space paints with the selected colour."></div>
+      <span class="pcaplabel">Palette line, 16 entries</span>
+      <div class="pswatches" id="pSw" role="group" aria-label="Colour picker: sixteen palette entries"></div>
+      <p class="pnote" style="max-width:19rem;">Entry 0 is drawn as a checker because it is not
+      a colour. It is the transparent index.</p>
+      <div class="toy-row">
+        <button type="button" class="tbtn" id="pLoad">Load the example tile</button>
+        <button type="button" class="tbtn reset" id="pClear">Clear</button>
+      </div>
+    </div>
+    <div class="pcol">
+      <span class="pcaplabel">The same tile, as its 32 bytes</span>
+      <div class="pbytes" id="pBytes"></div>
+      <p class="pnote">Eight rows of four bytes, at offsets $00 through $1C. Every byte is two
+      pixels; the left one is the high digit.</p>
+    </div>
+  </div>
+  <p class="toycap" id="pCap" aria-live="polite">Nothing painted yet: an empty tile is 32 bytes
+  of $00, which is a fully transparent tile rather than a black one.</p>
+  <figcaption>Tile painter: a tile IS bytes, and 4bpp packing puts two pixels in each one
+  (static fallback: painting the left pixel of a pair changes the high hex digit of its byte
+  and the right pixel changes the low digit, so eight hex digits spell one row of eight
+  pixels). The sixteen swatches are one palette line; palettes themselves are
+  <a href="color-cram.html#palettes">the colour page's subject</a>, and the colours here are
+  legal Genesis colours chosen for contrast rather than copied from any game.</figcaption>
+</figure>
+
+<p>There is one variant of the format, and it belongs to a display mode rather than to the
+tile. In the double-resolution interlace mode a pattern is 8 pixels by 16 and occupies 64
+bytes, and the tile index's lowest bit is ignored, so indices effectively step by two. The mode
+itself, and what it does to the frame, is the frame and interrupt material; the format change
+is noted here so the 32-byte figure is not read as universal.</p>
+
+<p>A closing honesty note, because it explains an absence you would otherwise wonder about.
+Tile data almost never appears as source code in a shipped disassembly. Art ships as
+compressed or raw binary and is pulled in by an include directive, so the bytes in this section
+come from Sega's own diagram and from the invented example above rather than from a game.
+Arithmetic ABOUT the format is everywhere in real code, and the next section is built on a
+piece of it.</p>
+
+<!-- ================================================================ -->
+<h2 id="index">3 &middot; A tile number, not an address</h2>
+
+<p>The eleven bits in a <span class="term" data-def="A grid map in VRAM saying which tile to draw in each 8x8 cell of a plane, plus that cell's palette, flip and priority bits.">nametable</span> word are a tile NUMBER, not an address. The conversion is one
+multiplication, and it works only because every tile is the same size:</p>
+
+<p style="font-family:var(--mono); font-size:.95rem; color:var(--gold); margin:.6rem 0 1rem;">
+byte address = tile index x 32</p>
+
+<p>Eleven bits reach 0 through 2047, and 2048 tiles of 32 bytes is 65,536 bytes exactly. There
+is no index that points past the end of video memory, and there is no 32-byte slot in video
+memory that no index can name. That is the tidiest fit on the machine, and it is why the index
+field is eleven bits wide rather than ten or twelve.</p>
+
+<p>Sonic 2 gives the conversion its own name, and the whole body of it is a mask down to eleven
+bits and a shift left by five, which is multiplication by 32:</p>
+
+<pre>tiles_to_bytes function addr,((addr&amp;$7FF)&lt;&lt;5)
+tiles_to_words function addr,tiles_to_bytes(addr)/2
+tiles_to_longwords function addr,tiles_to_bytes(addr)/4</pre>
+<span class="src">s2disasm/s2.macros.asm:265-267</span>
+
+<p>The mask is the same <code>$7FF</code> the nametable word uses, which is a small piece of
+evidence in itself: the helper and the hardware field agree about how wide a tile number is.
+And the helper has a consumer with a name a player would recognise. The art for the giant
+Sonic on the SEGA logo screen is aimed at video memory by tile NUMBER, and the macro turns
+that number into the address the transfer needs:</p>
+
+<pre>	dma68kToVDP SegaScreenScaledSpriteDataStart,tiles_to_bytes(ArtTile_ArtUnc_Giant_Sonic),\
+	            SegaScreenScaledSpriteDataEnd-SegaScreenScaledSpriteDataStart,VRAM</pre>
+<span class="src">s2disasm/s2.asm:78114-78115 (the SEGA logo screen's giant Sonic)</span>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>Writing a byte address where a tile number belongs puts your art 32 times too far away.</b>
+  The two numbers are both plain integers and neither carries a label, so nothing complains.
+  A tile at <code>$0400</code> in the art pool is tile number <code>$20</code>, and a nametable
+  word holding <code>$0400</code> names tile 1024, which is somewhere else entirely. If a
+  screenful of graphics comes out as garbage that looks like OTHER graphics, this is the first
+  thing to check.
+</div>
+
+<p>Where may tiles live? Anywhere. Sega's own inventory of video memory says the areas may be
+overlapped, and Charles MacDonald puts the same fact the other way round: patterns can be
+placed anywhere, even in the parts of other tables that are not being used, such as a spare
+corner of a nametable or a sprite table. The pattern generator's base is documented as fixed
+at <code>$0000</code>, and that is a statement about COUNTING rather than about placement:
+tile numbers are counted from the start of video memory, so index 0 is the 32 bytes at
+<code>$0000</code> and index 700 is the 32 bytes at <code>$5780</code>. Any 32-byte slot in the
+whole 64KB has a number, including the slots that happen to sit under a table.</p>
+
+<details class="explain">
+  <summary>New here? &middot; What is the difference between a number and an address?</summary>
+  <div class="x-body">
+    <p>An address is a place. A number is a count. The confusing part is that both are written
+    as hex and the machine cannot tell them apart, so the difference lives entirely in what the
+    reading code does with the value.</p>
+    <p>Think of a shelf of identical boxes, each 32 centimetres wide. You can identify a box by
+    saying "the box 96 centimetres along" or by saying "box 3". The two are the same box, and
+    converting between them is multiplying or dividing by 32. Neither is more correct; they are
+    two ways of naming the same thing, and which one a given piece of the machine wants is
+    something you have to know.</p>
+    <p>The VDP wants both, in different places. The nametable word wants box numbers, because
+    they are shorter: 11 bits instead of 16, which leaves 5 bits over for the flip, palette and
+    priority flags. The transfer machinery wants centimetres, because a copy has to land at an
+    actual place. That is the whole job of a helper such as <code>tiles_to_bytes</code>, and it
+    is why a Genesis codebase tends to have one.</p>
+  </div>
+</details>
+
+<p>The eleven bits are also worth respecting as a budget. A game that keeps all its art below
+tile <code>$400</code> never uses the top bit of the index, and one shipped game noticed and
+spent it:
+<a href="vdp-planes.html#nametable">the SEGA screen's streak wipe borrows bit 10 of each stored
+nametable word</a> as a run-length flag, which is only legal because those particular tiles
+live low enough that the bit is free. It is a rare thing to catch a shipped game doing, and it
+is what makes a bit budget feel like money rather than like bookkeeping.</p>
+
+<!-- ================================================================ -->
+<h2 id="residents">4 &middot; What else lives in VRAM</h2>
+
+<p>Art is the bulk of video memory but it is not alone in there. Five tables share the same
+65,536 bytes, each with a base register of its own and each with its own idea of how finely
+that base can be positioned. The sizes are what matter for the budget in the next section.</p>
+
+<div class="tbl">
+<table>
+<tr><th>Resident</th><th>Base register</th><th>Placed in units of</th><th>Size</th><th>Whose subject</th></tr>
+<tr><td>Plane A nametable</td><td>2</td><td><code>$2000</code></td><td>up to 8192 bytes</td><td><a href="vdp-planes.html#sizes">plane sizes</a></td></tr>
+<tr><td>Plane B nametable</td><td>4</td><td><code>$2000</code></td><td>up to 8192 bytes</td><td><a href="vdp-planes.html#sizes">plane sizes</a></td></tr>
+<tr><td>Window nametable</td><td>3</td><td><code>$800</code>, and <code>$1000</code> in H40</td><td>a fixed-shape region, 2048 bytes in H32 and 4096 in H40, of which only the rows the Window covers are read</td><td><a href="vdp-planes.html#window">the Window</a></td></tr>
+<tr><td>Horizontal scroll table</td><td>13</td><td><code>$400</code></td><td>1024 bytes, of which 896 are read in a 28-row display and 960 in a 30-row one</td><td><a href="vdp-planes.html#hscroll">scrolling sideways</a></td></tr>
+<tr><td>Sprite table (<span class="term" data-def="The Sprite Attribute Table: the list in VRAM describing every sprite's position, size, tiles and drawing order.">SAT</span>)</td><td>5</td><td><code>$200</code>, and <code>$400</code> in H40</td><td>512 bytes in H32; in H40 it is 640 bytes used inside a 1024-byte aligned region</td><td>the sprite material</td></tr>
+<tr><td>Tile art, and sprite art</td><td>counted from <code>$0000</code></td><td>a 32-byte tile slot</td><td>everything the tables do not claim</td><td>this page</td></tr>
+</table>
+</div>
+
+<p>Two things in that table are easy to read past. The Window's map has a fixed SHAPE rather
+than a fixed cost. Its rows are 64 cells wide in a 40-cell display however narrow the Window
+itself is, and its base is aligned to <code>$1000</code>, so it sits inside a 4KB-shaped region
+whether it covers three rows or twenty-eight. What the chip actually fetches is only the rows
+the Window covers, and the remainder is space a game may fill with art, exactly like the unread
+part of the scroll table's aligned kilobyte. MD-OS, the program section 5 takes apart, says as
+much in its own equate:
+<code>VDT_Window = $E000 ; $400 (max, depending on art, can do 3-4 lines before art is
+overwritten)</code>
+<span class="src">MD-OS/Equates.asm:28</span>.</p>
+
+<p>And per-row and per-line scrolling cost the same space as each other,
+because a row-mode entry sits at the offset it would occupy in line mode, so the table still
+spans the same 896 bytes with seven eighths of its entries unread; what per-line scrolling
+spends over per-row is transfer time each frame rather than memory. The full-screen mode is the
+cheap one, and only because the chip reads just the first entry pair out of the whole table.</p>
+
+<p>The sprite table's eight-byte entries, and what each field in one means, are the sprite
+material's business. Here it is simply a resident with a size and an alignment, and the
+alignment is the part that costs: in a 40-cell display it has to start on a 1024-byte boundary
+even though it uses 640 bytes.</p>
+
+<p>The teaching point of this section is what the table does not say. <b>None of the five
+tables' positions is chosen by the hardware.</b> What the hardware fixes is how finely each one may be
+placed, which is the granularity column; where inside that grid the table actually sits is the
+program's call. The program writes a base register and the VDP believes it, so a Genesis game's video memory layout is a layout somebody chose, and two games
+choose differently. The one thing that is not movable is where tile numbering starts, and as
+section 3 said, that is a counting convention rather than a wall. Sega goes further and says
+the areas may deliberately overlap, so one table can be shared between the scroll planes and
+the Window rather than duplicated.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why does the program get to say where the tables go?</summary>
+  <div class="x-body">
+    <p>Because the chip has no idea what a game is going to look like, and hardwiring the
+    answer would make the memory worse rather than simpler.</p>
+    <p>Every one of these tables has a size that depends on choices the game makes. A plane
+    can be 2KB or 8KB. The Window can be absent. The scroll table can be read twice a frame or
+    448 times. If the VDP fixed the addresses, it would have to fix them for the biggest case,
+    and a game that used none of the optional features would be paying for all of them in dead
+    space it could not reclaim.</p>
+    <p>So the chip asks instead. Each table gets one small register holding the top bits of its
+    address, and the game answers once at startup, or several times per frame if it wants to
+    get clever. The cost of the arrangement is that there is no universal Genesis memory map to
+    learn: each game has its own, and the only way to know one is to read the register writes.
+    The next section is what one such map costs.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="budget">5 &middot; The budget</h2>
+
+<p>The unit an art pipeline thinks in is not bytes, it is tiles, so this is where to think in
+tiles too. The ceiling is 2048. Every table above takes its bite out of that ceiling first, at
+32 bytes to the tile, and what is left is the art budget. Here are two setups worked out end to
+end, a modest one and a heavy one, both worked for a 40-cell display, using nothing but the
+sizes from the table above divided by 32:</p>
+
+<div class="tbl">
+<table>
+<tr><th></th><th>A modest setup</th><th>A heavy setup</th></tr>
+<tr><td>Planes</td><td>64 x 32 cells: 4096 bytes each<br><b>128 + 128 tiles</b></td><td>64 x 64 cells: 8192 bytes each<br><b>256 + 256 tiles</b></td></tr>
+<tr><td>Window</td><td>none<br><b>0 tiles</b></td><td>three rows of a 64-cell-wide map: 384 bytes<br><b>12 tiles</b></td></tr>
+<tr><td>Sprite table</td><td>640 bytes<br><b>20 tiles</b></td><td>640 bytes<br><b>20 tiles</b></td></tr>
+<tr><td>Horizontal scroll</td><td>full-screen: the VDP reads 4 bytes<br><b>1 tile</b></td><td>per line: 896 bytes<br><b>28 tiles</b></td></tr>
+<tr class="hi"><td><b>Tables cost</b></td><td><b>277 tiles</b></td><td><b>572 tiles</b></td></tr>
+<tr class="hi"><td><b>Art budget left of 2048</b></td><td><b>1771 tiles</b></td><td><b>1476 tiles</b></td></tr>
+</table>
+</div>
+
+<p>Two notes on reading that table. The full-screen scroll row is 1 tile rather than 32 because
+in that mode the chip reads only the first entry pair, four bytes, and the rest of the aligned
+kilobyte is space a game may fill with art; count 32 tiles instead if you would rather not
+share. And the heavy setup's window row is 12 tiles rather than 8 because in a 40-cell display
+the Window's map rows are 64 cells wide whatever the Window's visible width is, so three rows
+of it cost 3 x 64 x 2 bytes. The framing of a VRAM budget in tiles, and both of these worked
+setups, come from rasterscroll's VDP overview. The totals here are not that source's: they are
+re-derived from the sizes in section 4, and the heavy setup comes out six tiles below the
+figure printed there. Every step of it is on the page to be checked.</p>
+
+<p>Now the number that makes the budget bite. A 40-cell display is 40 cells across and 28
+down, so <b>filling the visible screen once with tiles that repeat nowhere costs 1120 of
+them</b>. Against the ceiling of 2048 that is more than half of everything the index can name;
+against the 1476 the heavy setup actually has, it is more than three quarters. plutiedev puts
+the practitioner's version of the same warning as a rule of thumb: there is room for up to 2048
+unique tiles, but assume more or less 75% of that once the tables have taken theirs.</p>
+
+<p>That arithmetic is the whole reason Genesis art looks the way it does. Repetition, mirroring
+and re-colouring are not a style; they are the budget. Both of the cheap tricks are free in the
+same 16-bit word: <a href="vdp-planes.html#nametable">the nametable word's two flip bits</a>
+give a mirrored copy of any tile for no extra bytes, and its two <span class="term" data-def="A set of 16 colors in CRAM. Every tile and sprite picks one of the four palettes.">palette</span> bits give a recoloured
+copy the same way, which is
+<a href="color-cram.html#palettes">the colour page's story</a>.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why does so much Genesis art repeat?</summary>
+  <div class="x-body">
+    <p>Because a designer who does not repeat runs out of memory before the level is one screen
+    long, and the numbers are not close.</p>
+    <p>Take the heavy setup above: 1476 tiles for everything. One screenful of never-repeating
+    scenery is 1120 of them, which leaves 356 for Sonic, every badnik, every ring, the HUD, the
+    monitor boxes and the next screen you are about to scroll into. A level is dozens of
+    screens long. The arithmetic simply does not work unless most of the picture is the same
+    few hundred squares arranged differently.</p>
+    <p>So the craft goes into building tile sets that repeat WELL. A cliff face is a handful of
+    squares with edges that line up in several combinations. A checkerboard hill is two tiles.
+    A mirrored pair of tiles makes a symmetrical arch out of half the art, because the flip is
+    a bit in the map rather than a second copy of the pixels. And a palette swap turns one
+    tileset into an evening version of itself for nothing at all.</p>
+    <p>Once you know this, you can see it. Look at any Genesis background and start counting
+    distinct 8x8 squares; you will run out of new ones very quickly, and that is not laziness,
+    it is the machine.</p>
+  </div>
+</details>
+
+<p>A real map makes it concrete, with one caution attached: this is ONE game's map, not THE
+map. Sonic 2 states its layout as equates whose comments derive the sizes from first
+principles, and the sizes are hardware arithmetic while the addresses are Sonic 2's own
+decision:</p>
+
+<pre>VRAM_Plane_A_Name_Table                  = $C000	<span class="c">; Extends until $CFFF</span>
+VRAM_Plane_B_Name_Table                  = $E000	<span class="c">; Extends until $EFFF</span>
+VRAM_Plane_A_Name_Table_2P               = $A000	<span class="c">; Extends until $AFFF</span>
+VRAM_Plane_B_Name_Table_2P               = $8000	<span class="c">; Extends until $8FFF</span>
+VRAM_Plane_Table_Size                    = $1000	<span class="c">; 64 cells x 32 cells x 2 bytes per cell</span>
+VRAM_Sprite_Attribute_Table              = $F800	<span class="c">; Extends until $FA7F</span>
+VRAM_Sprite_Attribute_Table_Size         = $0280	<span class="c">; 640 bytes</span>
+VRAM_Horiz_Scroll_Table                  = $FC00	<span class="c">; Extends until $FF7F</span>
+VRAM_Horiz_Scroll_Table_Size             = 224*2*2	<span class="c">; 224 lines * 2 bytes per entry * 2 PNTs</span></pre>
+<span class="src">s2disasm/s2.constants.asm:2178-2186</span>
+
+<p>The comments are doing the same arithmetic this section does: 64 by 32 cells at 2 bytes a
+cell is <code>$1000</code>, and 224 lines at 2 bytes an entry for 2 planes is 896 bytes. The
+two <code>_2P</code> entries are worth a second look: the same game keeps a SECOND set of plane
+map addresses for its split-screen two-player mode, which is the previous section's teaching
+point in one game's own constants file. The positions are the program's call, and this program
+makes the call twice.</p>
+
+<p>Now compare Sonic 3 &amp; Knuckles, which runs on the same silicon and writes its own bases
+for the same tables:</p>
+
+<pre>		dc.w $8320	<span class="c">; Window PNT base $8000</span>
+		dc.w $857C	<span class="c">; Sprite attribute table base $F800</span>
+		dc.w $8D3C	<span class="c">; Horizontal scroll table base $F000</span></pre>
+<span class="src">skdisasm/sonic3k.asm:1348, 1350, 1358 (VDP_register_values)</span>
+
+<p>The lesson is sharper than "two games, two maps". <b>Two of those three tables moved and one
+did not.</b> The Window went from <code>$A000</code>
+(<span class="src">s2disasm/s2.asm:1437</span>) to <code>$8000</code>, and the horizontal
+scroll table went from <code>$FC00</code> to <code>$F000</code>, a full 3KB away
+(<code>$FC00 - $F000</code> is <code>$C00</code>, which is 3072 bytes). But
+<code>dc.w $857C</code> is <code>$7C</code> times <code>$200</code>, which is
+<code>$F800</code>, and that is Sonic 2's sprite table address to the byte. Two teams working
+independently on the same silicon landed on the same address for one table and picked
+differently for the other two, which is what a layout being a CHOICE actually looks like: not
+arbitrary, not fixed, just decided.
+Sega's own worked example of a complete layout,
+which places every table for a 32-cell display and leaves the rest to art, is
+<a href="vdp-planes.html#sizes">on the previous page</a> and is worth comparing against both.</p>
+
+<h3>What happens if you refuse the tile abstraction entirely</h3>
+
+<p>The sharpest way to feel what naming tiles buys you is to watch a program decline it. MD-OS,
+a homebrew operating system for the Mega Drive, wants a paint program, and a paint program
+wants pixels rather than a tile library. So it writes plane A's nametable exactly once, at
+startup, with 1120 tile numbers that never repeat, in column order:</p>
+
+<pre>		move.w	#$8F80,(a6)					<span class="c">; set auto-increment amount</span>
+		move.l	#$80008000|((VDT_ArtPaint/$20)&lt;&lt;$10)|((VDT_ArtPaint/$20)+1),d0 <span class="c">; prepare starting tile ID</span>
+		move.l	#$00020002,d1					<span class="c">; tile increment</span>
+		movev	VRAM, VDT_PlaneA, d3				<span class="c">; set VDP write address</span>
+		moveq	#(320/8)-1,d2					<span class="c">; width of plane</span>
+
+	.NextX:
+		move.l	d3,(a6)						<span class="c">; set plane address</span>
+		addi.l	#$00020000,d3					<span class="c">; advance to next column</span>
+	rept	224/16
+		move.l	d0,(a5)						<span class="c">; write tiles</span>
+		add.l	d1,d0						<span class="c">; increase tile IDs</span>
+	endr
+		dbf	d2,.NextX					<span class="c">; repeat for all columns</span></pre>
+<span class="src">MD-OS/Screen Desktop/Paint Layer/Setup Paint Layer.asm:8-21</span>
+
+<p>Count what that loop writes. The column counter is <code>(320/8)-1</code>, which is 40
+columns; the repeat block runs <code>224/16</code> times writing a longword, and a longword is
+two tile numbers, so it is 28 rows. Forty by twenty-eight is 1120, and the numbers step by two
+every longword and never come back. Every cell of the visible plane now points at a tile of its
+own, so writing to tile number N is writing to a fixed square of the screen, and plane A has
+become a linear 320 by 224 framebuffer at 4 bits a pixel.</p>
+
+<p>The bill is exact, and the program states it as an equate:</p>
+
+<pre>VDT_ArtPaint_Size	=	((320*224)/2)		<span class="c">; $8C00</span></pre>
+<span class="src">MD-OS/Equates.asm:23</span>
+
+<p><b><code>$8C00</code> is 35,840 bytes, which is 54.7% of all video memory, permanently.</b>
+It is also, to the byte, one screenful of never-repeating tiles from the paragraph above: 1120
+tiles at 32 bytes each. The rest of the machine then has to fit in what is left, and the shape
+of the program shows it: plane A is the canvas, so the desktop wallpaper is on plane B, and the
+mouse cursor is a sprite rather than something painted into the canvas, which is what keeps it
+from damaging the picture underneath every time it moves. This is a homebrew program rather than a
+commercial one and it is quoted here as an existence proof of a technique, not as an authority
+on the hardware; what it proves is the cost.</p>
+
+<figure class="diagram">
+  <div class="vbar" role="img" aria-label="A 64KB VRAM bar in address order: the paint canvas occupies 35,840 bytes or 54.7 percent, then background art with the sprite list and cursor at 32.4 percent, then the line-sprite art and the Window map at 2.0 percent, then the two plane maps at 10.9 percent. Every byte is claimed.">
+    <span class="vb-fb" style="width:54.7%">the paint canvas, 35,840 B</span>
+    <span class="vb-art" style="width:32.4%">background art, sprites, cursor</span>
+    <span class="vb-misc" style="width:2.0%">.</span>
+    <span class="vb-tab" style="width:10.9%">plane maps</span>
+  </div>
+  <div class="vkey">
+    <span><i class="vb-fb"></i>plane A as a framebuffer, 35,840 B (54.7%)</span>
+    <span><i class="vb-art"></i>background art, the sprite list and the cursor (32.4%)</span>
+    <span><i class="vb-misc"></i>the line-sprite art and the Window map, 1280 bytes (2.0%)</span>
+    <span><i class="vb-tab"></i>the two plane maps, 3584 bytes each (10.9%)</span>
+  </div>
+  <figcaption>Refusing the tile abstraction, drawn to scale in address order from $0000: one
+  program's canvas reserves 54.7% of video memory permanently. Naming tiles is compression, and
+  this is the price of not doing it. Note that nothing here is spare: the nine equates sum to
+  65,536 exactly, and the program even packs its debug art INSIDE the Window's region
+  (<code>VDT_ArtDebug = $E400-$260</code>), which is section 4's overlap allowance being taken
+  up (proportions derived from MD-OS/Equates.asm:21-31).</figcaption>
+</figure>
+
+<!-- ================================================================ -->
+<h2 id="increment">6 &middot; The auto-increment as a layout tool</h2>
+
+<p>Register 15 holds an <span class="term" data-def="A VDP register holding a step that is added to the video memory address after every access, so a run of writes lands in consecutive places.">auto-increment</span>: a step the VDP adds to its internal address after every access,
+so a run of writes walks through video memory without the address being re-issued. That mechanism is
+<a href="vdp-planes.html#ports">the previous page's</a>. What this section is about is that the
+step is a NUMBER you choose, and choosing it well is how a program decides what shape its
+writes have.</p>
+
+<p>Four values do most of the work, and each of them is a different job:</p>
+
+<div class="tbl">
+<table>
+<tr><th>Step</th><th>What a run of accesses then walks</th></tr>
+<tr><td><code>1</code></td><td>consecutive bytes, which is what a VRAM fill wants</td></tr>
+<tr><td><code>2</code></td><td>consecutive words: ordinary tile art, ordinary nametable rows</td></tr>
+<tr><td><code>4</code></td><td>one tile ROW per access, so a run walks down the rows of a tile and then into the tile below</td></tr>
+<tr><td><code>128</code></td><td>one row of a 64-cell-wide nametable, so consecutive writes walk straight down a COLUMN of the plane</td></tr>
+</table>
+</div>
+
+<p>The last one is the trick worth carrying away. A scrolling game has to rewrite the column of
+cells that is about to enter the screen from the side, and a column is the worst possible shape
+for memory laid out in rows: on a 64-cell-wide plane the cells of one column are 128 bytes
+apart. Setting the auto-increment to that same 128 makes the column contiguous from the
+writer's point of view, so a column update
+becomes one address command and a straight run of words, the same cost as a row.</p>
+
+<p>The shortest proof that the step is a live register rather than a constant is a macro that
+changes it and changes it back. A VRAM fill writes a byte at a time, so it needs step 1, and
+everything around it wants step 2:</p>
+
+<pre>	move.w	#$8F01,(a5) <span class="c">; VRAM pointer increment: $0001</span></pre>
+<span class="src">s2disasm/s2.macros.asm:34 (inside dmaFillVRAM)</span>
+
+<pre>	move.w	#$8F02,(a5) <span class="c">; VRAM pointer increment: $0002</span></pre>
+<span class="src">s2disasm/s2.macros.asm:42 (the same macro, restoring it)</span>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>The auto-increment is global state, and nothing resets it for you.</b> A routine that sets
+  it to 128 for a column update and returns without putting it back leaves every unrelated
+  transfer for the rest of the frame striding 128 bytes at a time. The symptom is graphics
+  smeared down the screen in stripes rather than a crash, which makes it a slow bug to find.
+  The macro above is the pattern: set it, use it, put it back.
+</div>
+
+<p>The framebuffer from section 5 leans on this register. Its paint routine sets the step to
+4, one tile row, immediately before firing a transfer:</p>
+
+<pre>		move.w	#$8F04,(a6)					<span class="c">; set auto-increment to single tile row size</span></pre>
+<span class="src">MD-OS/Screen Desktop/Paint Layer/Paint Layer.asm:480</span>
+
+<p>Follow what that produces, because the shape is not the obvious one. A tile row is 4 bytes,
+so a step of 4 moves down one row of one tile and, at the bottom of a tile, straight into the
+top row of the tile below. But a WORD is only 4 pixels, which is half a tile row. So a linear
+run of words with this step paints a stripe <b>4 pixels wide</b> and 224 lines tall, straight
+down through 28 stacked tiles. The program's buffer confirms the intent: it is 224 words, one
+per line of the screen. A narrow vertical stripe is not an obvious drawing primitive, and it is
+what falls out of the layout when tiles are stacked in columns. The transfer machinery wrapped
+around that write, and what it costs, is the <span class="term" data-def="Direct Memory Access: the VDP copies data into video memory by itself, much faster than the CPU could. During a copy from 68000 memory the 68000 is paused; only VRAM fill and VRAM-to-VRAM copy run while the CPU keeps working.">DMA</span> material.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why would anyone want to write down a column?</summary>
+  <div class="x-body">
+    <p>Because the screen moves sideways, and the memory does not.</p>
+    <p>A plane's map is stored row by row, the way you would read a page: all of row 0, then
+    all of row 1. That layout is perfect for anything that happens along a row and awkward for
+    anything that happens down one, because two cells in the same column are a whole row apart
+    in memory.</p>
+    <p>Now think about Sonic running right. The picture slides left, and every eight pixels of
+    movement a new column of scenery has to appear at the right edge. Nothing else needs
+    updating: the rest of the map is already correct and simply scrolls. So one of the most
+    frequent bulk writes a side-scrolling game makes is exactly the awkward shape, one cell
+    every 128 bytes, twenty-eight times over.</p>
+    <p>Without the auto-increment register you would pay for a fresh address command before
+    every cell, which is two extra writes to the control port for each two bytes of payload.
+    With it you pay for one address command and then let the chip do the striding. The register
+    turns the awkward shape into the easy one, which is why it is a layout tool and not just a
+    convenience.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="bytes">7 &middot; Byte access, and the byte-order quirk</h2>
+
+<p>Three separate hazards live in this territory and they blur together constantly, so here
+they are named and separated before any of them is explained. Two are this page's; one is not.</p>
+
+<div class="tbl">
+<table>
+<tr><th>Hazard</th><th>What it is</th><th>Where it is taught</th></tr>
+<tr><td><span class="term" data-def="A single instruction that reads a location, changes the value, and writes it back. Many 68000 instructions do this; TAS is the only one that holds the bus for the whole sequence, and the Genesis does not honour its write.">Read-modify-write</span></td><td>Ordinary 68000 instructions that read their destination before writing it. Aimed at the VDP, the read alone can hang the machine.</td><td><a href="vdp-planes.html#rmw">the previous page, section 3</a></td></tr>
+<tr><td>Byte access is void</td><td>Sega's own corrections declare byte access to the VDP's memories null and void. Nothing to do with reading first.</td><td>here</td></tr>
+<tr><td>The A0 quirk</td><td>An odd video memory address does not select a byte. It swaps the two bytes of the word you write.</td><td>here</td></tr>
+</table>
+</div>
+
+<h3>Byte access is void</h3>
+
+<p>Sega published the Genesis Software Manual and then published corrections to it. Two of those
+documents matter here: <b>Technical Bulletin #14, "Corrections to the Genesis Software Manual",
+dated 1991-09-09</b>, and the earlier <b>corrections fax of 1991-04-17</b>. Both carry the same
+correction, and its scope is exactly three memories: <b>byte access to VRAM, CRAM and VSRAM is
+null and void.</b> The manual's own text had implied byte writes to the data port were fine.
+Sega's own bulletin retracted it, which is a publisher correcting its own record, and the
+reason this track treats the manual's printed text as a claim to be checked rather than as a
+floor.</p>
+
+<p>What a byte write actually DOES on the hardware is a separate question with a separate
+answer, and it is measurement rather than documentation: Charles MacDonald measured that a
+write to either VDP port is taken as a 16-bit write with the low byte duplicated into the high
+byte, whether the address written to was even or odd.
+<a href="vdp-planes.html#ports">The previous page teaches that</a>, and the two statements fit
+together rather than fighting: the bulletin is the rule, and the measurement is what the
+silicon does to you when you break it. A <code>move.b</code> aimed at the data port is not
+ignored and does not fault. It writes a word you did not mean.</p>
+
+<h3>The A0 quirk</h3>
+
+<p>The other hazard is about the address you set INSIDE the VDP, not about the size of the
+access. Sega states it in one sentence: the VRAM address decode uses A15 through A1, and A0
+specifies the data write FORMAT. Write data cannot cross a word boundary, and the high and low
+bytes are exchanged if A0 is 1. Separately, the manual notes that A0 does count towards the
+address increment even though it is ignored during decoding.</p>
+
+<p>Read that as an aliasing rule and it makes sense. Video memory is organised in 16-bit words.
+The bottom address bit does not choose which half of a word you land in, because there is no
+mechanism for landing in half a word; it chooses whether the word you supply is stored as you
+wrote it or with its two bytes swapped.</p>
+
+<div class="gotcha">
+  <span class="g-tag">Gotcha</span>
+  <b>An odd video memory address does not address a byte. It swaps the bytes of the word.</b>
+  So a tile written at an address one byte off is not a tile shifted along by one byte, which
+  you might spot; it is a tile with the two halves of every word exchanged, so each group of
+  four pixels comes out as its second pair followed by its first. That looks like corruption
+  rather than like an offset, and it sends people hunting for the wrong bug. Keep video memory
+  addresses even.
+</div>
+
+<p>Kabuto's hardware testing supplies the reason, and it is worth having because it turns an
+arbitrary rule into a consequence. The VDP's internal byte order is the opposite of the one the
+68000 uses, and the chip's interface emulates the 68000's order so that ordinary word writes
+come out looking right. The A0 behaviour is what that emulation does when you ask for the odd
+case. The behaviour itself is stated by Sega and observable; the explanation is Kabuto's, from
+hardware measurement, and it is his alone.</p>
+
+<details class="explain">
+  <summary>New here? &middot; Why would a chip care whether an address is odd?</summary>
+  <div class="x-body">
+    <p>Because "memory" is not one thing. It is a set of physical chips wired to a bus of a
+    particular width, and the width leaks into what addresses mean.</p>
+    <p>The 68000 fetches 16 bits at a time and so does the VDP's memory. When something asks
+    for "the byte at address 7", the hardware physically fetches the 16-bit word containing it
+    and then picks a half. That picking is real circuitry, and a chip only has it if somebody
+    designed it in.</p>
+    <p>The VDP mostly did not. Its address decode simply ignores the lowest bit, so addresses 6
+    and 7 select the same word, and the bit gets re-used for something else entirely: which way
+    round the two bytes of that word are stored. Reading the number "7" as a place is therefore
+    wrong; the 7 is a 6 plus a flag.</p>
+    <p>The 68000 has its own version of this same theme, and it is worth knowing they are not
+    the same rule. Ask the 68000 itself to fetch a WORD from an odd address and it does not
+    swap anything; it raises an address error exception and the program stops. Two chips, two
+    different answers to odd addresses, both of them a consequence of a 16-bit bus.</p>
+  </div>
+</details>
+
+<!-- ================================================================ -->
+<h2 id="mode128">8 &middot; The 128KB mode, and register 1 bit 7</h2>
+
+<p>The <span class="term" data-def="The Video Display Processor, the Genesis graphics chip. It draws planes and sprites from its own 64KB of video memory; the CPU talks to it through two ports.">VDP</span> can be wired to <b>128KB</b> of video memory instead of 64KB, and it is not done by
+adding a second bank. Two 64K chips are fitted, each holding ONE BYTE of every 16-bit word, and
+both are read in parallel, so address bit 16 becomes meaningful for transfer targets, plane
+maps, scroll tables and sprite tables. The mode is selected by <b>bit 7 of register 1</b>.</p>
+
+<p>The epistemics here need stating plainly, and they split in two, because the bit's NAME and
+the bit's EFFECT are known in different ways. Take the name first. Sega's register page prints
+that bit as <code>0</code> and gives it no name at all. railgun's register reference documents
+it as the 128KB select, and Kabuto's hardware notes give the same identity while saying
+outright that it is what public documents say ("Bit 7 of VDP register 1 enables 128k mode
+according to public documents"). That is one chain rather than two legs: Kabuto is relaying the
+same documents railgun is, not corroborating them from the bench. Charles MacDonald's VDP
+document, written in 2000, calls the same bit "TMS9918 mode", a naming no later source
+reconciles with the 128KB reading. So the identity of the bit is <b>documented, one source
+deep</b>, and this page does not adjudicate the two names.</p>
+
+<p>The EFFECT is the part somebody put on a bench. Kabuto measured what setting the bit does to
+a stock 64KB machine, and that measurement is what the rest of this section is built on. A
+regular Mega Drive is fitted with 64KB and nothing else; plutiedev names a machine that is not,
+the Teradrive, as an example rather than as a complete list. Set the bit on a stock console and
+Kabuto's measurement says exactly what happens: only the LOW byte of each word you write is
+stored, because the high byte is sent to a chip that is not there and is lost.</p>
+
+<p>Which is the interesting part, and the reason this mode is worth a section rather than a
+footnote. <b>Losing the high byte turns 128KB mode into a byte-granular write mode.</b> Every
+word you push through the data port lands as one byte of video memory, which is precisely the
+thing section 7 says the hardware otherwise refuses to do. Kabuto measured the behaviour and
+named the technique "byte-wide DMA", and both halves of that belong to him rather than to any
+documentation. It comes with one condition that is not optional. With the bit set, the display garbles, so the whole
+technique lives inside the blanking interval, with the bit cleared again before the picture
+resumes. When the blanking interval is and how long it lasts is the frame and interrupt
+material.</p>
+
+<div class="teach">
+  <span class="t-tag">Teaching example &middot; not engine code</span>
+  <p style="font-size:.9rem; margin:.2rem 0 .5rem;">The shape of the technique, written out
+  from Kabuto's account of it. Register 1's other bits here are an ordinary running
+  configuration (display on, vertical interrupt on, transfers enabled, mode 5), and only bit 7
+  moves: <code>$74</code> becomes <code>$F4</code> and then goes back. As in the excerpts
+  above, <code>a6</code> is pointing at the VDP's control port.</p>
+<pre>	<span class="c">; inside the blanking interval only</span>
+	move.w	#$81F4,(a6)	<span class="c">; register 1 with bit 7 SET: 128KB mode</span>
+
+	<span class="c">; ... set the video memory address as usual, then push words.</span>
+	<span class="c">; On a stock console only the low byte of each word is stored, so</span>
+	<span class="c">; each word written paints exactly ONE byte of video memory.</span>
+
+	move.w	#$8174,(a6)	<span class="c">; bit 7 CLEAR again, before the display resumes</span></pre>
+</div>
+
+<p>It is a labelled invention because no shipped game supplies one. In the five codebases
+surveyed while this track was researched, <b>nothing sets the bit</b> and nothing mentions the
+mode, so the honest statement is about those five and not about the medium: this is a
+capability of the silicon that the games we can read did not reach for.</p>
+
+<p>Two other registers are reported to take part. Register 14 and register 6 are both printed as
+all zeros by Sega with no documented function, and single-sourced reports tie some of their bits
+to supplying that seventeenth address bit for plane tile data and for sprite art in 128KB mode.
+Kabuto corroborates that some register bits do this job but does not give the positions, so the
+positions are one source deep. They are in the reference box below, labelled, and no claim on
+this page rests on them.</p>
+
+<details class="refbox">
+  <summary>Reference &middot; the 128KB register cluster, with each row's standing</summary>
+  <div class="enc-body">
+    <p style="font-size:.85rem;">Every row here either restates the prose above or is marked as
+    single-sourced colour. The confidence marks are: <span class="conf meas">measured</span> for
+    a hardware measurement by a named person, <span class="conf one">one source</span> for a
+    claim with a single leg and a documented error rate behind it.</p>
+    <div class="tbl">
+    <table>
+    <tr><th>Register</th><th>Bits</th><th>Reported function</th><th>Standing</th></tr>
+    <tr><td>1 (<code>$81</code>)</td><td>bit 7</td><td>selects the 128KB VRAM configuration</td><td><span class="conf one">one source</span>: railgun, from public documents; Kabuto relays the same documents rather than corroborating them from the bench. Sega prints the bit as 0 with no name; MacDonald's 2000 document calls it "TMS9918 mode".</td></tr>
+    <tr><td>1 (<code>$81</code>)</td><td>bit 7</td><td>with the bit set on a 64KB console, only the low byte of each written word is stored, which is the byte-wide DMA technique</td><td><span class="conf meas">measured</span> by Kabuto</td></tr>
+    <tr><td>14 (<code>$8E</code>)</td><td>bit 0 and bit 4</td><td>reported as the A16 bits that rebase plane A's (and the Window's) tile data and plane B's tile data into the upper 64K</td><td><span class="conf one">one source</span>: railgun. Kabuto corroborates that A16 bits for tile data exist somewhere in the registers, not which ones.</td></tr>
+    <tr><td>6 (<code>$86</code>)</td><td>reported as one bit</td><td>the A16 bit for sprite art</td><td><span class="conf one">one source</span>: railgun.</td></tr>
+    </table>
+    </div>
+    <p class="enc-note">Kabuto also gives a formula for how the two chips' addresses remap in
+    this mode, with a caveat about 1KB pages, and notes that the Genesis 3 uses a different and
+    simpler remap. Nobody has independently checked either, so both are recorded as his and
+    nothing on this page is built on them.</p>
+  </div>
+</details>
+
+<details class="explain">
+  <summary>New here? &middot; What is a memory chip that only holds half of each word?</summary>
+  <div class="x-body">
+    <p>It sounds like a broken chip, and it is actually the ordinary way to build wide memory
+    out of narrow parts.</p>
+    <p>Memory chips come in widths. If you have chips that are 8 bits wide and you want to read
+    16 bits at a time, you do not buy a 16-bit chip; you fit two 8-bit ones side by side, wire
+    the same address to both, and read them together. One chip permanently holds the top half
+    of every word and the other permanently holds the bottom half. Neither is "first" and
+    neither is "second half of memory": they are two halves of every single word.</p>
+    <p>That is what the VDP's 128KB configuration is, and it is not a second bank you switch
+    to. A second chip is fitted, each of the two is given the job of holding one byte of every
+    word, and the pair is read together, so the total doubles and a seventeenth address bit
+    starts to mean something. Leaving the second chip out and setting the bit anyway therefore
+    does not halve your memory in the way you might guess. It costs you every high byte.</p>
+  </div>
+</details>
+
+<footer class="page">Part of the Empyrean wiki &middot; last updated 2026-08-08 &middot; <a href="../index.html">Back to hub</a> &middot; Previous: <a href="vdp-planes.html">The VDP &amp; Planes</a> &middot; Next: <a href="color-cram.html">Color &amp; CRAM</a></footer>
+
+<script>
+function expandAll(btn){
+  const all = document.querySelectorAll('details.explain');
+  const open = ![...all].every(d=>d.open);
+  all.forEach(d=>d.open=open);
+  btn.textContent = open ? 'Collapse all explainers' : 'Expand all explainers';
+}
+
+/* ---- The tile painter ----
+   One lesson: a tile IS bytes, and 4bpp packing puts two pixels in each one, the left pixel
+   in the HIGH nibble. Everything the toy shows is derived from one array of 64 pixel indices;
+   the byte panel is recomputed from it rather than tracked separately, so the two can never
+   disagree. At rest the array is all zeros, which IS the lesson that an empty tile is 32 bytes
+   of $00 and therefore fully transparent, so nothing is pre-painted. */
+(function(){
+  const grid = document.getElementById('pGrid');
+  if(!grid) return;
+  const swWrap = document.getElementById('pSw');
+  const bytesWrap = document.getElementById('pBytes');
+  const cap = document.getElementById('pCap');
+
+  // Sixteen entries, as the hardware has. Entry 0 is never drawn as a colour: it is the
+  // transparent index and renders as a checker. All colours CRAM-legal.
+  const PAL = ['transparent','#000000','#222244','#444466','#6666AA','#8888CC','#AAAAEE',
+               '#EEEEEE','#660000','#AA2200','#EE6622','#EECC44','#004422','#22AA44',
+               '#88EE88','#EE88AA'];
+  const HEX = '0123456789ABCDEF';
+  // The .teach ring, as pixel indices, so the toy and the printed dc.l block are the same tile.
+  const EXAMPLE = [
+    0,0,7,7,7,7,0,0,
+    0,7,11,11,11,11,7,0,
+    7,11,11,11,11,11,11,7,
+    7,11,11,7,7,11,11,7,
+    7,11,11,7,7,11,11,7,
+    7,11,11,11,11,11,11,7,
+    0,7,11,11,11,11,7,0,
+    0,0,7,7,7,7,0,0];
+
+  let px = new Array(64).fill(0);
+  let pen = 11;
+  let cursor = 0;
+
+  const cells = [];
+  for(let i=0;i<64;i++){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pcell';
+    b.dataset.i = i;
+    b.tabIndex = i === 0 ? 0 : -1;
+    grid.appendChild(b);
+    cells.push(b);
+  }
+
+  const swatches = [];
+  for(let c=0;c<16;c++){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pswatch' + (c === 0 ? ' tr' : '');
+    if(c > 0) b.style.background = PAL[c];
+    b.setAttribute('aria-pressed', String(c === pen));
+    b.innerHTML = '<span>' + HEX[c] + '</span>';
+    b.setAttribute('aria-label', c === 0
+      ? 'Colour 0, transparent'
+      : 'Colour ' + c + ', hex digit ' + HEX[c]);
+    b.addEventListener('click', ()=>{ pen = c; paintSwatches(); say(
+      c === 0
+        ? 'Pen set to index 0. Painting with it makes a pixel transparent and writes the digit 0.'
+        : 'Pen set to index ' + c + ', which writes the hex digit ' + HEX[c] + '.'); });
+    swWrap.appendChild(b);
+    swatches.push(b);
+  }
+
+  const byteCells = [];
+  for(let r=0;r<8;r++){
+    const off = document.createElement('span');
+    off.className = 'boff';
+    off.textContent = '$' + (r*4).toString(16).toUpperCase().padStart(2,'0');
+    bytesWrap.appendChild(off);
+    for(let k=0;k<4;k++){
+      const s = document.createElement('span');
+      s.className = 'byt';
+      bytesWrap.appendChild(s);
+      byteCells.push(s);
+    }
+  }
+
+  function paintSwatches(){
+    swatches.forEach((b,c)=>b.setAttribute('aria-pressed', String(c === pen)));
+  }
+
+  function render(){
+    for(let i=0;i<64;i++){
+      const v = px[i];
+      const b = cells[i];
+      b.className = 'pcell' + (v === 0 ? ' tr' : '') + (i === cursor ? ' cursel' : '');
+      b.style.background = v === 0 ? '' : PAL[v];
+      b.tabIndex = i === cursor ? 0 : -1;
+      b.setAttribute('aria-label', 'Row ' + (Math.floor(i/8)+1) + ', column ' + (i%8+1)
+        + ', colour ' + v + (v === 0 ? ' (transparent)' : ''));
+    }
+    const curByte = Math.floor(cursor/8)*4 + Math.floor((cursor%8)/2);
+    const curHigh = (cursor % 2) === 0;
+    for(let n=0;n<32;n++){
+      const row = Math.floor(n/4), pair = n%4;
+      const hi = px[row*8 + pair*2], lo = px[row*8 + pair*2 + 1];
+      const cell = byteCells[n];
+      cell.className = 'byt' + (n === curByte ? ' here' : '');
+      cell.innerHTML =
+        '<i class="' + (n === curByte && curHigh ? 'nib' : '') + '">' + HEX[hi] + '</i>' +
+        '<i class="' + (n === curByte && !curHigh ? 'nib' : '') + '">' + HEX[lo] + '</i>';
+    }
+  }
+
+  function say(msg){ cap.textContent = msg; }
+
+  function byteText(n){
+    const row = Math.floor(n/4), pair = n%4;
+    return HEX[px[row*8 + pair*2]] + HEX[px[row*8 + pair*2 + 1]];
+  }
+
+  function paintAt(i){
+    px[i] = pen;
+    cursor = i;
+    render();
+    const row = Math.floor(i/8), col = i%8;
+    const n = row*4 + Math.floor(col/2);
+    say('Painted row ' + (row+1) + ', column ' + (col+1) + ' with index ' + pen + '. That is the '
+      + ((col % 2) === 0 ? 'LEFT pixel of its pair, so it wrote the HIGH digit'
+                         : 'RIGHT pixel of its pair, so it wrote the LOW digit')
+      + ' of the byte at offset $' + (n).toString(16).toUpperCase().padStart(2,'0')
+      + ', which now reads $' + byteText(n) + '.');
+  }
+
+  grid.addEventListener('click', e=>{
+    const t = e.target.closest('.pcell');
+    if(t) paintAt(Number(t.dataset.i));
+  });
+
+  grid.addEventListener('keydown', e=>{
+    const t = e.target.closest('.pcell');
+    if(!t) return;
+    const i = Number(t.dataset.i);
+    let n = i;
+    if(e.key === 'ArrowRight') n = (i%8) === 7 ? i : i+1;
+    else if(e.key === 'ArrowLeft') n = (i%8) === 0 ? i : i-1;
+    else if(e.key === 'ArrowDown') n = i > 55 ? i : i+8;
+    else if(e.key === 'ArrowUp') n = i < 8 ? i : i-8;
+    else if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); paintAt(i); return; }
+    else return;
+    e.preventDefault();
+    cursor = n;
+    render();
+    cells[n].focus();
+    say('Cursor on row ' + (Math.floor(n/8)+1) + ', column ' + (n%8+1)
+      + '. Press Enter or Space to paint it with index ' + pen + '.');
+  });
+
+  document.getElementById('pLoad').addEventListener('click', ()=>{
+    px = EXAMPLE.slice();
+    render();
+    say('Loaded the ring from the teaching example above. Row 1 reads $00 $77 $77 $00, and the '
+      + 'four bytes of every row spell that row of eight pixels one digit at a time.');
+  });
+
+  document.getElementById('pClear').addEventListener('click', ()=>{
+    px = new Array(64).fill(0);
+    cursor = 0;
+    render();
+    say('Cleared. Every byte is $00 again, which is a fully transparent tile rather than a '
+      + 'black one, because index 0 is a hole.');
+  });
+
+  render();
+})();
+
+/* ---- Term tooltips (shared implementation, AUTHORING.md) ---- */
+(function(){
+  const pop = document.createElement('div');
+  pop.id = 'termpop'; pop.setAttribute('role','tooltip');
+  document.body.appendChild(pop);
+  let cur = null;
+  function show(t){
+    cur = t;
+    pop.innerHTML = '<span class="tp-name">' + t.textContent + '</span>' + t.dataset.def;
+    pop.style.display = 'block';
+    const r = t.getBoundingClientRect();
+    const maxL = window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 12;
+    pop.style.left = Math.max(Math.min(r.left + window.scrollX, maxL), 8) + 'px';
+    pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    t.setAttribute('aria-describedby','termpop');
+  }
+  function hide(){ if(cur){cur.removeAttribute('aria-describedby'); cur = null;} pop.style.display = 'none'; }
+  document.querySelectorAll('.term').forEach(t=>{
+    t.tabIndex = 0;
+    t.addEventListener('mouseenter', ()=>show(t));
+    t.addEventListener('mouseleave', hide);
+    t.addEventListener('focus', ()=>show(t));
+    t.addEventListener('blur', hide);
+    t.addEventListener('click', ()=>{ (cur === t && pop.style.display === 'block') ? hide() : show(t); });
+  });
+  addEventListener('keydown', e=>{ if(e.key === 'Escape') hide(); });
+})();
+</script>
+</div>
+
+</body>
+</html>
